@@ -221,6 +221,19 @@ def pick_hill_station(stations: pd.DataFrame, near: int = 71, max_km: float = 15
     return int(cand.sort_values(["elevation_ft", "station_id"]).iloc[-1]["station_id"])
 
 
+def _resolve_station(station: Any, stations: pd.DataFrame, spec: dict[str, Any]) -> int:
+    """Station id from a number, a source station code (e.g. ``"SCK"`` for ASOS) or ``HILL_STATION``."""
+    if station == "HILL_STATION":
+        near = _resolve_station(spec.get("hill_near", 71), stations, spec)
+        return pick_hill_station(stations, near=near)
+    if isinstance(station, str) and not station.isdigit():
+        m = stations[stations["source_station_id"].astype(str) == station]
+        if m.empty:
+            raise KeyError(f"station {station!r} not found")
+        return int(m["station_id"].iloc[0])
+    return int(station)
+
+
 def scenario_faults(spec: dict[str, Any], stations: pd.DataFrame, season: str) -> list[dict[str, Any]]:
     from .. import config
 
@@ -231,11 +244,9 @@ def scenario_faults(spec: dict[str, Any], stations: pd.DataFrame, season: str) -
     for f in spec["faults"]:
         f = dict(f)
         day = int(f.pop("day"))
-        station = f.pop("station")
-        if station == "HILL_STATION":
-            station = pick_hill_station(stations)
+        station = _resolve_station(f.pop("station"), stations, spec)
         kind = f.pop("type")
-        out.append({"type": kind, "station": int(station), "start": (day0 + pd.Timedelta(days=day, hours=1)).isoformat(),
+        out.append({"type": kind, "station": station, "start": (day0 + pd.Timedelta(days=day, hours=1)).isoformat(),
                     **f})
     return out
 
@@ -256,7 +267,7 @@ def apply_scenario(yaml_path: str | Path, readings: pd.DataFrame | None = None,
         stations = ctx.region_stations()
         readings = ctx.store.readings(s, e, stations["station_id"].tolist())
     faults = scenario_faults(spec, stations, season)
-    for f in faults:
-        if f["type"] == "offset":
-            print(f"HILL_STATION offset -> station {f['station']}")
+    for f, raw in zip(faults, spec["faults"], strict=True):
+        if raw.get("station") == "HILL_STATION":
+            print(f"HILL_STATION -> station {f['station']}")
     return inject(readings, faults)

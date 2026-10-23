@@ -11,3 +11,4 @@ data/models/
 data/demo/
 bench/results/*.json
 !bench/results/.gitkeep
+data_asos/

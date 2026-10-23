@@ -28,17 +28,19 @@ def select_region(stations: pd.DataFrame, region: dict[str, Any]) -> pd.Series:
     """True for stations within ``radius_km`` of a seed (active or closed since the cutoff), plus includes."""
     st = stations
     sid = st["station_id"].astype(int)
-    seeds = st[sid.isin(region["seed_stations"])]
+    seeds = st[sid.isin(region.get("seed_stations", []))]
+    points = [(float(s["lat"]), float(s["lon"])) for _, s in seeds.iterrows()]
+    points += [(float(c["lat"]), float(c["lon"])) for c in region.get("seed_coords", [])]
     near = np.zeros(len(st), dtype=bool)
-    for _, s in seeds.iterrows():
-        near |= haversine_km(s["lat"], s["lon"], st["lat"].to_numpy(), st["lon"].to_numpy()) <= float(region["radius_km"])
+    for lat, lon in points:
+        near |= haversine_km(lat, lon, st["lat"].to_numpy(), st["lon"].to_numpy()) <= float(region["radius_km"])
     cutoff = pd.Timestamp(region.get("recently_closed_since", "1900-01-01"))
     disc = pd.to_datetime(st["disconnect_date"])
     alive = st["is_active"].fillna(False).astype(bool).to_numpy() | (disc.isna() | (disc >= cutoff)).to_numpy()
     return pd.Series((near & alive) | sid.isin(region.get("include_stations", [])).to_numpy(), index=st.index)
 
 
-def sync_stations(source: StationSource, store: Store, region_path: str | Path = "region.yaml") -> pd.DataFrame:
+def sync_stations(source: StationSource, store: Store, region_path: str | Path | None = None) -> pd.DataFrame:
     region = config.region(region_path)
     src = source.list_stations()
     existing = {(r.source, str(r.source_station_id)): int(r.station_id) for r in store.stations().itertuples()}
@@ -90,7 +92,7 @@ def ingest_station(source: Any, store: Store, st: pd.Series, lo: date, hi: date,
     raw = source.fetch_hourly(str(st["source_station_id"]), lo, hi, refresh=refresh) if refresh else \
         source.fetch_hourly(str(st["source_station_id"]), lo, hi)
     key = (str(st["source"]), str(st["source_station_id"]))
-    df = finalize_hourly(raw, {key: int(st["station_id"])}) if len(raw) else raw.assign(station_id=[])
+    df = finalize_hourly(raw, {key: int(st["station_id"])})  # also fine for an empty window
     hours = pst_day_hours(lo, hi)
     if len(df):
         df = df[(df["ts"] >= hours[0]) & (df["ts"] <= hours[-1])]
@@ -115,7 +117,7 @@ def run_per_station(stations: pd.DataFrame, fn: Any) -> dict[int, Any]:
 
 
 def backfill(source: Any, store: Store, start: date, end: date, station_ids: list[int] | None = None,
-             region_path: str | Path = "region.yaml") -> dict[int, Any]:
+             region_path: str | Path | None = None) -> dict[int, Any]:
     region = config.region(region_path)
     st = store.stations()
     st = st[st["in_region"].fillna(True).astype(bool)] if "in_region" in st else st
@@ -147,7 +149,7 @@ def ingest_recent(source: Any, store: Store, days: int = 3, today: date | None =
 
 
 def export_parquet(store: Store, region_name: str | None = None, out_dir: Path | None = None) -> tuple[Path, Path]:
-    region_name = region_name or config.region().get("name", "region")
+    region_name = region_name or config.region().get("name", "region")  # per CHILLWATCH_REGION
     out_dir = out_dir or config.data_dir() / "parquet"
     out_dir.mkdir(parents=True, exist_ok=True)
     rp, sp = out_dir / f"readings_{region_name}.parquet", out_dir / f"stations_{region_name}.parquet"

@@ -93,6 +93,7 @@ model:
   loso_folds: 5           # GroupKFold by station; 0 = true leave-one-station-out
   prism_mask_fraction: 0.3  # spec
   seed: 42
+  build_workers: 4        # processes building per-season training frames
   blind_max_train_rows: 1500000  # TODO source: subsample when retraining for blind_test
 
 uncertainty:

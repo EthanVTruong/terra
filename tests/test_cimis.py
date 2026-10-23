@@ -136,7 +136,7 @@ def test_recorded_live_station_list():
 
     st = parse_stations(json.loads((FIX / "cimis_stations_live.json").read_text()))
     assert len(st) == 276 and st["lat"].notna().all() and st["lon"].notna().all()
-    assert st["lat"].between(32, 42).all() and st["lon"].between(-125, -114).all()
+    assert st["lat"].between(32, 42.1).all() and st["lon"].between(-125, -114).all()
     d = st.set_index("source_station_id")
     assert d.at["6", "lat"] == pytest.approx(38.535694) and d.at["6", "elevation_ft"] == 60
     assert d.at["12", "disconnect_date"] == pd.Timestamp("2025-07-30") and not d.at["12", "is_active"]

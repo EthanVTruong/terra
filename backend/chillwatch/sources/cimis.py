@@ -222,7 +222,7 @@ class CimisSource:
         base_url: str | None = None,
         api: str | None = None,
         min_interval_s: float = 1.0,
-        window_days: int = 60,
+        window_days: int | None = None,
         hourly_items: list[str] | None = None,
         timeout_s: float = 120.0,
         sleep: Callable[[float], None] = time.sleep,
@@ -233,7 +233,9 @@ class CimisSource:
         self.api = (api or os.environ.get("CIMIS_API") or "new").lower()
         self.base_url = (base_url or (NEW_BASE_URL if self.api == "new" else BASE_URL)).rstrip("/")
         self.min_interval_s = min_interval_s
-        self.window_days = window_days
+        # legacy: 1,750 records/request -> 60-day hourly windows; the new API returned a whole
+        # 182-day season (4,392 records) in one request (verified 2026-10-23)
+        self.window_days = window_days or (183 if self.api == "new" else 60)
         self.hourly_items = hourly_items or HOURLY_ITEMS_P0 + HOURLY_ITEMS_P1
         self._sleep = sleep
         self._last_request = 0.0

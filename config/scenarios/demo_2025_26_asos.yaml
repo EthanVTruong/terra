@@ -1,0 +1,10 @@
+# The demo scenario on the ASOS validation network (CHILLWATCH_REGION=region_asos.yaml).
+# CIMIS stations are mapped to the nearest ASOS station with 2025-26 data:
+#   70 Manteca -> SCK Stockton, 71 Modesto -> MOD Modesto, 39 Parlier -> O32 Reedley.
+season: "2025-26"
+hill_near: MOD
+faults:
+  - {day: 10, station: SCK, type: outage, days: 6}
+  - {day: 24, station: MOD, type: stuck, hours: 36}
+  - {day: 38, station: HILL_STATION, type: offset, delta_f: 4.0}
+  - {day: 55, station: O32, type: drift, max_delta_f: 5.0, days: 10}

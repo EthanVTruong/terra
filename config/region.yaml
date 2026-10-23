@@ -1,0 +1,19 @@
+# Region definition for ChillWatch (prompt section 2).
+name: central_valley
+seed_stations: [6, 70, 71, 39, 5]   # Davis, Manteca, Modesto, Parlier, Shafter
+radius_km: 150
+# Always include these, even if outside the radius or long closed.
+include_stations: [12]              # Durham, closed July 2025 ("rescued station" demo)
+# "recently closed": stations disconnected on/after this date are kept.
+recently_closed_since: "2005-10-01" # TODO source: spec says "recently closed" without a cutoff; using the backfill start
+seasons:
+  first: "2005-06"
+  last: "2025-26"
+  start_mmdd: "10-01"
+  end_mmdd: "03-31"
+# Never trained on; used only by `chillwatch bench`.
+holdout_seasons: ["2023-24", "2024-25"]
+# Also kept out of training so the demo scenario never runs on training data.
+# TODO source: not in spec; remove to train on the current season.
+exclude_from_training: ["2025-26"]
+demo_season: "2025-26"

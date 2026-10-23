@@ -145,18 +145,19 @@ def classify_shift(r: np.ndarray, onset: int, alarm: int, stop: int, step_hours:
     if ok.sum() < 6:
         return {"kind": "offset", "tau": onset, "ramp_hours": 0, "magnitude": float("nan")}
     y = np.where(ok, seg, 0.0)
-    durations = sorted({1, 2, 3, 4, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144, 192, 240, 336, 480})
+    durations = np.array([1, 2, 3, 4, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144, 192, 240, 336, 480], dtype=float)
     best = (np.inf, onset, 1, float("nan"))
+    okf = ok.astype(float)
+    yy = float((y * y).sum())
     for tau in range(0, alarm - lo + 1):
-        for D in durations:
-            shape = np.clip((idx - tau + 1) / D, 0.0, 1.0) * ok
-            ss = float((shape * shape).sum())
-            if ss <= 0:
-                continue
-            M = float((shape * y).sum() / ss)
-            sse = float(((y - M * shape) ** 2 * ok).sum())
-            if sse < best[0] - 1e-9:
-                best = (sse, tau, D, M)
+        shape = np.clip((idx[None, :] - tau + 1) / durations[:, None], 0.0, 1.0) * okf  # (D, n)
+        ss = (shape * shape).sum(axis=1)
+        sy = (shape * y).sum(axis=1)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            sse = np.where(ss > 0, yy - sy * sy / ss, np.inf)  # least-squares M = sy / ss
+        k = int(np.argmin(sse))
+        if sse[k] < best[0] - 1e-9:
+            best = (float(sse[k]), tau, int(durations[k]), float(sy[k] / ss[k]))
     _, tau, D, M = best
     # The spec's rule is "step = change-point within 6 h". Hourly residuals carry diurnal
     # structure, so a clean step is often fitted as a 12-24 h ramp; ramps shorter than
@@ -455,8 +456,8 @@ def run_detection(as_of: datetime, lookback_days: int = 7, ctx: Any | None = Non
         return out
 
     # pass A: neighbors validated by source QC only
-    exp_a = ctx.expected(window_start, as_of_ts, ids, valid_col="qc_base")
-    res = detect_all(exp_a, ids)
+    exp_a_raw = ctx.expected(window_start, as_of_ts, ids, with_offsets=False, valid_col="qc_base")
+    res = detect_all(ctx._with_offsets(exp_a_raw), ids)
     # pass B: drop neighbor hours pass A marked invalid, re-test stations near them
     flagged = {sid for sid, (_, st) in res.items() if (st == "invalid").any()}
     if flagged:
@@ -470,7 +471,7 @@ def run_detection(as_of: datetime, lookback_days: int = 7, ctx: Any | None = Non
                 bad = rd_a.loc[m, "ts"].map(st).eq("invalid").to_numpy()
                 idx = rd_a.index[m][bad]
                 rd_a.loc[idx, "qc_status"] = "invalid"
-            exp_b = ctx.expected_from_readings(rd_a, window_start, as_of_ts, redo)
+            exp_b = ctx.expected_from_readings(rd_a, window_start, as_of_ts, redo, base=exp_a_raw)
             res.update(detect_all(exp_b, redo))
 
     dets: list[Detection] = []

@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from . import config
@@ -27,6 +28,9 @@ class Context:
         self._fields: dict[Any, Field] = {}
         self._frozen: pd.DataFrame | None = None  # precomputed expected (no offsets), bench/demo
         self._frozen_range: tuple[pd.Timestamp, pd.Timestamp] | None = None
+        self._refined: dict[Any, pd.DataFrame] = {}
+        self._stations: pd.DataFrame | None = None
+        self._near_cache: tuple[dict[int, int], np.ndarray] | None = None
 
     # ------------------------------------------------------------------ model
     @property
@@ -43,10 +47,16 @@ class Context:
 
     # ------------------------------------------------------------------ stations
     def region_stations(self) -> pd.DataFrame:
-        st = self.store.stations()
-        if "in_region" in st.columns:
-            st = st[st["in_region"].fillna(True).astype(bool)]
-        return st.reset_index(drop=True)
+        if self._stations is None:
+            st = self.store.stations()
+            if "in_region" in st.columns:
+                st = st[st["in_region"].fillna(True).astype(bool)]
+            self._stations = st.reset_index(drop=True)
+            self._near_cache = None
+        return self._stations
+
+    def reload_stations(self) -> None:
+        self._stations = None
 
     def active_station_ids(self, at: datetime) -> list[int]:
         st = self.region_stations()
@@ -55,7 +65,11 @@ class Context:
 
     # ------------------------------------------------------------------ field / expected
     def invalidate(self) -> None:
+        """Drop cached fields. Cached flag-refined expected values stay valid only while the
+        frozen (replay) data is fixed, so they are kept in frozen mode and dropped otherwise."""
         self._fields.clear()
+        if self._frozen is None:
+            self._refined.clear()
 
     def field(self, start: datetime, end: datetime, drop_ids: set[int] | None = None,
               valid_col: str = "qc_status") -> Field:
@@ -105,18 +119,19 @@ class Context:
         """Targets within neighbor range of any flagged station."""
         if not flagged:
             return []
-        st = self.region_stations().set_index("station_id")
-        max_km = float(config.thresholds()["neighbors"]["max_km"])
-        f = st.loc[[x for x in flagged if x in st.index]]
-        out = []
-        for sid in ids:
-            if sid not in st.index:
-                continue
-            d = haversine_km(st.at[sid, "lat"], st.at[sid, "lon"], f["lat"].to_numpy(), f["lon"].to_numpy())
-            others = f.index.to_numpy() != sid
-            if (d[others] <= max_km).any():
-                out.append(sid)
-        return out
+        if self._near_cache is None:
+            st = self.region_stations()
+            max_km = float(config.thresholds()["neighbors"]["max_km"])
+            lat, lon = st["lat"].to_numpy(), st["lon"].to_numpy()
+            close = haversine_km(lat[:, None], lon[:, None], lat[None, :], lon[None, :]) <= max_km
+            np.fill_diagonal(close, False)
+            self._near_cache = ({int(s): i for i, s in enumerate(st["station_id"])}, close)
+        pos, close = self._near_cache
+        fi = [pos[x] for x in flagged if x in pos]
+        if not fi:
+            return []
+        hit = close[:, fi].any(axis=1)
+        return [sid for sid in ids if sid in pos and hit[pos[sid]]]
 
     def expected(
         self,
@@ -137,23 +152,56 @@ class Context:
             f = self._frozen
             df = f[f["station_id"].isin(ids) & (f["ts"] >= s) & (f["ts"] <= e)].copy()
             if valid_col == "qc_status":
-                rd = self.store.readings(s, e)
-                flagged = set(rd.loc[(rd["qc_status"] == "invalid") & (rd["qc_base"] == "ok"),
-                                     "station_id"].astype(int))
-                redo = self._near(ids, flagged)
-                if redo:
-                    live = self._predict(self.field(s, e, valid_col="qc_status"), redo)
-                    df = pd.concat([df[~df["station_id"].isin(redo)], live], ignore_index=True)
+                df = self.refine(df, self.store.readings(s, e), ids)
         else:
             df = self._predict(self.field(s, e, valid_col=valid_col), ids)
         return self._with_offsets(df) if with_offsets else df.reset_index(drop=True)
 
+    def refine(self, base: pd.DataFrame, readings: pd.DataFrame, targets: list[int]) -> pd.DataFrame:
+        """Recompute ``base`` (source-QC expected values, no offsets) where detector-flagged
+        neighbor hours must be dropped. Expected values at hour t depend only on hour t, so
+        only targets near a flagged station and only the flagged time segments are redone.
+        """
+        fl = readings[(readings["qc_status"] == "invalid") & (readings["qc_base"] == "ok")]
+        if fl.empty:
+            return base
+        st = self.region_stations()
+        days = fl["ts"].dt.floor("D")
+        parts = []
+        for day, f_day in fl.groupby(days):
+            redo = self._near(targets, set(f_day["station_id"].astype(int)))
+            if not redo:
+                continue
+            a, b = day, day + pd.Timedelta(hours=23)
+            seg = readings[(readings["ts"] >= a) & (readings["ts"] <= b)]
+            # cache per UTC day: same data, same flagged neighbor-hours, same targets -> same answer
+            sig = (int(pd.util.hash_pandas_object(f_day[["station_id", "ts"]], index=False).sum()),
+                   int(pd.util.hash_pandas_object(seg[["station_id", "ts", "temp_f", "qc_base"]], index=False).sum()))
+            key = (day, sig, tuple(sorted(redo)))
+            if key not in self._refined:
+                self._refined[key] = self._predict(build_field(seg, st, a, b, valid_col="qc_status"), redo)
+                if len(self._refined) > 5000:
+                    self._refined.pop(next(iter(self._refined)))
+            parts.append(self._refined[key])
+        if not parts:
+            return base
+        live = pd.concat(parts, ignore_index=True)
+        live = live[(live["ts"] >= readings["ts"].min()) & (live["ts"] <= readings["ts"].max())]
+        out = pd.concat([base, live], ignore_index=True)
+        return out.drop_duplicates(["station_id", "ts"], keep="last").sort_values(["station_id", "ts"])
+
     def expected_from_readings(self, readings: pd.DataFrame, start: datetime, end: datetime,
-                               station_ids: list[int], with_offsets: bool = True) -> pd.DataFrame:
-        """Expected values from an explicit readings frame (validity from its ``qc_status``)."""
-        fld = build_field(readings, self.region_stations(), start, end, valid_col="qc_status")
-        df = self._predict(fld, station_ids)
-        return self._with_offsets(df) if with_offsets else df
+                               station_ids: list[int], base: pd.DataFrame | None = None,
+                               with_offsets: bool = True) -> pd.DataFrame:
+        """Expected values given an explicit readings frame (neighbor validity from its ``qc_status``).
+
+        ``base`` = the same stations' source-QC expected values (no offsets), if already computed.
+        """
+        if base is None:
+            base = self.expected(start, end, station_ids, with_offsets=False, valid_col="qc_base")
+        base = base[base["station_id"].isin(station_ids)]
+        df = self.refine(base, readings, station_ids)
+        return self._with_offsets(df) if with_offsets else df.reset_index(drop=True)
 
     def _with_offsets(self, df: pd.DataFrame) -> pd.DataFrame:
         if df.empty:

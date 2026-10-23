@@ -464,17 +464,18 @@ def _offset_series(hours: pd.DatetimeIndex, night: np.ndarray, offsets: pd.DataF
     """Offset in force at each hour: latest accepted one if any, else latest learned one."""
     o = offsets.copy()
     o["window_end"] = pd.to_datetime(o["window_end"], utc=True)
-    o = o.sort_values(["window_end"])
+    o = o.sort_values(["window_end"], kind="stable")
     out = np.zeros(len(hours))
-    left = pd.DataFrame({"ts": hours, "i": np.arange(len(hours))})
+    t = pd.DatetimeIndex(hours).tz_convert("UTC").as_unit("ns").asi8
     for kind in ("learned", "accepted"):  # accepted applied last -> takes precedence
         ok = o[o["kind"] == kind]
         if ok.empty:
             continue
-        mm = pd.merge_asof(left, ok[["window_end", "night_f", "day_f"]], left_on="ts", right_on="window_end",
-                           direction="backward")
-        has = mm["window_end"].notna().to_numpy()
-        val = np.where(night, mm["night_f"].to_numpy(dtype="float64"), mm["day_f"].to_numpy(dtype="float64"))
+        ends = pd.DatetimeIndex(ok["window_end"]).as_unit("ns").asi8
+        j = np.searchsorted(ends, t, side="right") - 1  # latest offset whose window ended at or before t
+        has = j >= 0
+        jj = np.clip(j, 0, None)
+        val = np.where(night, ok["night_f"].to_numpy(dtype="float64")[jj], ok["day_f"].to_numpy(dtype="float64")[jj])
         out = np.where(has & np.isfinite(val), val, out)
     return out
 

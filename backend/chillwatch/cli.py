@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 import typer
 
+from . import config
+
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="ChillWatch data / QC / ML layer")
 stations_app = typer.Typer(no_args_is_help=True, help="Station metadata")
 app.add_typer(stations_app, name="stations")
@@ -126,8 +128,10 @@ def train_cmd(version: str = typer.Option(None), folds: int = typer.Option(None,
 
     b = train(_ctx().store, version=version, loso_folds=folds)
     m = b.metrics
-    typer.echo(json.dumps({"version": b.version, "fit": m["fit"], "loso_model": m["loso_model"],
-                           "loso_idw_lapse": {"mae_f": m["loso_idw_lapse"]["mae_f"]}}, indent=2))
+    key = "loso" if "loso_model" in m else "in_sample"
+    typer.echo(json.dumps({"version": b.version, "validation": m["validation"], "fit": m["fit"],
+                           f"{key}_model": m[f"{key}_model"],
+                           f"{key}_common_rows": m[f"{key}_common_rows"]}, indent=2))
 
 
 @app.command()
@@ -196,6 +200,28 @@ def bench(faults: int = 100, seed: int = 42, gapfill_blocks: int = 200, max_days
     r = run_bench(faults, seed, ctx=_ctx(), gapfill_blocks=gapfill_blocks, max_days=max_days)
     typer.echo(Path(r["paths"][1]).read_text())
     typer.echo(f"written: {r['paths']}")
+
+
+@app.command()
+def grid(season: str = typer.Option(None, help="default: the region's demo season"),
+         km: float = typer.Option(5.0, help="grid spacing"),
+         end: str = typer.Option(None, help="season to date: last hour to include (UTC)"),
+         out: Path = typer.Option(None, help="default: data/grid/"),
+         physics_only: bool = typer.Option(False, help="IDW + lapse baseline instead of the model"),
+         label: str = typer.Option(""), verbose: bool = True) -> None:
+    """Chill-hour map: estimate every grid cell from nearby stations (CSV, GeoJSON, PNG)."""
+    _setup(verbose)
+    from .qc.model import idw_only_bundle
+    from .repair.grid import predict_grid, write_grid
+
+    ctx = _ctx()
+    if physics_only:
+        ctx.model = idw_only_bundle()
+    season = season or config.region()["demo_season"]
+    df = predict_grid(ctx, season, km=km, end=pd.Timestamp(end, tz="UTC") if end else None)
+    paths = write_grid(df, ctx.region_stations(), out or config.data_dir() / "grid",
+                       label or ("physics baseline" if physics_only else ""))
+    typer.echo(json.dumps(paths, indent=2))
 
 
 @app.command("blind-test")

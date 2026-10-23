@@ -134,8 +134,11 @@ def false_alarms(labels: list[FaultLabel], runs: list[tuple[pd.Timestamp, list[D
 
 def chill_errors(truth: pd.DataFrame, faulty: pd.DataFrame, repaired: pd.DataFrame,
                  labels: list[FaultLabel], season: str) -> list[dict[str, Any]]:
+    """Season chill hours on stations with a fault inside the chill window (Nov 1 on)."""
     out = []
-    for sid in sorted({lab.station_id for lab in labels}):
+    chill_start = pd.Timestamp(f"{season[:4]}-{config.thresholds()['chill']['start_mmdd']} 01:00", tz="UTC") \
+        + pd.Timedelta(hours=8)
+    for sid in sorted({lab.station_id for lab in labels if lab.end_ts >= chill_start}):
         t = truth[truth["station_id"] == sid].set_index("ts")
         f = faulty[faulty["station_id"] == sid].set_index("ts").reindex(t.index)
         r = repaired[repaired["station_id"] == sid].set_index("ts").reindex(t.index)
@@ -181,9 +184,11 @@ def gapfill_accuracy(ctx: Context, truth: pd.DataFrame, stations: pd.DataFrame, 
         if both.sum() == 0:
             continue
         cm = chill_mask(actual.index) & both.to_numpy()
+        # blocks with no chill-season hours (October) have no chill error to report, not a zero
+        ch_err = (chill_hours(est[cm].to_numpy()) - chill_hours(actual[cm].to_numpy())) if cm.any() else None
         out.append({"station_id": sid, "start_ts": a.isoformat(), "hours": int(length),
                     "mae_f": float((actual[both] - est[both]).abs().mean()),
-                    "chill_hours_error": chill_hours(est[cm].to_numpy()) - chill_hours(actual[cm].to_numpy()),
+                    "chill_hours_error": ch_err, "chill_window_hours": int(cm.sum()),
                     "methods": e["method"].value_counts().to_dict()})
     return out
 
@@ -209,13 +214,21 @@ def _gap_summary(blocks: list[dict[str, Any]]) -> dict[str, Any]:
     bins = [0, 6, 24, 72, 24 * 7 + 1]
     labels = ["1-6h", "7-24h", "1-3d", "3-7d"]
     df["bin"] = pd.cut(df["hours"], bins, labels=labels, right=True)
+    df["chill_hours_error"] = pd.to_numeric(df["chill_hours_error"], errors="coerce")
+
+    def chill(g: pd.DataFrame) -> float | None:
+        c = g["chill_hours_error"].dropna()
+        return round(float(c.abs().mean()), 2) if len(c) else None
+
     by = {}
     for k, g in df.groupby("bin", observed=True):
         by[str(k)] = {"blocks": int(len(g)), "mae_f": round(float(g["mae_f"].mean()), 3),
-                      "mean_abs_chill_hours_error": round(float(g["chill_hours_error"].abs().mean()), 2)}
+                      "chill_blocks": int(g["chill_hours_error"].notna().sum()),
+                      "mean_abs_chill_hours_error": chill(g)}
     return {"blocks": int(len(df)), "mae_f": round(float(df["mae_f"].mean()), 3),
-            "mean_abs_chill_hours_error": round(float(df["chill_hours_error"].abs().mean()), 2),
-            "by_length": by}
+            "chill_blocks": int(df["chill_hours_error"].notna().sum()),
+            "mean_abs_chill_hours_error": chill(df), "by_length": by,
+            "note": "chill-hour error is over blocks that include chill-season hours (Nov 1 on)"}
 
 
 def run_bench(n_faults: int = 100, seed: int = 42, ctx: Context | None = None, seasons: list[str] | None = None,
@@ -340,8 +353,12 @@ def markdown(r: dict[str, Any]) -> str:
         lines += ["## Gap filling on clean data (hidden real blocks)", "",
                   "| Block length | Blocks | MAE (F) | Mean abs chill-hour error |", "|---|---:|---:|---:|"]
         for k, v in g["by_length"].items():
-            lines.append(f"| {k} | {v['blocks']} | {v['mae_f']} | {v['mean_abs_chill_hours_error']} |")
-        lines.append(f"| **all** | {g['blocks']} | {g['mae_f']} | {g['mean_abs_chill_hours_error']} |")
+            ce = v["mean_abs_chill_hours_error"]
+            lines.append(f"| {k} | {v['blocks']} | {v['mae_f']} | {'-' if ce is None else ce} (n={v['chill_blocks']}) |")
+        ce = g["mean_abs_chill_hours_error"]
+        lines.append(f"| **all** | {g['blocks']} | {g['mae_f']} | {'-' if ce is None else ce} (n={g['chill_blocks']}) |")
+        lines.append("")
+        lines.append("Chill-hour error is averaged over blocks that include chill-season hours (Nov 1 on).")
     return "\n".join(lines) + "\n"
 
 

@@ -74,6 +74,12 @@ offsets:
 repair:
   long_gap_days: 14       # spec
 
+grid:                      # chill-hour map (repair/grid.py)
+  min_stations: 2         # spec (>= 2 neighbors within the neighbor radius)
+  min_coverage: 0.9       # TODO source: share of chill-window hours that must have an estimate
+  max_dz_ft: 1500         # TODO source: mask cells this far above/below the nearest station
+  water_below_ft: -50     # cells below this ground elevation are water (terrain tiles carry bathymetry)
+
 chill:
   min_f: 32.0             # spec
   max_f: 45.0             # spec
@@ -91,6 +97,8 @@ model:
   valid_station_fraction: 0.15  # TODO source: station-grouped early-stopping split
   dirty_label_sigma: 5.0  # spec
   loso_folds: 5           # GroupKFold by station; 0 = true leave-one-station-out
+  loso_procedure: full    # full = each fold model gets its own early stopping + dirty-label removal
+  log_every: 100          # log validation loss every N boosting rounds
   prism_mask_fraction: 0.3  # spec
   seed: 42
   build_workers: 4        # processes building per-season training frames

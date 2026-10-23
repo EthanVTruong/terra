@@ -30,18 +30,28 @@ def virtual_station(lat: float, lon: float, elevation_ft: float, start: datetime
 
 
 def blind_model(station_id: int, ctx: Any, retrain: bool = True) -> ModelBundle:
-    """A model trained with the station removed entirely (cached under data/models/blind)."""
+    """A model trained with the station removed entirely (cached under data/models/blind).
+
+    ``retrain=False`` returns the production model, which saw the station as a training target:
+    quick, but NOT blind (results are labeled ``blind: False``).
+    The blind model is fitted without cross-validation, so its own residuals are in-sample; its
+    uncertainty bands are taken from the production model's leave-stations-out residual bins.
+    """
     if not retrain:
         return ctx.model
-    base = ctx.model.version
+    base = ctx.model
     out = config.data_dir() / "models" / "blind"
-    path = out / f"blind-{station_id}-{base}"
+    path = out / f"blind-{station_id}-{base.version}"
     if (path / "features.json").exists():
         return ModelBundle.load(path)
     m = config.thresholds()["model"]
     log.info("training blind model without station %s", station_id)
-    return train(ctx.store, version=path.name, out_dir=out, loso_folds=1, drop_ids={int(station_id)},
-                 max_rows=int(m["blind_max_train_rows"]), activate=False)
+    b = train(ctx.store, version=path.name, out_dir=out, loso_folds=1, drop_ids={int(station_id)},
+              max_rows=int(m["blind_max_train_rows"]), activate=False)
+    b.unc_model, b.unc_idw = base.unc_model, base.unc_idw
+    b.metrics["uncertainty_source"] = f"leave-stations-out bins of {base.version}"
+    b.save(path)
+    return b
 
 
 def blind_test(station_id: int, season: str, ctx: Any | None = None, retrain: bool = True,
@@ -71,12 +81,15 @@ def blind_test(station_id: int, season: str, ctx: Any | None = None, retrain: bo
     series = pd.DataFrame({"ts": pred["ts"], "actual": actual, "predicted": pred["expected_f"],
                            "p10": pred["p10"], "p90": pred["p90"], "method": pred["method"]})
     both = np.isfinite(series["actual"]) & np.isfinite(series["predicted"])
-    cm = chill_mask(pd.DatetimeIndex(series["ts"])) & np.isfinite(series["actual"].to_numpy())
+    # chill totals over the same hours: the station reported AND an estimate exists
+    cm = chill_mask(pd.DatetimeIndex(series["ts"])) & both.to_numpy()
+    reported = chill_mask(pd.DatetimeIndex(series["ts"])) & np.isfinite(series["actual"].to_numpy())
     inside = both & (series["actual"] >= series["p10"]) & (series["actual"] <= series["p90"])
     return {
         "station_id": int(station_id),
         "season": season,
         "model": bundle.version,
+        "blind": bool(model is not None or retrain),
         "series": series,
         "n_hours": int(both.sum()),
         "mae_f": float(np.mean(np.abs(series["actual"][both] - series["predicted"][both]))) if both.any() else None,
@@ -85,6 +98,7 @@ def blind_test(station_id: int, season: str, ctx: Any | None = None, retrain: bo
         "chill_hours_actual": chill_hours(series["actual"][cm].to_numpy()),
         "chill_hours_predicted": chill_hours(series["predicted"][cm].to_numpy()),
         "chill_hours_compared": int(cm.sum()),
+        "chill_hours_reported": int(reported.sum()),
     }
 
 

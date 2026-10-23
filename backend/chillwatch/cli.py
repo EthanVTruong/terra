@@ -34,7 +34,8 @@ def _ids(s: str | None) -> list[int] | None:
 def _report(results: dict[int, object]) -> None:
     ok = {k: v for k, v in results.items() if not isinstance(v, Exception)}
     bad = {k: v for k, v in results.items() if isinstance(v, Exception)}
-    typer.echo(f"{len(ok)} stations ok, {sum(int(v) for v in ok.values())} rows; {len(bad)} failed")
+    rows = sum(v for v in ok.values() if isinstance(v, int))
+    typer.echo(f"{len(ok)} stations ok, {rows} rows; {len(bad)} failed")
     for k, v in bad.items():
         typer.echo(f"  station {k}: {v}")
 

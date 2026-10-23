@@ -75,7 +75,7 @@ def lookup(
     q10 = np.full(len(keys), np.nan)
     q90 = np.full(len(keys), np.nan)
     for k in np.unique(keys):
-        st = table.get(k) or table.get("_pooled_n" if k.endswith("_n") else "_pooled_d") or table.get("_all")
+        st = table.get(k) or table.get("_pooled_n" if k.endswith("_n") else "_pooled_d") or table["_all"]
         m = keys == k
         sd[m], q10[m], q90[m] = st["sd"], st["q10"], st["q90"]
     if widest is not None and widest.any():

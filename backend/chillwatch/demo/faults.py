@@ -198,18 +198,26 @@ def random_faults(
 
 
 # =========================================================================== scenario
-def pick_hill_station(stations: pd.DataFrame, near: int = 71, max_km: float = 80.0) -> int:
-    """Highest-elevation active station within ``max_km`` of ``near`` (default Modesto)."""
+def pick_hill_station(stations: pd.DataFrame, near: int = 71, max_km: float = 150.0, min_neighbors: int = 3
+                      ) -> int:
+    """Highest-elevation active station within ``max_km`` of ``near`` (default Modesto) that has at
+    least ``min_neighbors`` active stations within the neighbor radius (so it can be checked)."""
+    from .. import config
     from ..qc.neighbors import haversine_km
 
     st = stations.dropna(subset=["lat", "lon"])
-    c = st[st["station_id"] == near]
+    if "is_active" in st:
+        st = st[st["is_active"].fillna(True).astype(bool)]
+    st = st.reset_index(drop=True)
+    c = stations[stations["station_id"] == near]
     if c.empty:
         return int(st.sort_values("elevation_ft").iloc[-1]["station_id"])
-    d = haversine_km(c["lat"].iloc[0], c["lon"].iloc[0], st["lat"], st["lon"])
-    cand = st[(d <= max_km) & (st["station_id"] != near)]
-    if "is_active" in cand:
-        cand = cand[cand["is_active"].fillna(True).astype(bool)]
+    nk = float(config.thresholds()["neighbors"]["max_km"])
+    lat, lon = st["lat"].to_numpy(), st["lon"].to_numpy()
+    pair = haversine_km(lat[:, None], lon[:, None], lat[None, :], lon[None, :])
+    n_nb = (pair <= nk).sum(axis=1) - 1
+    d = haversine_km(c["lat"].iloc[0], c["lon"].iloc[0], lat, lon)
+    cand = st[(d <= max_km) & (st["station_id"] != near).to_numpy() & (n_nb >= min_neighbors)]
     return int(cand.sort_values(["elevation_ft", "station_id"]).iloc[-1]["station_id"])
 
 

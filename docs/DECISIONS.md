@@ -1,15 +1,19 @@
 # Decisions and VERIFY items
 
-One line each. "UNVERIFIED" means the CIMIS/PRISM endpoints could not be reached from the
-build environment (TLS connection reset / empty reply from et.water.ca.gov, ftpcimis and PRISM),
-and no `CIMIS_APP_KEY` was available, so the item follows the published API docs and must be
-checked against a live response before the demo.
+One line each. "UNVERIFIED" means it could not be checked against a live response: no
+`CIMIS_APP_KEY` was available in the build environment (and et.water.ca.gov was intermittently
+unreachable), so the item follows the published API docs and must be checked before the demo.
+The station list needs no key and **was** verified live (recorded in
+`tests/fixtures/cimis_stations_live.json`, 2026-10-23).
 
 ## VERIFY items from the prompt
 
-- **CIMIS station coordinates** (UNVERIFIED): `HmsLatitude` / `HmsLongitude` assumed `"38º32'8N / 38.535694"`; code takes the decimal after `/` (`sources/cimis.py:parse_hms_coord`), NaN if absent.
+- **CIMIS station coordinates** (VERIFIED live): `HmsLatitude` / `HmsLongitude` look like `"38º32'8N / 38.535694"`; code takes the decimal after `/` (`sources/cimis.py:parse_hms_coord`). All 276 stations parse.
 - **Elevation**: feet, from `Elevation` (prompt). Stored as `elevation_ft`.
-- **ConnectDate / DisconnectDate** (UNVERIFIED): parsed as `m/d/Y`; a disconnect date more than a year in the future (e.g. `12/31/2050`) is treated as "still connected".
+- **ConnectDate / DisconnectDate / IsActive** (VERIFIED live): `m/d/Y` strings; open stations carry `12/31/2050`, treated as "still connected"; `IsActive` is `"True"`/`"False"`. Durham (12) disconnected **2025-07-30**, `IsActive` False.
+- **Region** (from the live list): 132 CIMIS stations within 150 km of the five seeds or included (91 active). It reaches Owens Valley and the Central Coast; neighbors are still limited to 80 km.
+- **HILL_STATION** for the demo scenario: no high station lies within 80 km of Modesto, so the scenario uses the highest active station within 150 km of Modesto that has ≥ 3 active neighbors within 80 km: **13 Camino (2,780 ft, El Dorado)**.
+- **CIMIS firewall**: `/api/data` with an invalid key answers HTTP 200 with an HTML "Request Rejected" page; the adapter raises `CimisAuthError` without retrying.
 - **Hourly item names** (UNVERIFIED): `hly-air-tmp, hly-rel-hum, hly-dew-pnt, hly-sol-rad, hly-wind-spd`; response keys `HlyAirTmp, HlyRelHum, HlyDewPnt, HlySolRad, HlyWindSpd`, each `{Value, Qc, Unit}`.
 - **Response envelope** (UNVERIFIED): `{"Data": {"Providers": [{"Records": [...]}]}}`; anything else (e.g. `{"Message": ...}`) is treated as a refusal and the window is halved.
 - **Hour convention** (UNVERIFIED, implemented per prompt): hour-ending `0100`..`2400` PST all year; `ts = Date 00:00 PST + Hour`, so `2400` is next-day 00:00 PST; UTC = PST + 8 h.

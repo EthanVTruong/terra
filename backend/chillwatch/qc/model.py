@@ -157,24 +157,37 @@ def training_frame(
     return pd.concat(frames, ignore_index=True)
 
 
-def _fit(train: pd.DataFrame, feats: list[str], seed: int, num_round: int | None = None) -> lgb.Booster:
+def _log_progress(period: int, tag: str) -> Any:
+    def cb(env: Any) -> None:
+        if period and (env.iteration + 1) % period == 0:
+            vals = ", ".join(f"{name} {value:.4f}" for _, name, value, _ in env.evaluation_result_list)
+            log.info("%s round %d %s", tag, env.iteration + 1, vals)
+    return cb
+
+
+def _fit(train: pd.DataFrame, feats: list[str], seed: int, num_round: int | None = None,
+         tag: str = "fit") -> lgb.Booster:
     m = config.thresholds()["model"]
     params = _params(seed)
     if num_round is not None:
-        ds = lgb.Dataset(train[feats].to_numpy(dtype="float64"), train["y"].to_numpy(), feature_name=feats)
+        ds = lgb.Dataset(train[feats].to_numpy(dtype="float32"), train["y"].to_numpy(), feature_name=feats)
         return lgb.train(params, ds, num_boost_round=max(1, num_round))
     gss = GroupShuffleSplit(n_splits=1, test_size=float(m["valid_station_fraction"]), random_state=seed)
     tr_idx, va_idx = next(gss.split(train, groups=train["station_id"]))
     tr, va = train.iloc[tr_idx], train.iloc[va_idx]
-    dtr = lgb.Dataset(tr[feats].to_numpy(dtype="float64"), tr["y"].to_numpy(), feature_name=feats)
-    dva = lgb.Dataset(va[feats].to_numpy(dtype="float64"), va["y"].to_numpy(), reference=dtr)
-    return lgb.train(
+    dtr = lgb.Dataset(tr[feats].to_numpy(dtype="float32"), tr["y"].to_numpy(), feature_name=feats)
+    dva = lgb.Dataset(va[feats].to_numpy(dtype="float32"), va["y"].to_numpy(), reference=dtr)
+    b = lgb.train(
         params,
         dtr,
         num_boost_round=int(m["num_boost_round"]),
         valid_sets=[dva],
-        callbacks=[lgb.early_stopping(int(m["early_stopping_rounds"]), verbose=False)],
+        valid_names=["held-out stations"],
+        callbacks=[lgb.early_stopping(int(m["early_stopping_rounds"]), verbose=False),
+                   _log_progress(int(m.get("log_every", 100)), tag)],
     )
+    log.info("%s: best round %d", tag, b.best_iteration or b.current_iteration())
+    return b
 
 
 def robust_sigma(r: np.ndarray) -> float:
@@ -184,16 +197,17 @@ def robust_sigma(r: np.ndarray) -> float:
     return float(1.4826 * np.median(np.abs(r - np.median(r))))
 
 
-def fit_model(train: pd.DataFrame, feats: list[str], seed: int) -> tuple[lgb.Booster, dict[str, Any]]:
+def fit_model(train: pd.DataFrame, feats: list[str], seed: int, tag: str = "model"
+              ) -> tuple[lgb.Booster, dict[str, Any]]:
     """Fit with early stopping, drop |residual| > 5 robust sigma (dirty labels), refit once."""
     m = config.thresholds()["model"]
-    b = _fit(train, feats, seed)
-    r = train["y"].to_numpy() - b.predict(train[feats].to_numpy(dtype="float64"))
+    b = _fit(train, feats, seed, tag=f"{tag} first fit")
+    r = train["y"].to_numpy() - b.predict(train[feats].to_numpy(dtype="float32"))
     s = robust_sigma(r)
     keep = np.abs(r) <= float(m["dirty_label_sigma"]) * max(s, 1e-6)
     info = {"rows": int(len(train)), "dirty_removed": int((~keep).sum()), "sigma_first_fit": s,
             "best_iter_first": int(b.best_iteration or b.current_iteration())}
-    b2 = _fit(train[keep], feats, seed)
+    b2 = _fit(train[keep], feats, seed, tag=f"{tag} refit")
     info["best_iter"] = int(b2.best_iteration or b2.current_iteration())
     return b2, info
 
@@ -339,13 +353,21 @@ def train(
     n_groups = len(np.unique(groups))
     n_splits = n_groups if folds == 0 else min(folds, n_groups)
     oof = np.full(len(data), np.nan)
+    fold_procedure = str(m.get("loso_procedure", "full"))
+    fold_info = []
     if n_splits >= 2:
         for k, (tr, va) in enumerate(GroupKFold(n_splits=n_splits).split(data, groups=groups)):
-            b = _fit(data.iloc[tr], feats, seed, num_round=info["best_iter"])
-            oof[va] = b.predict(data.iloc[va][feats].to_numpy(dtype="float64"))
+            if fold_procedure == "full":
+                # the shipped procedure inside the fold: early stopping on the fold's own training
+                # stations + dirty-label removal, so no validation-fold station informs the fit
+                b, fi = fit_model(data.iloc[tr], feats, seed, tag=f"fold {k + 1}/{n_splits}")
+                fold_info.append(fi)
+            else:
+                b = _fit(data.iloc[tr], feats, seed, num_round=info["best_iter"])
+            oof[va] = b.predict(data.iloc[va][feats].to_numpy(dtype="float32"))
             log.info("LOSO fold %d/%d done", k + 1, n_splits)
     if n_splits < 2:  # no CV requested: in-sample residuals (optimistic; labeled in metrics)
-        oof = np.asarray(booster.predict(data[feats].to_numpy(dtype="float64")))
+        oof = np.asarray(booster.predict(data[feats].to_numpy(dtype="float32")))
     data["pred"] = oof
     data["residual"] = data["y"] - data["pred"]
     data["residual_idw"] = data["y"] - data["t_base"]
@@ -357,11 +379,21 @@ def train(
         "holdout_seasons": reg.get("holdout_seasons", []),
         "features": feats,
         "fit": info,
-        "validation": f"GroupKFold by station, {n_splits} folds" if n_splits >= 2 else "none (in-sample)",
+        "validation": (f"GroupKFold by station, {n_splits} folds, fold models trained with "
+                       + ("the full procedure (own early stopping + dirty-label removal)" if fold_procedure == "full"
+                          else "the main model's round count")) if n_splits >= 2 else "none (in-sample)",
+        "fold_fits": fold_info,
         "dropped_stations": sorted(int(x) for x in (drop_ids or ())),
-        "loso_model": error_report(data, "pred"),
-        "loso_idw_lapse": error_report(data.assign(pred_idw=data["t_base"]), "pred_idw"),
         "n_stations": int(n_groups),
+    }
+    key = "loso" if n_splits >= 2 else "in_sample"
+    common = np.isfinite(data["pred"].to_numpy()) & np.isfinite(data["t_base"].to_numpy())
+    metrics[f"{key}_model"] = error_report(data, "pred")
+    metrics[f"{key}_idw_lapse"] = error_report(data.assign(pred_idw=data["t_base"]), "pred_idw")
+    # like-for-like comparison: the same hours for both (the model also covers 1-neighbor hours)
+    metrics[f"{key}_common_rows"] = {
+        "model": error_report(data[common], "pred"),
+        "idw_lapse": error_report(data[common].assign(pred_idw=data.loc[common, "t_base"]), "pred_idw"),
     }
     ok = np.isfinite(data["residual"].to_numpy())
     unc_model = unc.fit_bins(

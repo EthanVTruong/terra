@@ -272,7 +272,10 @@ class CimisSource:
                 # seen live: an internal DWR backend outage reported as HTTP 400; retry it
                 raise _Transient(f"CIMIS backend unavailable: {body[:120]}")
             # only a record-limit refusal is fixed by a smaller window; legacy errors carry no code
-            if "ERR2112" in body or "exceeds" in body.lower() or ("ERR" not in body and self.api == "legacy"):
+            # an uncoded upstream "Bad Request" (seen live) is narrowed down the same way, so one bad
+            # day costs a day, not a season
+            upstream = "Status: 400" in body and "ERR" not in body
+            if "ERR2112" in body or "exceeds" in body.lower() or upstream or ("ERR" not in body and self.api == "legacy"):
                 raise CimisRefused(f"CIMIS {resp.status_code}: {body}")
             raise CimisBadRequest(f"CIMIS {resp.status_code}: {body}")
         if resp.status_code >= 500:

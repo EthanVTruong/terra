@@ -42,8 +42,9 @@ def thresholds() -> dict[str, Any]:
     return load_yaml("thresholds.yaml")
 
 
-def region(path: str | Path = "region.yaml") -> dict[str, Any]:
-    return load_yaml(path)
+def region(path: str | Path | None = None) -> dict[str, Any]:
+    """Region config; ``CHILLWATCH_REGION`` selects another file (e.g. region_asos.yaml)."""
+    return load_yaml(path or os.environ.get("CHILLWATCH_REGION", "region.yaml"))
 
 
 def cimis_flags() -> dict[str, Any]:

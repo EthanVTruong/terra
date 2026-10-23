@@ -180,3 +180,21 @@ def test_legacy_api(tmp_path):
     route = respx.get(f"{BASE_URL}/data").mock(return_value=httpx.Response(200, json=payload))
     df = src(tmp_path, api="legacy").fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 2))
     assert len(df) == 48 and dict(route.calls[0].request.url.params)["appKey"] == "k"
+
+
+def test_ingest_station_with_no_data_inserts_missing_rows():
+    from chillwatch.ingest import ingest_station
+    from chillwatch.sources.base import empty_hourly
+
+    class Empty:
+        source = "asos"
+
+        def fetch_hourly(self, sid, lo, hi, refresh=False):
+            return empty_hourly()
+
+    st = pd.Series({"station_id": 100000, "source": "asos", "source_station_id": "3A6",
+                    "connect_date": pd.Timestamp("1990-01-01"), "disconnect_date": pd.NaT})
+    store = MemoryStore()
+    assert ingest_station(Empty(), store, st, date(2010, 1, 1), date(2010, 1, 2)) == 48
+    r = store.readings()
+    assert (r["qc_status"] == "missing").all() and r["temp_f"].isna().all()

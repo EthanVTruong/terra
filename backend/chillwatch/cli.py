@@ -27,6 +27,16 @@ def _ctx():
     return get_context()
 
 
+def _source(name: str):
+    if name == "asos":
+        from .sources.asos import AsosSource
+
+        return AsosSource()
+    from .sources.cimis import CimisSource
+
+    return CimisSource()
+
+
 def _ids(s: str | None) -> list[int] | None:
     return [int(x) for x in s.split(",") if x.strip()] if s else None
 
@@ -41,13 +51,13 @@ def _report(results: dict[int, object]) -> None:
 
 
 @stations_app.command("sync")
-def stations_sync(region: Path = typer.Option(Path("config/region.yaml")), verbose: bool = False) -> None:
-    """Fetch the CIMIS station list and mark the region's stations."""
+def stations_sync(region: Path = typer.Option(None, help="default: $CHILLWATCH_REGION or config/region.yaml"),
+                  source: str = typer.Option("cimis", help="cimis | asos"), verbose: bool = False) -> None:
+    """Fetch the station list and mark the region's stations."""
     _setup(verbose)
     from .ingest import sync_stations
-    from .sources.cimis import CimisSource
 
-    st = sync_stations(CimisSource(), _ctx().store, region)
+    st = sync_stations(_source(source), _ctx().store, region)
     typer.echo(f"{len(st)} region stations")
     typer.echo(st[["station_id", "name", "county", "elevation_ft", "is_active", "disconnect_date"]].to_string(index=False))
 
@@ -58,28 +68,28 @@ def backfill(
     to: str = typer.Option("2026-03-31", "--to"),
     stations: str = typer.Option(None, help="comma-separated station ids"),
     export: bool = typer.Option(True, help="write the Parquet snapshot afterwards"),
+    source: str = typer.Option("cimis", help="cimis | asos"),
     verbose: bool = False,
 ) -> None:
     """Resumable backfill of chill seasons (cached raw responses are never re-downloaded)."""
     _setup(verbose)
     from .ingest import backfill as bf
     from .ingest import export_parquet
-    from .sources.cimis import CimisSource
 
     ctx = _ctx()
-    _report(bf(CimisSource(), ctx.store, date.fromisoformat(from_), date.fromisoformat(to), _ids(stations)))
+    _report(bf(_source(source), ctx.store, date.fromisoformat(from_), date.fromisoformat(to), _ids(stations)))
     if export:
         typer.echo(f"parquet: {export_parquet(ctx.store)}")
 
 
 @app.command()
-def ingest(days: int = 3, stations: str = typer.Option(None), verbose: bool = False) -> None:
+def ingest(days: int = 3, stations: str = typer.Option(None), source: str = typer.Option("cimis"),
+           verbose: bool = False) -> None:
     """Re-fetch the last N days (idempotent upserts; what the daily job calls)."""
     _setup(verbose)
     from .ingest import ingest_recent
-    from .sources.cimis import CimisSource
 
-    _report(ingest_recent(CimisSource(), _ctx().store, days, station_ids=_ids(stations)))
+    _report(ingest_recent(_source(source), _ctx().store, days, station_ids=_ids(stations)))
 
 
 @app.command("ingest-diy")

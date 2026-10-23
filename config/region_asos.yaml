@@ -1,0 +1,21 @@
+# Real-data validation region on NOAA ASOS airport stations (IEM archive; no key needed).
+# Same footprint as region.yaml: within 150 km of the five CIMIS seed stations (coordinates
+# from the live CIMIS station list). Select with CHILLWATCH_REGION=region_asos.yaml.
+name: central_valley_asos
+seed_coords:
+  - {name: Davis (CIMIS 6), lat: 38.535694, lon: -121.776360}
+  - {name: Manteca (CIMIS 70), lat: 37.834822, lon: -121.223190}
+  - {name: Modesto (CIMIS 71), lat: 37.645222, lon: -121.187760}
+  - {name: Parlier (CIMIS 39), lat: 36.597444, lon: -119.504040}
+  - {name: Shafter (CIMIS 5), lat: 35.532556, lon: -119.281790}
+radius_km: 150
+include_stations: []
+recently_closed_since: "2005-10-01"
+seasons:
+  first: "2005-06"
+  last: "2025-26"
+  start_mmdd: "10-01"
+  end_mmdd: "03-31"
+holdout_seasons: ["2023-24", "2024-25"]
+exclude_from_training: ["2025-26"]
+demo_season: "2025-26"

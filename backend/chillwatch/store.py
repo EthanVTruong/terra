@@ -312,28 +312,31 @@ class SqlStore:
         end: datetime | None = None,
         station_ids: Iterable[int] | None = None,
     ) -> pd.DataFrame:
-        where, params = [], {}
+        from sqlalchemy import text
+
+        where: list[str] = []
+        params: dict[str, Any] = {}
         if start is not None:
-            where.append("ts >= %(start)s")
-            params["start"] = pd.Timestamp(start).to_pydatetime()
+            where.append("ts >= :start")
+            params["start"] = utc(start).to_pydatetime()
         if end is not None:
-            where.append("ts <= %(end)s")
-            params["end"] = pd.Timestamp(end).to_pydatetime()
+            where.append("ts <= :end")
+            params["end"] = utc(end).to_pydatetime()
         if station_ids is not None:
-            where.append("station_id = any(%(ids)s)")
+            where.append("station_id = any(:ids)")
             params["ids"] = [int(s) for s in station_ids]
         sql = f"select {', '.join(READING_COLUMNS)} from readings"
         if where:
             sql += " where " + " and ".join(where)
         sql += " order by station_id, ts"
         with self.engine.connect() as conn:
-            df = pd.read_sql(sql, conn.connection.driver_connection, params=params)
+            df = pd.read_sql(text(sql), conn, params=params)
         return coerce_readings(df)
 
     def _copy_into_temp(self, conn: Any, df: pd.DataFrame, cols: list[str], name: str) -> None:
         raw = conn.connection.driver_connection
         with raw.cursor() as cur:
-            cur.execute(f"create temp table {name} (like readings including defaults) on commit drop")
+            cur.execute(f"create temp table {name} on commit drop as select {', '.join(cols)} from readings with no data")
             buf = io.StringIO()
             out = df[cols].copy()
             for c in cols:
@@ -373,13 +376,15 @@ class SqlStore:
         return len(df)
 
     def last_observed(self, before: datetime) -> pd.Series:
-        sql = (
-            "select station_id, max(ts) as ts from readings where temp_f is not null and ts <= %(b)s "
+        from sqlalchemy import text
+
+        sql = text(
+            "select station_id, max(ts) as ts from readings where temp_f is not null and ts <= :b "
             "group by station_id"
         )
         with self.engine.connect() as conn:
-            df = pd.read_sql(sql, conn.connection.driver_connection, params={"b": pd.Timestamp(before)})
-        return pd.Series(pd.to_datetime(df["ts"], utc=True).values, index=df["station_id"].astype(int))
+            df = pd.read_sql(sql, conn, params={"b": utc(before).to_pydatetime()})
+        return pd.Series(pd.to_datetime(df["ts"], utc=True).array, index=df["station_id"].astype(int).to_numpy())
 
     def offsets(self) -> pd.DataFrame:
         return pd.read_sql("select * from station_offsets order by id", self.engine)

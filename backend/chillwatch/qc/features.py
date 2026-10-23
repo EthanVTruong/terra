@@ -36,7 +36,7 @@ def is_night(hours: pd.DatetimeIndex) -> np.ndarray:
 def time_features(hours: pd.DatetimeIndex) -> dict[str, np.ndarray]:
     local = to_pst(hours)
     hod = local.hour.to_numpy() + local.minute.to_numpy() / 60.0
-    doy = local.dayofyear.to_numpy()
+    doy = local.day_of_year.to_numpy()
     return {
         "hod_sin": np.sin(2 * np.pi * hod / 24.0),
         "hod_cos": np.cos(2 * np.pi * hod / 24.0),
@@ -63,11 +63,12 @@ def location_features(
     if exclude:
         own = [fld.pos[s] for s in exclude if s in fld.pos]
         assert not np.isin(idx, own).any(), "target's own column leaked into neighbor features"
-    adj = adjusted_neighbor_temps(fld.W, idx, dz, fld.gamma)
+    gamma = fld.gamma_excluding(exclude)
+    adj = adjusted_neighbor_temps(fld.W, idx, dz, gamma)
     tb, n = idw_baseline(adj, dist)
     k = idx.shape[1]
     H = len(fld.hours)
-    cols: dict[str, Any] = {"t_base": tb, "gamma_h": fld.gamma}
+    cols: dict[str, Any] = {"t_base": tb, "gamma_h": gamma}
     for j in range(k):
         valid = np.isfinite(adj[:, j])
         cols[f"n{j + 1}_adj"] = adj[:, j]

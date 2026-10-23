@@ -61,7 +61,7 @@ def make_readings(stations: pd.DataFrame, start: Any, end: Any, seed: int = 0,
     H, S = len(hours), len(stations)
     local = to_pst(hours)
     hod = local.hour.to_numpy() + 0.0
-    doy = local.dayofyear.to_numpy()
+    doy = local.day_of_year.to_numpy()
     day = (local - pd.Timedelta(hours=1)).normalize()
     days, day_idx = np.unique(day.to_numpy(), return_inverse=True)
     D = len(days)

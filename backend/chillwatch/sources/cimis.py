@@ -162,7 +162,7 @@ def parse_hourly(payload: dict[str, Any], raw_ref: str | None = None) -> pd.Data
                 row["qc_source"] = qc
         rows.append(row)
     df = pd.DataFrame(rows)
-    df["ts"] = cimis_ts_utc(df["_date"], df["_hour"]).values
+    df["ts"] = cimis_ts_utc(df["_date"], df["_hour"]).set_axis(df.index)
     for c in ["temp_f", "qc_source", *HOURLY_EXTRA_COLUMNS]:
         if c not in df.columns:
             df[c] = None if c == "qc_source" else np.nan

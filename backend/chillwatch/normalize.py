@@ -20,7 +20,7 @@ from . import config
 
 PST = timezone(timedelta(hours=-8), "PST")
 QC_ORDER = {"ok": 0, "suspect": 1, "invalid": 2, "missing": 3}
-_OFFSET_RE = re.compile(r"(Z|[+-]\d{2}:?\d{2})$")
+_OFFSET_RE = re.compile(r"(?:Z|[+-]\d{2}:?\d{2})$")
 
 
 # --------------------------------------------------------------------------- time

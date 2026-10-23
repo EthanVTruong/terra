@@ -6,6 +6,14 @@ unreachable), so the item follows the published API docs and must be checked bef
 The station list needs no key and **was** verified live (recorded in
 `tests/fixtures/cimis_stations_live.json`, 2026-10-23).
 
+## CIMIS API generation (found 2026-10-23)
+
+- **The legacy API the prompt describes (`et.water.ca.gov/api/data?appKey=...`) was announced to run only through 2026-07-31.** CIMIS moved to a new web API (docs: cimis.water.ca.gov/web-api/rest-api/latest, release 2026-05-19). The adapter now defaults to it (`CIMIS_API=new`; `CIMIS_API=legacy` keeps the old path).
+- New data endpoint: `GET https://et.water.ca.gov/StationWeb/GetDataByStationNumber?stationNbrs=..&startDate=..&endDate=..&isHourly=true|false&unitOfMeasure=E&dataItems=..`; key in the **`Ocp-Apim-Subscription-Key` header** (not a query parameter). Station list: `GET .../StationWeb/GetAllStations`. Both answer 401 without a key (verified); the legacy `/api/station` still answers without one, so `stations sync` falls back to it when no key is set.
+- Response envelope and record shape are unchanged (`Date`, `Hour` `"0100"`, `HlyAirTmp: {Value, Qc, Unit}`), per the docs' examples; units now print as `"(°F)"`. Hour names `hly-air-tmp, hly-rel-hum, hly-dew-pnt, hly-sol-rad, hly-wind-spd` are confirmed in the new docs' item table.
+- Record limit refusal is HTTP 400 `ERR2112 DATA VOLUME VIOLATION`; only that halves the window. Other 400s (`ERR1017` invalid station, `ERR1010` future date, ...) raise `CimisBadRequest` immediately. 503/504 are retried.
+- Getting a key (new system): register at cimis.water.ca.gov (Azure AD B2C sign-up + a profile form that requires name, phone, street address, city, state, zip), then request the key from the Web API account page.
+
 ## VERIFY items from the prompt
 
 - **CIMIS station coordinates** (VERIFIED live): `HmsLatitude` / `HmsLongitude` look like `"38º32'8N / 38.535694"`; code takes the decimal after `/` (`sources/cimis.py:parse_hms_coord`). All 276 stations parse.
@@ -14,7 +22,7 @@ The station list needs no key and **was** verified live (recorded in
 - **Region** (from the live list): 132 CIMIS stations within 150 km of the five seeds or included (91 active). It reaches Owens Valley and the Central Coast; neighbors are still limited to 80 km.
 - **HILL_STATION** for the demo scenario: no high station lies within 80 km of Modesto, so the scenario uses the highest active station within 150 km of Modesto that has ≥ 3 active neighbors within 80 km: **13 Camino (2,780 ft, El Dorado)**.
 - **CIMIS firewall**: `/api/data` with an invalid key answers HTTP 200 with an HTML "Request Rejected" page; the adapter raises `CimisAuthError` without retrying.
-- **Hourly item names** (UNVERIFIED): `hly-air-tmp, hly-rel-hum, hly-dew-pnt, hly-sol-rad, hly-wind-spd`; response keys `HlyAirTmp, HlyRelHum, HlyDewPnt, HlySolRad, HlyWindSpd`, each `{Value, Qc, Unit}`.
+- **Hourly item names** (VERIFIED in the new API docs): `hly-air-tmp, hly-rel-hum, hly-dew-pnt, hly-sol-rad, hly-wind-spd`; response keys `HlyAirTmp, ...` each `{Value, Qc, Unit}` (docs example; not yet checked against a live keyed response).
 - **Response envelope** (UNVERIFIED): `{"Data": {"Providers": [{"Records": [...]}]}}`; anything else (e.g. `{"Message": ...}`) is treated as a refusal and the window is halved.
 - **Hour convention** (UNVERIFIED, implemented per prompt): hour-ending `0100`..`2400` PST all year; `ts = Date 00:00 PST + Hour`, so `2400` is next-day 00:00 PST; UTC = PST + 8 h.
 - **Units with `unitOfMeasure=E`** (UNVERIFIED): temperatures °F; solar radiation arrives in Ly/day and is converted to W/m² (1 Ly/day = 41,840 J/m² / 86,400 s); wind mph. If a unit string says °C or m/s it is converted.

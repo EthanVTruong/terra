@@ -1,7 +1,16 @@
 """CIMIS (California DWR) station adapter.
 
-* Station list: ``GET {base}/station`` (no key).
-* Data: ``GET {base}/data?appKey=..&targets=..&startDate=..&endDate=..&dataItems=..&unitOfMeasure=E``.
+Two API generations (``api=`` argument / ``CIMIS_API`` env var):
+
+* ``new`` (default; documented at cimis.water.ca.gov/web-api/rest-api/latest, May 2026):
+  stations ``GET https://et.water.ca.gov/StationWeb/GetAllStations``; data
+  ``GET .../StationWeb/GetDataByStationNumber?stationNbrs=..&startDate=..&endDate=..&isHourly=true
+  &unitOfMeasure=E&dataItems=..`` with the key in the ``Ocp-Apim-Subscription-Key`` header.
+  Too many records -> HTTP 400 ``ERR2112 DATA VOLUME VIOLATION``.
+* ``legacy`` (``https://et.water.ca.gov/api``; announced to run only through 2026-07-31):
+  ``/station`` and ``/data?appKey=..&targets=..``.
+
+Both return the same ``{"Data": {"Providers": [{"Records": [...]}]}}`` envelope.
 * <= 1,750 records per request: hourly requests go out in <= 60-day windows, halved on refusal.
 * 1 request / second. Every raw response is cached under ``data/raw/cimis/{station}/``
   and cached ranges are never downloaded again unless ``refresh=True`` (late data).
@@ -29,7 +38,8 @@ from .base import DAILY_COLUMNS, HOURLY_COLUMNS, HOURLY_EXTRA_COLUMNS, STATION_C
 
 log = logging.getLogger(__name__)
 
-BASE_URL = "https://et.water.ca.gov/api"
+BASE_URL = "https://et.water.ca.gov/api"  # legacy
+NEW_BASE_URL = "https://et.water.ca.gov"
 HOURLY_ITEMS_P0 = ["hly-air-tmp"]
 HOURLY_ITEMS_P1 = ["hly-rel-hum", "hly-dew-pnt", "hly-sol-rad", "hly-wind-spd"]
 DAILY_ITEMS = ["day-air-tmp-max", "day-air-tmp-min"]
@@ -59,6 +69,10 @@ class CimisAuthError(CimisError):
 
 class CimisRefused(CimisError):
     """The API refused the request (e.g. too many records); caller should shrink the window."""
+
+
+class CimisBadRequest(CimisError):
+    """A 4xx that a smaller window will not fix (bad station, future date, ...)."""
 
 
 class _Transient(CimisError):
@@ -205,7 +219,8 @@ class CimisSource:
         app_key: str | None = None,
         cache_dir: str | Path | None = None,
         client: httpx.Client | None = None,
-        base_url: str = BASE_URL,
+        base_url: str | None = None,
+        api: str | None = None,
         min_interval_s: float = 1.0,
         window_days: int = 60,
         hourly_items: list[str] | None = None,
@@ -215,7 +230,8 @@ class CimisSource:
         self.app_key = app_key if app_key is not None else os.environ.get("CIMIS_APP_KEY")
         self.cache_dir = Path(cache_dir) if cache_dir else config.data_dir() / "raw" / "cimis"
         self.client = client or httpx.Client(timeout=timeout_s, headers={"Accept": "application/json"})
-        self.base_url = base_url.rstrip("/")
+        self.api = (api or os.environ.get("CIMIS_API") or "new").lower()
+        self.base_url = (base_url or (NEW_BASE_URL if self.api == "new" else BASE_URL)).rstrip("/")
         self.min_interval_s = min_interval_s
         self.window_days = window_days
         self.hourly_items = hourly_items or HOURLY_ITEMS_P0 + HOURLY_ITEMS_P1
@@ -239,14 +255,21 @@ class CimisSource:
     def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         self._throttle()
         self.requests_made += 1
+        headers = {}
+        if self.api == "new" and self.app_key:
+            headers["Ocp-Apim-Subscription-Key"] = self.app_key
         try:
-            resp = self.client.get(f"{self.base_url}/{path}", params=params)
+            resp = self.client.get(f"{self.base_url}/{path}", params=params, headers=headers)
         except (httpx.TransportError, httpx.TimeoutException) as e:
             raise _Transient(str(e)) from e
         if resp.status_code in (401, 403):
-            raise CimisAuthError(f"CIMIS refused credentials ({resp.status_code})")
+            raise CimisAuthError(f"CIMIS refused credentials ({resp.status_code}): {resp.text[:200]}")
         if 400 <= resp.status_code < 500:
-            raise CimisRefused(f"CIMIS {resp.status_code}: {resp.text[:200]}")
+            body = resp.text[:300]
+            # only a record-limit refusal is fixed by a smaller window; legacy errors carry no code
+            if "ERR2112" in body or "exceeds" in body.lower() or ("ERR" not in body and self.api == "legacy"):
+                raise CimisRefused(f"CIMIS {resp.status_code}: {body}")
+            raise CimisBadRequest(f"CIMIS {resp.status_code}: {body}")
         if resp.status_code >= 500:
             raise _Transient(f"CIMIS {resp.status_code}")
         if "Request Rejected" in resp.text[:500]:
@@ -260,6 +283,13 @@ class CimisSource:
             # error envelopes such as {"Message": "..."} or {"Errors": ...}
             raise CimisRefused(f"CIMIS error payload: {str(payload)[:200]}")
         return payload
+
+    def _get_url(self, url: str) -> dict[str, Any]:
+        base, self.base_url = self.base_url, url.rsplit("/", 1)[0]
+        try:
+            return self._get(url.rsplit("/", 1)[1])
+        finally:
+            self.base_url = base
 
     # ------------------------------------------------------------------ cache
     def _cache_path(self, station: str, kind: str, start: date, end: date) -> Path:
@@ -276,16 +306,28 @@ class CimisSource:
             return [(json.loads(path.read_text()), str(path))]
         if not self.app_key:
             raise CimisAuthError("CIMIS_APP_KEY is not set")
-        params = {
-            "appKey": self.app_key,
-            "targets": station,
-            "startDate": start.isoformat(),
-            "endDate": end.isoformat(),
-            "dataItems": ",".join(items),
-            "unitOfMeasure": "E",
-        }
+        if self.api == "new":
+            path_q = "StationWeb/GetDataByStationNumber"
+            params = {
+                "stationNbrs": station,
+                "startDate": start.isoformat(),
+                "endDate": end.isoformat(),
+                "isHourly": "true" if kind == "hourly" else "false",
+                "unitOfMeasure": "E",
+                "dataItems": ",".join(items),
+            }
+        else:
+            path_q = "data"
+            params = {
+                "appKey": self.app_key,
+                "targets": station,
+                "startDate": start.isoformat(),
+                "endDate": end.isoformat(),
+                "dataItems": ",".join(items),
+                "unitOfMeasure": "E",
+            }
         try:
-            payload = self._get("data", params)
+            payload = self._get(path_q, params)
         except CimisRefused:
             if start >= end:
                 raise
@@ -306,7 +348,10 @@ class CimisSource:
         if path.exists() and not refresh:
             payload = json.loads(path.read_text())
         else:
-            payload = self._get("station")
+            if self.api == "new" and self.app_key:
+                payload = self._get("StationWeb/GetAllStations")
+            else:  # the legacy station list still answers without a key
+                payload = self._get_url(f"{BASE_URL}/station")
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(payload))
         return parse_stations(payload)

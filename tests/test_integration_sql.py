@@ -14,7 +14,7 @@ from chillwatch.ingest import backfill, export_parquet, sync_stations
 from chillwatch.qc.detect import run_detection
 from chillwatch.qc.model import predict_expected, train
 from chillwatch.repair.fill import fill_store
-from chillwatch.sources.cimis import BASE_URL, CimisSource
+from chillwatch.sources.cimis import NEW_BASE_URL, CimisSource
 from chillwatch.store import SqlStore
 from conftest import utc
 from test_store_sql import URL
@@ -34,7 +34,7 @@ def fake_cimis(stations: pd.DataFrame, readings: pd.DataFrame):
 
     def data(request):
         q = request.url.params
-        sid = int(q["targets"])
+        sid = int(q["stationNbrs"])
         s = by[sid]
         recs = []
         for d in pd.date_range(q["startDate"], q["endDate"], freq="D"):
@@ -46,8 +46,8 @@ def fake_cimis(stations: pd.DataFrame, readings: pd.DataFrame):
                                            "Unit": "(F)"}})
         return httpx.Response(200, json={"Data": {"Providers": [{"Name": "cimis", "Records": recs}]}})
 
-    respx.get(f"{BASE_URL}/station").mock(side_effect=station_list)
-    respx.get(f"{BASE_URL}/data").mock(side_effect=data)
+    respx.get(f"{NEW_BASE_URL}/StationWeb/GetAllStations").mock(side_effect=station_list)
+    respx.get(f"{NEW_BASE_URL}/StationWeb/GetDataByStationNumber").mock(side_effect=data)
 
 
 @pytest.mark.slow

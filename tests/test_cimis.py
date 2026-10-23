@@ -9,11 +9,20 @@ import pytest
 import respx
 
 from chillwatch.ingest import backfill, select_region, sync_stations
-from chillwatch.sources.cimis import BASE_URL, CimisAuthError, CimisSource, parse_hms_coord
+from chillwatch.sources.cimis import (
+    BASE_URL,
+    NEW_BASE_URL,
+    CimisAuthError,
+    CimisBadRequest,
+    CimisSource,
+    parse_hms_coord,
+)
 from chillwatch.store import MemoryStore
 from conftest import utc
 
 FIX = Path(__file__).parent / "fixtures"
+DATA_URL = f"{NEW_BASE_URL}/StationWeb/GetDataByStationNumber"
+STATIONS_URL = f"{NEW_BASE_URL}/StationWeb/GetAllStations"
 
 
 def src(tmp_path, **kw):
@@ -27,7 +36,9 @@ def test_parse_coord():
 
 @respx.mock
 def test_list_stations_and_region(tmp_path):
-    respx.get(f"{BASE_URL}/station").mock(return_value=httpx.Response(200, json=json.loads((FIX / "cimis_stations.json").read_text())))
+    payload = json.loads((FIX / "cimis_stations.json").read_text())
+    respx.get(STATIONS_URL).mock(return_value=httpx.Response(200, json=payload))
+    respx.get(f"{BASE_URL}/station").mock(return_value=httpx.Response(200, json=payload))
     s = src(tmp_path)
     st = s.list_stations()
     assert st.loc[st.source_station_id == "6", "lat"].item() == pytest.approx(38.535694)
@@ -44,7 +55,7 @@ def test_list_stations_and_region(tmp_path):
 @respx.mock
 def test_fetch_hourly_parse_and_cache(tmp_path):
     payload = json.loads((FIX / "cimis_hourly_6.json").read_text())
-    route = respx.get(f"{BASE_URL}/data").mock(return_value=httpx.Response(200, json=payload))
+    route = respx.get(DATA_URL).mock(return_value=httpx.Response(200, json=payload))
     s = src(tmp_path)
     df = s.fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 2))
     assert len(df) == 48 and route.call_count == 1
@@ -68,10 +79,10 @@ def test_window_halving_on_refusal(tmp_path):
         q = dict(request.url.params)
         calls.append((q["startDate"], q["endDate"]))
         if q["startDate"] != q["endDate"] and (date.fromisoformat(q["endDate"]) - date.fromisoformat(q["startDate"])).days > 1:
-            return httpx.Response(400, json={"Message": "too many records"})
+            return httpx.Response(400, text="ERR2112 DATA VOLUME VIOLATION: The report request exceeds the maximum data limit")
         return httpx.Response(200, json=payload)
 
-    respx.get(f"{BASE_URL}/data").mock(side_effect=handler)
+    respx.get(DATA_URL).mock(side_effect=handler)
     s = src(tmp_path, window_days=4)
     s.fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 4))
     assert calls[0] == ("2024-01-01", "2024-01-04")
@@ -80,7 +91,7 @@ def test_window_halving_on_refusal(tmp_path):
 
 @respx.mock
 def test_auth_error_not_halved(tmp_path):
-    respx.get(f"{BASE_URL}/data").mock(return_value=httpx.Response(403))
+    respx.get(DATA_URL).mock(return_value=httpx.Response(403))
     with pytest.raises(CimisAuthError):
         src(tmp_path).fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 2))
 
@@ -90,7 +101,7 @@ def test_one_failing_station_does_not_stop_others(tmp_path):
     payload = json.loads((FIX / "cimis_hourly_6.json").read_text())
 
     def handler(request):
-        t = request.url.params["targets"]
+        t = request.url.params["stationNbrs"]
         if t == "70":
             return httpx.Response(200, text="<html>not json</html>")
         p = json.loads(json.dumps(payload))
@@ -98,7 +109,7 @@ def test_one_failing_station_does_not_stop_others(tmp_path):
             r["Station"] = t
         return httpx.Response(200, json=p)
 
-    respx.get(f"{BASE_URL}/data").mock(side_effect=handler)
+    respx.get(DATA_URL).mock(side_effect=handler)
     st = pd.DataFrame({"station_id": [6, 70, 71], "source": "cimis", "source_station_id": ["6", "70", "71"],
                        "lat": 38.0, "lon": -121.0, "elevation_ft": 50.0, "is_active": True,
                        "connect_date": pd.Timestamp("1990-01-01"), "disconnect_date": pd.NaT, "in_region": True})
@@ -124,7 +135,7 @@ def test_select_region_includes_closed_durham():
 @respx.mock
 def test_firewall_rejection_is_auth_error(tmp_path):
     html = "<html><head><title>Request Rejected</title></head><body>The requested URL was rejected.</body></html>"
-    route = respx.get(f"{BASE_URL}/data").mock(return_value=httpx.Response(200, text=html))
+    route = respx.get(DATA_URL).mock(return_value=httpx.Response(200, text=html))
     with pytest.raises(CimisAuthError):
         src(tmp_path).fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 2))
     assert route.call_count == 1  # not retried
@@ -140,3 +151,32 @@ def test_recorded_live_station_list():
     d = st.set_index("source_station_id")
     assert d.at["6", "lat"] == pytest.approx(38.535694) and d.at["6", "elevation_ft"] == 60
     assert d.at["12", "disconnect_date"] == pd.Timestamp("2025-07-30") and not d.at["12", "is_active"]
+
+
+
+@respx.mock
+def test_new_api_sends_key_header_and_params(tmp_path):
+    payload = json.loads((FIX / "cimis_hourly_6.json").read_text())
+    route = respx.get(DATA_URL).mock(return_value=httpx.Response(200, json=payload))
+    src(tmp_path).fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 2))
+    req = route.calls[0].request
+    assert req.headers["Ocp-Apim-Subscription-Key"] == "k"
+    q = dict(req.url.params)
+    assert q["stationNbrs"] == "6" and q["isHourly"] == "true" and q["unitOfMeasure"] == "E"
+    assert "appKey" not in q and "hly-air-tmp" in q["dataItems"]
+
+
+@respx.mock
+def test_other_400_is_not_halved(tmp_path):
+    route = respx.get(DATA_URL).mock(return_value=httpx.Response(400, text="ERR1017 INVALID STATION NUMBER"))
+    with pytest.raises(CimisBadRequest):
+        src(tmp_path).fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 20))
+    assert route.call_count == 1
+
+
+@respx.mock
+def test_legacy_api(tmp_path):
+    payload = json.loads((FIX / "cimis_hourly_6.json").read_text())
+    route = respx.get(f"{BASE_URL}/data").mock(return_value=httpx.Response(200, json=payload))
+    df = src(tmp_path, api="legacy").fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 2))
+    assert len(df) == 48 and dict(route.calls[0].request.url.params)["appKey"] == "k"

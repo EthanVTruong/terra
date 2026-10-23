@@ -12,7 +12,7 @@ from chillwatch.ingest import ingest_recent
 from chillwatch.repair.fill import fill_store
 from chillwatch.repair.uncertainty import bootstrap_traces
 from chillwatch.repair.virtual import blind_test, virtual_station
-from chillwatch.sources.cimis import BASE_URL, CimisSource
+from chillwatch.sources.cimis import NEW_BASE_URL, CimisSource
 from chillwatch.store import MemoryStore
 from conftest import utc
 
@@ -52,7 +52,7 @@ def test_ingest_recent_upserts_late_data(tmp_path):
         if rec["Date"] == "2024-01-01" and rec["Hour"] == "0500":
             rec["HlyAirTmp"] = {"Value": "38.5", "Qc": " ", "Unit": "(F)"}
     responses = iter([httpx.Response(200, json=payload), httpx.Response(200, json=late)])
-    respx.get(f"{BASE_URL}/data").mock(side_effect=lambda req: next(responses))
+    respx.get(f"{NEW_BASE_URL}/StationWeb/GetDataByStationNumber").mock(side_effect=lambda req: next(responses))
     st = pd.DataFrame({"station_id": [6], "source": "cimis", "source_station_id": ["6"], "lat": 38.5,
                        "lon": -121.7, "elevation_ft": 60.0, "is_active": True,
                        "connect_date": pd.Timestamp("1982-07-17"), "disconnect_date": pd.NaT, "in_region": True})

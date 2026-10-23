@@ -1,0 +1,18 @@
+# CIMIS QC flag -> severity. VERIFY against the live API legend; see docs/DECISIONS.md.
+# severe     -> qc_status invalid
+# informative -> qc_status ok (value usable, flag kept in qc_source)
+# Any code not listed -> qc_status suspect.
+blank_is_ok: true
+severe:
+  M: "Missing data"                       # TODO verify
+  R: "Far out of historical range"        # TODO verify
+  I: "Ignore - do not use"                # TODO verify
+  N: "Not in service"                     # TODO verify
+  S: "Not in service / not collected"     # TODO verify
+  Q: "Related sensor missing"             # TODO verify
+informative:
+  Y: "Moderately out of historical range" # TODO verify
+  H: "Hourly flagged data used in daily"  # TODO verify
+  A: "Historical average replaced"        # TODO verify; replacement means not observed -> consider severe
+  P: "Precipitation-related"              # TODO verify
+  T: "Data from a nearby station"         # TODO verify

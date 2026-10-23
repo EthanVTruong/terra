@@ -1,0 +1,103 @@
+# Detection, physics and model thresholds. Values from the spec are marked "spec";
+# anything else is a tunable starting point with a TODO.
+
+neighbors:
+  k: 6                    # spec
+  max_km: 80              # spec
+  min_distance_km: 0.5    # TODO source: floor for IDW 1/d^2 so co-located stations don't divide by 0
+
+lapse:
+  min_stations: 5         # spec
+  clip_f_per_kft: 10.0    # spec, clip to [-10, +10] F per 1000 ft
+
+baseline:
+  min_neighbors: 2        # spec
+
+normalize:
+  min_coverage: 0.75      # spec, sub-hourly -> hourly
+
+offline:
+  warn_hours: 36          # spec
+  critical_hours: 72      # spec
+
+system_outage:
+  min_stations: 3         # spec
+  min_fraction: 0.25      # spec
+
+range:
+  min_f: -10.0            # spec
+  max_f: 125.0            # spec
+
+step:
+  max_delta_f: 20.0       # spec
+  confirm_sigma: 3.0      # TODO source: residual needed to confirm a step
+
+stuck:
+  min_hours: 6            # spec
+  neighbor_change_f: 2.0  # spec
+  resolution_f: 0.01      # values equal within this are "identical"
+
+residual:
+  sigma_window_days: 60   # spec
+  sigma_floor_f: 1.0      # spec
+  min_sigma_hours: 168    # TODO source: below this many ok residuals use the model's LOSO sd as sigma
+  min_neighbors: 2        # spec
+  spike_sigma: 6.0        # spec
+  spike_max_hours: 3      # spec
+  cusum_k: 0.5            # spec
+  cusum_h: 8.0            # spec
+  mean24_sigma: 3.0       # spec (24 h mean residual > 3 sigma)
+  offset_step_hours: 6    # spec (change-point within 6 h => offset)
+  ambiguous_ramp_hours: 48  # TODO source: fitted ramps shorter than this are also offsets (see DECISIONS)
+  regrow_fraction: 0.5    # spec (re-alarm accepted offset only if magnitude grows > 50%)
+
+clock_shift:
+  window_hours: 72        # spec
+  lags: [-2, -1, 1, 2]    # spec
+  min_gain: 0.05          # spec
+
+severity:                  # TODO source: severities other than offline are not specified
+  range: warn
+  step: info
+  stuck: warn
+  spike: info
+  drift: warn
+  offset: warn
+  clock_shift: warn
+  system_outage: critical
+  critical_magnitude_sigma: 6.0   # drift/offset become critical above this many sigma
+
+offsets:
+  window_days: 28         # spec
+  recompute_days: 7       # spec (weekly)
+
+repair:
+  long_gap_days: 14       # spec
+
+chill:
+  min_f: 32.0             # spec
+  max_f: 45.0             # spec
+  start_mmdd: "11-01"     # spec
+
+model:
+  objective: huber        # spec
+  huber_alpha: 0.9        # TODO source: LightGBM default delta for Huber loss
+  num_leaves: 63          # spec
+  learning_rate: 0.05     # spec
+  min_data_in_leaf: 50    # spec
+  feature_fraction: 0.8   # spec
+  num_boost_round: 2000   # TODO source: cap; early stopping decides
+  early_stopping_rounds: 50   # TODO source
+  valid_station_fraction: 0.15  # TODO source: station-grouped early-stopping split
+  dirty_label_sigma: 5.0  # spec
+  loso_folds: 5           # GroupKFold by station; 0 = true leave-one-station-out
+  prism_mask_fraction: 0.3  # spec
+  seed: 42
+  build_workers: 4        # processes building per-season training frames
+  blind_max_train_rows: 1500000  # TODO source: subsample when retraining for blind_test
+
+uncertainty:
+  distance_bins_km: [15, 40]      # spec: <15, 15-40, >40
+  dz_bins_ft: [300, 1000]         # spec: <300, 300-1000, >1000
+  min_bin_count: 200              # TODO source: below this, fall back to pooled night/day bin
+  block_hours: 24                 # spec (bootstrap block length)

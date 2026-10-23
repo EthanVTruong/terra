@@ -1,0 +1,6 @@
+season: "2025-26"
+faults:
+  - {day: 10, station: 70, type: outage, days: 6}
+  - {day: 24, station: 71, type: stuck, hours: 36}
+  - {day: 38, station: HILL_STATION, type: offset, delta_f: 4.0}   # resolved to a real high-elevation neighbor and printed
+  - {day: 55, station: 39, type: drift, max_delta_f: 5.0, days: 10}

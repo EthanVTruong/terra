@@ -167,6 +167,15 @@ def set_offset(station: int, start: str, end: str) -> None:
     typer.echo(json.dumps(r, default=str, indent=2))
 
 
+@app.command("learn-offsets")
+def learn_offsets(as_of: str = typer.Option(None)) -> None:
+    """Weekly job: per-station night/day median residual over the last 28 days of ok readings."""
+    from .qc.model import update_learned_offsets
+
+    a = pd.Timestamp(as_of, tz="UTC") if as_of else pd.Timestamp.now(tz="UTC").floor("h")
+    typer.echo(f"{update_learned_offsets(a, ctx=_ctx())} station offsets updated")
+
+
 @app.command()
 def bench(faults: int = 100, seed: int = 42, gapfill_blocks: int = 200, max_days: int = typer.Option(None),
           verbose: bool = True) -> None:

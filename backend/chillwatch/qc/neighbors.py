@@ -148,16 +148,23 @@ def theil_sen_lapse(
     for s in range(0, W.shape[0], chunk):
         block = W[s : s + chunk]
         slopes = (block[:, jj] - block[:, ii]) / dzp * 1000.0
-        with np.errstate(all="ignore"):
-            import warnings
-
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", RuntimeWarning)
-                med = np.nanmedian(slopes, axis=1)
+        med = row_nanmedian(slopes)
         n = np.isfinite(block).sum(axis=1)
         med[n < min_stations] = np.nan
         out[s : s + chunk] = med
     return np.clip(out, -clip, clip)
+
+
+def row_nanmedian(a: np.ndarray) -> np.ndarray:
+    """Median of each row ignoring NaN (sort-based; much faster than np.nanmedian on 2-D)."""
+    srt = np.sort(a, axis=1)  # NaN sort last
+    n = np.isfinite(srt).sum(axis=1)
+    lo = np.clip((n - 1) // 2, 0, None)
+    hi = np.clip(n // 2, 0, None)
+    rows = np.arange(a.shape[0])
+    med = (srt[rows, lo] + srt[rows, hi]) / 2.0
+    med[n == 0] = np.nan
+    return med
 
 
 def adjusted_neighbor_temps(

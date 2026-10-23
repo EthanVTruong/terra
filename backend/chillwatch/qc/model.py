@@ -45,7 +45,9 @@ class ModelBundle:
         if self.booster is None:
             return np.full(len(X), np.nan)
         cols = {c: (X[c] if c in X.columns else np.nan) for c in self.features}
-        return self.booster.predict(pd.DataFrame(cols, index=X.index)[self.features].to_numpy(dtype="float64"))
+        return np.asarray(
+            self.booster.predict(pd.DataFrame(cols, index=X.index)[self.features].to_numpy(dtype="float64"))
+        )
 
     def save(self, path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)
@@ -326,7 +328,7 @@ def train(
             oof[va] = b.predict(data.iloc[va][feats].to_numpy(dtype="float64"))
             log.info("LOSO fold %d/%d done", k + 1, n_splits)
     if n_splits < 2:  # no CV requested: in-sample residuals (optimistic; labeled in metrics)
-        oof = booster.predict(data[feats].to_numpy(dtype="float64"))
+        oof = np.asarray(booster.predict(data[feats].to_numpy(dtype="float64")))
     data["pred"] = oof
     data["residual"] = data["y"] - data["pred"]
     data["residual_idw"] = data["y"] - data["t_base"]

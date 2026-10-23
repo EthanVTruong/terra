@@ -6,6 +6,7 @@ outputs are new DataFrames.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -123,7 +124,7 @@ def clock_shift(df: pd.DataFrame, station_id: int, start: Any, hours: int, durat
     return out, [FaultLabel(station_id, "clock_shift", s, e, {"hours": hours})]
 
 
-INJECTORS = {"outage": outage, "stuck": stuck, "spike": spike, "drift": drift, "offset": offset,
+INJECTORS: dict[str, Callable[..., tuple[pd.DataFrame, list[FaultLabel]]]] = {"outage": outage, "stuck": stuck, "spike": spike, "drift": drift, "offset": offset,
              "clock_shift": clock_shift}
 
 
@@ -160,6 +161,7 @@ def random_faults(
         tries += 1
         kind = types[len(out) % len(types)]
         sid = int(rng.choice(stations))
+        p: dict[str, Any]
         if kind == "outage":
             p = {"days": int(rng.integers(1, 15))}
             dur = p["days"] * 24

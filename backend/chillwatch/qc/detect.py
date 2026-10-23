@@ -289,6 +289,8 @@ def detect_station(
             stop = ev.end if ev.end is not None else H - 1
             cls = classify_shift(r_ns, ev.onset, ev.alarm, stop, int(rt["offset_step_hours"]),
                                  int(rt["ambiguous_ramp_hours"]))
+            # the onset estimate is refined as post-alarm data arrives (same data -> same answer);
+            # consumers should match an ongoing drift/offset by (station, type, overlap)
             onset = int(min(max(cls["tau"], 0), ev.alarm))
             shifted[onset:stop + 1] = True
             tail = r_ns[max(stop - 23, 0):stop + 1]
@@ -321,7 +323,7 @@ def detect_station(
 
         # step: |dT| > 20 F between consecutive hours, confirmed by residual
         smask = step_mask(np.where(src_bad, np.nan, temp), th["step"])
-        for i in np.flatnonzero(smask):
+        for i in np.flatnonzero(smask).tolist():
             if spike[i] or spike[max(i - 1, 0)] or rmask[i]:
                 continue
             ri = resid[i]

@@ -106,12 +106,13 @@ class DiySource:
                 log.error("DIY upload %s rejected: %s", f, e)
                 continue
             rej += r
-            frames.append(part)
+            if len(part):
+                # each upload has its own logger cadence, so coverage is judged per file
+                frames.append(to_hourly(part, ["temp_f", "rh_pct"]))
         self.rejected[str(station_id)] = rej
         if not frames:
             return empty_hourly()
-        sub = pd.concat(frames, ignore_index=True)
-        hourly = to_hourly(sub, ["temp_f", "rh_pct"])
+        hourly = pd.concat(frames, ignore_index=True).drop_duplicates(["ts"], keep="last")
         hourly["qc_source"] = None
         hourly["raw_ref"] = ",".join(sorted({str(f) for f in files}))
         d = local_date_of_hour(hourly["ts"])

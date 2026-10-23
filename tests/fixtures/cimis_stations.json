@@ -1,0 +1,22 @@
+{"Stations": [
+  {"StationNbr": "6", "Name": "Davis", "City": "Davis", "RegionalOffice": "North Central Region Office", "County": "Yolo",
+   "ConnectDate": "7/17/1982", "DisconnectDate": "12/31/2050", "IsActive": "True", "IsEtoStation": "True",
+   "Elevation": "60", "GroundCover": "Grass", "HmsLatitude": "38º32'8N / 38.535694", "HmsLongitude": "-121º46'35W / -121.776360",
+   "ZipCodes": ["95616"], "SitingDesc": ""},
+  {"StationNbr": "12", "Name": "Durham", "City": "Durham", "RegionalOffice": "Northern Region Office", "County": "Butte",
+   "ConnectDate": "1/23/1983", "DisconnectDate": "7/15/2025", "IsActive": "False", "IsEtoStation": "True",
+   "Elevation": "130", "GroundCover": "Grass", "HmsLatitude": "39º36'32N / 39.608861", "HmsLongitude": "-121º49'29W / -121.824700",
+   "ZipCodes": ["95938"], "SitingDesc": ""},
+  {"StationNbr": "70", "Name": "Manteca", "City": "Manteca", "RegionalOffice": "North Central Region Office", "County": "San Joaquin",
+   "ConnectDate": "5/22/1987", "DisconnectDate": "12/31/2050", "IsActive": "True", "IsEtoStation": "True",
+   "Elevation": "35", "GroundCover": "Grass", "HmsLatitude": "37º50'5N / 37.834822", "HmsLongitude": "-121º13'22W / -121.222755",
+   "ZipCodes": ["95336"], "SitingDesc": ""},
+  {"StationNbr": "2", "Name": "FivePoints", "City": "Five Points", "RegionalOffice": "South Central Region Office", "County": "Fresno",
+   "ConnectDate": "6/7/1982", "DisconnectDate": "12/31/2050", "IsActive": "True", "IsEtoStation": "True",
+   "Elevation": "285", "GroundCover": "Grass", "HmsLatitude": "36º20'10N / 36.336222", "HmsLongitude": "-120º6'46W / -120.112910",
+   "ZipCodes": ["93624"], "SitingDesc": ""},
+  {"StationNbr": "147", "Name": "Otay Lake", "City": "Chula Vista", "RegionalOffice": "Southern Region Office", "County": "San Diego",
+   "ConnectDate": "8/1/1999", "DisconnectDate": "12/31/2050", "IsActive": "True", "IsEtoStation": "True",
+   "Elevation": "550", "GroundCover": "Grass", "HmsLatitude": "32º37'49N / 32.630278", "HmsLongitude": "-116º56'19W / -116.938611",
+   "ZipCodes": ["91915"], "SitingDesc": ""}
+]}

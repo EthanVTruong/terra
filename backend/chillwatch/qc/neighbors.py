@@ -204,6 +204,19 @@ class Field:
     raw: np.ndarray  # observed temps regardless of status
     gamma: np.ndarray
     extras: dict[str, np.ndarray] = field(default_factory=dict)
+    _gamma_ex: dict[frozenset[int], np.ndarray] = field(default_factory=dict, repr=False)
+
+    def gamma_excluding(self, exclude: set[int] | None) -> np.ndarray:
+        """Hourly lapse rate fitted without the given stations (so a target never informs its own features)."""
+        cols = [self.pos[s] for s in (exclude or ()) if s in self.pos]
+        if not cols:
+            return self.gamma
+        key = frozenset(cols)
+        if key not in self._gamma_ex:
+            W2 = self.W.copy()
+            W2[:, cols] = np.nan
+            self._gamma_ex[key] = theil_sen_lapse(W2, self.elevation)
+        return self._gamma_ex[key]
 
     @property
     def elevation(self) -> np.ndarray:
@@ -264,9 +277,10 @@ def baseline_for(fld: Field, station_id: int, exclude_self: bool = True) -> pd.D
     """T_base for one station over the field's hours (diagnostic helper)."""
     row = fld.station_row(station_id)
     idx, dist, dz = fld.schedule(row.lat, row.lon, row.elevation_ft, exclude={int(station_id)})
-    adj = adjusted_neighbor_temps(fld.W, idx, dz, fld.gamma)
+    gamma = fld.gamma_excluding({int(station_id)})
+    adj = adjusted_neighbor_temps(fld.W, idx, dz, gamma)
     tb, n = idw_baseline(adj, dist)
     return pd.DataFrame(
-        {"ts": fld.hours, "t_base": tb, "n_neighbors": n, "gamma_h": fld.gamma,
-         "gamma_missing": ~np.isfinite(fld.gamma)}
+        {"ts": fld.hours, "t_base": tb, "n_neighbors": n, "gamma_h": gamma,
+         "gamma_missing": ~np.isfinite(gamma)}
     )

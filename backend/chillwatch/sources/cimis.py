@@ -249,6 +249,9 @@ class CimisSource:
             raise CimisRefused(f"CIMIS {resp.status_code}: {resp.text[:200]}")
         if resp.status_code >= 500:
             raise _Transient(f"CIMIS {resp.status_code}")
+        if "Request Rejected" in resp.text[:500]:
+            # CIMIS's web firewall answers HTTP 200 with an HTML page (seen for an invalid appKey)
+            raise CimisAuthError("CIMIS firewall rejected the request (check CIMIS_APP_KEY)")
         try:
             payload = resp.json()
         except ValueError as e:

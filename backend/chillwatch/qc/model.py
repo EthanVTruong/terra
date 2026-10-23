@@ -254,6 +254,18 @@ def error_report(df: pd.DataFrame, pred_col: str = "pred") -> dict[str, Any]:
 
 
 # =========================================================================== train
+def _season_frame(job: tuple[Any, ...]) -> tuple[str, pd.DataFrame, set[str]]:
+    """One season's training rows (runs in a worker process)."""
+    season, r, stations, start, end, extras = job
+    # severe source flags drop via qc_status; range-invalid via build_field; stuck in training_frame
+    fld = build_field(r, stations, start, end, valid_col="qc_status", valid_values=("ok",), extras=extras)
+    found = {c for c, a in fld.extras.items() if np.isfinite(a).any()}
+    tf = training_frame(fld)
+    if len(tf):
+        tf["season"] = season
+    return season, tf, found
+
+
 def train(
     store: Any,
     seasons: list[str] | None = None,
@@ -288,20 +300,25 @@ def train(
     seed = int(m["seed"])
     frames = []
     has_extras: set[str] = set()
+    jobs = []
     for s in train_seasons:
         start, end = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
         r = store.readings(start, end, stations["station_id"].tolist())
         if r.empty or r["temp_f"].notna().sum() == 0:
             continue
-        # severe source flags drop via qc_status; range-invalid via build_field; stuck in training_frame
-        fld = build_field(r, stations, start, end, valid_col="qc_status", valid_values=("ok",),
-                          extras=tuple(EXTRA_FEATURES) if use_extras else ())
-        for c, a in fld.extras.items():
-            if np.isfinite(a).any():
-                has_extras.add(c)
-        tf = training_frame(fld)
+        jobs.append((s, r, start, end))
+    workers = max(1, min(len(jobs), int(m.get("build_workers", 4))))
+    extras = tuple(EXTRA_FEATURES) if use_extras else ()
+    if workers > 1:
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            built = list(ex.map(_season_frame, [(s, r, stations, a, b, extras) for s, r, a, b in jobs]))
+    else:
+        built = [_season_frame((s, r, stations, a, b, extras)) for s, r, a, b in jobs]
+    for s, tf, ex_found in built:
+        has_extras |= ex_found
         if len(tf):
-            tf["season"] = s
             frames.append(tf)
         log.info("season %s: %d rows", s, len(tf))
     if not frames:

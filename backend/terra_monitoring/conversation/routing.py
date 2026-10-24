@@ -215,8 +215,13 @@ def crops_from(text):
                "soybean": "soybean", "cotton": "cotton", "alfalfa": "alfalfa", "kiwi": "kiwi"}
     description = text.strip()
     body = description.rstrip(".!").strip()
+    reversed_declaration = re.fullmatch(
+        r"(.+?)\s+(?:are|is)\s+what\s+(?:i(?:['’]?m| am)|we(?:['’]?re| are))\s+growing", body, re.I)
     declaration = re.match(r"^(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily|currently)\s+)?(?:grow|have|am growing|are growing)|(?:i'm|we're)\s+growing|growing)\s+", body, re.I)
-    if declaration:
+    if reversed_declaration:
+        body = reversed_declaration.group(1).strip()
+        declaration = True
+    elif declaration:
         body = body[declaration.end():].strip()
     else:
         body = re.sub(r"^(?:my|our)\s+", "", body, flags=re.I)

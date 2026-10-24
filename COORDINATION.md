@@ -3,6 +3,30 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-product-consolidation",
+  "owner": "et",
+  "status": "active",
+  "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner.",
+  "branch": "codex/terra-consolidate-main",
+  "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/**", "tests/test_terra*.py", "web/**", "docs/terra/**", "README.md", ".github/workflows/terra.yml"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": null,
+    "summary": "Consolidation authorized directly by ET. Read-only branch and dirty-work audits distinguish missing approved features from already integrated worker checkpoints. Core and live rollout remain coordinated with the existing implementation-plan owner.",
+    "evidence": ["PR11 and PR12 reviewed; Nathan data/model layer is already an ancestor of main. Older worker snapshots are integrated or superseded. Original uncommitted Terra prototype and unrelated handoffs preserved."],
+    "uncertainty": "Combined source, full-flow fixes and UI reconciliation require scoped checks and final CI before integration. No new inference, credential edits or phone sends are part of this consolidation.",
+    "next": "Reconcile approved UI polish with Tara, consume the demo owner's frozen verified candidate, refresh upstream, run scoped integration checks and publish main through a small reviewed merge."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-trial-assigned-sender",
   "owner": "et",
   "status": "done",

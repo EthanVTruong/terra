@@ -379,31 +379,47 @@ def _historical(fact):
             or bool(re.search(r"\b(?:last usable|stale|saved assessment|replay)\b", fact["text"], re.I)))
 
 
+def _weather_claim(clause):
+    """Classify a value/positive weather state, not every use of 'estimate is'.
+
+    Support explanations and monitor status are different claims: saying an
+    estimate relies on incomplete coverage, or a live monitor is off, supplies
+    neither a present weather measurement nor verified weather availability.
+    """
+    subject = r"(?:temperature|estimate|readings?|humidity|wind(?: speed)?|solar(?: radiation)?|weather|conditions)"
+    predicate = re.search(r"\b" + subject + r"\b.{0,24}\b(?:is|are|reads?|stands?)\b(.*)", clause)
+    state = r"(?:normal|healthy|current|live|available|reliable|complete|accurate|usable|valid|dependable|cold|hot|warm|high|low|rising|falling)"
+    positive = bool(predicate and (_TOKEN.search(predicate[1]) or re.match(
+        r"\s*(?:(?:still|currently|now|fully|clearly|about|around|at)\s+)*" + state + r"\b", predicate[1])))
+    positive = positive or bool(re.search(r"\b(?:these|those|they|it|this|that) (?:is|are) " + state + r"\b", clause))
+    explicit = bool(re.search(r"\b(?:current|live) (?:orchard |station |weather )?" + subject + r"\b", clause))
+    time = bool(re.search(r"\b(?:right now|currently|today)\b", clause))
+    explicit = explicit or time and (positive or bool(_TOKEN.search(clause))
+                                     or bool(re.fullmatch(r"(?:right now|currently|today)", clause)))
+    return explicit, positive
+
+
 def _temporal_claims(text, prepared, ids, bindings):
     """Do not promote a referenced or stale value into a present measurement."""
     cited = {fact["id"]: fact for fact in prepared["facts"] if fact["id"] in ids}
     weather = {identity: fact for identity, fact in cited.items()
                if re.search(r"temperature|estimate|weather|reading|humidity|wind|solar", identity + " " + fact["text"], re.I)}
-    for clause in _assertions(text):
-        if _negative(clause):
-            continue
-        # A saved snapshot's support limitation is not a present measurement.
-        # Keep this exception tied to cited incomplete coverage and an explicit
-        # saved/replay frame; it cannot carry a numeric or current-value claim.
-        if (re.fullmatch(r"(?:the |your |an? )?(?:orchard )?estimate (?:is|remains) (?:still )?(?:based on|limited by) incomplete coverage", clause)
-                and re.search(r"\b(?:saved|recorded|historical|replay|snapshot)\b", text, re.I)
-                and any(re.search(r"\bincomplete coverage\b", fact["text"], re.I) for fact in cited.values())):
-            continue
-        explicit = re.search(r"\b(?:right now|currently|today|live(?:\s+(?:conditions|readings?))?|current\s+(?:orchard\s+)?(?:temperature|estimate|weather|readings?|conditions))\b", clause)
-        present = re.search(r"\b(?:temperature|estimate|reading|humidity|wind|solar)\b.{0,24}\b(?:is|are|reads?|stands?)\b", clause)
-        qualified = re.search(r"\b(?:saved|recorded|last usable|historical|replay|as of)\b", clause)
-        token_owners = {bindings["{{" + token + "}}"][0] for token in _TOKEN.findall(clause)
-                        if "{{" + token + "}}" in bindings}
-        sources = [cited[identity] for identity in token_owners if identity in cited]
-        historical_value = any(_historical(fact) for fact in sources)
-        reference_only = bool(weather) and all(_historical(fact) for fact in weather.values())
-        if (historical_value or reference_only) and (explicit or present and not qualified):
-            return True
+    reference_only = bool(weather) and all(_historical(fact) for fact in weather.values())
+    # Historical framing belongs to its sentence even when a colon/comma starts
+    # the measurement clause. Negation and positive claims remain assertion-local;
+    # an explicit current claim still overrides that historical frame.
+    for sentence in re.split(r"[!?]|(?<!\d)\.(?!\d)", text):
+        qualified = bool(re.search(r"\b(?:saved|recorded|last usable|historical|replay|snapshot|as of)\b", sentence, re.I))
+        for clause in _assertions(sentence):
+            if _negative(clause):
+                continue
+            explicit, present = _weather_claim(clause)
+            token_owners = {bindings["{{" + token + "}}"][0] for token in _TOKEN.findall(clause)
+                            if "{{" + token + "}}" in bindings}
+            sources = [cited[identity] for identity in token_owners if identity in cited]
+            historical_value = any(_historical(fact) for fact in sources)
+            if (historical_value or reference_only) and (explicit or present and not qualified):
+                return True
     return False
 
 
@@ -412,15 +428,18 @@ def _contradicts(text, prepared, ids):
     low = text.lower().replace("’", "'")
     cited = " ".join(fact["text"] for fact in prepared["facts"] if fact["id"] in ids).lower()
     limited = bool(re.search(r"\b(?:unavailable|incomplete|insufficient|stale|missing|limited|spotty)\b", cited))
+    complete_coverage = not limited and bool(re.search(r"\bcomplete coverage\b", cited))
     for clause in _assertions(low):
         if _negative(clause):
             continue
         if limited and re.search(r"\b(?:coverage|temperature|estimate|weather support|readings?|data)\s+(?:is|are|looks?|seems?|remains?)\s+(?:fully\s+)?(?:reliable|complete|available|normal|healthy|current)\b", clause):
             return True
+        if complete_coverage and re.search(r"\b(?:estimate|total)\b.{0,80}\bincomplete coverage\b", clause):
+            return True
         if prepared["monitoring"].get("status") != "ready" and re.search(
                 r"\b(?:i am|i'm|we are|we're|terra is)\s+(?:actively\s+)?(?:watching|monitoring)\b|\bmonitor(?:ing)?\s+is\s+(?:active|running)\b", clause):
             return True
-        if prepared["orchard"].get("mode", "current") != "current" and re.search(r"\b(?:live conditions|live readings|right now|today|currently)\b", clause) and "replay" not in clause:
+        if prepared["orchard"].get("mode", "current") != "current" and _weather_claim(clause)[0]:
             return True
     return False
 

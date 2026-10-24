@@ -299,18 +299,17 @@ def test_genuine_saved_replay_coverage_limitation_is_not_a_current_measurement()
     assert len(generator.calls) == 1
 
 
-def test_saved_replay_coverage_exception_requires_cited_incomplete_coverage():
+def test_incomplete_coverage_cannot_reverse_explicit_complete_source_coverage():
     source, output = _saved_replay_limitation()
     source["facts"][1]["text"] = source["facts"][1]["text"].replace("incomplete coverage", "complete coverage")
     with pytest.raises(EngineUnavailable):
         respond(Generator(output), source)
 
 
-def test_coverage_limitation_without_a_saved_snapshot_frame_keeps_historical_guard():
+def test_qualitative_coverage_limitation_is_not_a_present_weather_measurement():
     source, output = _saved_replay_limitation()
     output["text"] = "The orchard estimate is still based on incomplete coverage."
-    with pytest.raises(EngineUnavailable):
-        respond(Generator(output), source)
+    assert respond(Generator(output), source)["text"] == output["text"]
 
 
 @pytest.mark.parametrize("claim", [
@@ -325,6 +324,62 @@ def test_grounded_snapshot_limitation_cannot_hide_a_later_current_weather_claim(
     output["text"] += " " + claim
     with pytest.raises(EngineUnavailable):
         respond(Generator(output), source)
+
+
+def test_second_genuine_replay_explanation_keeps_monitor_status_separate_from_weather():
+    source, output = _saved_replay_limitation()
+    source["facts"][2].update(id="current_station_findings", scope="current")
+    source["facts"].append({"id": "chill_history", "text": "A reliable historical comparison isn't available yet."})
+    output.update(
+        text=("Treat the orchard estimate cautiously: the saved replay shows an estimated chill total of {{f1_n0}} hours "
+              "with incomplete coverage, so it may not represent the full season. No supporting-station discrepancy "
+              "was flagged in that replay, but readings are not live, the live monitor is off, and the estimate can't "
+              "be validated against a reliable historical comparison."),
+        fact_ids=["chill_total", "current_station_findings", "profile_monitor", "chill_history"])
+    generator = Generator(output)
+    result = respond(generator, source)
+    assert result["text"] == output["text"].replace("{{f1_n0}}", "0")
+    assert result["provider"] == "chatgpt_plan" and len(generator.calls) == 1
+
+
+@pytest.mark.parametrize("text", [
+    "The live monitor is off.",
+    "The live monitor is off today.",
+    "The current monitor is off.",
+    "The estimate is based on patchy weather data.",
+    "The orchard estimate remains dependent on partial coverage.",
+])
+def test_monitor_status_and_qualitative_support_explanations_are_not_weather_values(text):
+    source, output = _saved_replay_limitation()
+    output["text"] = text
+    assert respond(Generator(output), source)["text"] == text
+
+
+@pytest.mark.parametrize("prefix,subject", [
+    ("Saved replay: ", "the orchard temperature"),
+    ("In the saved replay, ", "the orchard estimate"),
+])
+@pytest.mark.parametrize("tense", ["was", "is"])
+def test_sentence_historical_frame_survives_colon_and_comma(prefix, subject, tense):
+    source = packet()
+    source["facts"] = [{"id": "reference_temperature", "scope": "reference", "text": "The saved orchard temperature estimate was 40°F."}]
+    text = prefix + subject + " " + tense + " {{f0_n0}}°F."
+    result = respond(Generator(answer(text=text, fact_ids=["reference_temperature"], focus="temperature")), source)
+    assert result["text"] == text.replace("{{f0_n0}}", "40")
+
+
+@pytest.mark.parametrize("text", [
+    "Saved replay: the orchard temperature is {{f0_n0}}°F right now.",
+    "In the saved replay, current orchard temperature is {{f0_n0}}°F.",
+    "Saved replay: the temperature is normal right now.",
+    "In the saved replay, current temperature is available.",
+    "Saved replay: the orchard temperature is {{f0_n0}}°F, right now.",
+])
+def test_explicit_current_weather_claim_overrides_historical_sentence_frame(text):
+    source = packet()
+    source["facts"] = [{"id": "reference_temperature", "scope": "reference", "text": "The saved orchard temperature estimate was 40°F."}]
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(answer(text=text, fact_ids=["reference_temperature"], focus="temperature")), source)
 
 
 @pytest.mark.parametrize("bad", [

@@ -843,6 +843,56 @@ def test_trial_template_is_explicit_without_sender_and_posts_only_allowed_fields
     assert notification["text"] not in json.dumps(sent)
 
 
+def test_trial_template_includes_explicit_assigned_sender_without_queue_validity(environment, notification):
+    trial = {**environment, "TERRA_SMS_CONTENT_MODE": "trial_template"}
+    calls = []
+    sent = dispatcher(trial, calls).dispatch_event(notification)
+    assert parse_qs(calls[0].content.decode()) == {
+        "To": [trial["TERRA_SMS_TO_NUMBER"]], "From": [trial["TWILIO_FROM_NUMBER"]],
+        "Body": [sms.TRIAL_TEMPLATE]}
+    assert sent["status"] == "provider_accepted" and sent["content_mode"] == "trial_template"
+    assert sent["source_event_id"] == notification["event_id"] and sent["data_mode"] == "current"
+    assert dispatcher(trial, []).status()["sender"] == "***0101"
+
+
+@pytest.mark.parametrize("sender", ["not-a-number", "15555550101", "+1555<script>", "+" + "1" * 16])
+def test_nonempty_invalid_trial_sender_is_rejected_before_provider_call(environment, notification, sender):
+    calls = []
+    instance = dispatcher({**environment, "TERRA_SMS_CONTENT_MODE": "trial_template",
+                           "TWILIO_FROM_NUMBER": sender}, calls)
+    assert "invalid_or_missing_sender" in instance.status()["configuration_errors"]
+    assert instance.dispatch_event(notification)["status"] == "not_configured" and calls == []
+    assert sender not in json.dumps(instance.status())
+
+
+def test_empty_trial_sender_keeps_to_body_only_compatibility(environment, notification):
+    calls = []
+    instance = dispatcher({**environment, "TERRA_SMS_CONTENT_MODE": "trial_template",
+                           "TWILIO_FROM_NUMBER": ""}, calls)
+    assert instance.dispatch_event(notification)["status"] == "provider_accepted"
+    assert set(parse_qs(calls[0].content.decode())) == {"To", "Body"}
+
+
+def test_sender_correction_never_resends_recorded_failure_and_receipts_keep_placeholder_identity(environment, notification):
+    calls = []
+    trial = {**environment, "TERRA_SMS_CONTENT_MODE": "trial_template", "TWILIO_FROM_NUMBER": ""}
+    failed = dispatcher(trial, calls, lambda _: httpx.Response(403, json={"code": 572003})).dispatch_event(notification)
+    assert failed["status"] == "failed" and failed["error_code"] == "572003"
+    assert "provider_message_id" not in failed
+    corrected = {**trial, "TWILIO_FROM_NUMBER": environment["TWILIO_FROM_NUMBER"]}
+    repeated = dispatcher(corrected, calls).dispatch_event(notification)
+    assert repeated["duplicate"] is True and repeated["status"] == "failed" and len(calls) == 1
+    explicit_new = {**notification, "event_id": "explicit-new-after-sender-setup"}
+    sent = dispatcher(corrected, calls).dispatch_event(explicit_new)
+    assert sent["status"] == "provider_accepted" and len(calls) == 2
+    assert parse_qs(calls[-1].content.decode())["From"] == [environment["TWILIO_FROM_NUMBER"]]
+    refreshed = dispatcher(corrected, calls, lambda _: httpx.Response(200,
+        json={"sid": MESSAGE_SID, "status": "delivered"})).receipt(sent["event_id"])
+    assert refreshed["status"] == "delivered" and refreshed["content_mode"] == "trial_template"
+    assert refreshed["source_event_id"] == explicit_new["event_id"]
+    assert [request.method for request in calls] == ["POST", "POST", "GET"]
+
+
 @pytest.mark.parametrize("value", ["", "trial", "TRIAL_TEMPLATE", "private-invalid-mode"])
 def test_invalid_content_mode_fails_closed_without_echoing_operator_value(environment, notification, value):
     calls = []

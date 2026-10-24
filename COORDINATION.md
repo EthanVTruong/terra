@@ -161,3 +161,55 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   }
 }
 ```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-main-consolidation",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly authorizes verification of the combined technical layer and branch consolidation into main. Audit PR3/worker branch inclusion, run full existing backend tests plus pure statistical JSON/UI checks, resolve verified integration defects within ownership, then promote/merge exact reviewed head if all checks support it. Preserve original Terra staged checkout, Nathan algorithms/config and recovery branches; no new monitoring/SMS features or provider ingestion.",
+  "branch": "codex/terra-qc-json",
+  "base": "229106c251cfa41993a747cde2a40f29e53ed60f",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "COORDINATION.md",
+    "terra.py",
+    "tests/test_terra_harness.py",
+    "backend/terra_qc/**",
+    "backend/terra_monitoring/**",
+    "config/terra/**",
+    "docs/terra/**",
+    "tests/test_terra_json.py",
+    "tests/test_terra_qc_*.py",
+    "tests/fixtures/terra/**",
+    "requirements-terra.txt",
+    "requirements-terra-dev.txt",
+    "README.md",
+    ".gitignore",
+    "web/**",
+    ".github/workflows/terra.yml",
+    "spec.md",
+    ".gitattributes"
+  ],
+  "depends_on": [
+    "terra-qc-json"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "38a7ea6e4e271275731a4e6cce1d2f5df3eeff16",
+    "summary": "Root owns final verification/integration/merge. Independent isolated workers review combined code and branch parity, run full backend verification in separate dev environment, and verify actual JSON/UI flow. No merge yet.",
+    "evidence": [
+      "origin/main229106c alreadycontainsNathanbranchPR2; PR3drafthead38a7ea6 ismergeable. Localadapter/UIworkerbranches are separate preserved snapshots whose content will be audited, not blindlymerged."
+    ],
+    "uncertainty": "PriorCI intentionally ran53puretests/31harness anddidnotprove fulloriginalbackend. LiveAPI/always-on/SMSremain documentedfuturefeatures. Actualremotehead andfreshCI mustberechecked beforemerge.",
+    "next": "Complete fullbackend+UI+independent review, recordresults andminimalrepairs, run requiredcheckagainstactualorigin/main, mergewith expected-head guard andverify main."
+  }
+}
+```

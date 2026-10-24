@@ -143,6 +143,12 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
         attach_controls(app, chatgpt_state_dir if chatgpt_state_dir is not None else resolved / "chatgpt")
         if existing_writer is None:
             monitor.writer = Writer(generator=app.state.chatgpt_provider, voice="text")
+    if existing_writer is None:
+        from .farm_ops.conversational_writer import ConversationalWriter
+
+        # Preserve explicitly injected writers. Normal runtime replies share
+        # the validated plan writer and never silently use API-key billing.
+        monitor.writer = ConversationalWriter(monitor.writer)
     return app
 
 

@@ -331,6 +331,11 @@ def markdown(r: dict[str, Any]) -> str:
         lines += ["> **SYNTHETIC DATA. These numbers are a pipeline dry run, not ChillWatch results.**", ""]
     lines += [f"Data: {r['data']} | model `{r['model_version']}` | held-out seasons {', '.join(r['seasons'])} | "
               f"{r['n_faults']} injected faults, seed {r['seed']}", "",
+              "Detection thresholds: " + ", ".join(f"{k} {r['thresholds']['residual'][k]}" for k in
+                                                  ("spike_sigma", "cusum_k", "cusum_h", "mean24_sigma")
+                                                  if k in r["thresholds"].get("residual", {}))
+              + f"; stuck {r['thresholds'].get('stuck', {}).get('min_hours')} h"
+              + f"; offline {r['thresholds'].get('offline', {}).get('warn_hours')} h", "",
               "## Detection", "",
               "| Fault type | Injected | Detected | Recall | Type correct | Median hours to detect |",
               "|---|---:|---:|---:|---:|---:|"]

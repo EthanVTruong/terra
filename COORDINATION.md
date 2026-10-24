@@ -6,12 +6,13 @@
   "id": "terra-product-consolidation",
   "owner": "et",
   "status": "active",
-  "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner.",
+  "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner. Final direct user steering requires the selected polished chat and Station lab screens while preserving full messaging. The bounded follow-up repairs the upstream synthetic CLI missing season_bounds import and the common saved-crop question alias without numerical/model changes.",
   "branch": "codex/terra-consolidate-main",
-  "base": "098ebe07f3c62af6ecd451f59952bc7d98f01f15",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
   "domains": [
     "terra-coordination",
-    "terra-qc-json"
+    "terra-qc-json",
+    "terra-portability"
   ],
   "paths": [
     "COORDINATION.md",
@@ -21,7 +22,9 @@
     "web/**",
     "docs/terra/**",
     "README.md",
-    ".github/workflows/terra.yml"
+    ".github/workflows/terra.yml",
+    "backend/chillwatch/demo/scenario.py",
+    "tests/test_scenario.py"
   ],
   "depends_on": [],
   "contracts": [],
@@ -36,8 +39,8 @@
       "All source branches and the unrelated uncommitted Terra prototype remain preserved. No private configuration, credential, SMS opt-in, provider request, live runtime or numerical module/reference was changed by this consolidation.",
       "Nathan independently merged PR14 to main098ebe0 during PR15 creation. Consolidation refreshed that exact upstream once, preserving every native numerical/configuration change and adding its three authoritative coordination records. Final checks use098ebe0; earlierc95 receipts are prior-baseline evidence only."
     ],
-    "uncertainty": "Final CI and actual098ebe0-base scoped checks must cover the newly merged authoritative Nathan layer together with the complete product. Independent final UI review remains a release gate. The simulation owner retains an evidence-only follow-up; no required frozen implementation is outside this candidate. The primary owner retains the single live rollout.",
-    "next": "Complete actual098ebe0-base checks and exact-head CI, obtain final UI review, then merge and push main and hand its SHA/tree/completeness receipt to the exclusive live-runtime owner. Preserve the independent native layer and all worker source histories."
+    "uncertainty": "PR15 is now merged on main8f028a8. Final selected-UI proof, the two bounded native-CLI/profile-alias repairs, follow-up exact-head gates and the exclusive primary-owner live rollout remain. The source-owner evidence metadata is now retained with all check argv unions.",
+    "next": "Finish the bounded CLI/profile regressions, compare the actual selected UI at matching state and density, publish the small follow-up and its exact-head gates, then hand final main/source/model-transition receipts to the exclusive runtime owner for one preserved-state rollout."
   }
 }
 ```

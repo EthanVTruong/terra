@@ -127,3 +127,17 @@ transitions, different-day/year evidence and invalid timestamps.
 Final verification: production build, seven UI tests, four packaging tests, and
 all configured scoped checks pass against origin/main at 78e835d. The live API
 remains on 8512; this refinement changes no backend, data or notification behavior.
+
+## Character placement refinement — 2026-10-24
+
+User found the cube crowded into the top-left corner. The header now has a shared
+52px height, a 28px character, 24px left inset (20px below 370px), and approximately
+12px clearance above/below the character. The evidence header shares its baseline;
+the Phone Alerts popover retains a 6px gap below the taller header. This deliberate
+spacing refinement supersedes the earlier 44px source-height target.
+
+Production build and diff whitespace check pass. Actual browser checks at 1280x900,
+390x844 and 320x568 confirm aligned header borders, approximately 12px logo
+clearance, a 6px popover gap and no horizontal overflow. Screenshots are retained
+in `.terra-local/ui-logo-spacing/`. Corrected the earlier task artifact field to
+use declared artifact IDs only; the QA path remains an evidence pointer.

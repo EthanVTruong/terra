@@ -28,7 +28,7 @@
 .orchard-name>small{display:block;margin-top:7px;font-size:10px;color:#737373}
 .setup-link{margin-right:auto;padding:4px 0;border:0;background:transparent;color:#666;font-size:11px;text-decoration:underline;text-underline-offset:3px}
 .sms-controls{position:static;display:flex;align-items:center}
-.sms-panel{top:50px;bottom:auto;left:auto;right:12px;width:min(360px,calc(100% - 24px));max-height:calc(100dvh - 90px);transform-origin:top right;z-index:8}
+.sms-panel{top:58px;bottom:auto;left:auto;right:12px;width:min(360px,calc(100% - 24px));max-height:calc(100dvh - 90px);transform-origin:top right;z-index:8}
 .sms-description,.sms-state,.sms-result{font-size:12px;line-height:19px;color:#666;margin:8px 0}
 .sms-state{color:#444;overflow-wrap:anywhere}
 .sms-result{padding:10px 12px;background:#f0f2ee;border-radius:8px;color:#465343}
@@ -41,7 +41,7 @@
 .sms-orchard{margin-top:12px}
 .sms-orchard label{display:flex;align-items:flex-start;gap:8px;color:#555;font-size:12px;line-height:18px}
 .sms-orchard input[type=checkbox]{width:14px;height:14px;margin:2px 0 0;padding:0;accent-color:#53674f;flex-shrink:0}
-@media(max-width:700px){.thread-actions{gap:3px}.presence{font-size:11px;margin-right:4px}.sms-panel{top:54px}.farm-message{max-width:min(300px,100%)}}
+@media(max-width:700px){.thread-actions{gap:3px}.presence{font-size:11px;margin-right:4px}.sms-panel{top:58px}.farm-message{max-width:min(300px,100%)}}
 
 .evidence-title h2,.sms-orchard label span{min-width:0;overflow-wrap:anywhere}
 

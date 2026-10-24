@@ -504,14 +504,15 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "b952d46945be0044b159f72eda578b8e2cc51034",
-    "summary": "Completed the concise final-submission README on an isolated branch: 607 words versus 1079, clear product capabilities, one-command historical preview, explicit live-weather/ChatGPT/notification setup, controlled replay demonstration, short agent instructions and a four-area code map. Product claims are grounded in current main; all implementation and private state are preserved.",
+    "revision": "e4fa373a8f0e56740512761f948cf64b89c8e756",
+    "summary": "Consumed the concise product-first README and the user-requested italic Made with <3 credit under the title. The canonical candidate retains the integrated native location, multivariable weather, selected chat and current ChatGPT entry instructions; historical source verification remains recorded below.",
     "evidence": [
       "README source commit 011a99757e005f9204ff69024a0661f1a952756a; comparison base 8f028a8320661c4a59344f1e3067e8af2bb79a74.",
       "All 14 relative links resolve. UTF-8/LF, git diff --check and actual run_terra.py --help pass. Read-only independent review found no material correction.",
       "Required terra.py check --base origin/main --task terra-submission-readme passes coordination/filesystem and all 11 configured groups: chatgpt, conversation, demo, farm, full-flow, harness, JSON, pipeline, runtime, setup and SMS.",
       "Reviewed current main source/runbooks plus read-only existing location-onboarding, multivariable and consolidation records. No existing chats messaged; no provider, SMS, runtime, credential or scientific changes.",
-      "Product-first README consumed in canonical candidate, retaining new device-location and weather behavior. No remaining documentation lane work."
+      "Product-first README consumed in canonical candidate, retaining new device-location and weather behavior. No remaining documentation lane work.",
+      "User-requested Made with <3 credit from e4fa373 is included; exact remote branch tip reconciled before final main publication."
     ],
     "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
     "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."

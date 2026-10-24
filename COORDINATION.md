@@ -1007,14 +1007,16 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "adced1ad91da099309172fdd8dddba6e3d215b1b",
-    "summary": "PR10 merged using existing repository authentication after head/base and all4 exact-head checks verified. Isolated Terra-local-polish checkout will reconcile UI4464760 once with main, retain ChatGPT and the quiet replay warning, and state the local-first direction.",
+    "revision": "f8e5273",
+    "summary": "One semantic UI reconciliation completed: cube/header, quiet copy, day/time grouping and fixed-phone readiness retained with current-main ChatGPT control, replay-only warning and canonical trial receipt helper. All4 UI test files run together. README selects local-first operation and defers cloud migration. Browser confirmed 390/320 containment, account/phone panels, retained historical note and Escape focus return.",
     "evidence": [
       "Shared main fast-forwarded cleanly to adced1a; original staged prototype and current8504/8512/8517/8520 services untouched.",
-      "Read current sim branch facts only: separate8520 station/grower app, active conversation verification owner; no backend or sim owner checkout mutations."
+      "Read current sim branch facts only: separate8520 station/grower app, active conversation verification owner; no backend or sim owner checkout mutations.",
+      "Production build passed;22 UI and4 packaging checks pass. No backend, scientific, reference, dependency or private state diff against main.",
+      "Isolated18520 runtime seeded with the existing offline demo, worker/source/SMS disabled and fresh ChatGPT state. Both connection panels work without authorization/provider requests. Mobile390 and320 have exact viewport-width/no horizontal overflow; selected unavailable note preserves its old values and Escape restores its note focus."
     ],
-    "uncertainty": "UI merge conflicts and combined browser behavior require verification. Sim branch is actively advancing; refresh its exact revision before a separate presentation slice.",
-    "next": "Merge the approved UI branch into this isolated checkout, reconcile all current-main intent and verify build, pure checks and actual browser; integrate approved combined UI before moving to a concrete sim visual checkpoint."
+    "uncertainty": "Final combined scoped checks and exact-head CI must pass before user-authorized integration. Sim owner is still reconciling conversation behavior in its own dirty checkout; no mutation there.",
+    "next": "Publish a small UI integration PR and merge after exact-head checks; then make an isolated CSS/presentation slice for the sim using a committed owner revision."
   }
 }
 ```

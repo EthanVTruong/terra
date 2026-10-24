@@ -1,5 +1,5 @@
 # terra
-Orchard chill and weather updates in a compact inbox, with optional SMS.
+Local-first orchard chill and weather updates in a compact inbox, with optional ChatGPT message writing and SMS.
 
 ## Run locally
 
@@ -40,9 +40,11 @@ Live mode enables the five-minute monitor and retains journals in `.terra-local/
 - **Phone alerts:** add `--sms-env-file /absolute/path/to/twilio.env` in live mode, complete sender/verified-recipient setup and opt in for the orchard. SMS stays disabled until explicitly configured. See [Twilio setup](docs/terra/twilio-sms.md).
 - **Operator controls:** the [local runtime guide](docs/terra/local-runtime.md) covers private state paths, Windows background service helpers and shutdown.
 
-## Hosting
+## Local-first by design
 
-Terra currently runs as a **local single-user application**. A static Vercel build can show saved examples. The full live product needs durable shared storage, hosted user authorization, API routing and a reliable worker. Current Vercel supports FastAPI and background Daemons; Terra's local SQLite journals and loopback authentication still need adaptation. See the [setup and hosting assessment](docs/terra/setup-and-hosting.md). The launcher creates no cloud resources or public deployment.
+Terra is an **open-source, local single-user application**. The interface, API and monitor run on your computer; private account connections and retained journals stay in your own state directory. A Terra cloud account or Vercel deployment is unnecessary. Keep the process running and computer awake for background monitoring.
+
+The current product direction is to make this local experience complete and easy to run. Hosted migration is deferred; the [setup assessment](docs/terra/setup-and-hosting.md) retains the findings for future reference. The launcher creates no cloud resources or public deployment.
 
 ## Development
 

@@ -194,3 +194,8 @@ Integration note: origin/main advanced during this pass with backend cleanup.
 Scope/record validation passes against the declared task base 78e835d; the UI
 branch preserves that base. The integration owner must reconcile current main
 and run its configured integration checks before merging this branch.
+
+
+## Local-first reconciliation
+
+User authorized integrating the approved quiet UI with main after PR10. The combined build retains ChatGPT controls, replay-only source warnings and trial-placeholder delivery labels, alongside the cube logo, Pacific day dividers, clock-only footers and explicit phone readiness. All22 UI checks and4 packaging cases run together. Isolated18520 browser verified the two-day offline feed, old support-loss evidence, connection controls, 390/320 containment and Escape focus return; no provider, SMS or actual subscription change. Cloud migration is deferred in favor of the local open-source quickstart.

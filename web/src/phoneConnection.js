@@ -1,7 +1,7 @@
 const states = {
-  disconnected: { kind: "disconnected", label: "Not connected", copy: "Use your verified demo phone for text alerts.", action: "Connect phone" },
+  disconnected: { kind: "disconnected", label: "Not connected", copy: "Use your verified phone for text alerts.", action: "Connect phone" },
   checking: { kind: "checking", label: "Connecting…", copy: "Checking text delivery.", action: "Connecting…" },
-  setup: { kind: "setup", label: "Setup required", copy: "Text delivery still needs setup on this server.", action: "Check again" },
+  setup: { kind: "setup", label: "Setup required", copy: "Text alerts need setup on this computer.", action: "Check again" },
   connected: { kind: "connected", label: "Ready", copy: "", action: "Refresh connection" },
   paused: { kind: "paused", label: "Sending paused", copy: "Your phone stays configured. New texts are paused.", action: "Check connection" },
   unavailable: { kind: "unavailable", label: "Unavailable", copy: "Can’t reach phone alerts right now.", action: "Try again" },

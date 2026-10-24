@@ -387,6 +387,13 @@ def _temporal_claims(text, prepared, ids, bindings):
     for clause in _assertions(text):
         if _negative(clause):
             continue
+        # A saved snapshot's support limitation is not a present measurement.
+        # Keep this exception tied to cited incomplete coverage and an explicit
+        # saved/replay frame; it cannot carry a numeric or current-value claim.
+        if (re.fullmatch(r"(?:the |your |an? )?(?:orchard )?estimate (?:is|remains) (?:still )?(?:based on|limited by) incomplete coverage", clause)
+                and re.search(r"\b(?:saved|recorded|historical|replay|snapshot)\b", text, re.I)
+                and any(re.search(r"\bincomplete coverage\b", fact["text"], re.I) for fact in cited.values())):
+            continue
         explicit = re.search(r"\b(?:right now|currently|today|live(?:\s+(?:conditions|readings?))?|current\s+(?:orchard\s+)?(?:temperature|estimate|weather|readings?|conditions))\b", clause)
         present = re.search(r"\b(?:temperature|estimate|reading|humidity|wind|solar)\b.{0,24}\b(?:is|are|reads?|stands?)\b", clause)
         qualified = re.search(r"\b(?:saved|recorded|last usable|historical|replay|as of)\b", clause)

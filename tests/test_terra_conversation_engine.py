@@ -270,6 +270,63 @@ def test_stale_last_usable_temperature_cannot_be_claimed_as_current(text):
     assert "was 40°F" in respond(Generator(output), source)["text"]
 
 
+def _saved_replay_limitation():
+    """Sanitized authoritative facts and wording from the captured false positive."""
+    source = packet("Does that represent an anomaly?")
+    source["orchard"]["mode"] = "injected"
+    source["facts"] = [
+        {"id": "profile_monitor", "scope": "current",
+         "text": "Saved replay readings aren't live monitoring; the live monitor is off for this farm."},
+        {"id": "chill_total", "scope": "current",
+         "text": "Demo replay: Demo orchard: estimated chill is 0 hours with incomplete coverage. As of Mar 11, 3:00 AM PST."},
+        {"id": "reference_station_findings", "scope": "reference",
+         "text": "Replay only: No supporting-station discrepancy was flagged as of Mar 11, 2026, 3:00 AM PST."},
+    ]
+    text = ("The saved replay shows no supporting-station discrepancy, which is some reassurance about that snapshot, "
+            "but the orchard estimate is still based on incomplete coverage and isn’t live-verified. "
+            "The saved chill total is {{f1_n0}} hours with incomplete coverage, so it should be treated as provisional "
+            "rather than a dependable season total.")
+    output = answer(text=text, fact_ids=["reference_station_findings", "chill_total", "profile_monitor"], focus="chill_total")
+    return source, output
+
+
+def test_genuine_saved_replay_coverage_limitation_is_not_a_current_measurement():
+    source, output = _saved_replay_limitation()
+    generator = Generator(output)
+    result = respond(generator, source)
+    assert result["text"] == output["text"].replace("{{f1_n0}}", "0")
+    assert result["provider"] == "chatgpt_plan" and result["generation_outcome"] == "completed"
+    assert len(generator.calls) == 1
+
+
+def test_saved_replay_coverage_exception_requires_cited_incomplete_coverage():
+    source, output = _saved_replay_limitation()
+    source["facts"][1]["text"] = source["facts"][1]["text"].replace("incomplete coverage", "complete coverage")
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+
+
+def test_coverage_limitation_without_a_saved_snapshot_frame_keeps_historical_guard():
+    source, output = _saved_replay_limitation()
+    output["text"] = "The orchard estimate is still based on incomplete coverage."
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+
+
+@pytest.mark.parametrize("claim", [
+    "The orchard temperature is {{f3_n0}}°F right now.",
+    "The temperature is normal.",
+    "Current temperature is available.",
+])
+def test_grounded_snapshot_limitation_cannot_hide_a_later_current_weather_claim(claim):
+    source, output = _saved_replay_limitation()
+    source["facts"].append({"id": "reference_temperature", "scope": "reference", "text": "Saved estimate was 40°F."})
+    output["fact_ids"].append("reference_temperature")
+    output["text"] += " " + claim
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+
+
 @pytest.mark.parametrize("bad", [
     {"status": "incomplete", "text": "partial"},
     {"status": "completed", "refusal": True, "text": "{}"},

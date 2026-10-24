@@ -374,13 +374,20 @@ def _generated_text(raw, packet, context):
 
 
 class Writer:
-    def __init__(self, *, key=None, model=None, client=None, generator=None):
+    def __init__(self, *, key=None, model=None, client=None, generator=None, voice="legacy"):
+        if not isinstance(voice, str) or voice not in {"legacy", "text"}:
+            raise ValueError("Unknown writer voice")
         self.key = key if key is not None else os.environ.get("OPENAI_API_KEY")
         self.model = model if model is not None else os.environ.get("TERRA_LLM_MODEL")
         self.client = client
         self.generator = generator
+        self.voice = voice
 
     def write(self, packet):
+        if self.voice == "text" and (self.generator is not None or not self.key or not self.model):
+            from . import texting
+            if texting.supports(packet):
+                return texting.write(packet, generator=self.generator)
         if self.generator is None and (not self.key or not self.model):
             return {"text": fallback(packet), "provider": "template", "outcome": "llm_not_configured"}
         try:

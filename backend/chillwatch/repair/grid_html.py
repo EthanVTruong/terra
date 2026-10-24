@@ -120,7 +120,8 @@ dt { color: var(--muted); } dd { margin: 0; font-family: var(--mono); font-size:
   function q(arr, p) { const v = arr.filter((x, i) => x != null && D.reason[i] === 0).sort((a, b) => a - b);
     return v.length ? v[Math.min(v.length - 1, Math.floor(p * (v.length - 1)))] : 0; }
   let layer = "chill";
-  const fmt = (v, u) => v == null ? "–" : (Math.round(v * 10) / 10).toLocaleString() + (u === "h" ? " h" : " " + u);
+  const fmt = (v, u) => v == null ? "–" : u === "h" || u === "ft" ? Math.round(v).toLocaleString() + " " + u
+    : (Math.round(v * 10) / 10).toLocaleString() + " " + u;
 
   // header copy
   const m = D.meta, endDay = new Date(m.end); endDay.setUTCHours(endDay.getUTCHours() - 9);

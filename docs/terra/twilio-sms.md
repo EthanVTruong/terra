@@ -2,9 +2,11 @@
 
 Terra can send selected, persisted orchard notifications to one privately configured phone.
 The **Phone alerts** panel also runs a controlled spike through the frozen
-statistical detector, then sends the resulting evidence in a text explicitly
-labelled **TERRA DEMO**. This is simulated weather with real SMS transport when
-Twilio is configured. Saved assessments and uploaded files never send messages.
+statistical detector. In Terra-content mode its SMS includes the evidence and
+is labelled **TERRA DEMO**; trial-template mode sends a generic Twilio sample
+while the evidence stays in Terra. Both are explicit tests using simulated
+weather with real SMS transport when configured. Saved assessments and uploaded
+files never send messages.
 
 Ordinary location checks remain read-only. The SMS module adds no scheduler:
 the farm monitoring backend owns observation checks, event selection, the durable
@@ -33,6 +35,31 @@ boundary; see [always-on monitoring](always-on-monitoring.md).
 No inbound webhook or public tunnel is needed for this local demo. Delivery
 status is read from the Twilio Message resource by SID. Carrier/provider reporting
 can stop at `sent`; `queued` or `sent` does not establish handset receipt.
+
+## Trial-template placeholder
+
+For a trial-only demo, set `TERRA_SMS_CONTENT_MODE=trial_template` in the private
+server configuration. Terra then submits Twilio's fixed `sms_internal_alerts`
+sample when an existing eligible notification or explicit simulated-flag test
+reaches the dispatcher. The phone receives a generic Twilio sample. The actual
+finding and evidence remain in Terra. The interface labels its receipt
+**Trial placeholder**, so delivery of that sample never implies delivery of the
+grower message shown in the inbox.
+
+This mode requires a verified trial recipient and valid private credentials; it
+does not require an owned `TWILIO_FROM_NUMBER`. The request contains only `To`
+and the template identifier in `Body`, as documented by the
+[trial Messaging API](https://www.twilio.com/docs/usage/trials/try-out-sms#send-an-sms).
+It retains the same orchard opt-in, alert selection, duplicate suppression,
+attempt cap and receipt journal. It does not text every raw station outlier.
+No webhook, public tunnel, new worker or paid upgrade is required for this mode.
+
+Terra still rejects expired events immediately before submission. The trial
+request omits unsupported `ValidityPeriod`, so it cannot bound Twilio's queue
+time after acceptance. Delivery receipts persist the content mode and template
+used for that attempt, including across restarts and later configuration changes.
+The default `TERRA_SMS_CONTENT_MODE=terra` keeps custom Terra text and its approved
+sender requirement. An invalid mode fails closed.
 
 ## Private configuration
 
@@ -90,11 +117,14 @@ origin. Ordinary location queries still work through the development proxy.
 1. Open **Phone alerts**, then **Refresh setup**. Check the masked recipient and
    that delivery is enabled. Configuration status reports presence/format only;
    it does not prove that Twilio has approved the sender or accepted credentials.
-2. Click **Send simulated flag to my phone**. The server generates eight hours
+2. Click **Send simulated flag to my phone**, or **Send trial placeholder to my
+   phone** in trial-template mode. The server generates eight hours
    of synthetic station readings with a final 120°F Davis spike, evaluates the
    real frozen detector, and sends its finding. It accepts no browser-supplied
    phone, body, observation or arbitrary assessment.
-3. Check your phone for the clearly labelled demo. Use **Check delivery** to
+3. Check your phone for the labelled Terra demo or the configured Twilio trial
+   sample. A trial placeholder receipt does not mean the actual finding was sent.
+   Use **Check delivery** to
    read Twilio's latest receipt without resending. Retain the Message SID for
    correlation with **Monitor → Logs → Messaging** in Twilio Console.
 4. Repeated clicks/reloads for the same demo retain the event identity. After a

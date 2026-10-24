@@ -507,7 +507,8 @@ class Monitor:
         # The transport owns attempts and private recipient binding; retain only safe receipt fields here.
         allowed = {"event_id", "source_event_id", "status", "provider_status", "attempts", "retryable",
                    "accepted_at", "delivered_at", "error_code", "uncertain", "message_sid", "reason",
-                   "next_attempt_at", "next_attempt_at_utc", "provider_message_id", "updated_at_utc", "attempt_count"}
+                   "next_attempt_at", "next_attempt_at_utc", "provider_message_id", "updated_at_utc", "attempt_count",
+                   "content_mode", "template_name", "transport", "data_mode"}
         clean = {k: v for k, v in receipt.items() if k in allowed}
         clean["recorded_at"] = utc(self.clock()).isoformat()
         with self.store.connect(write=True) as db:

@@ -350,11 +350,19 @@ class ConversationService:
                 from ..farm_ops.service import _event, _explanation
                 from ..farm_ops.writer import message_input
                 events = self.store.events_by_ids(selected, source_event_ids)
-                explanation = "; ".join(_explanation(event) for event in events)
                 profile = self.store.orchard(selected)
-                event = _event(profile, "explain_alert", "answer", "info", self.monitor.clock(),
-                               {"explanation": explanation}, request_id)
-                packet = message_input(profile, [event], self.monitor.clock(), question={"intent": intent, "text": QUESTIONS[intent]})
+                explanations = []
+                for source in events:
+                    facts = source.get("facts", {})
+                    observed = facts.get("observation_time") or facts.get("data_through") or source.get("occurred_at")
+                    if not observed:
+                        raise ValueError("The source alert has no recorded evidence time")
+                    explanations.append(_event(profile, "explain_alert", "answer", source["severity"],
+                        source.get("occurred_at") or observed,
+                        {"explanation": _explanation(source), "observation_time": observed,
+                         "data_through": facts.get("data_through")},
+                        {"request_id": request_id, "source_event_id": source["id"]}, source.get("evidence_id")))
+                packet = message_input(profile, explanations, self.monitor.clock(), question={"intent": intent, "text": QUESTIONS[intent]})
                 answer = self.store.publish(selected, packet, self.monitor.writer.write(packet), source_event_ids, self.monitor.clock(),
                                             question_id="tara-" + fingerprint(request_id)[:64])
             else:

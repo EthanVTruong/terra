@@ -75,6 +75,14 @@ residual:
   cusum_k: 0.5            # spec
   cusum_h: 8.0            # spec
   mean24_sigma: 3.0       # spec (24 h mean residual > 3 sigma)
+  # Scale the 24 h mean is judged against: "hourly" = the hourly sigma (spec), "daily" = the
+  # robust spread of 24 h means (floor mean24_floor_f). The spec gate cannot fire at noisy stations
+  # (hourly sigma 2.8 F needs a 24 h mean over 8.4 F). Full replay, cimis-v2, 2023-24..2025-26, 48
+  # drift/offset faults (bench/experiments/detection_gate_replay.json): spec 20/48 caught, 0.07
+  # false drift/offset alarms per station-month; daily 5x 21/48, 0.11; daily 4x 34/48, 0.28.
+  # No setting is a free gain; "daily" with mean24_sigma 4.0 is the high-recall option.
+  mean24_basis: hourly    # spec
+  mean24_floor_f: 0.25    # TODO source: floor for the daily spread (only with mean24_basis daily)
   offset_step_hours: 6    # spec (change-point within 6 h => offset)
   ambiguous_ramp_hours: 48  # TODO source: fitted ramps shorter than this are also offsets (see DECISIONS)
   regrow_fraction: 0.5    # spec (re-alarm accepted offset only if magnitude grows > 50%)

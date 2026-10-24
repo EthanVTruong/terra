@@ -119,12 +119,37 @@ See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below com
   - **Why recall was low:** the spec gate (24 h mean residual > 3 hourly sigma) cannot fire at noisy stations. Station 193
     has an hourly sigma of 2.8 °F, so a 5.3 °F offset's 24 h mean never reaches 8.4 °F.
   - **Offset absorption is not the main cause:** a 14-day lag on offset learning did not help. Drift went 5 → 4 of 16
-    and offset stayed at 6 of 16 (`bench/results/20261024-064834` without the lag, `20261024-064930` with it; only the
-    JSON records `thresholds.offsets.lag_days`).
-  - **Option added:** `residual.mean24_basis: daily` judges the 24 h mean against the spread of 24 h means.
-  - **Causal snapshot harness** (`bench/experiments/drift_offset_snapshots.json`, `cimis-v1` expected values), tuned on
-    2023-24, numbers from 2024-25: the 4× daily gate raises drift recall 31 → 59% and offset recall 23 → 46%; drift/offset
-    false alarms rise 0.07 → 0.24 per station-month. The full-replay confirmation is in progress.
+    and offset stayed at 6 of 16 (`bench/results/20261024-064834` without the lag, `20261024-064930` with it).
+  - **Option added:** `residual.mean24_basis: daily` judges the 24 h mean against the robust spread of 24 h means.
+  - **Causal snapshot harness** (`bench/experiments/drift_offset_snapshots.json`, `cimis-v1` expected values, no learned
+    offsets), tuned on 2023-24, numbers from 2024-25: the 4× daily gate raises drift recall 31 → 59% and offset recall
+    23 → 46%; drift/offset false alarms rise 0.07 → 0.24 per station-month.
+  - **Full replay** (`bench/experiments/detection_gate_replay.json`; per-season runs in `bench/results/20261024-1*`,
+    made with `bench/experiments/bench_season.py`):
+    - Setup: `cimis-v2`, weekly hour-of-day offsets. Seasons 2023-24, 2024-25 and 2025-26, each with the bench's 50 faults
+      (24 drifts and 24 offsets in all). 2025-26 was not used to tune anything.
+
+      | Gate | Drift caught | Offset caught | False drift/offset alarms per station-month | All false alarms | Chill error on faulted stations, repaired |
+      |---|---:|---:|---:|---:|---:|
+      | spec: hourly sigma, 3× | 11/24 | 9/24 | 0.07 | 0.43 | 19.8 h |
+      | daily spread, 5× | 13/24 | 8/24 | 0.11 | 0.45 | 17.2 h |
+      | daily spread, 4× | 19/24 | 15/24 | 0.28 | 0.63 | 19.1 h |
+
+    - Unrepaired chill error on the faulted stations: 23.7 h.
+    - 2025-26 on its own:
+      - spec: 6/8 drifts, 3/8 offsets, 0.07 false alarms.
+      - 4×: 8/8 drifts, 4/8 offsets, 0.35 false alarms.
+    - Whatever the gate, the spikes, stuck runs, outages and clock shifts come out the same.
+  - **Decision: the spec gate stays the default.**
+    - No setting is a free gain. The harness suggested the 5× daily gate would beat the spec at the same false-alarm
+      rate, but the full replay does not confirm it.
+    - The 4× daily gate catches 14 more of the 48 faults but quadruples false drift/offset alarms. On 130 stations that
+      is about 36 a month instead of 9, and each alarm replaces a station's readings with estimates.
+    - Turning it on is a two-line config change (`mean24_basis: daily`, `mean24_sigma: 4.0`) and a call for whoever
+      reviews the alarms.
+  - **Holdout use:** 2023-24 and 2024-25 have now been used to choose the offset scheme, the model and this gate. A
+    clean check of the combined configuration needs 2026-27 or later. 2025-26 was inspected for the Terra report,
+    though not for detection.
 - **Tests**: the SQL tests default to a separate `chillwatch_test` database. The end-to-end test deletes and rewrites rows
   for synthetic ids that are real CIMIS ids (6 Davis, 70, 71, ...).
 - **Mock pipeline** (`bench/experiments/mock_pipeline.py`): the whole pipeline on synthetic data with known truth passes

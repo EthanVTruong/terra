@@ -52,6 +52,7 @@ def summarize(paths):
                   "median_hours_to_detect": float(np.median([f["hours_to_detect"] for f in hit])) if hit else None}
     total = sum(fa_by_type.values())
     return {
+        "runs": [Path(p).name for p in paths],
         "seasons": seasons,
         "detection": det,
         "false_alarms_per_station_month": round(total / fa_months, 3),

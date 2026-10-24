@@ -554,7 +554,7 @@
   "status": "active",
   "intent": "Integrate all approved product functionality into main: selected quiet cube-branded chat with complete messaging, saved evidence and ChatGPT-plan writing; one-button device location with real terrain elevation; Nathan draggable/interpolated Station lab; temperature plus independent humidity/wind/solar and missing-data monitoring through the same live or replay feed. Preserve private runtime and human drafts. Consolidate local work into one TechProjects/Terra folder, retain recoverable historical work, and stop completed chat loops.",
   "branch": "codex/terra-consolidate-main",
-  "base": "62e340424d532f8d659d6907dbc95f9a9e73d6ef",
+  "base": "a9fe338febf6b420d67d1c6280c4249839c262a0",
   "domains": [
     "terra-coordination",
     "terra-qc-json",
@@ -618,7 +618,8 @@
       "Second combined16-group gate passed against actual main62e3404. Native sensor repair ed669/4d86f8 passes177 affected cases and actual +SIM/map90F/nativechat/Details browser proof, oldevaluate reproduces0notesfailure; merged1208. Fresh install independently passed both builds, doctor7/7,pipcheck at85e; finalone-flow smoke uses1208.",
       "Generic temporal-boundary repair1e7ca4e passes204 affected cases. Both captured grounded saved-reading responses validate, original4 inventedunit/role/advice/receipt attacks reject, historical comma/colon frames accepted while currentclaims reject. No generic wording whitelist replaced the contextual engine.",
       "GENUINE selected ChatGPT plan gpt-6-luna proof: proactivealert accepted; final initialreply, contextualfollowup and focusedclarification allchatgpt_plan/completed, with history8/10/12 IDs; exactHTTP retryreturnsstoredreply andGETrefreshnoadditionalgeneration.7 total finite generation triggers:4 accepted,3 earlier truthful fallbacks retained and the observed temporalfalsepositives repaired. Original account/model/consent/pause and all live human rows preserved; tests ran in isolatedSIM/no-worker, no SMS.",
-      "Final remote peek90f latestassets match; user-requested READMEcredit e4fa373 included; Nathan9a ordinarymergedpreservingauthorship. Finalfullconfiguredcheckrunningbeforemainmerge; finalphone occurs once after canonical restart on existingreceiver, simulationexternalSMSdisabled."
+      "Final remote peek90f latestassets match; user-requested READMEcredit e4fa373 included; Nathan9a ordinarymergedpreservingauthorship. Finalfullconfiguredcheckrunningbeforemainmerge; finalphone occurs once after canonical restart on existingreceiver, simulationexternalSMSdisabled.",
+      "Final actual main a9fe338 refines the already-integrated Nathan9a Expected/Difference layout with his published classes. Explicitly reviewed both small alternatives, retained latest published presentation, preserved source binding/ReturnToLive/charts/sensor bridge. Final gate and publication use actual a9 base."
     ],
     "uncertainty": "All source and real conversation proof complete; final16-group exactcandidatecheck, mainpublication and canonical folder/private-state cutover remain. One actual phone placeholder test is explicitly authorized after canonical activation, with existing caps/recipient/consent and no retries/new purchase. Original unborn index/data, all human journals, grants, prior receipts and immutable evidence must survive.",
     "next": "Finish finalconfiguredgate, publish ordinarymerge with checkedtree equality, snapshot/quiesce and move all Terra work into canonical folder, rebuild generated dependencies, verify retained-account/history/current worker, make ONE final phone test, hand off one user acceptance chat and stop completed lanes."

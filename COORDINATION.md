@@ -417,9 +417,11 @@
       "Actual final guarded API flow preserved injected factory mode, real public Davis terrain provenance and usable comparison; map spot query and wind60mph action returned200 and the production feed retained the station note. A transient terrain503 retained clean setup and the same-ID retry succeeded. No native permission, SMS, worker or paid generation was used.",
       "Hosted Windowsbd gate passed11 groups but the combined412-case conversation command exceeded its legacy60s default at152 completed cases. No assertion failed; full backend andmacOS passed, and local exactbd passedall12. The focused verification repair partitions the identical12 conversation files into three bounded120s checks, with unchanged assertions, backend-matching2-thread limits and15min outer portable job budget. No product code changes.",
       "Published tree4e13b0a3587ac5b65631598c37d6b7ba790bf3f2 equals checked5b98159; exact-head web/macOS CI passed at publication, other jobs pending. PR17closed as fully included.",
-      "PR19 semantic union builds both interfaces.55 UI helper cases pass with2 existing optional skips, including fixed document-source tests for late callbacks, cross-tab switching, unknown runtime and isolated replay."
+      "PR19 semantic union builds both interfaces.55 UI helper cases pass with2 existing optional skips, including fixed document-source tests for late callbacks, cross-tab switching, unknown runtime and isolated replay.",
+      "PR19 backend safety79cb69a:8 real ASGI/native store cases pass covering expired and other-runtime cookies, fixed expected source identity, delayed requests, explicit recovery, switching/held and durable onboarding pending locks, provider routing and cube asset.",
+      "Bean/location/greeting96c1bb1 integrated semantically; opening persists transactionally through retry/refresh/profile migration/restart. Actual fresh-clone phrase im growing almonds repaired using existing affirmative crop parser;60 focused crop cases pass with question/negative/future guards."
     ],
-    "uncertainty": "PR19 source safety repair and finite UI/greeting patch require combined scoped and browser verification before follow-up merge. Private canonical move awaits operator quiesce/state preservation. Baseline is available on main now.",
+    "uncertainty": "One final combined local/browser check and exact-head CI remain for PR19; definitive source errors and persisted retry source binding are being verified in the same bounded repair. Private move awaits operator release.",
     "next": "Finish one PR19 reconciliation/check cycle, publish; complete verified inactive cleanup and one canonical Terra folder with operator-controlled runtime restoration. Conclude completed chat lanes."
   }
 }
@@ -1209,6 +1211,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "-o",
     "pythonpath=backend",
     "tests/test_terra_runtime.py",
+    "tests/test_terra_simulation_connection.py",
     "-q"
   ],
   "timeout": 120

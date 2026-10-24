@@ -425,7 +425,7 @@ def test_guarded_farm_routes_share_validation_and_wrong_method_errors(components
         assert "coordinates" not in bad.json()["error"]["message"]
         for method, path in [("GET", "/api/monitor/check"), ("DELETE", "/api/orchards"),
                              ("POST", "/api/orchards/west"), ("DELETE", "/api/orchards/west/sms-opt-in")]:
-            result = client.request(method, path, headers={"X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]})
+            result = client.request(method, path, headers={**HEADERS, "X-Terra-SMS-Control": token, "X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]})
             assert result.status_code == 405 and result.json()["error"]["code"] == "method_not_allowed"
         assert client.get("/api/unknown").status_code == 404
     assert components[0].calls == [] and components[2].calls == 0

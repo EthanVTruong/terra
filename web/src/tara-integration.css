@@ -13,3 +13,6 @@
 .source-advanced>summary:hover{background:#f1f1f1;color:#444}
 .source-advanced[open]>summary{margin-bottom:8px;color:#444}
 .source-new-farm{margin:7px 8px 0}
+
+.simulation-menu{max-width:300px;padding:7px}
+.simulation-menu .simulation-open{margin:0}

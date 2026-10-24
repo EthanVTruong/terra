@@ -3,6 +3,54 @@
 ```json
 {
   "kind": "task",
+  "id": "twilio-trial-placeholder",
+  "owner": "et",
+  "status": "active",
+  "intent": "User requested holding custom SMS/webhook work and, if supported, sending predefined trial templates as placeholders when discrepancies select a meaningful alert. Add an explicitly configured template mode to the existing dispatcher with honest persisted receipts/UI labels. Preserve event selection, opt-in, ledger, retry, frozen QC and Nathan models. No paid account changes; automatic sends stay disabled until private credential readiness is resolved.",
+  "branch": "codex/twilio-trial-placeholder",
+  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/sms.py", "backend/terra_monitoring/farm_ops/service.py", "tests/test_terra_sms.py", "tests/test_farm_chill_ops.py", "web/src/delivery.js", "web/src/SmsControls.jsx", "web/tests/delivery.test.mjs", "docs/terra/twilio-sms.md", ".env.example"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+    "summary": "Implementing the explicit trial-template fallback. Prior predefined SMS delivered and handset confirmed. Temporary inbound listener/tunnel have been stopped and unsaved Twilio form closed.",
+    "evidence": ["Official trial Messages API documents To plus an allowlisted Body template. Existing dispatcher already owns suppression, event identity, attempt limits and reconciliation."],
+    "uncertainty": "Automatic trial API delivery has not been tested; existing token needs private rotation. A placeholder cannot contain Terra's actual finding text, and no proactive custom-content claim will be made.",
+    "next": "Implement and verify bounded transport/UI changes, then provide concrete private activation steps without enabling exposed credentials."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "twilio-inbound-trial",
+  "owner": "et",
+  "status": "blocked",
+  "intent": "User approved a minimal free-trial Custom inbound webhook reply test after confirming one predefined test SMS arrived. User subsequently asked to hold this experiment and use trial-template placeholders instead. Preserve prepared ignored artifacts; do not activate the webhook or restart its temporary processes.",
+  "branch": "codex/twilio-inbound-trial",
+  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "domains": ["terra-coordination"],
+  "paths": ["COORDINATION.md", ".terra-local/twilio-inbound/**"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+    "summary": "User placed the inbound experiment on hold. No webhook was saved and no real inbound callback or custom reply was tested. Matching temporary listener/tunnel are stopped, port8769 has no listener and the unsaved Twilio Custom form is closed.",
+    "evidence": ["Current Twilio Messaging reference documents text/plain webhook replies; trial documentation restricts proactive outbound body templates and is ambiguous about XML responses.", "Official cloudflared2026.10.3 binary verified against GitHub asset SHA256; temporary processes have one-hour maximum lifetimes. Ignored standalone helper has no Terra app imports, outgoing API calls or raw contact/body logging.", "Redacted smoke-result.json and prepared-webhook.png are in the ignored experiment directory. Prior predefined sample was delivered and handset confirmed; no second outbound sample sent."],
+    "uncertainty": "No real inbound callback or custom reply has been tested. A verified tester must send an actual incoming SMS after approval/activation; success does not establish proactive alert delivery. Private token rotation remains pending for eventual Terra activation.",
+    "next": "User placed inbound experiment on hold. Matching temporary listener/tunnel stopped and8769 has no listener; unsaved Custom form closed. Continue twilio-trial-placeholder instead."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-twilio-sms",
   "owner": "et",
   "status": "done",

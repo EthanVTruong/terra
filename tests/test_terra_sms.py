@@ -138,6 +138,7 @@ def test_demo_runs_real_detector_and_sends_labelled_fixed_recipient_evidence(env
     result = instance.demo("demo-one")
     assert result["status"] == "provider_accepted" and result["provider_status"] == "queued"
     assert result["provider_message_id"] == MESSAGE_SID and result["mode"] == "demo"
+    assert result["transport"] == "twilio" and result["data_mode"] == "synthetic"
     assert result["duplicate"] is False
     payload = parse_qs(calls[0].content.decode())
     assert payload["To"] == [environment["TERRA_SMS_TO_NUMBER"]]
@@ -188,7 +189,9 @@ def test_invalid_event_ids_cannot_send_and_are_not_echoed(environment, event_id)
     assert instance.receipt(event_id)["event_id"] is None and calls == []
 
 
-def test_timeout_is_uncertain_and_never_retried_even_after_restart(environment):
+@pytest.mark.parametrize("content_mode", ["terra", "trial_template"])
+def test_timeout_is_uncertain_and_never_retried_even_after_restart(environment, content_mode):
+    environment["TERRA_SMS_CONTENT_MODE"] = content_mode
     calls = []
 
     def timeout(request):
@@ -570,7 +573,9 @@ def test_notification_schema_alias_and_exact_body_limit_are_accepted(environment
     assert len(parse_qs(calls[0].content.decode())["Body"][0]) == 1200
 
 
-def test_notification_rechecks_expiry_after_blocking_ledger_reservation(environment, notification, monkeypatch):
+@pytest.mark.parametrize("content_mode", ["terra", "trial_template"])
+def test_notification_rechecks_expiry_after_blocking_ledger_reservation(environment, notification, monkeypatch, content_mode):
+    environment["TERRA_SMS_CONTENT_MODE"] = content_mode
     calls = []
     clock = [NOW]
     instance = dispatcher(environment, calls, clock=lambda: clock[0])
@@ -604,7 +609,9 @@ def test_notification_validity_is_floored_and_rechecked_before_http(environment,
     assert parse_qs(calls[0].content.decode())["ValidityPeriod"] == ["20"]
 
 
-def test_notification_fixed_recipient_gates_and_daily_cap_apply(environment, notification):
+@pytest.mark.parametrize("content_mode", ["terra", "trial_template"])
+def test_notification_fixed_recipient_gates_and_daily_cap_apply(environment, notification, content_mode):
+    environment["TERRA_SMS_CONTENT_MODE"] = content_mode
     calls = []
     instance = dispatcher({**environment, "TERRA_SMS_MAX_PER_DAY": "1"}, calls)
     assert instance.disable()["status"] == "disabled"
@@ -636,7 +643,9 @@ def test_daily_chill_still_requires_current_backend_eligibility_and_unexpired_me
     assert result["error_code"] == code and calls == []
 
 
-def test_definitive_rate_limit_retries_only_when_due_across_restart_and_keeps_attempt_evidence(environment, notification):
+@pytest.mark.parametrize("content_mode", ["terra", "trial_template"])
+def test_definitive_rate_limit_retries_only_when_due_across_restart_and_keeps_attempt_evidence(environment, notification, content_mode):
+    environment["TERRA_SMS_CONTENT_MODE"] = content_mode
     calls = []
     clock = [NOW]
 
@@ -913,3 +922,94 @@ def test_failed_oldest_receipt_poll_cannot_starve_later_healthy_message(environm
     healthy = dispatcher(environment, calls, respond, clock=lambda: clock[0]).reconcile_pending(limit=1)
     assert healthy[0]["event_id"] == second["event_id"] and healthy[0]["status"] == "delivered"
     assert [request.method for request in calls] == ["POST", "POST", "GET", "GET"]
+
+
+def test_trial_template_is_explicit_without_sender_and_posts_only_allowed_fields(environment, notification):
+    environment.pop("TWILIO_FROM_NUMBER")
+    assert "invalid_or_missing_sender" in SMSConfig.from_env(environment).errors
+    environment["TERRA_SMS_CONTENT_MODE"] = "trial_template"
+    calls = []
+    instance = dispatcher(environment, calls)
+    assert instance.status()["enabled"] is True
+    assert instance.status()["sender"] is None
+    assert instance.status()["content_mode"] == "trial_template"
+    assert instance.status()["template_name"] == sms.TRIAL_TEMPLATE
+    original = copy.deepcopy(notification)
+    sent = instance.dispatch_event(notification)
+    assert sent["status"] == "provider_accepted" and sent["mode"] == "farm"
+    assert sent["transport"] == "twilio" and sent["data_mode"] == "current"
+    assert sent["content_mode"] == "trial_template" and sent["template_name"] == sms.TRIAL_TEMPLATE
+    assert parse_qs(calls[0].content.decode()) == {
+        "To": [environment["TERRA_SMS_TO_NUMBER"]], "Body": [sms.TRIAL_TEMPLATE]}
+    assert notification == original
+    with sqlite3.connect(environment["TERRA_SMS_DB_PATH"]) as db:
+        wire_hash, source_hash = db.execute("SELECT body_hash,source_body_hash FROM sms_delivery").fetchone()
+    assert wire_hash == sms._digest(sms.TRIAL_TEMPLATE)
+    assert source_hash == sms._digest(notification["text"]) and source_hash != wire_hash
+    assert notification["text"] not in json.dumps(sent)
+
+
+@pytest.mark.parametrize("value", ["", "trial", "TRIAL_TEMPLATE", "private-invalid-mode"])
+def test_invalid_content_mode_fails_closed_without_echoing_operator_value(environment, notification, value):
+    calls = []
+    instance = dispatcher({**environment, "TERRA_SMS_CONTENT_MODE": value}, calls)
+    assert "invalid_content_mode" in instance.status()["configuration_errors"]
+    assert instance.dispatch_event(notification)["status"] == "not_configured" and calls == []
+    if value:
+        assert value not in json.dumps(instance.status()) + repr(instance.config)
+
+
+def test_trial_receipt_metadata_survives_restart_and_current_configuration_change(environment, notification):
+    trial = {**environment, "TERRA_SMS_CONTENT_MODE": "trial_template"}
+    calls = []
+    sent = dispatcher(trial, calls).dispatch_event(notification)
+    restarted = dispatcher(environment, calls, lambda _: httpx.Response(200,
+        json={"sid": MESSAGE_SID, "status": "delivered"}))
+    receipt = restarted.reconcile_pending()[0]
+    assert receipt["event_id"] == sent["event_id"]
+    assert receipt["source_event_id"] == notification["event_id"]
+    assert receipt["status"] == "delivered"
+    assert receipt["transport"] == "twilio" and receipt["data_mode"] == "current"
+    assert receipt["content_mode"] == "trial_template" and receipt["template_name"] == sms.TRIAL_TEMPLATE
+    assert [request.method for request in calls] == ["POST", "GET"]
+    assert restarted.receipt(sent["event_id"])["content_mode"] == "trial_template"
+    assert len(calls) == 2
+
+
+def test_old_ledger_migrates_as_terra_and_never_inherits_current_trial_labels(environment, notification):
+    calls = []
+    sent = dispatcher(environment, calls).dispatch_event(notification)
+    with sqlite3.connect(environment["TERRA_SMS_DB_PATH"]) as db:
+        for column in ("content_mode", "template_name", "source_body_hash"):
+            db.execute("ALTER TABLE sms_delivery DROP COLUMN " + column)
+    trial = {**environment, "TERRA_SMS_CONTENT_MODE": "trial_template"}
+    restarted = dispatcher(trial, calls, lambda _: httpx.Response(200,
+        json={"sid": MESSAGE_SID, "status": "delivered"}))
+    receipt = restarted.receipt(sent["event_id"])
+    assert receipt["status"] == "delivered" and receipt["content_mode"] == "terra"
+    assert receipt["template_name"] is None
+    assert dispatcher(environment, calls).dispatch_event(notification)["duplicate"] is True
+    assert [request.method for request in calls] == ["POST", "GET"]
+
+
+@pytest.mark.parametrize("first_mode,second_mode", [("terra", "trial_template"), ("trial_template", "terra")])
+def test_same_event_cannot_change_content_mode_or_create_another_send(environment, notification, first_mode, second_mode):
+    calls = []
+    first = dispatcher({**environment, "TERRA_SMS_CONTENT_MODE": first_mode}, calls).dispatch_event(notification)
+    changed = dispatcher({**environment, "TERRA_SMS_CONTENT_MODE": second_mode}, calls).dispatch_event(notification)
+    assert changed["event_id"] == first["event_id"]
+    assert changed["status"] == "blocked" and changed["error_code"] == "event_id_conflict"
+    assert len(calls) == 1
+
+
+def test_trial_same_wire_template_preserves_immutable_source_text_and_distinct_event_identity(environment, notification):
+    trial = {**environment, "TERRA_SMS_CONTENT_MODE": "trial_template"}
+    calls = []
+    first = dispatcher(trial, calls).dispatch_event(notification)
+    repeated = dispatcher(trial, calls).dispatch_event(notification)
+    assert repeated["duplicate"] is True and len(calls) == 1
+    rephrased = {**notification, "text": "A different phrasing for the same immutable notification."}
+    assert dispatcher(trial, calls).dispatch_event(rephrased)["error_code"] == "event_id_conflict"
+    other = dispatcher(trial, calls).dispatch_event({**notification, "event_id": "a-separate-meaningful-event"})
+    assert other["event_id"] != first["event_id"] and len(calls) == 2
+    assert all(parse_qs(request.content.decode())["Body"] == [sms.TRIAL_TEMPLATE] for request in calls)

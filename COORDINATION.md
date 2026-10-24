@@ -136,7 +136,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "status": "done",
   "intent": "ET requested a cleaned tested statistical checkpoint in the shared GitHub repository, then a first additive JSON/UI integration with Nathan estimate_location. ET selected local estimates plus relevant station flags at unsensored locations, and measured comparisons where sensors exist. Preserve existing ingestion/model/repair and all source evidence; no refit, extra-variable adoption, provider calls or external messaging. Review the first coherent JSON contract with ET before expanding the product.",
   "branch": "codex/terra-qc-json",
-  "base": "229106c251cfa41993a747cde2a40f29e53ed60f",
+  "base": "fc47bf301b87bed1d6f328b01adfac904dc229e3",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -167,7 +167,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "a67837b1b3c5456c510f02361cdefb7cf5ffde3e",
+    "revision": "bc9b24eab76556f225367bcf0d4b3f9daecd552f",
     "summary": "First additive QC-to-location-JSON/UI slice implemented and verified in a separate checkout. Final cleaned statistical source/reference identities match; existing Nathan code/config/pipeline preserved.",
     "evidence": [
       "53 pure estimator/adapter/reference cases plus31harness cases pass; scoped check against actual origin/main passes.",
@@ -190,7 +190,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "status": "done",
   "intent": "User explicitly authorizes verification of the combined technical layer and branch consolidation into main. Audit PR3/worker branch inclusion, run full existing backend tests plus pure statistical JSON/UI checks, resolve verified integration defects within ownership, then promote/merge exact reviewed head if all checks support it. Preserve original Terra staged checkout, Nathan algorithms/config and recovery branches; no new monitoring/SMS features or provider ingestion.",
   "branch": "codex/terra-qc-json",
-  "base": "229106c251cfa41993a747cde2a40f29e53ed60f",
+  "base": "fc47bf301b87bed1d6f328b01adfac904dc229e3",
   "domains": [
     "terra-coordination",
     "terra-qc-json",
@@ -229,7 +229,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "094e4e6f953ab0ebdd451f705f229f2f462d88e8",
+    "revision": "d8ced9a8173e96150cf6ef474b2f38b8b152698e",
     "summary": "PR #3 merged into main at 1d5caf7 after all four CI jobs passed on reviewed head 5ffec23. Shared main was fast-forwarded and matched the tested PR tree exactly. All intended backend, statistical QC, JSON and web code is consolidated. The source snapshots and original staged prototype are preserved. Follow-up changes only record completion and ignore generated Vite cache.",
     "evidence": [
       "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
@@ -252,10 +252,10 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "task",
   "id": "terra-authorship",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User explicitly requests existing Codex commits attributed to Ethan and existing Claude commits to Nathan so main has only those two human contributors. Correct exact assistant author/committer identities and assistant co-author trailers, preserve original commit trees/dates/topology and initial signature, retain recovery bundle/map, configure future project identity, and publish only main plus the corresponding existing ChillWatch branch with atomic exact-head leases. This specifically requested metadata rewrite is a bounded exception to the general no-force-push policy; do not overwrite new work or rewrite unrelated repositories.",
   "branch": "codex/terra-authorship",
-  "base": "b25966788edb1144aa046015b6e2e5f707f116ca",
+  "base": "ddad65f9148f88ea40b03de15e86ae51722aef17",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -271,14 +271,17 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "b25966788edb1144aa046015b6e2e5f707f116ca",
-    "summary": "Authorship audit: 54 main commits (37 Claude,10 Codex,5 Ethan,2 Nathan). Verified identities from existing human commits; Nathan email resolves to Nathan-W123. Root owns correction; independent reviewer read-only. No remote rewrite yet.",
+    "revision": "0226b51fa8d63d7a3d9e536bfda9110350bea3e4",
+    "summary": "Requested attribution correction published atomically with exact-head leases. Codex author/committer identities map to Ethan; Claude identities map to Nathan; 37 assistant co-author trailers removed. Both published branches corrected, local worktree refs mapped without changing their files, recovery bundle retained. Future local identity and repository instructions use human attribution.",
     "evidence": [
-      "Full pre-rewrite bundle verified at .terra-local/authorship/20261024/before-authorship.bundle. All existing source and original staged prototype preserved.",
-      "Only two published heads exist: main b259667 and chillwatch-data-ml-layer 13be13f. Preserve all content; remove invalid signatures only on rewritten descendants, retain unchanged signed root."
+      "Independent raw-object audit: 62 mapped trees unchanged, 64 ordered parent edges preserved, 124 author/committer timestamps and timezones preserved; every message byte preserved except 37 assistant co-author lines.",
+      "Exactly 40 invalidated signatures removed; original signed root 4000c04 remains byte-identical. Original application/test content unchanged.",
+      "Published rewrite heads: main 0226b51fa8d63d7a3d9e536bfda9110350bea3e4; ChillWatch c00b212ff10e4f15dac3b23acb2df09e76eb2ffd. Main at rewrite: 16 Ethan / 39 Nathan authors; subsequent documentation commits are Ethan.",
+      "Verified recovery bundle SHA-256 398c12cc6086444a3b36b69c7917ab039deb24ba6c627d172891922775a4b764; public old/new mapping docs/terra/authorship-map.json.",
+      "Repository-local author defaults are Ethan Truong / 41927541+EthanVTruong@users.noreply.github.com. Original Terra staged file contents preserved."
     ],
-    "uncertainty": "Rewritten commit IDs replace old published IDs; prior PR/CI references remain historical. GitHub contributor caches can lag and other clones need resync. Existing committer signatures cannot remain valid when signed metadata/parents change.",
-    "next": "Prepare mapped candidate, independently verify every tree/timestamp/topology and identities, lease-check current remote heads, publish bounded metadata rewrite atomically, update local refs and record map/completion."
+    "uncertainty": "Old PR/CI links still reference original commits and contributor displays may be cached. Signed descendants lose their old verification badges when metadata changes. Other clones must resync or re-clone rather than merge old history.",
+    "next": "Use rewritten main. Apply the published mapping for historical SHA references; preserve uncommitted work when resyncing other clones. Live-query implementation remains owned by its separate chat."
   }
 }
 ```

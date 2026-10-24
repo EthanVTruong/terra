@@ -1,5 +1,8 @@
 # Main consolidation verification
 
+Commit IDs in the original evidence predate the requested authorship correction.
+See [the old/new commit mapping](authorship-map.json); the application trees are unchanged.
+
 This checkpoint consolidates the implemented statistical QC, location-assessment
 JSON and message preview with the existing ChillWatch backend. The integration
 base is `229106c251cfa41993a747cde2a40f29e53ed60f` (Nathan's PR #2).
@@ -51,7 +54,7 @@ coordination-harness cases:
 
 ```powershell
 python -m pip install -r requirements-terra-dev.txt
-python terra.py check --base 229106c251cfa41993a747cde2a40f29e53ed60f --task terra-main-consolidation
+python terra.py check --base fc47bf301b87bed1d6f328b01adfac904dc229e3 --task terra-main-consolidation
 ```
 
 For the complete existing backend, use a separate environment:

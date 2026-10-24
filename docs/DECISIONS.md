@@ -32,6 +32,23 @@ The station list needs no key and **was** verified live (recorded in
 - **Rate limit**: 1 request/s enforced client-side; transient errors (network, 5xx, non-JSON) retried 4x with exponential backoff (tenacity).
 - **PRISM** (UNVERIFIED, P2): URL template `https://services.nacse.org/prism/data/get/us/800m/{var}/{yyyymmdd}` is a guess, overridable via `PRISM_URL_TEMPLATE`; terms, daily window and latency not checked. The endpoint failed TLS through the build proxy.
 
+## Model vs physics: what the validation showed (CIMIS, 2026-10-24)
+
+Experiments in `/tmp/claude-0/ablation` during the build; all variants scored on identical rows.
+
+- **Never-seen stations** (GroupKFold by station, seasons 2019-20..2021-22, 99 stations, 1.18M hours): physics (IDW + lapse)
+  2.426 F MAE; model with direct target 2.61 F (2.60 F without lat/lon, 2.61 F without lat/lon/elevation); model trained on the
+  residual over physics 2.43-2.44 F. The model does not beat physics for places it has no history for.
+- **Known stations, later season** (train 2019-20 + 2020-21, test 2021-22, 90 stations, 379k hours): physics 2.39 F; physics +
+  per-station night/day offset 2.18 F; model 2.12 F; **model + per-station offset 2.06 F** (median season chill-hour error 81 h vs
+  120 h for physics). For QC and gap filling at stations with history, the station-aware model is clearly better.
+- Decision: production QC / fill uses the model + learned offsets (as built). Places with no station history (chill map,
+  virtual stations, blind tests, the Durham rescue) use the physics estimate with its own leave-stations-out uncertainty bins
+  (`model.unseen_method: idw_lapse`; set `model` to switch). Training now reports `holdout_known_stations` (held-out seasons at
+  trained stations, with and without offsets) as the headline accuracy.
+- ASOS (`asos-v1`, 83 airport stations, leave-stations-out): model 2.71 F vs physics 2.49 F on their own (not identical) rows,
+  consistent with the CIMIS finding.
+
 ## Design decisions
 
 - **Station ids**: CIMIS stations keep their CIMIS number as `station_id`; other sources get ids from 100000 up (`store.assign_station_id`).

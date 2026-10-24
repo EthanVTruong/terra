@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTaraOperation, mergeTaraTimeline, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
+import { createTaraOperation, mergeTaraTimeline, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
 
 const turn = (extra = {}) => ({ id: "turn-1", role: "user", kind: "text", text: "Thanks", created_at: "2026-10-24T16:00:00Z", reply_to: null, reactions: [], delivery: "local_saved", ...extra });
 const snapshot = (extra = {}) => ({ schema_version: "terra-conversation-v1", setup: { stage: "complete", crops: ["almond"], orchard_id: "farm-1" }, orchard_id: "farm-1", orchards: [{ id: "farm-1", name: "West Orchard" }], turns: [], monitoring: { status: "pending" }, notifications: { enabled: false, capability: "browser_open" }, pending_requests: [], ...extra });
@@ -109,4 +109,16 @@ test("browser alerts require the latest saved server notification choice, not a 
   const enabledAgain = { ...event, id: "enable-again", created_at: "2026-10-24T16:03:00Z" };
   assert.equal(taraNotificationEnabledAt({ ...enabled, turns: [event, disabled, enabledAgain] }), Date.parse(enabledAgain.created_at));
   assert.equal(taraNotificationEnabledAt({ ...enabled, notifications: { enabled: false, capability: "browser_open" }, turns: [event] }), null);
+});
+
+test("an existing farm exposes the requested consent choice until a choice is actually saved or canceled", () => {
+  const request = turn({ id: "request-notifications", role: "assistant", data: { action: "notification_choice" } });
+  const saved = turn({ id: "saved-notifications", role: "event", kind: "notification", data: { saved: true, enabled: false } });
+  assert.equal(taraNeedsNotificationChoice(snapshot()), false);
+  assert.equal(taraNeedsNotificationChoice(snapshot({ turns: [saved, request] })), true);
+  assert.equal(taraNeedsNotificationChoice(snapshot({ turns: [saved, request, turn({ id: "thanks" })] })), true);
+  assert.equal(taraNeedsNotificationChoice(snapshot({ turns: [request, saved] })), false);
+  assert.equal(taraNeedsNotificationChoice(snapshot({ turns: [request, turn({ id: "off", role: "assistant", data: { action: "notifications_off" } })] })), false);
+  assert.equal(taraNeedsNotificationChoice(snapshot({ setup: { stage: "notifications", crops: ["almond"] } })), true);
+  assert.equal(taraNeedsNotificationChoice(snapshot({ setup: { stage: "crop", crops: [] }, turns: [request], orchard_id: null })), false);
 });

@@ -209,18 +209,29 @@ def crops_from(text):
         body = body[declaration.end():].strip()
     else:
         body = re.sub(r"^(?:my|our)\s+", "", body, flags=re.I)
+    if re.search(r"[;+]|\b(?:with|plus|or)\b|\bas well as\b", body, re.I):
+        return None
     explicit = re.search(r"\b(?:variety|cultivar)\s*[:=]?\s+([\w '-]{1,60})$", body, re.I)
     explicit_variety = explicit.group(1).strip() if explicit else None
     if explicit:
-        body = body[:explicit.start()].rstrip(" ,")
-    pieces = [part.strip() for part in re.split(r"[,;&]|\b(?:and|plus)\b", body, flags=re.I) if part.strip()]
-    if not 1 <= len(pieces) <= 12:
+        if re.search(r",|\band\b|[&/]", explicit_variety, re.I):
+            return None
+        body = body[:explicit.start()].rstrip(" ,:=")
+    pieces = [part.strip() for part in re.split(r",\s*(?:and\b\s*)?|\band\b|[&/]", body, flags=re.I)]
+    if not 1 <= len(pieces) <= 12 or any(not piece for piece in pieces):
         if declaration:
             raise ValueError("Provide between one and twelve actual crops")
         return None
     filler = {"organic", "some", "mostly", "mainly", "primarily", "a", "an", "the", "we", "i", "grow", "growing", "have", "our", "my"}
     crops, varieties, known_count = [], [], 0
     for piece in pieces:
+        piece = re.sub(r"^(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily|currently)\s+)?(?:grow|have|am growing|are growing)|(?:i'm|we're)\s+growing|growing)\s+", "", piece, count=1, flags=re.I)
+        if re.search(
+                r"\b(?:no|not|never|nothing|else|don['’]?t|doesn['’]?t|can['’]?t|won['’]?t|"
+                r"i|we|they|you|are|is|was|were|will|would|should|could|might|must|"
+                r"grow|growing|have|had|want|planning|planting)\b|"
+                r"\b(?:next|last|this)\s+(?:year|season)\b|\bother\s+crops?\b", piece, re.I):
+            return None
         if (not re.fullmatch(r"[\w][\w '-]{0,79}", piece) or not re.search(r"[^\W\d_]", piece)
                 or re.search(r"\b(?:what|which|how|would|should|could|can|want|plan|because|then|please|not|or)\b", piece, re.I)
                 or set(piece.lower().split()) <= filler):

@@ -523,7 +523,7 @@ function Comparison({
             fontSize: 10,
             fill: '#858585'
           }} axisLine={false} tickLine={false} /><Tooltip labelFormatter={v => `${clock(v)} PST`} formatter={(v, n) => [`${number(v)}°F`, n === 'observed' ? 'Observed' : 'Expected']} contentStyle={{
-            fontFamily: 'Terra Sans',
+            fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
             fontSize: 12,
             border: '1px solid #e4e4e4',
             borderRadius: 8

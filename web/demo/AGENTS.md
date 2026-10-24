@@ -3,7 +3,7 @@
 ## Accepted Terra simulation direction
 
 - Separate local Station lab and Terra grower-chat views share an isolated demo backend. Keep the ordinary live service unchanged.
-- Match the inspected Grok Bot conversation primitives directly: bundled xVf font, 44px header/composer, #fcfcfc surface, #eee 14/20 incoming bubbles, 8/12px insets and 16/16/16/6px corners. Terra content and evidence replace the source roster/workspace; do not add unrelated Grok features.
+- Match the inspected Grok Bot conversation primitives directly: system sans-serif fallback (the reference font with no recorded redistribution grant was removed for the open-source release), 44px header/composer, #fcfcfc surface, #eee 14/20 incoming bubbles, 8/12px insets and 16/16/16/6px corners. Terra content and evidence replace the source roster/workspace; do not add unrelated Grok features.
 - ET selected an actual orchard-support alert: one flagged station may remain diagnostic while independent peers support the orchard. Lost support creates the proactive note. Never manufacture an orchard alert for slider movement.
 - Actual immutable March 2026 CIMIS observations are outside frozen QC training and calibration. Display controlled modifications and historical time honestly. Previously inspected data is not a new accuracy evaluation.
 - Use the real frozen QC, Nathan estimator and orchard Monitor. Browser code displays their results. Heatmap colors represent temperature, separate from explicit backend flag status.

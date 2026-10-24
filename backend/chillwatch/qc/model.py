@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -116,7 +117,7 @@ def _params(seed: int | None = None) -> dict[str, Any]:
         "deterministic": True,
         "force_row_wise": True,
         "verbose": -1,
-        "num_threads": 0,
+        "num_threads": int(os.environ.get("CHILLWATCH_LGB_THREADS", m.get("num_threads", 0))),
     }
 
 

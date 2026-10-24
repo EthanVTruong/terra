@@ -29,6 +29,8 @@ estimate:
   min_peers: 3              # Terra QC's rule: at least three usable other stations
   # Months (PST) with data and validation behind them; other months return insufficient_data.
   validated_months: [10, 11, 12, 1, 2, 3]
+  # p10/p90 from the physics' own calibrated bins (fit-physics); off until their coverage is checked
+  intervals: false
 
 normalize:
   min_coverage: 0.75      # spec, sub-hourly -> hourly

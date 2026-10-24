@@ -36,6 +36,7 @@ import pandas as pd
 
 from . import config
 from .normalize import to_pst
+from .qc.features import is_night
 from .qc.neighbors import (
     adjusted_neighbor_temps,
     haversine_km,
@@ -43,12 +44,13 @@ from .qc.neighbors import (
     neighbor_schedule,
     theil_sen_lapse,
 )
+from .repair import uncertainty as unc
 from .timeutil import utc
 
 ESTIMATE_COLUMNS = [
     "location_id", "lat", "lon", "elevation_ft", "geometry_source", "valid_utc", "temperature", "unit",
     "method", "method_version", "n_used", "used_station_ids", "excluded", "lapse_station_ids",
-    "data_through_utc", "as_of_utc", "status", "status_reason",
+    "data_through_utc", "as_of_utc", "status", "status_reason", "p10", "p90",
 ]
 METHOD_NAME = "chillwatch-idw"
 
@@ -69,6 +71,7 @@ def _params(usable_flags: Iterable[str] = ("",)) -> dict[str, Any]:
         "validated_months": sorted(int(m) for m in e.get("validated_months", range(1, 13))),
         "range_f": [float(th["range"]["min_f"]), float(th["range"]["max_f"])],
         "usable_flags": sorted({str(f).strip() for f in usable_flags}),
+        "intervals": bool(e.get("intervals", False)),
     }
 
 
@@ -157,7 +160,8 @@ def estimate_location(
     optional connect_date, disconnect_date. ``findings``: station_id, timestamp, reason; optional
     visible_at. Returns one row per distinct hour, ascending, with :data:`ESTIMATE_COLUMNS`.
     ``status`` is ``ok``, ``stale`` (valid hour older than ``max_age_hours`` before ``as_of``) or
-    ``insufficient_data`` (temperature NaN). No interval is returned.
+    ``insufficient_data`` (temperature NaN). ``p10``/``p90`` are filled only when ``estimate.intervals``
+    is on and calibrated bins exist (docs/TERRA_COMPATIBILITY.md gives their tested coverage).
     """
     if isinstance(exclude_station_ids, (str, bytes)):
         raise TypeError("exclude_station_ids must be a collection of station ids, not a string")
@@ -236,6 +240,17 @@ def estimate_location(
     else:
         idx, adj, est = np.full((H, 0), -1), np.full((H, 0), np.nan), np.full(H, np.nan)
 
+    # p10/p90 only when enabled (estimate.intervals) and the physics bins exist; NaN otherwise
+    q10 = q90 = np.full(H, np.nan)
+    bins = unc.physics_bins() if p["intervals"] else None
+    if bins is not None and S:
+        valid = np.isfinite(adj)
+        first = np.where(valid.any(axis=1), valid.argmax(axis=1), -1)
+        jj = np.clip(first, 0, None)
+        rows_ = np.arange(H)
+        nk = np.where(first >= 0, dist[rows_, jj], np.nan)
+        nz = np.where(first >= 0, np.abs(dz[rows_, jj]), np.nan)
+        _, q10, q90 = unc.lookup(bins, nk, nz, is_night(hrs))
     months = to_pst(hrs - pd.Timedelta(hours=1)).month  # hour-ending: 00:00 belongs to the previous day
     rows = []
     for h in range(H):
@@ -272,5 +287,7 @@ def estimate_location(
             "data_through_utc": {s: through[s].isoformat() for s in sorted(set(used) | set(lapse_ids))
                                  if s in through.index},
             "as_of_utc": as_of, "status": status, "status_reason": reason,
+            "p10": float(est[h] + q10[h]) if status != "insufficient_data" else np.nan,
+            "p90": float(est[h] + q90[h]) if status != "insufficient_data" else np.nan,
         })
     return pd.DataFrame(rows, columns=ESTIMATE_COLUMNS)

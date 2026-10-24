@@ -548,7 +548,10 @@ def predict_location_frame(
     method = np.where(model_ok, "model", np.where(use_idw, "idw_lapse", "none"))
     exp = np.where(model_ok, pred, np.where(use_idw, tb, np.nan))
     sd_m, q10_m, q90_m = unc.lookup(bundle.unc_model, aux["nearest_km"], aux["nearest_dz_ft"], night)
-    sd_i, q10_i, q90_i = unc.lookup(bundle.unc_idw, aux["nearest_km"], aux["nearest_dz_ft"], night)
+    # the fitted no-station physics has its own calibrated bins (fit-physics); the spec IDW fallback
+    # inside the model path keeps the bins fitted on spec residuals
+    phys = unc.physics_bins() if not use_model else None
+    sd_i, q10_i, q90_i = unc.lookup(phys or bundle.unc_idw, aux["nearest_km"], aux["nearest_dz_ft"], night)
     sd = np.where(model_ok, sd_m, np.where(use_idw, sd_i, np.nan))
     q10 = np.where(model_ok, q10_m, np.where(use_idw, q10_i, np.nan))
     q90 = np.where(model_ok, q90_m, np.where(use_idw, q90_i, np.nan))

@@ -209,3 +209,22 @@ def test_lapse_ignores_stations_beyond_max_km():
     obs = pd.concat([_obs(), _obs({900: 20.0}).query("station_id == 900")])
     out = _at_davis(stations=st, observations=obs)
     assert (out["method"] == "idw").all() and (out["lapse_station_ids"].map(len) == 0).all()
+
+
+def test_intervals_only_when_enabled_and_calibrated(monkeypatch):
+    import json
+
+    from chillwatch import config
+
+    assert _at_davis()[["p10", "p90"]].isna().all().all()  # off by default
+    v_off = method_version()
+    monkeypatch.setitem(config.thresholds()["estimate"], "intervals", True)
+    assert _at_davis()[["p10", "p90"]].isna().all().all()  # on, but no calibrated bins yet
+    st = {"sd": 1.0, "q10": -2.0, "q90": 1.5, "n": 1000, "bias": 0.0}
+    d = config.data_dir() / "models"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "physics_fit.json").write_text(json.dumps({"uncertainty": {
+        "_all": st, "_pooled_n": st, "_pooled_d": st, "_widest": st}}))
+    out = _at_davis()
+    assert np.allclose(out["p10"], out["temperature"] - 2.0) and np.allclose(out["p90"], out["temperature"] + 1.5)
+    assert out["method_version"].iloc[0] != v_off  # the interval switch is part of the version

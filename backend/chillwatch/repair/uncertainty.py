@@ -62,6 +62,23 @@ def fit_bins(
     return table
 
 
+def physics_bins() -> dict[str, Any] | None:
+    """Bins fitted on the no-station physics' own leave-one-station-out residuals
+    (``chillwatch fit-physics`` -> data/models/physics_fit.json), or None before that has run."""
+    import json
+
+    path = config.data_dir() / "models" / "physics_fit.json"
+    if not path.exists():
+        return None
+    key = (str(path), path.stat().st_mtime)
+    if _PHYS.get("key") != key:
+        _PHYS["key"], _PHYS["table"] = key, json.loads(path.read_text()).get("uncertainty")
+    return _PHYS["table"]
+
+
+_PHYS: dict[str, Any] = {}
+
+
 def lookup(
     table: dict[str, Any],
     nearest_km: np.ndarray,

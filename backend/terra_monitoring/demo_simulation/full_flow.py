@@ -151,7 +151,7 @@ class ReplayBridge:
                 # Older native forms cannot supply crop metadata. Do not carry
                 # their historical almond/cultivar defaults into a new QA farm.
                 if supplied:
-                    raise ValueError("Crop-aware setup requires the integrated Tara profile API")
+                    raise ValueError("Crop-aware setup requires the integrated Terra profile API")
                 profile = orchard_profile(name, **options)
                 profile.update(crop=None, crops=[], variety=None,
                     target={"hours": None, "kind": "not_configured", "agronomic_requirement_verified": False,

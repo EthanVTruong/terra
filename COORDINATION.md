@@ -1,5 +1,31 @@
 # Terra integration coordination
 
+## Multivariable CIMIS monitoring
+
+```json
+{
+  "kind": "task",
+  "id": "terra-multivariable-flags",
+  "owner": "et",
+  "status": "active",
+  "intent": "User requests humidity, wind and solar checks through cleaned CIMIS observations, grounded agent responses and simulation handoff, with missing/source-quality statuses separate and visible Terra naming. Preserve frozen temperature QC and Nathan numerical algorithms. Bounded source validation only; no model training, bulk backfill or real SMS sends.",
+  "branch": "codex/terra-multivariable-flags",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": ["terra-qc-json"],
+  "paths": ["backend/terra_monitoring/**", "config/terra/**", "tests/test_terra_*.py", "tests/fixtures/terra/**", "web/**", "docs/terra/**", "spec.md", "README.md", "COORDINATION.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "8f028a8",
+    "summary": "Isolated worktrees created; sim and consolidation owners informed. Root owns integration, workers own new detector and grounded conversation slices.",
+    "evidence": [],
+    "uncertainty": "Nathan sim redesign is concurrent. New conservative rules are provisional peer-discrepancy checks; no validated field fault accuracy is claimed.",
+    "next": "Verify official fields, implement per-variable assessment and lifecycle, integrate identical sim/agent path, validate regression and full scenarios, publish handoff."
+  }
+}
+```
+
 ```json
 {
   "kind": "task",

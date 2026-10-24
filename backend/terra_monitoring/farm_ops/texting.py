@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import re
 
-SYSTEM_PROMPT = """Write a brief, natural text from Tara, like someone texting a grower.
+SYSTEM_PROMPT = """Write a brief, natural text from Terra, like someone texting a grower.
 Return JSON with exactly the supplied event keys and a short string for each.
 Use ordinary wording and contractions, with at most two sentences in total.
 Explain the weather-data state and what it means for the estimate. Use only

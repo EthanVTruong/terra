@@ -382,5 +382,13 @@ def assess_location(*, lat: float, lon: float, elevation_ft: float, valid_utc: A
                        "publication_visibility": "explicit_visible_at" if "visible_at" in observations else "snapshot_only",
                        "peer_exclusion_basis": "target_held_out" if target in calibrated else "causal_station_qc",
                        "side_effects": "none"}})
+    # These checks have their own units, eligibility and policy. They neither
+    # change the frozen temperature reference nor exclude peers from its estimate.
+    from .weather import VARIABLES, assess_weather
+    weather_stations = st[operating & (haversine_km(lat, lon, st.lat.to_numpy(), st.lon.to_numpy()) <= 75)].copy()
+    weather = assess_weather(observed[observed.station_id.isin(weather_stations.station_id)],
+        weather_stations, valid_time_utc=valid, as_of_utc=clock, max_age_hours=max_age_hours)
+    weather["enabled"] = any(field in observations.columns for field in VARIABLES)
+    result["weather"] = _json(weather)
     json.dumps(result, allow_nan=False, sort_keys=True)
     return result

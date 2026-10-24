@@ -72,7 +72,9 @@ def _facts(summary):
 def _event(profile, kind, transition, severity, occurred_at, facts, key, evidence_id=None):
     identity = fingerprint({"orchard": profile["id"], "mode": profile["mode"], "kind": kind,
                             "transition": transition, "key": key})
-    category = "data_health" if kind.startswith("monitoring_") else "chill_pace" if kind.startswith("chill_pace") else kind
+    category = ("data_health" if kind.startswith(("monitoring_", "weather_data_")) else
+                "weather" if kind.startswith("weather_discrepancy") else
+                "chill_pace" if kind.startswith("chill_pace") else kind)
     episode = fingerprint({"orchard": profile["id"], "mode": profile["mode"], "category": category, "key": key})
     return {"id": identity, "episode_id": episode, "mode": profile["mode"], "category": category,
             "type": kind, "transition": transition, "severity": severity,
@@ -179,6 +181,8 @@ class Monitor:
             snapshot = summarize(rows, now, profile["geometry_key"], newest["method_version"])
             available = newest["status"] == "ok" and now - utc(newest["valid_utc"]) <= timedelta(hours=6)
             events = self._decide(profile, previous, rows, snapshot, newest, available, now, evidence_id)
+            from ..weather_events import decide as decide_weather
+            events.extend(decide_weather(profile, previous, latest, now, evidence_id, _event))
             previous.update(last_check=now.isoformat(), last_observation=newest["valid_utc"],
                             method_version=newest["method_version"], latest_evidence_id=evidence_id,
                             comparison_available=available, latest_status=newest["status"], summary=snapshot)
@@ -326,9 +330,11 @@ class Monitor:
             # One most recent event per category prevents an unsent opening+escalation double text.
             grouped = {}
             for event in keep:
-                old = grouped.get(event["type"])
+                group_key = ((event["type"], event["facts"].get("variable"), event["facts"].get("station_id"))
+                             if event["type"].startswith("weather_") else event["type"])
+                old = grouped.get(group_key)
                 if old is None or event["transition"] == "escalation" or event["occurred_at"] > old["occurred_at"]:
-                    grouped[event["type"]] = event
+                    grouped[group_key] = event
             packet = message_input(profile, list(grouped.values()), now.isoformat())
             result = self.writer.write(packet)
             if not self.store.acquire("publish:" + orchard_id, owner, max(utc(self.clock()), now) if profile["mode"] == "current" else now, seconds=90):
@@ -477,8 +483,12 @@ class Monitor:
                     summary = state.get("summary", {})
                     if not summary.get("complete") or (summary.get("hours") or 0) < event["facts"]["reference_hours"]:
                         reason = "revised_reference"
+                elif kind.startswith("weather_"):
+                    from ..weather_events import notification_current
+                    if not notification_current(event, state):
+                        reason = "superseded_weather_event"
         primary = events[0] if events else None
-        category = "data_health" if primary and primary["category"] == "data_health" else "chill"
+        category = primary["category"] if primary and primary["category"] in {"data_health", "weather"} else "chill"
         observation = state.get("last_observation")
         seasonal = [e for e in events if e["type"] in {"chill_pace", "chill_pace_recovered", "chill_reference"}]
         if reason == "eligible" and seasonal:

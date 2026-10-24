@@ -1,6 +1,7 @@
 """Offline request, SSE, persistence, and redaction contracts for plan inference."""
 import importlib
 import json
+import multiprocessing
 
 import httpx
 import pytest
@@ -390,6 +391,184 @@ def test_non_json_admission_retains_only_string_shape(tmp_path):
     assert caught.value.error_shape == "string"
     assert caught.value.status == 403
     assert_safe(caught.value)
+
+
+@pytest.mark.parametrize("prior_backoff", [False, True], ids=["clean-state", "expired-backoff"])
+def test_inflight_success_preserves_other_instances_usage_pause_and_model(tmp_path, prior_backoff):
+    now = [1000.0]
+    first, first_requests, first_auth, _ = setup_client(tmp_path, clock=lambda: now[0])
+    if prior_backoff:
+        first._cooldown(first_auth.account, PlanError("http_error", status=503))
+        now[0] += 11
+    second, _, second_auth, _ = setup_client(tmp_path, httpx.Response(429, json={"error": {
+        "code": "subscription_sharing_usage_limit_exceeded"}}), clock=lambda: now[0], select=False)
+    second.models()
+
+    def complete_after_other_request_pauses(request):
+        with pytest.raises(PlanError, match="subscription_sharing_usage_limit_exceeded"):
+            second.generate("Write another note.", PACKET)
+        second.select_model("account-model-a")
+        return sse(completed())
+
+    first.client = httpx.Client(transport=httpx.MockTransport(complete_after_other_request_pauses))
+    assert first.generate("Write a note.", PACKET)["text"] == TEXT
+    status = first.status()
+    assert status["usage_paused"] is True
+    assert status["selected_model"] == "account-model-a"
+    before, token_calls = len(first_requests), first_auth.token_calls
+    with pytest.raises(PlanError, match="usage_paused"):
+        first.generate("Write a note.", PACKET)
+    assert len(first_requests) == before
+    assert first_auth.token_calls == token_calls
+    assert second_auth.allowed is True
+
+
+def test_inflight_success_preserves_other_instances_newer_cooldown(tmp_path):
+    now = [1000.0]
+    first, _, auth, _ = setup_client(tmp_path, clock=lambda: now[0])
+    first._cooldown(auth.account, PlanError("http_error", status=503))
+    now[0] += 11
+    second = ChatGPTPlanClient(FakeAuth(), tmp_path, clock=lambda: now[0])
+
+    def complete_after_other_request_backs_off(request):
+        second._cooldown(auth.account, PlanError("subscription_sharing_usage_unavailable", status=200))
+        return sse(completed())
+
+    first.client = httpx.Client(transport=httpx.MockTransport(complete_after_other_request_backs_off))
+    assert first.generate("Write a note.", PACKET)["text"] == TEXT
+    assert first.status()["cooldown_until"] == now[0] + 20
+    assert first._snapshot(auth.account)["failures"] == 2
+    with pytest.raises(PlanError, match="provider_cooldown"):
+        first.generate("Write a note.", PACKET)
+
+
+def test_pause_during_catalog_fetch_prevents_later_post(tmp_path):
+    first, requests, auth, _ = setup_client(tmp_path)
+    second = ChatGPTPlanClient(FakeAuth(), tmp_path)
+    first._catalog.clear()
+
+    def pause_while_fetching_models(request):
+        requests.append(request)
+        assert request.method == "GET"
+        second._cooldown(auth.account, PlanError("subscription_sharing_usage_limit_exceeded", status=429))
+        return httpx.Response(200, json={"models": CATALOG})
+
+    first.client = httpx.Client(transport=httpx.MockTransport(pause_while_fetching_models))
+    with pytest.raises(PlanError, match="usage_paused"):
+        first.generate("Write a note.", PACKET)
+    assert all(request.method == "GET" for request in requests)
+
+
+def _child_inflight_success(directory, now, entered, release, results):
+    def respond(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"models": CATALOG})
+        entered.set()
+        if not release.wait(15):
+            raise AssertionError("Parent did not release the mocked response")
+        return sse(completed())
+
+    try:
+        client = httpx.Client(transport=httpx.MockTransport(respond))
+        instance = ChatGPTPlanClient(FakeAuth(), directory, client=client, clock=lambda: now)
+        results.put({"text": instance.generate("Write a note.", PACKET)["text"], "status": instance.status()})
+    except Exception as error:
+        results.put({"error": type(error).__name__, "code": getattr(error, "code", None)})
+
+
+def _child_cooldown_transaction(directory, ready, finished, results):
+    try:
+        instance = ChatGPTPlanClient(FakeAuth(), directory, clock=lambda: 1000.0)
+        ready.set()
+        instance._cooldown("account-one", PlanError("http_error", status=503))
+        results.put({"status": instance.status()})
+    except Exception as error:
+        results.put({"error": type(error).__name__, "code": getattr(error, "code", None)})
+    finally:
+        finished.set()
+
+
+def test_cross_process_inflight_success_preserves_persisted_usage_pause(tmp_path):
+    now = [1000.0]
+    instance, _, auth, _ = setup_client(tmp_path, clock=lambda: now[0])
+    instance._cooldown(auth.account, PlanError("http_error", status=503))
+    now[0] += 11
+    context = multiprocessing.get_context("spawn")
+    entered, release = context.Event(), context.Event()
+    results = context.Queue()
+    worker = context.Process(target=_child_inflight_success, args=(str(tmp_path), now[0], entered, release, results))
+    try:
+        worker.start()
+        assert entered.wait(10), "Child did not reach mocked POST"
+        instance._cooldown(auth.account, PlanError("subscription_sharing_usage_limit_exceeded", status=429))
+        instance.select_model("account-model-a")
+        release.set()
+        worker.join(10)
+        assert worker.exitcode == 0
+        result = results.get(timeout=2)
+        assert result["text"] == TEXT
+        assert result["status"]["usage_paused"] is True
+        assert result["status"]["selected_model"] == "account-model-a"
+        assert instance.status()["usage_paused"] is True
+    finally:
+        release.set()
+        if worker.is_alive():
+            worker.terminate()
+            worker.join(5)
+        results.close()
+        results.join_thread()
+
+
+def test_native_file_lock_serializes_cross_process_state_transactions(tmp_path):
+    instance, _, auth, _ = setup_client(tmp_path)
+    context = multiprocessing.get_context("spawn")
+    ready, finished = context.Event(), context.Event()
+    results = context.Queue()
+    worker = context.Process(target=_child_cooldown_transaction, args=(str(tmp_path), ready, finished, results))
+    try:
+        with instance._transaction() as state:
+            entry = instance._entry(state, auth.account)
+            entry.update(selected_model="account-model-a", usage_paused=True)
+            instance._save(state)
+            worker.start()
+            assert ready.wait(10), "Child did not start its state transaction"
+            assert not finished.wait(0.2), "Another process bypassed the native state lock"
+        assert finished.wait(10)
+        worker.join(5)
+        assert worker.exitcode == 0
+        result = results.get(timeout=2)
+        assert "error" not in result
+        assert result["status"]["selected_model"] == "account-model-a"
+        assert result["status"]["usage_paused"] is True
+        snapshot = instance._snapshot(auth.account)
+        assert snapshot["failures"] == 1
+        assert snapshot["cooldown_until"] == 1010.0
+    finally:
+        if worker.is_alive():
+            worker.terminate()
+            worker.join(5)
+        results.close()
+        results.join_thread()
+
+
+def test_state_saves_use_unique_temporary_files_and_preserve_unrelated_files(tmp_path, monkeypatch):
+    instance, _, _, _ = setup_client(tmp_path)
+    unrelated = tmp_path / "provider.tmp"
+    unrelated.write_text("unrelated existing file")
+    names = []
+    create = provider.tempfile.mkstemp
+
+    def record_temporary(*args, **kwargs):
+        descriptor, name = create(*args, **kwargs)
+        names.append(name)
+        return descriptor, name
+
+    monkeypatch.setattr(provider.tempfile, "mkstemp", record_temporary)
+    instance.resume()
+    instance.select_model("account-model-a")
+    assert len(names) == 2 and len(set(names)) == 2
+    assert all(not provider.Path(name).exists() for name in names)
+    assert unrelated.read_text() == "unrelated existing file"
 
 
 def test_pure_import_does_not_start_http_or_read_state(monkeypatch):

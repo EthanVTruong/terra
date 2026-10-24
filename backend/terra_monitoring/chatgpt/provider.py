@@ -11,6 +11,7 @@ import json
 import math
 import os
 import re
+import tempfile
 import threading
 import time
 from contextlib import contextmanager
@@ -31,6 +32,9 @@ MAX_OUTPUT_CHARS = 16_000
 MAX_INPUT_BYTES = 64_000
 MAX_STATE_BYTES = 64_000
 MAX_ACCOUNTS = 64
+STATE_LOCK_SECONDS = 5
+_STATE_LOCKS = {}
+_STATE_LOCKS_GUARD = threading.Lock()
 _SLUG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}\Z")
 _MACHINE = re.compile(r"[a-zA-Z][a-zA-Z0-9_.\[\]-]{0,127}\Z")
 _REQUEST_ID = re.compile(r"[a-zA-Z0-9_-]{1,128}\Z")
@@ -98,6 +102,9 @@ class ChatGPTPlanClient:
         self.clock = clock or time.time
         self._path = self.state_dir / "provider.json"
         self._lock = threading.RLock()
+        with _STATE_LOCKS_GUARD:
+            key = os.path.normcase(str(self._path.resolve()))
+            self._state_lock = _STATE_LOCKS.setdefault(key, threading.RLock())
         self._catalog = {}
         self._last_account = None
 
@@ -179,17 +186,88 @@ class ChatGPTPlanClient:
                                       "cooldown_until": 0, "failures": 0}
         return state["accounts"][key]
 
-    def _save(self, state):
+    @staticmethod
+    def _native_lock(handle, *, release=False):
+        handle.seek(0)
+        if os.name == "nt":
+            import msvcrt
+
+            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK if release else msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN if release else fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    @contextmanager
+    def _transaction(self):
+        """Serialize local state transactions across instances and processes.
+
+        The separate lock file stays stable while provider.json is atomically
+        replaced. Never keep this transaction open across auth or HTTP work.
+        """
+        if not self._state_lock.acquire(timeout=STATE_LOCK_SECONDS):
+            raise PlanError("provider_state_busy")
+        handle, acquired = None, False
         try:
             self.state_dir.mkdir(parents=True, exist_ok=True)
-            temporary = self._path.with_suffix(".tmp")
-            with temporary.open("w", encoding="utf-8") as handle:
+            lock_path = self.state_dir / "provider.lock"
+            if self.state_dir.is_symlink() or lock_path.is_symlink():
+                raise PlanError("provider_state_unavailable")
+            descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+            handle = os.fdopen(descriptor, "r+b", buffering=0)
+            if os.fstat(handle.fileno()).st_size == 0:
+                handle.write(b"\0")
+            deadline = time.monotonic() + STATE_LOCK_SECONDS
+            while True:
+                try:
+                    self._native_lock(handle)
+                    acquired = True
+                    break
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        raise PlanError("provider_state_busy") from None
+                    time.sleep(0.02)
+            yield self._read_state()
+        except (OSError, ValueError):
+            raise PlanError("provider_state_unavailable") from None
+        finally:
+            if handle is not None:
+                try:
+                    if acquired:
+                        self._native_lock(handle, release=True)
+                except OSError:
+                    # Closing the descriptor also releases its native lock.
+                    pass
+                finally:
+                    handle.close()
+            self._state_lock.release()
+
+    def _snapshot(self, account):
+        with self._transaction() as state:
+            return dict(self._entry(state, account))
+
+    def _save(self, state):
+        """Write atomically while the caller holds a state transaction."""
+        temporary = None
+        try:
+            descriptor, name = tempfile.mkstemp(prefix=".provider-", suffix=".tmp", dir=self.state_dir)
+            temporary = Path(name)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
                 json.dump(state, handle, allow_nan=False, separators=(",", ":"))
                 handle.flush()
                 os.fsync(handle.fileno())
+            if self._path.is_symlink():
+                raise PlanError("provider_state_unavailable")
             temporary.replace(self._path)
+            temporary = None
         except (OSError, ValueError):
             raise PlanError("provider_state_unavailable") from None
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
     @contextmanager
     def _http(self):
@@ -203,14 +281,14 @@ class ChatGPTPlanClient:
         temporary = error.code in {"subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable"}
         if error.code != "subscription_sharing_usage_limit_exceeded" and error.status != 503 and not temporary:
             return
-        state = self._read_state()
-        entry = self._entry(state, account)
-        if error.code == "subscription_sharing_usage_limit_exceeded":
-            entry["usage_paused"] = True
-        else:
-            entry["failures"] = min(entry["failures"] + 1, 6)
-            entry["cooldown_until"] = self._now() + min(300, 10 * 2 ** (entry["failures"] - 1))
-        self._save(state)
+        with self._transaction() as state:
+            entry = self._entry(state, account)
+            if error.code == "subscription_sharing_usage_limit_exceeded":
+                entry["usage_paused"] = True
+            else:
+                entry["failures"] = min(entry["failures"] + 1, 6)
+                entry["cooldown_until"] = self._now() + min(300, 10 * 2 ** (entry["failures"] - 1))
+            self._save(state)
 
     def _admission(self, response, body):
         error = body.get("error") if isinstance(body, dict) else None
@@ -279,11 +357,11 @@ class ChatGPTPlanClient:
                 self._cooldown(account, error)
                 raise
             self._catalog[account] = catalog
-            state = self._read_state()
-            entry = self._entry(state, account)
-            if entry["selected_model"] and entry["selected_model"] not in seen:
-                entry["selected_model"] = None
-                self._save(state)
+            with self._transaction() as state:
+                entry = self._entry(state, account)
+                if entry["selected_model"] and entry["selected_model"] not in seen:
+                    entry["selected_model"] = None
+                    self._save(state)
             return [dict(model) for model in catalog]
 
     def select_model(self, slug):
@@ -297,9 +375,9 @@ class ChatGPTPlanClient:
                 raise PlanError("account_changed")
             if slug not in {row["slug"] for row in catalog}:
                 raise PlanError("model_unavailable")
-            state = self._read_state()
-            self._entry(state, account)["selected_model"] = slug
-            self._save(state)
+            with self._transaction() as state:
+                self._entry(state, account)["selected_model"] = slug
+                self._save(state)
             return self.status()
 
     def status(self):
@@ -311,7 +389,7 @@ class ChatGPTPlanClient:
                 return {"connected": False, "active_account_id": None, "selected_model": None,
                         "usage_paused": False, "cooldown_until": None, "usage_url": USAGE_URL,
                         "error": error.to_dict()}
-            entry = self._entry(self._read_state(), account)
+            entry = self._snapshot(account)
             return {"connected": True, "active_account_id": account,
                     "selected_model": entry["selected_model"], "usage_paused": entry["usage_paused"],
                     "cooldown_until": entry["cooldown_until"] if entry["cooldown_until"] > self._now() else None,
@@ -321,10 +399,10 @@ class ChatGPTPlanClient:
         """Explicit user action to permit another attempt after a usage pause."""
         with self._lock:
             account = self._account_id()
-            state = self._read_state()
-            entry = self._entry(state, account)
-            entry.update(usage_paused=False, cooldown_until=0, failures=0)
-            self._save(state)
+            with self._transaction() as state:
+                entry = self._entry(state, account)
+                entry.update(usage_paused=False, cooldown_until=0, failures=0)
+                self._save(state)
             return self.status()
 
     def generate(self, instructions, packet, *, schema=None):
@@ -346,20 +424,26 @@ class ChatGPTPlanClient:
             except (ValueError, TypeError, UnicodeError, RecursionError):
                 raise PlanError("invalid_input") from None
             account = self._account_id()
-            state = self._read_state()
-            entry = self._entry(state, account)
+            entry = self._snapshot(account)
             if entry["usage_paused"]:
                 raise PlanError("usage_paused")
             if entry["cooldown_until"] > self._now():
                 raise PlanError("provider_cooldown")
             # Refresh once per process/account switch before using a persisted selection.
             catalog = self.models()
-            model = entry["selected_model"]
-            if model is None or model not in {row["slug"] for row in catalog}:
-                raise PlanError("model_selection_required")
             current_account, headers = self._context()
             if current_account != account:
                 raise PlanError("account_changed")
+            # Another instance may pause usage or change the selection during
+            # catalog/auth I/O. Admit against the latest persisted state.
+            entry = self._snapshot(account)
+            if entry["usage_paused"]:
+                raise PlanError("usage_paused")
+            if entry["cooldown_until"] > self._now():
+                raise PlanError("provider_cooldown")
+            model = entry["selected_model"]
+            if model is None or model not in {row["slug"] for row in catalog}:
+                raise PlanError("model_selection_required")
             body = {"model": model, "instructions": instructions,
                     "input": [{"role": "user", "content": packet_json}], "store": False, "stream": True}
             if schema is not None:
@@ -379,8 +463,15 @@ class ChatGPTPlanClient:
                 self._response_diagnostic(error, response)
                 self._cooldown(account, error)
                 raise
-            entry.update(failures=0, cooldown_until=0)
-            self._save(state)
+            with self._transaction() as state:
+                latest = self._entry(state, account)
+                backoff = ("failures", "cooldown_until")
+                if (any(latest[field] for field in backoff)
+                        and all(latest[field] == entry[field] for field in backoff)):
+                    # Clear only this request's old backoff; preserve a pause,
+                    # model change or newer backoff written during the stream.
+                    latest.update(failures=0, cooldown_until=0)
+                    self._save(state)
             return result
 
     def _stream(self, response, model):

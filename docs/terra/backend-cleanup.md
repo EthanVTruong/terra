@@ -9,7 +9,7 @@ provider inputs and exclude stations outside their operating dates.
 | `chillwatch/estimate.py` | Apply station operating dates before lapse fitting and provenance. |
 | `chillwatch/normalize.py`, `sources/cimis.py` | Accept only legal CIMIS hours and recognized Fahrenheit/Celsius units; retain midnight `2400`. |
 | `farm_ops/service.py`, `store.py` | Recover from three persisted consecutive valid hours, reserve question IDs before generation, and retrieve old Details by indexed identity. |
-| `farm_ops/writer.py` | Validate optional model output against complete locally rendered factual wording; keep deterministic fallback and the injectable `write(packet)` interface. Preserve each clause's source time. |
+| `farm_ops/writer.py` | Generate concise event prose with field-bound quantity placeholders and conservative status/role checks. Python renders names, numbers, source times and demo labels. Keep deterministic fallback and the injectable `write(packet)` interface. |
 | `live.py` | Bound retained response/attempt state and back off after failed refreshes. Cached responses retain their original retrieval time. |
 | `configuration.py`, `runtime.py`, `sms.py` | Share explicit environment parsing and SMS journal resolution across runtime and operator commands. Initialize transport migrations once per store instance. |
 | `server.py`, `farm_ops/api.py`, `farm_ops/__main__.py` | Share HTTP assembly, validation and method errors; retain explicit worker lifecycle. |
@@ -39,6 +39,12 @@ The supported combined runtime owns continuous monitoring. Compatibility serve
 commands use the same HTTP assembly with no implicit background worker. Source
 failures preserve cached evidence and use a bounded retry delay; an explicit
 refresh can bypass that delay.
+
+Optional generated wording uses a bounded vocabulary and explicit fact roles.
+Unfamiliar or ambiguous prose falls back to the existing template. These checks
+are conservative screens, not a proof of arbitrary natural-language meaning.
+An explicitly injected generator shares the same validation and never silently
+falls back to API-key billing.
 
 ## Verification boundary
 

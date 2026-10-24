@@ -1,8 +1,8 @@
 """Optional generated prose must retain Python-owned facts and lifecycle."""
 from __future__ import annotations
 
-from copy import deepcopy
 import json
+from copy import deepcopy
 
 import httpx
 import pytest

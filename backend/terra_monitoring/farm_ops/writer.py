@@ -130,8 +130,8 @@ _TOKEN = re.compile(r"\{\{([a-z_]+)\}\}")
 # A deliberately small English vocabulary bounds accepted prose. It is a conservative
 # semantic screen, not a proof of arbitrary natural-language truth. Unknown wording
 # takes the existing fallback path instead of adding another model/retry call.
-_COMMON = set("the a an is are was were be has have had its this and with for at of in to as after "
-              "now currently remains stayed still been".split())
+_COMMON = {"the", "a", "an", "is", "are", "was", "were", "be", "has", "have", "had", "its", "this", "and",
+           "with", "for", "at", "of", "in", "to", "as", "after", "now", "currently", "remains", "stayed", "still", "been"}
 _TOTAL_WORDS = "current estimated chill hours hour stands totals total reached incomplete partial coverage unavailable"
 _WORDS = {
     "chill_total": _TOTAL_WORDS,

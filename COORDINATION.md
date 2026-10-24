@@ -419,7 +419,8 @@
       "Published tree4e13b0a3587ac5b65631598c37d6b7ba790bf3f2 equals checked5b98159; exact-head web/macOS CI passed at publication, other jobs pending. PR17closed as fully included.",
       "PR19 semantic union builds both interfaces.55 UI helper cases pass with2 existing optional skips, including fixed document-source tests for late callbacks, cross-tab switching, unknown runtime and isolated replay.",
       "PR19 backend safety79cb69a:8 real ASGI/native store cases pass covering expired and other-runtime cookies, fixed expected source identity, delayed requests, explicit recovery, switching/held and durable onboarding pending locks, provider routing and cube asset.",
-      "Bean/location/greeting96c1bb1 integrated semantically; opening persists transactionally through retry/refresh/profile migration/restart. Actual fresh-clone phrase im growing almonds repaired using existing affirmative crop parser;60 focused crop cases pass with question/negative/future guards."
+      "Bean/location/greeting96c1bb1 integrated semantically; opening persists transactionally through retry/refresh/profile migration/restart. Actual fresh-clone phrase im growing almonds repaired using existing affirmative crop parser;60 focused crop cases pass with question/negative/future guards.",
+      "Exact5b hosted backend/web/macOS passed. Hosted Windows passed13/14 groups; full-flow16-case group reached12cases then120s limit without assertionfailure. Split same full-flow file into complementary8/8 selections, each original120s limit, with no skipped/removed assertions. Combined gate verifies new15 groups."
     ],
     "uncertainty": "One final combined local/browser check and exact-head CI remain for PR19; definitive source errors and persisted retry source binding are being verified in the same bounded repair. Private move awaits operator release.",
     "next": "Finish one PR19 reconciliation/check cycle, publish; complete verified inactive cleanup and one canonical Terra folder with operator-controlled runtime restoration. Conclude completed chat lanes."
@@ -556,7 +557,40 @@
 {
   "kind": "check",
   "id": "terra-full-flow-tests",
-  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_full_flow.py", "-q"],
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_full_flow.py",
+    "-k",
+    "native_map_spots or device_setup or production_and_lab or new_native_farm or grower_profile_list or native_conversation_state or spike_flows or test_sensor_changes",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-full-flow-recovery-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_full_flow.py",
+    "-k",
+    "not (native_map_spots or device_setup or production_and_lab or new_native_farm or grower_profile_list or native_conversation_state or spike_flows or test_sensor_changes)",
+    "-q"
+  ],
   "timeout": 120
 }
 ```
@@ -816,7 +850,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-conversation-crops-tests",
     "terra-conversation-context-tests",
     "terra-setup-tests",
-    "terra-weather-tests"
+    "terra-weather-tests",
+    "terra-full-flow-recovery-tests"
   ]
 }
 ```

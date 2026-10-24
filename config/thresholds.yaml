@@ -14,9 +14,10 @@ baseline:
   min_neighbors: 2        # spec
   # physics estimate for places with no station history (map, virtual stations); fitted by
   # `chillwatch fit-physics` (leave-stations-out). 1.0 / null = the spec's IDW + full lapse.
-  # Fitted 2026-10-24 on CIMIS 2018-19..2022-23 (2.289 -> 2.237 F) and checked on the held-out
-  # 2023-24 + 2024-25 seasons: 2.190 -> 2.141 F MAE, chill median 103 -> 101 h (data/models/physics_fit.json).
-  unseen_lapse_shrink: 0.5
+  # Refitted year-round (Sep-Aug seasons) on CIMIS 2018-19..2022-23: 2.366 -> 2.311 F; checked on
+  # the held-out 2023-24 + 2024-25 seasons: 2.384 -> 2.333 F MAE; its calibrated p10-p90 bins held
+  # 79.9% of held-out hours (data/models/physics_fit.json). The Oct-Mar-only fit had chosen 0.5.
+  unseen_lapse_shrink: 0.75
   unseen_dz_scale_ft: 600
 
 # estimate_location (backend/chillwatch/estimate.py): the Terra-facing estimate for a place
@@ -28,8 +29,14 @@ estimate:
   lapse_min_span_ft: 500    # TODO source: from the noise argument above, not fitted
   min_peers: 3              # Terra QC's rule: at least three usable other stations
   # Months (PST) with data and validation behind them; other months return insufficient_data.
-  validated_months: [10, 11, 12, 1, 2, 3]
-  # p10/p90 from the physics' own calibrated bins (fit-physics); off until their coverage is checked
+  # Year-round since April-September data was added. Terra stations held out, estimated from the
+  # other four (bench/terra_compat/intervals.json): MAE 1.78 F Oct-Mar 2024-25, 2.34 F Apr-Aug 2025
+  # (peer median 1.86 / 2.29 F); the Delta site (212) runs 3.3 F warm in summer.
+  validated_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  # p10/p90 from the physics' own calibrated bins (fit-physics). Coverage of the nominal 80%:
+  # 79.9% on held-out 2023-25 at all region stations; 77-93% pooled on Terra's network and the
+  # ASOS sites, but 54-96% at single sites (a site unlike all its peers, e.g. the Delta in
+  # summer, is under-covered). Off by default: whether to show them is Terra's call.
   intervals: false
 
 normalize:

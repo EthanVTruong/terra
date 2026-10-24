@@ -119,9 +119,13 @@ def test_too_few_peers():
     assert {"station_id": 212, "reason": "missing"} in out["excluded"].iloc[0]
 
 
-def test_outside_validated_months():
+def test_outside_validated_months(monkeypatch):
+    from chillwatch import config
+
     hrs = pd.date_range("2026-07-01 09:00", periods=2, freq="h", tz="UTC")
     obs = _obs().assign(timestamp=lambda d: d["timestamp"] + (hrs[0] - HOURS[0]))
+    assert (estimate_location(38.5, -121.8, 60.0, hrs, hrs[-1], obs, _stations())["status"] == "ok").all()
+    monkeypatch.setitem(config.thresholds()["estimate"], "validated_months", [10, 11, 12, 1, 2, 3])
     out = estimate_location(38.5, -121.8, 60.0, hrs, hrs[-1], obs, _stations())
     assert (out["status_reason"] == "outside_validated_months").all()
 

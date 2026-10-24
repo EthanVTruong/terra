@@ -12,7 +12,7 @@ from .writer import Writer, message_input
 
 
 def orchard_profile(name="West Orchard", *, orchard_id=None, lat=38.6, lon=-121.84,
-                    elevation_ft=70.0, mode="current"):
+                    elevation_ft=70.0, mode="current", crops=None, crop=None, variety=None, crop_description=None):
     if not isinstance(name, str) or not name.strip() or len(name) > 80 or any(ord(c) < 32 for c in name):
         raise ValueError("Provide a short orchard name")
     for value, low, high in ((lat, -90, 90), (lon, -180, 180), (elevation_ft, -1500, 20000)):
@@ -23,15 +23,40 @@ def orchard_profile(name="West Orchard", *, orchard_id=None, lat=38.6, lon=-121.
         raise ValueError("Invalid orchard ID")
     if mode not in {"current", "replay", "injected"}:
         raise ValueError("Invalid monitoring mode")
+    explicit_crop = crops is not None or crop is not None
+    if not explicit_crop and (variety is not None or crop_description is not None):
+        raise ValueError("Supply the crop with new variety or description metadata")
+    if crop is not None and crops is not None and crops != [crop]:
+        raise ValueError("Crop and crop list must agree")
+    selected = crops if crops is not None else [crop] if crop is not None else ["almond"]
+    if (not isinstance(selected, list) or not 1 <= len(selected) <= 12
+            or any(not isinstance(item, str) or not item.strip() or len(item) > 80
+                   or any(ord(c) < 32 for c in item) for item in selected)):
+        raise ValueError("Provide a short list of crop names")
+    selected = list(dict.fromkeys(item.strip() for item in selected))
+    if variety is not None and (not isinstance(variety, str) or not variety.strip() or len(variety) > 80
+                                or any(ord(c) < 32 for c in variety)):
+        raise ValueError("Provide a short supplied variety")
+    supplied_variety = variety.strip() if variety is not None else None if explicit_crop else "Nonpareil"
+    if crop_description is not None and (not isinstance(crop_description, str) or not crop_description.strip()
+                                        or len(crop_description) > 240 or any(ord(c) < 32 for c in crop_description)):
+        raise ValueError("Provide a short supplied crop description")
     geometry = {"lat": float(lat), "lon": float(lon), "elevation_ft": float(elevation_ft)}
-    demo_location = geometry == {"lat": 38.6, "lon": -121.84, "elevation_ft": 70.0}
-    return {"id": orchard_id, "name": name.strip(), "crop": "almond", "variety": "Nonpareil",
+    demo_location = not explicit_crop and geometry == {"lat": 38.6, "lon": -121.84, "elevation_ft": 70.0}
+    profile = {"id": orchard_id, "name": name.strip(), "crop": selected[0], "variety": supplied_variety,
             **geometry, "geometry_key": fingerprint(geometry), "mode": mode, "chill_method": METHOD,
             "demo_location": demo_location,
             "location_source": "configured Davis-area demonstration pin" if demo_location else "caller-supplied orchard pin and elevation",
             "target": {"hours": 400.0, "kind": "configured_reference", "agronomic_requirement_verified": False,
                        "source": "https://fps.ucdavis.edu/treedetails.cfm?hidepics=yes&v=1064",
                        "note": "Published cultivar reference; counting-method equivalence has not been verified."}}
+    if explicit_crop:
+        profile["crops"] = selected
+        profile["target"] = {"hours": None, "kind": "not_configured", "agronomic_requirement_verified": False,
+                             "source": None, "note": "No crop-specific reference has been configured."}
+        if crop_description is not None:
+            profile["crop_description"] = crop_description.strip()
+    return profile
 
 
 def _facts(summary):
@@ -228,7 +253,7 @@ class Monitor:
                 events.append(recovered)
                 state["last_pace_recovery"] = recovered["id"]
         target = profile["target"]
-        if summary["complete"] and summary["hours"] is not None and summary["hours"] >= target["hours"] and available:
+        if target["hours"] is not None and summary["complete"] and summary["hours"] is not None and summary["hours"] >= target["hours"] and available:
             key = summary["season_start"] + ":" + METHOD + ":" + str(target["hours"])
             if state.get("last_reference") != key:
                 state["last_reference"] = key
@@ -372,6 +397,9 @@ class Monitor:
             existing = self.store.reserve_question(orchard_id, message_id, question.strip(), now)
             if existing:
                 return existing
+        from ..conversation.routing import QUESTIONS, route
+        from .writer import fallback
+        local_route = route(question, context="chill_total", known_subjects=[profile.get("name"), profile.get("crop"), profile.get("variety"), *profile.get("crops", [])])
         text = question.lower()
         status = self.status(orchard_id, now=now)
         if re.search(r"gdd|gdh|forecast|next week|next two|bloom|spray|irrigat", text):
@@ -396,7 +424,10 @@ class Monitor:
         packet = message_input(profile, [event], now.isoformat(), question={"intent": intent, "text": question.strip()})
         # Idempotency keys are local request identities, not a receipt that a phone received anything.
         question_id = request_id or uuid.uuid4().hex
-        return self.store.publish(orchard_id, packet, self.writer.write(packet), [], now, question_id=question_id)
+        eligible = local_route in QUESTIONS or text.strip() in {"status", "total"}
+        result = self.writer.write(packet) if eligible and intent != "unsupported" else {
+            "text": fallback(packet), "provider": "template", "outcome": "local_response"}
+        return self.store.publish(orchard_id, packet, result, [], now, question_id=question_id)
 
     def set_sms_opt_in(self, orchard_id, enabled):
         profile = self.store.orchard(orchard_id)

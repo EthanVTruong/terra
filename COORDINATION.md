@@ -27,6 +27,51 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-tara-conversation",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly requests a plan and active goal to implement Tara onboarding and actual in-app replies using the existing ChatGPT connection: brief grounded responses, attached thumbs-up acknowledgments, no reply to thanks/other no-op input, and local off-topic handling that consumes no model usage. Diagnose full behavior including relevant farm/chill/alert follow-ups, context, consent, failures and return. Implement, verify and integrate without changing scientific models or external SMS/account consent.",
+  "branch": "codex/tara-conversation",
+  "base": "a14e1483c4681c24cecc1c97da6a4ffb3c67eb57",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra_conversation*.py",
+    "tests/test_farm_chill_ops*.py",
+    "web/**",
+    "docs/terra/**",
+    "scripts/terra-service/**",
+    "spec.md",
+    "tests/test_terra_sms.py"
+  ],
+  "depends_on": [
+    "terra-trial-assigned-sender",
+    "terra-setup-audit"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "7b779c9629dbd919d2a4e45a71182511e8e7573b",
+    "summary": "ONE root-authorized bounded repair cycle completed for3 concrete P2s after the prior combined source passed CI: original per-alert evidence dates/source years and IDs; existing-farm explicit browser consent affordance with selected-farm/alive guard; preservation or local clarification of mixed known/custom crops. Application source/tests are frozen. Primary root owns PR11 merge and operational cutover; follow-on consolidation received exact repaired source.",
+    "evidence": [
+      "141 combined conversation cases passed, including new single/mixed/chained/previous-year referenced-alert regressions and38 crop list/profile/invalid/negation/off-topic cases. Existing structural scope gate, local no-op behavior and strict fact validator remain.",
+      "Actual full App plus guarded HTTP consent proof: text alone makes0 native/model calls; denial stays off, grant applies only to selected farm; second farm and separate unfinished walnut setup preserved; switching farm during permission promise makes0 setup POSTs. Both tracked native-browser regressions and worker build/state tests passed.",
+      "Prior combineda6bae7d with exact sender9a7 passed all4 CI jobs (1120backend plus8subtests,zero skips),23 web cases/build and all9 scoped groups. Main sender mergea14 ancestry was recorded without changinga6 tree before this bounded repair; final checks validate actuala14 base.",
+      "Integration owner verified controlled API placeholder delivery and direct user handset receipt. This chat made no shared runtime/account/private flag/vault/journal writes, no new provider or SMS calls for repairs, and preserved the original staged prototype and frozen scientific code."
+    ],
+    "uncertainty": "Final repaired-head scoped/UI/backend gates and owner-controlled merged runtime verification remain pending. Current authorized SMS settings and all retained records must be preserved; browser alerts work while Terra is open.",
+    "next": "Publish exact repaired head/tree and final combined CI. Root01a16ac9 merges PR11 only after green gates, verifies final source tree and performs retained-data cutover. Follow-on consolidation01a16f05 preserves these fixes. No further features or independent PR/main/runtime/account writes."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "twilio-trial-placeholder",
   "owner": "et",
   "status": "done",
@@ -147,7 +192,7 @@
     "summary": "SMS software handoff ready: fixed-recipient transport, explicit real-detector simulated demo, immutable farm-message delivery, durable attempt/retry/receipt journal and shared guarded server assembly. Ordinary queries remain pure. Integration owner owns combined farm worker/UI merge; no second worker or message queue added.",
     "evidence": [
       "145 transport/envelope tests and58 HTTP/composition tests pass. Full configured scoped check passes on the transport source against actual upstream22d4594; final assembly-hook cases separately pass. Production build and4packaging cases pass; browser disabled-send/setup/focus-return verified; preview8513 healthok and removed raw-send route404.",
-      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPâ†’MockTransportâ†’receiptâ†’pauseâ†’restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
+      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPÃ¢â€ â€™MockTransportÃ¢â€ â€™receiptÃ¢â€ â€™pauseÃ¢â€ â€™restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
       "Actual read-only Twilio account and owned-number APIs both HTTP200: accountactiveTrial, ownedSMSsenders0. Console shows100freeSMS, predefined templates and a trialsharedsender. Requested recipient absent from verified tester list. Recipient entered in Add a verified tester; Verify not pressed; zero OTPs, real SMS or paid actions.",
       "Existing account credentials plus opted-in recipient saved only in ignored private runtime configuration; shared CIMIS environment preserved. Redacted local readiness record available to integration owner. Original Terra staged checkout, Nathan implementation and frozen reference preserved."
     ],
@@ -229,6 +274,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_farm_chill_ops_api.py",
     "tests/test_farm_chill_ops*.py",
     "tests/test_terra_chatgpt*.py",
+    "tests/test_terra_conversation*.py",
     "run_terra.py",
     "tests/test_terra_bootstrap.py"
   ],
@@ -240,6 +286,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-runtime-tests",
     "terra-pipeline-tests",
     "terra-chatgpt-tests",
+    "terra-conversation-tests",
     "terra-setup-tests"
   ]
 }
@@ -415,7 +462,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "evidence": [
       "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
       "Windows and macOS minimal-runtime jobs each passed 64 targeted cases plus 31 harness cases. Production web build and four packaging cases passed. Independent review verified 15 focused regressions and all six source-import hashes plus the frozen reference SHA.",
-      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1â€“41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
+      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1Ã¢â‚¬â€œ41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
       "Two grid and eight synthetic model/scenario cases passed, including all four faults with original assertions, seeds, folds and thresholds. Calendar/fixture coverage needed repair; no numerical algorithm or real-data model refit changed.",
       "GitHub confirmed merged=true at 1d5caf7, containing reviewed head 5ffec23 and prior Nathan main 229106c. The merged tree matched tested source exactly. Original Terra still has the same nine staged entries and numstat counts.",
       "Completion follow-up check passed against actual merged origin/main 1d5caf7 (31 harness + 64 targeted cases). Only .gitignore and this coordination record changed afterward; application source remains identical to tested 5ffec23."
@@ -529,7 +576,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "id": "terra-full-pipeline",
   "owner": "et",
   "status": "active",
-  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataâ†’flagâ†’message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
+  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataÃ¢â€ â€™flagÃ¢â€ â€™message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
   "branch": "codex/terra-end-to-end",
   "base": "37948ed4f76cbbfbef7b4570d8ed06b84c6e8723",
   "domains": [
@@ -941,6 +988,29 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
 }
 ```
 
+```json
+{
+  "kind": "check",
+  "id": "terra-conversation-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_conversation.py",
+    "tests/test_terra_conversation_api.py",
+    "tests/test_terra_conversation_local_facts.py",
+    "tests/test_terra_conversation_recovery.py",
+    "tests/test_terra_conversation_writer_integration.py",
+    "tests/test_terra_conversation_reference_times.py",
+    "tests/test_terra_conversation_crops.py",
+    "-q"
+  ]
+}
+```
 
 ```json
 {
@@ -985,7 +1055,6 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   }
 }
 ```
-
 
 ```json
 {

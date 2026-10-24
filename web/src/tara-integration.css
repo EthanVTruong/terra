@@ -1,0 +1,6 @@
+.tara-compose-row{display:flex;align-items:flex-end;gap:8px;min-width:0}
+.tara-compose-row>.tara-compose-area{flex:1;min-width:0}
+.tara-compose-row>.icon-button{margin-bottom:7px;flex-shrink:0}
+.tara-plan-status{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:8px 4px 0;color:var(--muted);font-size:11px;line-height:17px}
+.tara-plan-status a,.tara-plan-status button{font-size:11px;line-height:17px}
+.tara-view-return{margin-top:9px}

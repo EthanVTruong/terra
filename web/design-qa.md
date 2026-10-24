@@ -169,3 +169,28 @@ message timestamps in JSON, historical mode/date and complete assessment provena
 in JSON after removing the redundant disclosures. The actual disconnected Phone
 Alerts view was checked; configured branches were reviewed without enabling SMS
 or sending a message. Screenshots: `.terra-local/ui-lean-copy/`.
+
+## Fixed verified phone interaction — 2026-10-24
+
+User selected the existing verified phone for the demo. Phone setup now uses an
+explicit action and readiness states. Its binary orchard subscription switch
+appears when useful after configuration. Phone readiness, subscription and message
+receipt are separate. The visible ready label is Ready rather than an implication
+of continuous handset presence. Trial-template mode states that the SMS is a
+notification and the actual field note remains in Terra.
+
+Read-only connection checks resolve to a bounded pending, setup-required, ready,
+paused or unavailable state. The real server's setup-required response was
+verified; ready and a controlled 1.4-second pending response were checked against
+an isolated HTTP fixture running the actual frontend. Preference on/off changes
+were fixture-only. Busy controls preserve focus, and receipt checks remain
+available for an existing event after sending pauses. No real SMS action was
+performed. Build, 14 UI tests, four packaging tests and scope validation pass.
+Design rationale and logistics: `phone-connection-design.md`. Review captures:
+`.terra-local/phone-connection/`; the selected interactive state preview is
+thread-scoped `terra-verified-phone.html`.
+
+Integration note: origin/main advanced during this pass with backend cleanup.
+Scope/record validation passes against the declared task base 78e835d; the UI
+branch preserves that base. The integration owner must reconcile current main
+and run its configured integration checks before merging this branch.

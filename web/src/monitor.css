@@ -43,3 +43,21 @@
 .evidence-title h2,.sms-orchard label span{min-width:0;overflow-wrap:anywhere}
 
 .farm-note{animation:message-arrive 180ms var(--ease) both}.sms-toggle[aria-expanded=true]{background:#eee;color:#555}
+
+.sms-connection-status{display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:17px;color:#737373;margin-left:auto;white-space:nowrap}
+.sms-connection-status[data-state=connected]{color:var(--green)}
+.sms-connected-number{font-size:14px;line-height:20px;font-variant-numeric:tabular-nums;color:#333;margin:16px 0 0}
+.sms-description{margin-top:16px}
+.sms-connect-actions{margin-top:18px}
+.sms-connect-actions .query-submit{width:100%}
+.sms-preference{margin-top:18px}
+.sms-preference>label{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.sms-preference-copy{display:flex;flex-direction:column;gap:2px;font-size:12px;line-height:18px;color:#444}
+.sms-preference-copy small{font-size:11px;line-height:17px;color:#737373;overflow-wrap:anywhere}
+.sms-preference-unavailable{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:#737373}
+.sms-preference input.sms-switch{appearance:none;box-sizing:border-box;position:relative;width:34px;height:20px;min-width:34px;padding:0;margin:0;border:1px solid #ddd;border-radius:12px;background:#ddd;transition:background 150ms ease,border-color 150ms ease}
+.sms-preference input.sms-switch:before{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--canvas);transition:transform 150ms var(--ease)}
+.sms-preference input.sms-switch:checked{background:var(--green);border-color:var(--green)}
+.sms-preference input.sms-switch:checked:before{transform:translateX(14px)}
+.sms-preference input.sms-switch:disabled{opacity:.45}
+@media(pointer:coarse){.sms-preference>label,.sms-panel .sms-actions button,.sms-panel .sms-text-button{min-height:44px}.sms-panel .query-heading .icon-button{min-width:44px;min-height:44px}}

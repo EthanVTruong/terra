@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from ..server import _error, _json_response
-from .service import RequestInProgress
+from .service import RequestAlreadyCompleted, RequestInProgress
 
 
 class StrictBody(BaseModel):
@@ -44,9 +44,18 @@ class SetupInput(StrictBody):
     notifications: NotificationInput | None = None
 
 
+class ReconcileInput(StrictBody):
+    request_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
+    target_request_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
+    confirm_uncertain: bool
+    orchard_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
+
+
 async def _call(operation, **kwargs):
     try:
         return _json_response(await run_in_threadpool(operation, **kwargs))
+    except RequestAlreadyCompleted:
+        return _error("request_already_completed", "This request already has a saved outcome. Refresh to read it.", 409)
     except RequestInProgress:
         return _error("request_in_progress", "This request is pending. Refresh its status; don't send it as a new request.", 409)
     except KeyError:
@@ -76,5 +85,9 @@ def create_router(service, *, mutation_guard=None):
     @router.post("/api/tara/setup", dependencies=protected)
     async def setup(body: SetupInput):
         return await _call(service.action, **body.model_dump())
+
+    @router.post("/api/tara/reconcile", dependencies=protected)
+    async def reconcile(body: ReconcileInput):
+        return await _call(service.reconcile, **body.model_dump())
 
     return router

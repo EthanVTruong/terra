@@ -81,3 +81,33 @@ def test_notification_enable_requires_supported_capability_and_actual_permission
     assert not service.state()["notifications"]["enabled"]
     result = client.post("/api/tara/setup", json={"request_id": "decline", "action": "notifications", "notifications": {"enabled": False, "permission": "denied"}})
     assert result.status_code == 200 and result.json()["state"]["setup"]["stage"] == "complete"
+
+
+def test_reconciliation_requires_guard_confirmation_and_returns_saved_notice(api):
+    from test_terra_conversation_recovery import spawn_owner
+    from test_terra_conversation import setup_farm
+    client, service, writer = api
+    orchard = setup_farm(service)
+    child = spawn_owner(service, orchard)
+    child.communicate(timeout=15)
+    assert child.returncode == 23
+    body = {"request_id": "http-ack", "target_request_id": "crashed-question", "confirm_uncertain": True, "orchard_id": orchard}
+    assert client.post("/api/tara/reconcile", json=body, headers={"x-test-session": "bad"}).status_code == 403
+    assert client.post("/api/tara/reconcile", json={**body, "confirm_uncertain": False}).status_code == 422
+    assert client.get("/api/tara/conversation", params={"orchard_id": orchard}).json()["pending_requests"][0]["reconcilable"]
+    for _ in range(2):
+        response = client.post("/api/tara/reconcile", json=body)
+        assert response.status_code == 200 and response.json()["request_id"] == "http-ack"
+        assert response.json()["event"]["data"]["target_request_id"] == "crashed-question"
+        assert response.json()["state"]["pending_requests"] == []
+    assert not writer.packets
+
+
+def test_completed_request_reconcile_race_has_distinct_safe_error(api):
+    from test_terra_conversation import setup_farm
+    client, service, writer = api
+    orchard = setup_farm(service)
+    service.message(request_id="real-complete", text="Thanks!", orchard_id=orchard)
+    response = client.post("/api/tara/reconcile", json={"request_id": "unused-ack", "target_request_id": "real-complete", "confirm_uncertain": True, "orchard_id": orchard})
+    assert response.status_code == 409 and response.json()["error"]["code"] == "request_already_completed"
+    assert "real-complete" not in response.text and not writer.packets

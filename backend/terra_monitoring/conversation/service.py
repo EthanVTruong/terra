@@ -6,10 +6,15 @@ import re
 
 from ..farm_ops.store import encoded, fingerprint, utc
 from .routing import ACK, THANKS, PROMPT, QUESTIONS, crops_from, route
+from .ownership import active, current_owner, owner_status
 
 
 class RequestInProgress(ValueError):
     """A reserved request cannot safely be inferred again, even after restart."""
+
+
+class RequestAlreadyCompleted(ValueError):
+    """A recovery acknowledgment cannot replace a known real completion."""
 
 
 def empty_setup():
@@ -17,11 +22,19 @@ def empty_setup():
             "location": None, "notification_preference": None}
 
 
+def _owner_payload(value):
+    try:
+        return json.loads(value) if value else None
+    except (ValueError, TypeError):
+        return None
+
+
 class ConversationService:
     def __init__(self, monitor, *, notification_capability="in_app"):
         if notification_capability not in {"in_app", "browser_open"}:
             raise ValueError("Unsupported notification capability")
         self.monitor, self.store = monitor, monitor.store
+        self.owner = current_owner()
         self.notification_capability = notification_capability
         with self.store.connect(write=True) as db:
             db.executescript("""
@@ -32,6 +45,8 @@ class ConversationService:
                   id TEXT PRIMARY KEY, thread TEXT NOT NULL, signature TEXT NOT NULL,
                   created TEXT NOT NULL, status TEXT NOT NULL, payload TEXT);
             """)
+            if "owner" not in {row["name"] for row in db.execute("PRAGMA table_info(tara_requests)")}:
+                db.execute("ALTER TABLE tara_requests ADD COLUMN owner TEXT")
 
     def _saved_setup(self):
         return self.store.get("tara:setup")
@@ -74,8 +89,11 @@ class ConversationService:
             else:
                 monitoring.update(status="pending", reason="Waiting for usable weather data and the monitor.")
         with self.store.connect() as db:
-            pending = [dict(row) for row in db.execute(
-                "SELECT id AS request_id,created AS created_at FROM tara_requests WHERE thread=? AND status='pending' ORDER BY created", (thread,))]
+            pending = []
+            for row in db.execute("SELECT id,created,owner FROM tara_requests WHERE thread=? AND status='pending' ORDER BY created", (thread,)):
+                status_owner = owner_status(_owner_payload(row["owner"]), self.store.path, row["id"])
+                pending.append({"request_id": row["id"], "created_at": row["created"], "owner_status": status_owner,
+                                "reconcilable": status_owner == "exited"})
         return {"schema_version": "terra-conversation-v1", "setup": setup, "orchard_id": selected,
                 "orchards": self.store.orchards(), "turns": self._turns(thread), "monitoring": monitoring,
                 "initial_prompt": PROMPT if not selected and setup["stage"] == "crop" else None,
@@ -101,12 +119,13 @@ class ConversationService:
                 event_ids = note.get("event_ids", [])
         elif orchard_id:
             for turn in reversed(self._turns(orchard_id)):
-                if turn.get("role") == "assistant" and turn.get("data", {}).get("intent") in QUESTIONS:
-                    context = turn["data"]["intent"]
-                    event_ids = turn["data"].get("source_event_ids", [])
+                if turn.get("role") == "assistant":
+                    intent = turn.get("data", {}).get("intent")
+                    context = intent if intent in QUESTIONS else "farm"
+                    event_ids = turn.get("data", {}).get("source_event_ids", []) if intent in QUESTIONS else []
                     break
-            # A selected persisted farm provides the subject, even without earlier chat.
-            context = context or "chill_total"
+            # A farm supplies history's subject, not a fictitious earlier reply.
+            context = context or "farm"
         return {"intent": context, "event_ids": event_ids}
 
     @staticmethod
@@ -128,10 +147,12 @@ class ConversationService:
                 return json.loads(old["payload"]), None
             if db.execute("SELECT 1 FROM tara_requests WHERE thread=? AND status='pending'", (thread,)).fetchone():
                 raise RequestInProgress("A request in this conversation is pending")
-            db.execute("INSERT INTO tara_requests VALUES(?,?,?,?,?,NULL)", (request_id, thread, signature, now, "pending"))
+            db.execute("INSERT INTO tara_requests(id,thread,signature,created,status,payload,owner) VALUES(?,?,?,?,?,NULL,?)",
+                       (request_id, thread, signature, now, "pending", encoded(self.owner) if self.owner else None))
             if user_text is not None:
                 user = self._turn(request_id + ":user", "user", user_text, now, reply_to=reply_to)
                 self._put(db, thread, user)
+        active(self.store.path, request_id, True)
         return None, user
 
     def _existing(self, request_id, body):
@@ -182,6 +203,55 @@ class ConversationService:
             core = {"request_id": request_id, "outcome": "message" if assistant else "reaction" if attached else "none",
                     "user_turn": user, "assistant_turn": assistant, "reaction": attached, "event": event, "orchard_id": None if thread == "onboarding" else thread}
             db.execute("UPDATE tara_requests SET status='complete',payload=? WHERE id=?", (encoded(core), request_id))
+        active(self.store.path, request_id, False)
+        return {**core, "state": self.state(core["orchard_id"])}
+
+    def reconcile(self, *, request_id, target_request_id, confirm_uncertain, orchard_id=None):
+        self._identifier(request_id)
+        self._identifier(target_request_id)
+        if confirm_uncertain is not True or request_id == target_request_id:
+            raise ValueError("Explicitly acknowledge uncertainty with a new acknowledgment identifier")
+        body = {"action": "reconcile", "target_request_id": target_request_id,
+                "confirm_uncertain": True, "orchard_id": orchard_id}
+        old = self._existing(request_id, body)
+        if old:
+            return old
+        now = utc(self.monitor.clock()).isoformat()
+        with self.store.connect(write=True) as db:
+            # Serialize competing acknowledgment IDs and completion races.
+            previous = db.execute("SELECT * FROM tara_requests WHERE id=?", (request_id,)).fetchone()
+            if previous:
+                if previous["signature"] != fingerprint(body):
+                    raise ValueError("A request identifier cannot be reused")
+                core = json.loads(previous["payload"])
+            else:
+                target = db.execute("SELECT * FROM tara_requests WHERE id=?", (target_request_id,)).fetchone()
+                if target is None:
+                    raise KeyError("Request not found")
+                selected = self._selection(orchard_id)
+                thread = target["thread"]
+                if thread != (selected or "onboarding"):
+                    raise ValueError("Choose the conversation containing this request")
+                if target["status"] != "pending":
+                    raise RequestAlreadyCompleted("This request already has a saved outcome")
+                owner = _owner_payload(target["owner"])
+                if owner_status(owner, self.store.path, target_request_id) != "exited":
+                    raise RequestInProgress("The original owner is active or its exit cannot be verified")
+                event = self._turn(request_id + ":event", "event",
+                    "The earlier request may have used ChatGPT allowance. Continuing will not retry it.", now,
+                    kind="notice", data={"type": "usage_uncertain", "target_request_id": target_request_id,
+                                         "acknowledged": True, "not_retried": True})
+                self._put(db, thread, event)
+                scope = None if thread == "onboarding" else thread
+                core = {"request_id": request_id, "outcome": "none", "user_turn": None, "assistant_turn": None,
+                        "reaction": None, "event": event, "orchard_id": scope, "uncertain_usage": True}
+                user = db.execute("SELECT payload FROM tara_turns WHERE id=?", (target_request_id + ":user",)).fetchone()
+                target_core = {**core, "request_id": target_request_id, "user_turn": json.loads(user[0]) if user else None,
+                               "resolution": "acknowledged_unknown"}
+                db.execute("UPDATE tara_requests SET status='acknowledged_unknown',payload=? WHERE id=?",
+                           (encoded(target_core), target_request_id))
+                db.execute("INSERT INTO tara_requests(id,thread,signature,created,status,payload,owner) VALUES(?,?,?,?,?,?,?)",
+                           (request_id, thread, fingerprint(body), now, "complete", encoded(core), encoded(self.owner) if self.owner else None))
         return {**core, "state": self.state(core["orchard_id"])}
 
     def message(self, *, request_id, text, orchard_id=None, reply_to=None):
@@ -232,6 +302,10 @@ class ConversationService:
             return finish()
         if intent == "ack":
             return finish(reaction=True)
+        if intent in {"profile_crops", "profile_location", "profile_notifications", "profile_monitor", "chill_method"}:
+            from .local_facts import profile_answer
+            answer, facts = profile_answer(intent, self.state(selected))
+            return finish(text=answer, data={"intent": intent, "local_facts": facts})
         if not selected and setup["stage"] == "crop":
             if supplied:
                 return finish(text="Where's your farm? Use your location if you're there, or enter coordinates.",
@@ -249,6 +323,18 @@ class ConversationService:
             return finish(text="I don't have enough information to explain the cause yet.")
         if intent == "setup_help":
             return finish(text="Your farm is saved. You can change farms or start another setup.")
+        if intent == "history_gap":
+            from .local_facts import gap_answer
+            from ..farm_ops.service import _event, _facts
+            from ..farm_ops.writer import message_input
+            status = self.monitor.status(selected)
+            answer, facts = gap_answer(status["summary"])
+            event = _event(profile, "history", "answer", "info", self.monitor.clock(), _facts(status["summary"]), request_id)
+            packet = message_input(profile, [event], self.monitor.clock(), question={"intent": "history", "text": "How far behind is the comparable chill pace?"})
+            packet["calculation"] = facts
+            saved = self.store.publish(selected, packet, {"text": answer, "provider": "template", "outcome": "local_facts"},
+                                       context["event_ids"], self.monitor.clock(), question_id="tara-" + fingerprint(request_id)[:64])
+            return finish(text=answer, data={"intent": "history", "local_facts": facts, "message_id": saved["id"], "source_event_ids": context["event_ids"]})
         if intent in {"unsupported", "biological_limit"}:
             return finish(text="Chill comparisons alone can't predict bloom or crop damage." if intent == "biological_limit"
                           else "I can explain monitored chill and weather coverage; forecasts and farm treatments aren't supported.")

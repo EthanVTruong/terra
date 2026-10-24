@@ -21,7 +21,7 @@ historical history pace behind ahead accumulated accumulating accumulation total
 temperature temperatures weather data station stations neighbor neighbors neighboring support supporting coverage reliable reliability usable
 available unavailable incomplete complete missing spotty stale old new reading readings quality alert alerts warning warnings flag flags note notes
 mean means meaning wrong off low high too long season seasonal orchard farm condition conditions status getting looking doing good okay ok back
-still more less not no enough under over slow slowly recent look like says say help hey hi tara count counting current s t jan january feb february mar march apr april
+still more less not no enough under over slow slowly recent look like says say help hey hi tara count counting current gap difference am s t jan january feb february mar march apr april
 may jun june jul july aug august sep september oct october nov november dec december pst pdt utc""".split())
 
 
@@ -77,7 +77,7 @@ def route(text, context=None, known_subjects=()):
             if OFF_TOPIC.search(prefix) or not explicit:
                 continue
             part = prefix
-        if not re.search(r"\b(chill|chilling|station|stations|weather|coverage|data|history|historical|compare|comparison|last year|past years?|how far|behind|why|explain|mean|farm|orchard|crop|trees|plants|bloom|forecast|predict\w*|gdd|gdh|spray|irrigat\w*|alerts?|notifications?|sms|texting)\b", part):
+        if not re.search(r"\b(chill|chilling|station|stations|weather|coverage|data|history|historical|compare|comparison|last year|past years?|how far|behind|why|explain|mean|farm|orchard|crops?|growing|location|monitor(?:ing)?|trees|plants|bloom|forecast|predict\w*|gdd|gdh|spray|irrigat\w*|alerts?|notifications?|sms|texting)\b", part):
             continue
         factual.append(part)
     scoped = " ".join(factual).strip()
@@ -92,6 +92,16 @@ def route(text, context=None, known_subjects=()):
     if re.search(r"\b(?:alerts?|notifications?|sms|texting)\b", scoped) and re.search(r"\b(?:turn|switch|disable|stop|pause|enable)\b", scoped):
         return "notification_status"
     low = scoped
+    local_patterns = {
+        "profile_crops": r"(?:what (?:crops?|varieties) (?:am i|are we) growing|what (?:am i|are we) growing|what (?:crops?|varieties) (?:do i|do we) (?:grow|have)|(?:show|tell) me (?:my|our) crops?|what(?:'s| is| are) (?:my|our|the) (?:crop|crops|variety|varieties))",
+        "profile_location": r"(?:where(?:'s| is) (?:my|our|the) (?:farm|orchard)(?: (?:saved|located))?|what(?:'s| is) (?:my|our|the) (?:saved )?(?:(?:farm|orchard) )?location|what location did i save)",
+        "profile_notifications": r"(?:are (?:my |our |the )?(?:browser )?(?:alerts|notifications) (?:enabled|on|off)|what(?:'s| is) (?:my |the )?(?:browser )?notification (?:status|preference))",
+        "profile_monitor": r"(?:are you monitoring(?: (?:my|our|the) (?:farm|orchard))?|is monitoring (?:active|running|enabled|on)|is (?:the )?monitor (?:active|running|on)|is (?:my|our|the) (?:farm|orchard) (?:ready|being monitored)|are we ready)",
+        "chill_method": r"(?:how (?:do|does) (?:you|terra|tara) (?:count|calculate|measure) chill(?: hours)?|how (?:is|are) chill(?: hours)? (?:counted|calculated)|what (?:counts|is counted) as (?:a )?chill(?: hour)?|what(?:'s| is) (?:the |your )?chill (?:method|calculation)|when does chill (?:counting |accumulation )?start|what are chill hours)",
+    }
+    for intent, pattern in local_patterns.items():
+        if re.fullmatch(pattern, re.sub(r"^(?:thanks|thank you)[, ]+", "", low)):
+            return intent
     if re.search(r"\b(?:my|our) (?:trees?|crop|orchard|farm|plants?)\b.*\b(?:dying|died|damage|sick|wilting|problem)\b", low):
         return "unsupported"
     # Unsupported predictions/actions take precedence over a supported metric
@@ -102,6 +112,8 @@ def route(text, context=None, known_subjects=()):
         return "unsupported"
     if re.search(r"\b(explain|why|what does .*mean|meaning)\b", low) and re.search(r"\b(alert|warning|flag|note)\b", low):
         return _bounded("explain_alert", low, known_subjects)
+    if re.fullmatch(r"(?:(?:thanks|thank you)[, ]*)?(?:how (?:far|much) (?:are we |am i )?behind(?: are we| am i| is .+)?|how many chill hours (?:are we|am i) (?:behind|ahead)|what(?:'s| is) (?:the )?(?:chill )?(?:gap|difference))", low):
+        return _bounded("history_gap", low, known_subjects) if context else "needs_context"
     if re.search(r"\b(how (?:far|much) (?:are we )?behind|behind (?:are we|the usual)|historical|past years?|last year|usual pace|compare|comparison)\b", low):
         domain = re.search(r"\b(chill|chilling|orchard|farm|station|temperature)\b", low)
         elliptical = re.fullmatch(r"(?:(?:thanks|thank you)[, ]*)?(?:how far (?:are we )?behind(?: are we)?|how much (?:are we )?behind|compare (?:past years?|historical (?:chill )?pace)|historical pace|last year|what about last year|are we behind|how (?:does|do) (?:that|we|this) compare)", low)
@@ -119,10 +131,10 @@ def route(text, context=None, known_subjects=()):
         return _bounded("chill_total", low, known_subjects)
     if re.search(r"\b(forecast|gdd|gdh|bloom|spray|irrigat\w*|frost protection|treatment)\b", low):
         return "biological_limit" if re.search(r"\b(?:bloom|crop damage|yield)\b", low) else "unsupported"
-    if re.fullmatch(r"(?:thanks[,! ]*)?why", low) and context and context != "explain_alert":
+    if re.fullmatch(r"(?:thanks[,! ]*)?why", low) and context in QUESTIONS and context != "explain_alert":
         return "cause_limit"
     if re.fullmatch(r"(?:why|why is that|how far|what does (?:that|this) mean|what about (?:that|this)|explain (?:that|this))", low):
-        return ("explain_alert" if context == "explain_alert" else context) or "needs_context"
+        return context if context in QUESTIONS else "needs_context"
     if re.search(r"\b(chill|chilling|station|coverage)\b", low):
         return "clarify"
     if re.search(r"\b(monitoring|monitor|farm|orchard|location|growing|crop)\b", low):

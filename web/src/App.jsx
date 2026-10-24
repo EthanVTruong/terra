@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 const SCHEMA = "terra-location-assessment-v1";
 const ESTIMATE_STATUSES = new Set(["ok", "stale", "insufficient_data"]);
@@ -27,6 +27,8 @@ function Icon({ name, size = 16 }) {
     check: <path d="m5 12 4 4L19 6" />,
     upload: <><path d="M12 16V4m-4 4 4-4 4 4M4 17v4h16v-4" /></>,
     refresh: <><path d="M19 8a8 8 0 1 0 1 7M19 3v6h-6" /></>,
+    location: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z" /><circle cx="12" cy="10" r="2" /></>,
+    close: <path d="m6 6 12 12M18 6 6 18" />,
   };
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{paths[name] || paths.file}</svg>;
 }
@@ -47,6 +49,9 @@ function validateAssessment(value) {
   if (!ESTIMATE_STATUSES.has(estimate.status) || estimate.unit !== "degF" || !finiteOrNull(estimate.temperature) || !Array.isArray(estimate.used_station_ids) || !Array.isArray(estimate.excluded)) {
     throw new Error("The location estimate has an unsupported status, value or peer list.");
   }
+  if (!estimate.used_station_ids.every(Number.isInteger) || estimate.excluded.some((item) => !object(item) || !Number.isInteger(item.station_id) || typeof item.reason !== "string")) {
+    throw new Error("The location estimate has an invalid peer or exclusion entry.");
+  }
   if (estimate.status === "insufficient_data" && estimate.temperature !== null) throw new Error("An unavailable estimate must have a null temperature.");
   if (!COMPARISON_STATUSES.has(comparison.status) || ![comparison.observed_f, comparison.expected_f, comparison.departure_f].every(finiteOrNull)) {
     throw new Error("The target comparison has an unsupported status or value.");
@@ -64,6 +69,10 @@ function validateAssessment(value) {
     throw new Error("A comparison without a local sensor must not contain measured values.");
   }
   if (value.station_findings.some((item) => !object(item) || !Number.isInteger(item.station_id))) throw new Error("Station findings need integer station identifiers.");
+  const live = value.provenance.live_source;
+  if (live !== undefined && (!object(live) || live.provider !== "CIMIS" || !["refreshed", "cached", "cached_after_error"].includes(live.status) || ![live.missing_station_ids, live.failed_station_ids].every((ids) => Array.isArray(ids) && ids.every((id) => Number.isInteger(id) && id > 0)) || !(live.warning === null || typeof live.warning === "string"))) {
+    throw new Error("The current source metadata is invalid. The previous result is retained.");
+  }
   return value;
 }
 
@@ -75,6 +84,41 @@ function validateIndex(value) {
     ids.add(item.id);
   }
   return value.assessments;
+}
+
+function validateContext(value) {
+  if (!object(value) || value.schema_version !== "terra-live-context-v1" || typeof value.configured !== "boolean" || value.source !== "CIMIS" || !Array.isArray(value.station_presets)) throw new Error("Current weather is unavailable. Saved assessments still work.");
+  for (const station of value.station_presets) {
+    if (!object(station) || !Number.isInteger(station.station_id) || station.station_id <= 0 || typeof station.name !== "string" || ![station.lat, station.lon, station.elevation_ft].every(Number.isFinite) || Math.abs(station.lat) > 90 || Math.abs(station.lon) > 180) throw new Error("The station locations could not be loaded. Retry the connection.");
+  }
+  return value;
+}
+
+function queryValues(draft) {
+  const number = (value, label) => {
+    if (typeof value !== "string" || !value.trim() || !Number.isFinite(Number(value))) throw new Error(`Enter a finite number for ${label}.`);
+    return Number(value);
+  };
+  const lat = number(draft.lat, "latitude"), lon = number(draft.lon, "longitude"), elevation_ft = number(draft.elevation, "elevation");
+  if (Math.abs(lat) > 90) throw new Error("Latitude must be between −90 and 90.");
+  if (Math.abs(lon) > 180) throw new Error("Longitude must be between −180 and 180.");
+  return { lat, lon, elevation_ft, ...(draft.preset ? { target_station_id: Number(draft.preset), location_id: `CIMIS-${draft.preset}` } : {}) };
+}
+
+function liveError(body, status) {
+  const code = body?.error?.code;
+  const messages = {
+    source_not_configured: "Current weather isn’t connected yet. Saved assessments remain available.",
+    provider_auth: "Current weather could not be accessed. Please try again later.",
+    provider_unavailable: "The weather source is unavailable. Try again shortly.",
+    provider_invalid_response: "The weather source returned unusable data. The previous result is retained.",
+    no_hourly_observations: "No current hourly readings were available. Try again shortly.",
+    source_geometry_changed: "Station location information changed. Current comparisons need review before another check.",
+    invalid_query: "Check the location values and try again.",
+  };
+  const error = new Error(messages[code] || (status === 422 ? messages.invalid_query : "Current weather could not be checked. Try again."));
+  error.retryable = body?.error?.retryable === true;
+  return error;
 }
 
 function FactRows({ values }) {
@@ -95,17 +139,20 @@ function AssessmentFacts({ packet, onOpenJson }) {
   const hasTarget = comparison.station_id !== null && comparison.station_id !== undefined;
   const unavailable = estimate.status !== "ok";
   const relevantFindings = hasTarget ? packet.station_findings.filter((finding) => finding.station_id !== comparison.station_id) : packet.station_findings;
+  const live = provenance.live_source;
+  const sourceWarning = Boolean(live && (live.status === "cached_after_error" || live.warning || live.missing_station_ids?.length || live.failed_station_ids?.length));
   return <>
     <div className="assessment-time"><time dateTime={query.valid_utc}>{timestamp(query.valid_utc)}</time></div>
-    <div className="data-mode">{words(packet.data_mode || "snapshot assessment")}</div>
+    <div className="data-mode">{packet.data_mode === "current" && live ? `Current query · ${words(live.status)}` : words(packet.data_mode)}</div>
     <div className="location-context"><span>{query.lat.toFixed(4)}, {query.lon.toFixed(4)}</span><span>{query.elevation_ft.toLocaleString()} ft</span></div>
+    {sourceWarning && <div className="availability-status source-warning" role="status"><strong>{live.status === "cached_after_error" ? "Using saved weather after a refresh failure" : "Some station data is unavailable"}</strong><span>{live.status === "cached_after_error" ? "The last successfully retrieved readings are retained. Check their reading time before relying on them." : live.warning || "The assessment uses the source readings that were available."}</span></div>}
     {unavailable && <div className="availability-status" role="status"><strong>{estimate.status === "stale" ? "Estimate is stale" : "Location estimate unavailable"}</strong><span>{words(estimate.status_reason)}</span>{estimate.status === "stale" && <small>The retained value describes the reading time shown above.</small>}</div>}
     <div className="messages">
       {hasTarget && <section className="message-group" aria-label="Measured station comparison">
         <div className="message-meta"><span>{stationName(comparison.station_id)}</span><span>Measured comparison</span></div>
         {comparison.status !== "assessable" && <p className="comparison-notice">{comparison.status === "comparison_only" ? "Comparison only · no calibrated alert policy" : `${words(comparison.status)} · ${words(comparison.reason)}`}</p>}
         <div className="incoming-bubble"><Values observed={comparison.observed_f} expected={comparison.expected_f} difference={comparison.departure_f} typicalLow={comparison.typical_low_f} typicalHigh={comparison.typical_high_f} /></div>
-        <p className="message-caption">{comparison.classification === "suspected_anomaly" ? "Suspected anomaly · check an independent reading." : comparison.classification === "no_alert" ? "No alert triggered by the frozen station policy." : "No sensor-fault conclusion is available."}</p>
+        <p className="message-caption">{comparison.status !== "assessable" ? "No current sensor-fault conclusion is available." : comparison.classification === "suspected_anomaly" ? "Suspected anomaly · check an independent reading." : comparison.classification === "no_alert" ? "No alert triggered by the frozen station policy." : "No sensor-fault conclusion is available."}</p>
       </section>}
       <section className={`message-group${hasTarget ? " secondary-estimate" : ""}`} aria-label="Location temperature estimate">
         <div className="message-meta"><span>{hasTarget ? "Location interpolation" : "At this location"}</span>{!hasTarget && <span>Estimate</span>}</div>
@@ -129,18 +176,18 @@ function AssessmentFacts({ packet, onOpenJson }) {
     </div>
     <div className="details-list">
       <Disclosure title="Details"><FactRows values={[["Reading time", timestamp(query.valid_utc)], ["As of", timestamp(query.as_of_utc)], ["Location estimate", words(estimate.status)], ["Local comparison", words(comparison.status)], ["Peer count", estimate.n_used], ["Geometry", estimate.geometry_source], ["Maximum age", Number.isFinite(query.max_age_hours) ? `${query.max_age_hours} h` : "Not set"]]} /><p className="microcopy">Location interpolation and the frozen station comparison are separate calculations. A typical range describes the station's calibrated historical residual band; it is not a forecast or a guaranteed confidence interval.</p></Disclosure>
-      <Disclosure title="Sources and exclusions"><FactRows values={[["Used stations", estimate.used_station_ids.map(stationName).join(", ") || "None"], ["Interpolation", estimate.method_version], ["QC reference", provenance.qc_reference_id], ["Data snapshot", provenance.data_snapshot_id], ["Publication visibility", words(provenance.publication_visibility)]]} />{estimate.excluded.length > 0 && <><p className="detail-label">Excluded from the estimate</p><ul className="exclusion-list">{estimate.excluded.map((item, index) => <li key={`${item.station_id}:${index}`}><span>{stationName(item.station_id)}</span><span>{words(item.reason)}</span></li>)}</ul></>}{packet.data_health?.length > 0 && <><p className="detail-label">Source availability</p><pre className="detail-json">{JSON.stringify(packet.data_health, null, 2)}</pre></>}{packet.estimator_qc_exclusions?.length > 0 && <><p className="detail-label">Target-held-out peer exclusions</p><pre className="detail-json">{JSON.stringify(packet.estimator_qc_exclusions, null, 2)}</pre></>}</Disclosure>
+      <Disclosure title="Sources and exclusions"><FactRows values={[["Used stations", estimate.used_station_ids.map(stationName).join(", ") || "None"], ["Interpolation", estimate.method_version], ["QC reference", provenance.qc_reference_id], ["Data snapshot", provenance.data_snapshot_id], ["Publication visibility", words(provenance.publication_visibility)]]} />{live && <><p className="detail-label">Current source check</p><FactRows values={[["Provider", live.provider], ["Checked", timestamp(live.checked_at_utc)], ["Retrieved", timestamp(live.retrieved_at_utc)], ["Data through", timestamp(live.data_through_utc)], ["Source state", words(live.status)], ["Cache age", Number.isFinite(live.cache_age_seconds) ? `${Math.round(live.cache_age_seconds)} seconds` : null], ["Missing stations", live.missing_station_ids?.length ? live.missing_station_ids.map(stationName).join(", ") : null], ["Failed stations", live.failed_station_ids?.length ? live.failed_station_ids.map(stationName).join(", ") : null]]} /></>}{estimate.excluded.length > 0 && <><p className="detail-label">Excluded from the estimate</p><ul className="exclusion-list">{estimate.excluded.map((item, index) => <li key={`${item.station_id}:${index}`}><span>{stationName(item.station_id)}</span><span>{words(item.reason)}</span></li>)}</ul></>}{packet.data_health?.length > 0 && <><p className="detail-label">Source availability</p><pre className="detail-json">{JSON.stringify(packet.data_health, null, 2)}</pre></>}{packet.estimator_qc_exclusions?.length > 0 && <><p className="detail-label">Target-held-out peer exclusions</p><pre className="detail-json">{JSON.stringify(packet.estimator_qc_exclusions, null, 2)}</pre></>}</Disclosure>
     </div>
   </>;
 }
 
 function JsonPanel({ packet, mobile, onClose, closeRef, jsonRef }) {
-  const [copyStatus, setCopyStatus] = useState("");
+  const [copyResult, setCopyResult] = useState(null);
   const json = JSON.stringify(packet, null, 2);
-  useEffect(() => setCopyStatus(""), [json]);
+  const copyStatus = copyResult?.json === json ? copyResult.message : "";
   async function copy() {
-    try { await navigator.clipboard.writeText(json); setCopyStatus("Copied"); }
-    catch { setCopyStatus("Copy unavailable. Use Download."); }
+    try { await navigator.clipboard.writeText(json); setCopyResult({json, message: "Copied"}); }
+    catch { setCopyResult({json, message: "Copy unavailable. Use Download."}); }
   }
   function download() {
     const url = URL.createObjectURL(new Blob([json + "\n"], { type: "application/json" }));
@@ -169,16 +216,93 @@ export function App() {
   const [entries, setEntries] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [packet, setPacket] = useState(null);
+  const [resultSource, setResultSource] = useState(null);
   const [error, setError] = useState("");
+  const [retryable, setRetryable] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [pendingKind, setPendingKind] = useState(null);
+  const [notice, setNotice] = useState("");
   const [indexRetry, setIndexRetry] = useState(0);
-  const [packetRetry, setPacketRetry] = useState(0);
-  const [localName, setLocalName] = useState("");
+  const [context, setContext] = useState(null);
+  const [contextError, setContextError] = useState("");
+  const [contextLoading, setContextLoading] = useState(true);
+  const [contextRetry, setContextRetry] = useState(0);
+  const [queryOpen, setQueryOpen] = useState(false);
+  const [draft, setDraft] = useState({ lat: "", lon: "", elevation: "", preset: "" });
+  const [queryError, setQueryError] = useState("");
   const [mobile, setMobile] = useState(() => window.matchMedia("(max-width: 700px)").matches);
   const [mobileJson, setMobileJson] = useState(false);
   const fileInput = useRef(null), closeButton = useRef(null), jsonPre = useRef(null), opener = useRef(null);
-  const userSelection = useRef(false), fileReadVersion = useRef(0), packetRequest = useRef(null);
+  const queryTrigger = useRef(null), queryForm = useRef(null), latitudeInput = useRef(null);
+  const userSelection = useRef(false), draftEdited = useRef(false), lastAttempt = useRef(null);
+  const request = useRef({ version: 0, controller: null });
   const indexUrl = new URL(`${import.meta.env.BASE_URL}assessments/index.json`, window.location.origin).href;
+
+  const begin = useCallback((kind) => {
+    request.current.controller?.abort();
+    const task = { version: request.current.version + 1, controller: new AbortController() };
+    request.current = task;
+    setLoading(true); setPendingKind(kind); setError(""); setNotice(""); setRetryable(true);
+    return task;
+  }, []);
+  const active = useCallback((task) => request.current.version === task.version && !task.controller.signal.aborted, []);
+  const finish = useCallback((task) => {
+    if (active(task)) { setLoading(false); setPendingKind(null); request.current.controller = null; }
+  }, [active]);
+  const fail = useCallback((task, reason) => {
+    if (active(task)) { setError(reason.message); setRetryable(reason.retryable !== false); }
+  }, [active]);
+
+  const loadExample = useCallback(async (entry) => {
+    const task = begin("example");
+    lastAttempt.current = { kind: "example", entry };
+    setSelectedId(entry.id);
+    try {
+      let url;
+      try { url = new URL(entry.path, indexUrl); }
+      catch { throw new Error("The example path is invalid."); }
+      if (url.origin !== window.location.origin || !url.pathname.startsWith(new URL("./", indexUrl).pathname)) throw new Error("The example path is outside the local assessments directory.");
+      const response = await fetch(url, { signal: task.controller.signal });
+      if (!response.ok) throw new Error("This example could not be loaded. Retry or choose another assessment.");
+      const value = validateAssessment(await response.json());
+      if (active(task)) { setPacket(value); setResultSource({ kind: "example", label: entry.title, description: entry.description }); }
+    } catch (reason) { fail(task, reason); }
+    finally { finish(task); }
+  }, [active, begin, fail, finish, indexUrl]);
+
+  const loadQuery = useCallback(async (values) => {
+    const task = begin("query");
+    lastAttempt.current = { kind: "query", values: { ...values } };
+    setSelectedId("");
+    try {
+      const response = await fetch("/api/assess", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values), signal: task.controller.signal });
+      let body;
+      try { body = await response.json(); }
+      catch { throw new Error("The weather service returned an unreadable response. The previous result is retained."); }
+      if (!response.ok) throw liveError(body, response.status);
+      const value = validateAssessment(body);
+      if (value.data_mode !== "current") throw new Error("The weather service did not return a current assessment. The previous result is retained.");
+      if (active(task)) {
+        const returnFocus = queryForm.current?.contains(document.activeElement);
+        setPacket(value); setResultSource({ kind: "query", label: "Current weather query" }); setQueryOpen(false);
+        if (returnFocus) requestAnimationFrame(() => queryTrigger.current?.focus());
+      }
+    } catch (reason) {
+      if (reason instanceof TypeError) reason = new Error("Current weather could not be reached. Retry or use a saved assessment.");
+      fail(task, reason);
+    } finally { finish(task); }
+  }, [active, begin, fail, finish]);
+
+  const loadFile = useCallback(async (file) => {
+    const task = begin("file");
+    lastAttempt.current = { kind: "file", file };
+    try {
+      if (file.size > 10 * 1024 * 1024) throw new Error("Choose an assessment JSON smaller than 10 MB.");
+      const value = validateAssessment(JSON.parse(await file.text()));
+      if (active(task)) { setSelectedId(""); setPacket(value); setResultSource({ kind: "file", label: file.name }); setMobileJson(false); }
+    } catch (reason) { fail(task, reason instanceof SyntaxError ? new Error("This file is not valid JSON. The previous result is retained.") : reason); }
+    finally { finish(task); }
+  }, [active, begin, fail, finish]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 700px)");
@@ -186,6 +310,7 @@ export function App() {
     media.addEventListener("change", change);
     return () => media.removeEventListener("change", change);
   }, []);
+  useEffect(() => () => { request.current.controller?.abort(); request.current.version += 1; }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -197,35 +322,27 @@ export function App() {
       const next = validateIndex(value);
       if (controller.signal.aborted) return;
       setEntries(next);
-      if (!userSelection.current) { setLocalName(""); setSelectedId(next[0].id); }
-    }).catch((reason) => { if (reason.name !== "AbortError" && !userSelection.current) { setError(reason.message); setLoading(false); } });
+      if (!userSelection.current) loadExample(next[0]);
+    }).catch((reason) => {
+      if (!controller.signal.aborted && !userSelection.current) { setError(reason.message); setLoading(false); setPendingKind(null); }
+    });
     return () => controller.abort();
-  }, [indexUrl, indexRetry]);
+  }, [indexUrl, indexRetry, loadExample]);
 
   useEffect(() => {
-    const entry = entries.find((item) => item.id === selectedId);
-    if (!entry) return;
     const controller = new AbortController();
-    packetRequest.current = controller;
-    setLoading(true); setError(""); setPacket(null); setLocalName("");
-    let url;
-    try {
-      url = new URL(entry.path, indexUrl);
-      if (url.origin !== window.location.origin || !url.pathname.startsWith(new URL("./", indexUrl).pathname)) throw new Error("outside assessment directory");
-    } catch {
-      setError("The example path is invalid or outside the local assessments directory."); setLoading(false);
-      return () => controller.abort();
-    }
-    fetch(url, { signal: controller.signal }).then((response) => {
-      if (!response.ok) throw new Error("This example could not be loaded. Retry or choose another assessment.");
+    setContextLoading(true); setContextError("");
+    fetch("/api/context", { signal: controller.signal }).then((response) => {
+      if (!response.ok) throw new Error("Current weather is unavailable. Saved assessments still work.");
       return response.json();
-    }).then((value) => { if (!controller.signal.aborted) setPacket(validateAssessment(value)); })
-      .catch((reason) => { if (reason.name !== "AbortError" && !controller.signal.aborted) setError(reason.message); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    }).then((value) => { if (!controller.signal.aborted) setContext(validateContext(value)); })
+      .catch((reason) => { if (!controller.signal.aborted) { setContext(null); setContextError(reason instanceof SyntaxError || reason instanceof TypeError ? "Current weather is unavailable. Saved assessments still work." : reason.message); } })
+      .finally(() => { if (!controller.signal.aborted) setContextLoading(false); });
     return () => controller.abort();
-  }, [entries, selectedId, indexUrl, packetRetry]);
+  }, [contextRetry]);
 
   useEffect(() => { if (mobileJson) closeButton.current?.focus(); }, [mobileJson]);
+  useEffect(() => { if (queryOpen) latitudeInput.current?.focus(); }, [queryOpen]);
 
   function showJson(event) {
     opener.current = event.currentTarget;
@@ -234,40 +351,77 @@ export function App() {
   }
   function closeJson() { setMobileJson(false); requestAnimationFrame(() => opener.current?.focus()); }
   function retry() {
-    if (entries.some((item) => item.id === selectedId)) setPacketRetry((value) => value + 1);
-    else { userSelection.current = false; fileReadVersion.current += 1; setIndexRetry((value) => value + 1); }
+    userSelection.current = true;
+    const attempt = lastAttempt.current;
+    if (attempt?.kind === "query") loadQuery({ ...attempt.values, refresh: true });
+    else if (attempt?.kind === "example") loadExample(attempt.entry);
+    else if (attempt?.kind === "file") loadFile(attempt.file);
+    else { userSelection.current = false; setIndexRetry((value) => value + 1); }
+  }
+  function cancel() {
+    request.current.controller?.abort(); request.current.version += 1;
+    setLoading(false); setPendingKind(null); setError("");
+    setNotice(packet ? "Request cancelled. The last successful result is retained." : "Request cancelled.");
   }
   function selectExample(event) {
-    userSelection.current = true; fileReadVersion.current += 1;
-    setSelectedId(event.target.value); setMobileJson(false);
+    const entry = entries.find((item) => item.id === event.target.value);
+    if (!entry) return;
+    userSelection.current = true; setMobileJson(false); setQueryOpen(false); loadExample(entry);
   }
-  async function openFile(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  function openFile(event) {
+    const file = event.target.files?.[0]; event.target.value = "";
     if (!file) return;
-    userSelection.current = true;
-    const version = ++fileReadVersion.current;
-    packetRequest.current?.abort();
-    try {
-      if (file.size > 10 * 1024 * 1024) throw new Error("Choose an assessment JSON smaller than 10 MB.");
-      const value = validateAssessment(JSON.parse(await file.text()));
-      if (version !== fileReadVersion.current) return;
-      setSelectedId(""); setLocalName(file.name); setPacket(value); setLoading(false); setError(""); setMobileJson(false);
-    } catch (reason) {
-      if (version === fileReadVersion.current) { setError(reason instanceof SyntaxError ? "This file is not valid JSON. The current assessment is retained." : reason.message); setLoading(false); }
+    userSelection.current = true; setQueryOpen(false); loadFile(file);
+  }
+  function toggleQuery() {
+    if (!queryOpen && !draftEdited.current && packet) {
+      const preset = context?.station_presets.find((station) => station.station_id === packet.query.target_station_id);
+      setDraft({ lat: String(packet.query.lat), lon: String(packet.query.lon), elevation: String(packet.query.elevation_ft), preset: preset ? String(preset.station_id) : "" });
     }
+    setQueryError(""); setQueryOpen((value) => !value);
+  }
+  function closeQuery() { setQueryOpen(false); requestAnimationFrame(() => queryTrigger.current?.focus()); }
+  function editField(field, value) {
+    draftEdited.current = true; setQueryError(""); setDraft((previous) => ({ ...previous, [field]: value, preset: "" }));
+  }
+  function choosePreset(event) {
+    const preset = context?.station_presets.find((station) => String(station.station_id) === event.target.value);
+    draftEdited.current = true; setQueryError("");
+    setDraft((previous) => preset ? { lat: String(preset.lat), lon: String(preset.lon), elevation: String(preset.elevation_ft), preset: String(preset.station_id) } : { ...previous, preset: "" });
+  }
+  function submitQuery(event) {
+    event.preventDefault();
+    try {
+      const values = queryValues(draft);
+      if (!context?.configured) throw new Error("Current weather isn’t connected yet. Saved assessments remain available.");
+      userSelection.current = true; setQueryError(""); loadQuery(values);
+    } catch (reason) { setQueryError(reason.message); }
   }
 
-  const currentEntry = entries.find((item) => item.id === selectedId);
   const showPanel = Boolean(packet) && (!mobile || mobileJson);
+  const querying = loading && pendingKind === "query";
+  const previewNote = resultSource?.kind === "query" ? "Provider query · checked on demand" : resultSource?.kind === "file" ? `Local file · ${resultSource.label}` : resultSource?.description || "Saved assessment · no message delivery";
   return <main className={`app-window${showPanel ? " with-artifacts" : ""}`}>
     <section className="conversation" inert={mobile && mobileJson ? true : undefined} aria-hidden={mobile && mobileJson ? true : undefined}>
-      <header className="thread-header"><div className="identity"><span className="terra-icon"><Icon name="leaf" size={18} /></span><div><h1>Terra</h1><span>Location assessment</span></div></div><span className="preview-badge">JSON preview</span></header>
-      <div className="message-scroll">
-        {error && <div className="load-error" role="alert"><p>{error}</p><button onClick={retry}><Icon name="refresh" size={14} />Retry examples</button></div>}
-        {loading ? <div className="empty-state" role="status"><Icon name="leaf" size={24} /><p>Opening assessment…</p></div> : packet ? <AssessmentFacts packet={packet} onOpenJson={showJson} /> : <div className="empty-state"><Icon name="file" size={24} /><h2>Open an assessment</h2><p>Choose an example or a local assessment JSON.</p></div>}
+      <header className="thread-header"><div className="identity"><span className="terra-icon"><Icon name="leaf" size={18} /></span><div><h1>Terra</h1><span>Location assessment</span></div></div><span className="preview-badge">Local queries</span></header>
+      <div className="message-scroll" aria-busy={loading}>
+        {error && <div className="load-error" role="alert"><p>{error}</p>{retryable && <button onClick={retry}><Icon name="refresh" size={14} />{lastAttempt.current?.kind === "query" ? "Retry query" : "Retry"}</button>}</div>}
+        {loading && packet && <div className="request-status" role="status"><span>{querying ? "Checking location…" : "Opening assessment…"}<small>Previous result shown below.</small></span>{!queryOpen && <button onClick={cancel}>Cancel</button>}</div>}
+        {notice && <p className="request-notice" role="status">{notice}</p>}
+        {packet ? <AssessmentFacts packet={packet} onOpenJson={showJson} /> : loading ? <div className="empty-state" role="status"><Icon name="leaf" size={24} /><p>{querying ? "Checking current station data…" : "Opening assessment…"}</p>{pendingKind && !queryOpen && <button className="cancel-empty" onClick={cancel}>Cancel</button>}</div> : <div className="empty-state"><Icon name="location" size={24} /><h2>Check a location</h2><p>Query current weather or open a saved assessment.</p></div>}
       </div>
-      <footer className="assessment-controls"><label htmlFor="assessment-example">Assessment</label><div className="controls-row"><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{localName || "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()} title="Open a local assessment JSON"><Icon name="upload" size={15} /><span>Open JSON</span></button><input ref={fileInput} type="file" accept=".json,application/json" onChange={openFile} className="sr-only" tabIndex={-1} aria-label="Open local assessment JSON" /></div><p className="preview-note">{localName ? `Local file · ${localName}` : currentEntry?.description || "Saved assessment · no live query or message delivery"}</p></footer>
+      <footer className="assessment-controls">
+        {queryOpen && <form ref={queryForm} id="location-query" className="query-panel" noValidate onSubmit={submitQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeQuery(); } }} aria-label="Query location">
+          <div className="query-heading"><strong>Query location</strong><button type="button" className="icon-button" onClick={closeQuery} aria-label="Close query form"><Icon name="close" /></button></div>
+          <label className="query-preset">Location<select value={draft.preset} onChange={choosePreset}><option value="">Custom coordinate · no local sensor</option>{context?.station_presets.map((station) => <option key={station.station_id} value={station.station_id}>{station.name} · measured station</option>)}</select></label>
+          <div className="coordinate-fields"><label>Latitude<input ref={latitudeInput} type="number" step="any" min="-90" max="90" inputMode="decimal" value={draft.lat} onChange={(event) => editField("lat", event.target.value)} placeholder="38.6000" required /></label><label>Longitude<input type="number" step="any" min="-180" max="180" inputMode="decimal" value={draft.lon} onChange={(event) => editField("lon", event.target.value)} placeholder="−121.8400" required /></label><label>Elevation · ft<input type="number" step="any" inputMode="decimal" value={draft.elevation} onChange={(event) => editField("elevation", event.target.value)} placeholder="70" required /></label></div>
+          {queryError && <p className="query-error" role="alert">{queryError}</p>}
+          {contextLoading ? <p className="query-connection" role="status">Checking weather connection…</p> : contextError || !context?.configured ? <div className="query-connection"><p>{contextError || "Current weather isn’t connected yet. Saved assessments remain available."}</p><button type="button" onClick={() => setContextRetry((value) => value + 1)}>Retry connection</button></div> : <p className="query-connection">Checks CIMIS readings · estimates may be unavailable or stale.</p>}
+          <div className="query-actions">{querying && <button type="button" className="query-cancel" onClick={cancel}>Cancel</button>}<button className="query-submit" type="submit" disabled={querying || contextLoading || !context?.configured}>{querying ? "Checking…" : "Check location"}<Icon name="location" size={14} /></button></div>
+        </form>}
+        <button ref={queryTrigger} className="query-toggle" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query"><Icon name="location" size={15} /><span>Query location</span><Icon name="chevron" size={12} /></button>
+        <label htmlFor="assessment-example">Saved assessments</label><div className="controls-row"><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()} title="Open a local assessment JSON"><Icon name="upload" size={15} /><span>Open JSON</span></button><input ref={fileInput} type="file" accept=".json,application/json" onChange={openFile} className="sr-only" tabIndex={-1} aria-label="Open local assessment JSON" /></div><p className="preview-note">{previewNote}</p>
+      </footer>
     </section>
     {showPanel && <JsonPanel packet={packet} mobile={mobile} onClose={closeJson} closeRef={closeButton} jsonRef={jsonPre} />}
   </main>;

@@ -37,6 +37,10 @@ class RequestAlreadyCompleted(ValueError):
     """A recovery acknowledgment cannot replace a known real completion."""
 
 
+class SetupChanged(ValueError):
+    """A late device result cannot overwrite a restarted or changed draft."""
+
+
 def empty_setup():
     return {"stage": "crop", "crops": [], "variety": None, "orchard_id": None,
             "location": None, "notification_preference": None}
@@ -50,12 +54,14 @@ def _owner_payload(value):
 
 
 class ConversationService:
-    def __init__(self, monitor, *, notification_capability="in_app"):
+    def __init__(self, monitor, *, notification_capability="in_app", location_resolver=None):
         if notification_capability not in {"in_app", "browser_open"}:
             raise ValueError("Unsupported notification capability")
         self.monitor, self.store = monitor, monitor.store
         self.owner = current_owner()
         self.notification_capability = notification_capability
+        from .location import GroundElevationResolver
+        self.location_resolver = location_resolver or GroundElevationResolver()
         with self.store.connect(write=True) as db:
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS tara_turns(
@@ -70,6 +76,13 @@ class ConversationService:
 
     def _saved_setup(self):
         return self.store.get("tara:setup")
+
+    def _device_setup_snapshot(self):
+        with self.store.connect() as db:
+            db.execute("BEGIN")
+            setup = self.store.state(db, "tara:setup") or empty_setup()
+            cursor = db.execute("SELECT COALESCE(MAX(rowid),0) FROM tara_requests WHERE thread='onboarding'").fetchone()[0]
+        return setup, (fingerprint(setup), cursor)
 
     def _selection(self, orchard_id=None):
         saved = self._saved_setup()
@@ -193,7 +206,7 @@ class ConversationService:
         if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", value):
             raise ValueError("Provide a stable request identifier")
 
-    def _reserve(self, request_id, thread, body, user_text=None, reply_to=None):
+    def _reserve(self, request_id, thread, body, user_text=None, reply_to=None, *, expected_setup=None):
         self._identifier(request_id)
         signature, now = fingerprint(body), utc(self.monitor.clock()).isoformat()
         user = None
@@ -205,6 +218,11 @@ class ConversationService:
                 if old["status"] == "pending":
                     raise RequestInProgress("This request is pending; refresh its status before trying another request")
                 return json.loads(old["payload"]), None
+            if expected_setup is not None:
+                current = self.store.state(db, "tara:setup") or empty_setup()
+                cursor = db.execute("SELECT COALESCE(MAX(rowid),0) FROM tara_requests WHERE thread='onboarding'").fetchone()[0]
+                if (fingerprint(current), cursor) != expected_setup:
+                    raise SetupChanged("The setup changed during location lookup")
             if db.execute("SELECT 1 FROM tara_requests WHERE thread=? AND status='pending'", (thread,)).fetchone():
                 raise RequestInProgress("A request in this conversation is pending")
             db.execute("INSERT INTO tara_requests(id,thread,signature,created,status,payload,owner) VALUES(?,?,?,?,?,NULL,?)",
@@ -380,13 +398,13 @@ class ConversationService:
             return finish(text=answer, data={"intent": intent, "local_facts": facts})
         if not selected and setup["stage"] == "crop":
             if supplied:
-                return finish(text="Where's your farm? Use your location if you're there, or enter coordinates.",
+                return finish(text="Where are you growing? Share your location.",
                               setup={**setup, **supplied, "stage": "location"}, data={"action": "location_choice"})
             if intent == "off_topic":
                 return finish(reaction=True)
             return finish(text=PROMPT)
         if not selected:
-            return finish(text="Confirm your farm location to start monitoring.", data={"action": "location_choice"})
+            return finish(text="Share your location to start monitoring.", data={"action": "location_choice"})
         if intent in _FACT_CONTEXTS:
             answer, facts = weather_reply
             return finish(text=answer, data={"intent": intent, "local_facts": facts})
@@ -458,13 +476,31 @@ class ConversationService:
                       "source_event_ids": source_event_ids if intent == "explain_alert" else [],
                       "generation_outcome": answer.get("generation_outcome"), "generation": answer.get("generation")})
 
-    def action(self, *, request_id, action, location=None, notifications=None, orchard_id=None):
+    def action(self, *, request_id, action, location=None, notifications=None, orchard_id=None, device_location=None):
         body = {"action": action, "location": location, "notifications": notifications, "orchard_id": orchard_id}
+        if action == "device_location":
+            from .location import device_coordinates
+            body["device_location"] = device_coordinates(device_location)
         existing = self._existing(request_id, body)
         if existing:
             return existing
-        if action not in {"restart", "location", "notifications"}:
+        if action not in {"restart", "location", "notifications", "device_location"}:
             raise ValueError("Unsupported setup action")
+        expected_setup, device_profile = None, None
+        if action == "device_location":
+            if location is not None or notifications is not None or orchard_id is not None:
+                raise ValueError("Device setup accepts only the actual device location")
+            setup, expected_setup = self._device_setup_snapshot()
+            if setup["stage"] != "location":
+                raise ValueError("Supply your crops before sharing a location")
+            resolved = self.location_resolver.resolve(body["device_location"], now=self.monitor.clock())
+            location = {**resolved, "name": "Shared location", "source": "device", "confirmed": True}
+            from ..farm_ops.service import orchard_profile
+            device_profile = orchard_profile("Shared location", orchard_id="farm-" + fingerprint(request_id)[:20],
+                lat=resolved["lat"], lon=resolved["lon"], elevation_ft=resolved["elevation_ft"], crops=setup["crops"],
+                variety=setup.get("variety"), crop_description=setup.get("crop_description"))
+            device_profile.update(location_source="device geolocation; ground elevation from USGS EPQS",
+                                  location_accuracy_m=resolved["accuracy_m"], elevation_source=resolved["elevation_source"])
         if action == "location":
             if not isinstance(location, dict) or location.get("confirmed") is not True:
                 raise ValueError("Confirm the farm location before saving it")
@@ -481,27 +517,27 @@ class ConversationService:
                 raise ValueError("Provide an explicit notification choice")
             if notifications["enabled"] and (notifications["permission"] != "granted" or self.notification_capability != "browser_open"):
                 raise ValueError("Browser permission and supported open-browser delivery are required")
-        setup = self._saved_setup() or empty_setup()
+        setup = setup if action == "device_location" else self._saved_setup() or empty_setup()
         saved_setup = setup
         if action == "notifications" and orchard_id:
             self.store.orchard(orchard_id)
             setup = self.state(orchard_id)["setup"]
-        if action == "location" and setup["stage"] != "location":
+        if action in {"location", "device_location"} and setup["stage"] != "location":
             raise ValueError("Supply your crops before confirming a location")
         if action == "notifications" and not setup.get("orchard_id"):
             raise ValueError("Confirm your farm before choosing notifications")
-        thread = "onboarding" if action in {"restart", "location"} else setup["orchard_id"]
-        previous, _ = self._reserve(request_id, thread, body)
+        thread = "onboarding" if action in {"restart", "location", "device_location"} else setup["orchard_id"]
+        previous, _ = self._reserve(request_id, thread, body, expected_setup=expected_setup)
         if previous:
             return {**previous, "state": self.state(previous["orchard_id"])}
         if action == "restart":
             return self._finish(request_id, thread, None, setup=empty_setup())
         now = utc(self.monitor.clock()).isoformat()
-        if action == "location":
-            p = self.monitor.create_orchard(location.get("name", "My farm"), orchard_id="farm-" + fingerprint(request_id)[:20],
+        if action in {"location", "device_location"}:
+            p = self.store.save_orchard(device_profile, now=self.monitor.clock()) if device_profile else self.monitor.create_orchard(location.get("name", "My farm"), orchard_id="farm-" + fingerprint(request_id)[:20],
                 lat=location["lat"], lon=location["lon"], elevation_ft=location["elevation_ft"], crops=setup["crops"], variety=setup.get("variety"),
                 crop_description=setup.get("crop_description"))
-            event = self._turn(request_id + ":event", "event", p["name"], now, kind="location", data={**location, "orchard_id": p["id"], "saved": True})
+            event = self._turn(request_id + ":event", "event", "Location shared" if device_profile else p["name"], now, kind="location", data={**location, "orchard_id": p["id"], "saved": True})
             return self._finish(request_id, thread, None, text="Want a heads-up when something needs attention? Browser notifications work while Terra is open.",
                 event=event, setup={**setup, "orchard_id": p["id"], "location": location, "stage": "notifications"}, migrate=p["id"], data={"action": "notification_choice"})
         event = self._turn(request_id + ":event", "event", "Browser notifications enabled" if notifications["enabled"] else "In-chat updates only", now,

@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from ..server import _error, _json_response
-from .service import RequestAlreadyCompleted, RequestInProgress
+from .service import RequestAlreadyCompleted, RequestInProgress, SetupChanged
+from .location import LocationLookupError
 
 
 class StrictBody(BaseModel):
@@ -36,12 +37,19 @@ class NotificationInput(StrictBody):
     permission: Literal["granted", "denied", "default", "unsupported"]
 
 
+class DeviceLocationInput(StrictBody):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    accuracy_m: float | None = Field(default=None, ge=0)
+
+
 class SetupInput(StrictBody):
     request_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
-    action: Literal["restart", "location", "notifications"]
+    action: Literal["restart", "location", "notifications", "device_location"]
     orchard_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
     location: LocationInput | None = None
     notifications: NotificationInput | None = None
+    device_location: DeviceLocationInput | None = None
 
 
 class ReconcileInput(StrictBody):
@@ -56,6 +64,10 @@ async def _call(operation, **kwargs):
         return _json_response(await run_in_threadpool(operation, **kwargs))
     except RequestAlreadyCompleted:
         return _error("request_already_completed", "This request already has a saved outcome. Refresh to read it.", 409)
+    except SetupChanged:
+        return _error("setup_changed", "Setup changed while location was loading. Refresh to continue.", 409)
+    except LocationLookupError:
+        return _error("location_lookup_failed", "Couldn’t get your location details. Try again.", 503, retryable=True)
     except RequestInProgress:
         return _error("request_in_progress", "This request is pending. Refresh its status; don't send it as a new request.", 409)
     except KeyError:

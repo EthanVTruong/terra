@@ -3,6 +3,47 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-device-location",
+  "owner": "et",
+  "status": "active",
+  "intent": "Direct user requests a button-only device-location onboarding: native browser permission then automatic necessary location details and station selection. Remove coordinates, elevation, farm-name and confirmation fields from grower onboarding. Preserve manual API compatibility, scientific selection logic, separate notification/ChatGPT consent and all private runtime state.",
+  "branch": "codex/tara-device-location",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/conversation/**",
+    "tests/test_terra_conversation*.py",
+    "web/src/TaraConversation.jsx",
+    "web/src/tara-state.js",
+    "web/src/tara-conversation.css",
+    "web/tests/tara*.mjs",
+    "docs/terra/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "90728f0a7743f39f84080931d610d7153017011a",
+    "summary": "Button-only location source is ready: one fresh native fix, server-verified ground elevation, automatic save and existing station selection. No coordinate, elevation, name, preset or confirmation form. Neutral Shared location profile label; explicit native approval supplies location consent. Existing human setup and raw messages remain unchanged; exact legacy app guidance is projected to current wording only.",
+    "evidence": [
+      "30 new device API/resolver cases and all393 conversation cases pass on8f baseline.50 pure UI cases and11 explicit browser cases passed before the narrow legacy-prompt follow-up; its helper/resumed-draft proof also passed. Final assembled UI/native checks run after integration.",
+      "Actual guarded local API plus full App, simulated public Davis GPS and REAL official USGS EPQS lookup passed:76.8804387ft, source provenance, one native call, automatic notification-step advance, zero manual fields/extra confirmation, quiet reopen and320px without errors. No OS permission dialog was clicked.",
+      "Independent source audit cleared factory/SMS-off parity, real ground-value validation, no target station substitution, completed replay before lookup and atomic setup fingerprint/request-cursor guard against stale/ABA callbacks. Lookup failure saves no profile/reservation; exact-ID approved-position retry survives reload.",
+      "No startup/GET migration, nonce/version write, account/private runtime/SMS/ChatGPT change or inference was introduced. Manual API signatures remain compatible. Existing automatic six-peer regional/QC/elevation selection and monitoring readiness remain authoritative."
+    ],
+    "uncertainty": "Final canonical base reconciliation, configured checks/CI and owner-controlled live rollout remain. Native permission is the actual user action; tests simulate it. Ground-provider or native failure provides retry without forms.",
+    "next": "Hand exact ready source to sole consolidation owner, reconcile once with final quiet PR16/main while preserving its capsule/header/composer/name changes, then final combined checks. Exclusive runtime owner performs retained-state update. No independent main/runtime/account/SMS writes."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-product-consolidation",
   "owner": "et",
   "status": "active",
@@ -1150,6 +1191,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation.py",
     "tests/test_terra_conversation_api.py",
     "tests/test_terra_conversation_crops.py",
+    "tests/test_terra_conversation_device_location.py",
     "tests/test_terra_conversation_local_facts.py",
     "tests/test_terra_conversation_natural_language.py",
     "tests/test_terra_conversation_readiness.py",

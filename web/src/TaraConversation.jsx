@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { clockTime, dayLabel, localDay, publicationTime, timestamp } from "./presentation";
-import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
+import { createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreTaraOperation, taraDisplayText, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 import { showTaraNotification } from "./notification-return";
 
@@ -94,21 +94,23 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
         writeTaraStorage("terra.tara.v1.location", null); writeTaraStorage(`${storageScope("")}.draft`, "");
         callbacks.current.onSelectOrchard?.("");
       }
-      if (next.body.action === "location" && value.state.orchard_id) {
+      if (["location", "device_location"].includes(next.body.action) && value.state.orchard_id) {
         const profile = value.state.orchards.find((item) => item.id === value.state.orchard_id);
         if (profile) callbacks.current.onFarmCreated?.(profile);
       }
       return value;
     } catch (reason) {
       const completedRace = reason.alreadyCompleted && next.kind === "reconcile";
+      const changedSetup = reason.setupChanged && next.kind === "setup" && next.body.action === "device_location";
       const original = completedRace && next.originalOperation?.kind !== "reconcile" ? restoreTaraOperation(next.originalOperation) : null;
       let retained = reason.rejected ? null : { ...next, status: reason.inProgress ? "in_progress" : "unconfirmed" };
       if (completedRace) retained = original && original.body.request_id === next.body.target_request_id ? { ...original, status: "result_available" } : null;
+      if (changedSetup) retained = null;
       writeTaraStorage(`${operationScope}.pending`, retained);
       if (currentScope.current === operationScope) {
         mutation.current = retained; setPending(retained);
         setError(reason.name === "AbortError" ? "No confirmation has arrived yet. Refresh the status or retry this same request." : reason instanceof TypeError ? "The local service could not be reached. Your draft is retained; retry the same request." : reason.message);
-        if (completedRace) await latestRefresh.current?.();
+        if (completedRace || changedSetup) await latestRefresh.current?.();
       }
     } finally { clearTimeout(timer); }
   }, []);
@@ -135,65 +137,47 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
     return run(previous);
   }, [run]);
   const locked = loading || Boolean(pending) || Boolean(state?.pending_requests.length);
-  return { state, loading, stale, error, draft, setDraft, pending, locked, send, setup, reconcile, retry, refresh };
+  return { state, selectionScope: scope, loading, stale, error, draft, setDraft, pending, locked, send, setup, reconcile, retry, refresh };
 }
 
-function FarmLocation({ conversation, stationPresets }) {
-  const [location, setLocation] = useState(() => restoreFarmLocation(readTaraStorage("terra.tara.v1.location")));
-  const [manual, setManual] = useState(Boolean(location.lat || location.lon)), [locating, setLocating] = useState(false), [error, setError] = useState("");
-  const field = useRef(null), alive = useRef(true), locatingRef = useRef(false);
+function FarmLocation({ conversation }) {
+  const [phase, setPhase] = useState("idle"), [error, setError] = useState("");
+  const alive = useRef(true), locating = useRef(false), latestConversation = useRef(conversation);
+  latestConversation.current = conversation;
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  const edit = (key, value) => setLocation((previous) => {
-    const next = { ...previous, [key]: value, source: ["lat", "lon", "elevation"].includes(key) ? "manual" : previous.source, confirmed: key === "confirmed" ? value : false };
-    writeTaraStorage("terra.tara.v1.location", next); return next;
-  });
   function useDevice() {
-    if (locatingRef.current || conversation.locked) return;
-    setManual(true); setError("");
-    if (!navigator.geolocation) { setError("This browser can’t share location. Enter the farm coordinates below."); return; }
-    locatingRef.current = true; setLocating(true);
-    navigator.geolocation.getCurrentPosition((position) => {
-      locatingRef.current = false;
-      if (!alive.current) return;
-      setLocating(false);
-      setLocation((previous) => {
-        const next = { ...previous, lat: String(position.coords.latitude), lon: String(position.coords.longitude), elevation: Number.isFinite(position.coords.altitude) ? String(Math.round(position.coords.altitude * 3.28084)) : "", source: "device", confirmed: false };
-        writeTaraStorage("terra.tara.v1.location", next); return next;
-      });
-      setError("Check that this is your farm. Confirm its elevation below."); requestAnimationFrame(() => field.current?.focus());
-    }, (reason) => {
-      locatingRef.current = false;
-      if (!alive.current) return;
-      setLocating(false); setError(reason.code === 1 ? "Location wasn’t shared. Enter the farm coordinates below." : reason.code === 3 ? "Location took too long. Enter the farm coordinates below." : "Your location couldn’t be found. Enter the farm coordinates below."); requestAnimationFrame(() => field.current?.focus());
-    }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
-  }
-  function choosePreset(event) {
-    const preset = stationPresets.find((item) => String(item.station_id) === event.target.value);
-    if (!preset) return;
-    setManual(true); setError("This is a station reference. Confirm or adjust it for your farm.");
-    setLocation((previous) => {
-      const next = { ...previous, lat: String(preset.lat), lon: String(preset.lon), elevation: String(preset.elevation_ft), source: "preset", confirmed: false };
-      writeTaraStorage("terra.tara.v1.location", next); return next;
-    });
-    requestAnimationFrame(() => field.current?.focus());
-  }
-  async function confirm(event) {
-    event.preventDefault(); setError("");
+    if (locating.current || conversation.locked) return;
+    const setupKey = taraLocationSetupKey(conversation.state);
+    if (!setupKey) return;
+    const selectionScope = conversation.selectionScope;
+    setError("");
+    let handled = false;
+    const current = () => alive.current && latestConversation.current.selectionScope === selectionScope && taraLocationSetupKey(latestConversation.current.state) === setupKey;
+    const finish = () => { locating.current = false; if (alive.current) setPhase("idle"); };
     try {
-      const value = validateFarmLocation(location);
-      const result = await conversation.setup("location", { location: value });
-      if (result) writeTaraStorage("terra.tara.v1.location", null);
-    } catch (reason) { setError(reason.message); }
+      if (!navigator.geolocation) { setError("This browser can’t share location. Use a browser with location access."); return; }
+      locating.current = true; setPhase("locating");
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        if (handled) return;
+        handled = true;
+        if (!current()) { finish(); return; }
+        try {
+          const deviceLocation = deviceLocationFromPosition(position);
+          if (latestConversation.current.locked) { setError("Finish the current request, then share your location again."); return; }
+          setPhase("saving");
+          await latestConversation.current.setup("device_location", { device_location: deviceLocation });
+        } catch (reason) { if (alive.current) setError(reason.message); }
+        finally { finish(); }
+      }, (reason) => {
+        if (handled) return;
+        handled = true;
+        if (current()) setError(reason.code === 1 ? "Location wasn’t shared. Allow location in your browser settings, then try again." : reason.code === 3 ? "Location took too long. Try again." : "Your location couldn’t be found. Try again.");
+        finish();
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+    } catch { handled = true; finish(); if (alive.current) setError("Location access is unavailable. Check your browser settings, then try again."); }
   }
   return <div className="tara-setup-controls">
-    <div className="tara-actions"><button type="button" className="query-cancel" onClick={useDevice} disabled={conversation.locked || locating}>{locating ? "Finding location…" : "Use my location"}<Icon name="location" size={14} /></button><button type="button" className="tara-text-button" onClick={() => { setManual(true); requestAnimationFrame(() => field.current?.focus()); }} disabled={conversation.locked}>Enter coordinates</button></div>
-    {stationPresets.length > 0 ? <label className="tara-field tara-reference">Known station reference<select aria-label="Known station reference" defaultValue="" onChange={choosePreset} disabled={conversation.locked || locating}><option value="" disabled>Choose a reference location</option>{stationPresets.map((station) => <option key={station.station_id} value={station.station_id}>{station.name} · station {station.station_id}</option>)}</select></label> : null}
-    {manual ? <form className="tara-location-form" onSubmit={confirm} noValidate>
-      <label className="tara-field">Farm name<input ref={field} value={location.name} maxLength={80} onChange={(event) => edit("name", event.target.value)} autoComplete="off" disabled={conversation.locked || locating} required /></label>
-      <div className="tara-coordinate-fields"><label className="tara-field">Latitude<input type="number" step="any" inputMode="decimal" min="-90" max="90" value={location.lat} onChange={(event) => edit("lat", event.target.value)} disabled={conversation.locked || locating} required /></label><label className="tara-field">Longitude<input type="number" step="any" inputMode="decimal" min="-180" max="180" value={location.lon} onChange={(event) => edit("lon", event.target.value)} disabled={conversation.locked || locating} required /></label><label className="tara-field">Elevation · ft<input type="number" step="any" inputMode="decimal" min="-1500" max="20000" value={location.elevation} onChange={(event) => edit("elevation", event.target.value)} disabled={conversation.locked || locating} required /></label></div>
-      <label className="tara-confirm"><input type="checkbox" checked={location.confirmed} onChange={(event) => edit("confirmed", event.target.checked)} disabled={conversation.locked || locating} /><span>I confirm this location and elevation for my farm.</span></label>
-      <button className="query-submit" type="submit" disabled={conversation.locked || locating}>Confirm farm<Icon name="check" size={14} /></button>
-    </form> : null}
+    <button type="button" className="query-submit" onClick={useDevice} disabled={conversation.locked || phase !== "idle"} aria-busy={phase !== "idle"}>{phase === "locating" ? "Finding location…" : phase === "saving" ? "Saving location…" : "Use my location"}<Icon name="location" size={14} /></button>
     {error ? <p className="query-error" role="status">{error}</p> : null}
   </div>;
 }
@@ -246,7 +230,7 @@ export function useTaraBrowserAlerts(conversation, farm, { enabled = true, onOpe
   return error;
 }
 
-export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS, farm, onSelectOrchard, onDetails, onOpenConnection, showFarmSelector = true, fieldNotes = EMPTY_PRESETS, renderFieldNote, alertsManaged = false, notificationError = "" }) {
+export function TaraConversation({ conversation, farm, onSelectOrchard, onDetails, onOpenConnection, showFarmSelector = true, fieldNotes = EMPTY_PRESETS, renderFieldNote, alertsManaged = false, notificationError = "" }) {
   const { state, loading, locked } = conversation;
   const internalNotificationError = useTaraBrowserAlerts(conversation, farm, { enabled: !alertsManaged, onOpen: (target) => { onSelectOrchard?.(target.orchard_id); onDetails?.(null, target); } });
   const alertsError = notificationError || internalNotificationError;
@@ -269,14 +253,14 @@ export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS,
         return <React.Fragment key={entry.key}>
           {showDay && <div className="day-separator"><time dateTime={localDay(published)} title={timestamp(published)}>{dayLabel(published)}</time></div>}
           {entry.type === "note" ? renderFieldNote(turn) : turn.role === "event" ? <div className={`tara-saved-event${turn.kind === "notice" ? " tara-notice-event" : ""}`}><Icon name={turn.kind === "location" ? "location" : turn.kind === "notice" ? "file" : "phone"} size={15} /><span>{turn.text}</span>{turn.kind !== "notice" ? <Icon name="check" size={14} /> : null}</div> : <article className={`tara-turn tara-${turn.role}`}>
-            <Bubble type={hasDetails ? "button" : undefined} className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"} title={hasDetails ? "View readings" : undefined} aria-label={hasDetails ? `Open answer from ${timestamp(published)}` : undefined} aria-describedby={hasDetails ? `tara-turn-text-${turn.id}` : undefined} onClick={hasDetails ? (event) => onDetails(event, { id: turn.data.message_id, orchard_id: state.orchard_id, text: turn.text, kind: "answer", created_at: turn.created_at }) : undefined}><span id={`tara-turn-text-${turn.id}`}>{turn.text}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Terra reacted with a thumbs up">👍</span> : null}</Bubble>
+            <Bubble type={hasDetails ? "button" : undefined} className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"} title={hasDetails ? "View readings" : undefined} aria-label={hasDetails ? `Open answer from ${timestamp(published)}` : undefined} aria-describedby={hasDetails ? `tara-turn-text-${turn.id}` : undefined} onClick={hasDetails ? (event) => onDetails(event, { id: turn.data.message_id, orchard_id: state.orchard_id, text: turn.text, kind: "answer", created_at: turn.created_at }) : undefined}><span id={`tara-turn-text-${turn.id}`}>{taraDisplayText(turn)}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Terra reacted with a thumbs up">👍</span> : null}</Bubble>
             <div className="tara-turn-meta"><time dateTime={published} title={timestamp(published)} aria-label={timestamp(published)}>{clockTime(published)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}</div>
           </article>}
         </React.Fragment>;
       })}
 
     </div>
-    {state.setup.stage === "location" ? <FarmLocation conversation={conversation} stationPresets={stationPresets} /> : taraNeedsNotificationChoice(state) ? <NotificationChoice key={state.orchard_id || "setup"} conversation={conversation} /> : null}
+    {state.setup.stage === "location" ? <FarmLocation conversation={conversation} /> : taraNeedsNotificationChoice(state) ? <NotificationChoice key={state.orchard_id || "setup"} conversation={conversation} /> : null}
     {state.setup.stage === "complete" ? <div className={`tara-monitoring tara-monitoring-${conversation.stale ? "unavailable" : state.monitoring.status}`} role="status"><Icon name="location" size={14} /><span>{conversation.stale ? "Monitoring status couldn’t be refreshed" : mode === "replay" || mode === "injected" ? "Replay readings · live monitoring is off" : state.monitoring.status === "ready" ? "Monitoring" : state.monitoring.status === "pending" ? "Farm saved · connecting monitoring data" : state.monitoring.status === "unavailable" ? "Farm saved · monitoring unavailable" : "Monitoring not configured"}</span></div> : null}
     {state.notifications.enabled ? <p className="tara-alert-scope">{state.notifications.capability === "browser_open" && typeof window.Notification === "function" && Notification.permission === "granted" ? "Browser alerts for this farm while Terra is open" : "Browser alerts need permission · updates stay in chat"}</p> : null}
     {alertsError ? <p className="query-error" role="status">{alertsError}</p> : null}
@@ -312,10 +296,10 @@ export function TaraComposer({ conversation, replyTo = null, onClearReply, leadi
   return <div className="tara-compose-area">
     {replyTo ? <div className="tara-reply-context"><span>Replying to the selected note</span><button className="icon-button" type="button" aria-label="Clear reply context" onClick={onClearReply}><Icon name="close" size={13} /></button></div> : null}
     {conversation.error ? <div className="tara-request-error" role="alert"><p>{conversation.error}</p></div> : null}
-    {conversation.pending ? <p className="tara-request-status" role="status">{sending ? "Sending…" : conversation.pending.status === "in_progress" ? "Request still processing" : conversation.pending.status === "result_available" ? "Earlier reply saved · recover its receipt" : "Delivery not confirmed"}</p> : null}
+    {conversation.pending ? <p className="tara-request-status" role="status">{sending ? conversation.pending.body.action === "device_location" ? "Saving location…" : "Sending…" : conversation.pending.status === "in_progress" ? "Request still processing" : conversation.pending.status === "result_available" ? "Earlier reply saved · recover its receipt" : conversation.pending.body.action === "device_location" ? "Location save not confirmed" : "Delivery not confirmed"}</p> : null}
     {!conversation.pending && conversation.state?.pending_requests.length ? <p className="tara-request-status" role="status">An earlier request is unfinished. Refresh its status before continuing.</p> : null}
     {reconcilableTaraRequests(conversation.state).map((request) => <PendingReplyChoice key={request.request_id} conversation={conversation} request={request} />)}
-    {conversation.error || (conversation.pending && !sending) || conversation.state?.pending_requests.length ? <div className="tara-actions tara-retry-actions">{conversation.pending && conversation.pending.status !== "in_progress" ? <button type="button" className="tara-text-button" onClick={conversation.retry} disabled={sending}>{conversation.pending.status === "result_available" ? "Recover saved reply" : conversation.pending.kind === "reconcile" ? "Confirm saved continuation" : "Retry same request"}</button> : null}<button type="button" className="tara-text-button" onClick={conversation.refresh} disabled={sending}>Refresh status</button></div> : null}
+    {conversation.error || (conversation.pending && !sending) || conversation.state?.pending_requests.length ? <div className="tara-actions tara-retry-actions">{conversation.pending && conversation.pending.status !== "in_progress" ? <button type="button" className="tara-text-button" onClick={conversation.retry} disabled={sending}>{conversation.pending.status === "result_available" ? "Recover saved reply" : conversation.pending.kind === "reconcile" ? "Confirm saved continuation" : conversation.pending.body.action === "device_location" ? "Retry location" : "Retry same request"}</button> : null}<button type="button" className="tara-text-button" onClick={conversation.refresh} disabled={sending}>Refresh status</button></div> : null}
     <form className="composer tara-composer" onSubmit={submit} aria-label="Message Terra">{leadingControl}<label className="sr-only" htmlFor="tara-message">Message Terra</label><input ref={field} id="tara-message" type="text" maxLength={1000} value={typeof conversation.draft === "string" ? conversation.draft : ""} onChange={(event) => conversation.setDraft(event.target.value)} placeholder={stage === "crop" ? "What are you growing?" : "Message Terra"} disabled={!conversation.state || Boolean(conversation.pending)} autoComplete="off" /><button type="submit" className="composer-send" aria-label="Send message" disabled={conversation.locked || !conversation.draft.trim()}><Icon name="send" size={15} /></button></form>
   </div>;
 }

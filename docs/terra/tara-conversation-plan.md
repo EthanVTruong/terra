@@ -8,9 +8,10 @@ reference. Completion requires implemented, verified behavior in the app.
 
 - Start with a short crop question, accept a natural grower answer and preserve
   crop/variety information without inventing a variety or crop requirement.
-- Confirm a farm location using explicit device permission or manual coordinates/
-  known reference choices. Persist setup and resume unfinished steps. Denied or
-  inaccurate location must leave a usable manual path.
+- Use a single location button and explicit native permission, then derive and
+  save the required location details automatically. No coordinate, elevation,
+  farm-name or station-reference form in grower onboarding. Persist unfinished
+  setup and give concise permission/provider-failure retries.
 - Ask separately about supported notification delivery. Represent saved actions
   as compact events. Describe actual delivery capability, not merely permission.
 - Ready means the profile is saved and the actual data/worker state supports
@@ -53,8 +54,8 @@ preference requests, unavailable facts, request retries/concurrency/restarts and
 call counts. No-op/off-topic paths must prove zero provider calls. Successful
 connected eligible generation must use the configured ChatGPT plan connection.
 
-Browser verification must cover first use, saved/unfinished setup, manual and
-device-location success/denial, notification choice/denial, real composer replies,
+Browser verification must cover first use, saved/unfinished setup, automatic
+device-location success/denial/provider failure, notification choice/denial, real composer replies,
 attached reaction, no reply, quiet reopening, loading/failure/usage pause, evidence,
 mobile layout, keyboard control and reduced motion. Permission UI is simulated
 in automated tests; actual account consent stays with the user.

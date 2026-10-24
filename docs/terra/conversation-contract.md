@@ -60,10 +60,13 @@ Account sign-in, ChatGPT plan-usage permission, location permission and
 notification permission remain separate states. Sign-in alone does not establish
 usable inference. Resume the unfinished setup step after interruption.
 
-Device location is an optional starting point because the grower may be away
-from the farm. Offer manual entry for denied, unsupported or inaccurate location.
-Confirm the farm before monitoring it. Notification permission follows an explicit
-grower choice; in-chat updates remain available when notifications are declined.
+The grower location step is one **Use my location** button followed by the browser's
+permission request. Use a fresh approved position, derive ground elevation, and
+let the existing station selection run automatically. Do not ask for coordinates,
+elevation, a farm name, a station reference or another confirmation. Growers should
+use the button where they grow. Denied, unsupported and failed location lookups
+offer concise retry/settings guidance. Notification permission follows a separate
+explicit choice; in-chat updates remain available when notifications are declined.
 
 Render successful actions as compact factual events, such as a pin, farm name
 and checkmark. They are saved-action confirmations, not invented grower messages.
@@ -100,7 +103,7 @@ of 40 hours. The monitor has already selected a meaningful low-pace event.
 | Situation | Example |
 | --- | --- |
 | First meeting | "Hey, I'm Tara. What are you growing?" |
-| Farm location | "Where's your orchard? Use your location if you're there, or enter its address." |
+| Grower location | "Where are you growing? Share your location." → **Use my location** |
 | Optional delivery | "Want a heads-up when something needs attention?" |
 | Actual monitoring readiness | "You're set. I'll watch chill for West Orchard and flag meaningful changes." |
 | Proactive chill note | "Chill is accumulating slowly this season: about 180 hours, usually around 220 by now." |

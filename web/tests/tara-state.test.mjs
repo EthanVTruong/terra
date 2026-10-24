@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTaraOperation, mergeTaraTimeline, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
+import { createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, reconcilableTaraRequests, restoreTaraOperation, taraDisplayText, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
 
 const turn = (extra = {}) => ({ id: "turn-1", role: "user", kind: "text", text: "Thanks", created_at: "2026-10-24T16:00:00Z", reply_to: null, reactions: [], delivery: "local_saved", ...extra });
 const snapshot = (extra = {}) => ({ schema_version: "terra-conversation-v1", setup: { stage: "complete", crops: ["almond"], orchard_id: "farm-1" }, orchard_id: "farm-1", orchards: [{ id: "farm-1", name: "West Orchard" }], turns: [], monitoring: { status: "pending" }, notifications: { enabled: false, capability: "browser_open" }, pending_requests: [], ...extra });
+
+test("only exact saved app-owned location prompts receive current display guidance, preserving their stored text", () => {
+  for (const text of ["Where's your farm? Use your location if you're there, or enter coordinates.", "Confirm your farm location to start monitoring."]) {
+    const saved = Object.freeze(turn({ role: "assistant", text, data: Object.freeze({ action: "location_choice" }) }));
+    assert.equal(taraDisplayText(saved), "Where are you growing? Share your location.");
+    assert.equal(saved.text, text);
+    for (const other of [{ ...saved, role: "user" }, { ...saved, role: "event" }, { ...saved, data: {} }, { ...saved, data: { action: "answer" } }, { ...saved, text: `${text} ` }, { ...saved, text: "Weather coverage is spotty since Jan 14." }]) assert.equal(taraDisplayText(other), other.text);
+  }
+});
 
 test("unknown and malformed snapshots retain the previous conversation instead of inventing state", () => {
   for (const input of [null, {}, snapshot({ schema_version: "future" }), snapshot({ turns: [turn(), turn()] }), snapshot({ turns: [turn({ delivery: "sms_delivered" })] }), snapshot({ notifications: { enabled: "yes", capability: "browser_open" } }), snapshot({ setup: { stage: "finished", crops: [] } })]) assert.throws(() => validateTaraSnapshot(input));
@@ -54,13 +63,38 @@ test("message outcomes require the actual persisted assistant reply", () => {
   assert.throws(() => validateTaraResult({ ...response, state: snapshot({ turns: [user] }) }, operation), /saved reply/);
 });
 
-test("farm confirmation requires an explicit valid location and elevation, including zero", () => {
-  const location = { name: "West Orchard", lat: "38.6", lon: "-121.84", elevation: "70", source: "manual", confirmed: true };
-  assert.equal(validateFarmLocation(location).elevation_ft, 70);
-  assert.equal(validateFarmLocation({ ...location, elevation: "0" }).elevation_ft, 0);
-  for (const patch of [{ confirmed: false }, { lat: "" }, { lon: "" }, { elevation: "" }, { lat: "91" }, { elevation: "NaN" }, { elevation: "20001" }, { name: "" }]) assert.throws(() => validateFarmLocation({ ...location, ...patch }));
-  assert.equal(restoreFarmLocation({ name: [] }).name, "");
-  assert.equal(restoreFarmLocation(location).confirmed, true);
+test("native location submits only coordinates and usable accuracy, without reading GPS altitude", () => {
+  const coords = { latitude: 38.6, longitude: -121.84, accuracy: 8 };
+  Object.defineProperty(coords, "altitude", { get() { throw new Error("GPS altitude must not be used"); } });
+  assert.deepEqual(deviceLocationFromPosition({ coords }), { lat: 38.6, lon: -121.84, accuracy_m: 8 });
+  for (const accuracy of [undefined, null, NaN, Infinity, -1]) assert.equal(deviceLocationFromPosition({ coords: { ...coords, accuracy } }).accuracy_m, null);
+  assert.equal(deviceLocationFromPosition({ coords: { latitude: 0, longitude: 0, accuracy: 0 } }).accuracy_m, 0);
+  for (const value of [null, {}, { coords: {} }, { coords: { latitude: 91, longitude: 0 } }, { coords: { latitude: "38.6", longitude: 0 } }]) assert.throws(() => deviceLocationFromPosition(value));
+});
+
+test("a device-location retry retains its original identity and rejects manual or malformed fields", () => {
+  const operation = createTaraOperation("setup", { action: "device_location", device_location: { lat: 38.6, lon: -121.84, accuracy_m: null } }, "location-request");
+  assert.deepEqual(restoreTaraOperation(JSON.parse(JSON.stringify(operation))).body, operation.body);
+  for (const patch of [{ lat: 91 }, { lon: "-121" }, { accuracy_m: -1 }, { name: "Made-up farm" }, { altitude: 70 }]) assert.equal(restoreTaraOperation({ ...operation, body: { ...operation.body, device_location: { ...operation.body.device_location, ...patch } } }), null);
+  assert.equal(taraError({ error: { code: "location_lookup_failed" } }, 503).message, "Couldn’t get your location details. Try again.");
+  assert.equal(taraError({ error: { code: "setup_changed" } }, 409).setupChanged, true);
+});
+
+test("a device location clears its pending operation only for the actual saved location event", () => {
+  const operation = createTaraOperation("setup", { action: "device_location", device_location: { lat: 38.6, lon: -121.84, accuracy_m: null } }, "location-result");
+  const event = turn({ id: "location-saved", role: "event", kind: "location", text: "Location shared", data: { source: "device", saved: true, confirmed: true, orchard_id: "farm-1" } });
+  const result = { request_id: operation.body.request_id, outcome: "none", user_turn: null, assistant_turn: null, reaction: null, event, state: snapshot({ turns: [event] }) };
+  assert.equal(validateTaraResult(result, operation).event.id, event.id);
+  for (const patch of [{ event: null }, { event: { ...event, data: { ...event.data, source: "manual" } } }, { state: snapshot({ turns: [] }) }, { state: snapshot({ turns: [{ ...event, data: { ...event.data, saved: false } }] }) }, { state: snapshot({ orchard_id: "other-farm", turns: [event] }) }]) assert.throws(() => validateTaraResult({ ...result, ...patch }, operation));
+});
+
+test("late native results can be matched to the same setup and location prompt only", () => {
+  const setup = snapshot({ orchard_id: null, setup: { stage: "location", crops: ["almond"], crop_description: "Almonds" }, turns: [turn({ id: "location-question", role: "assistant", data: { action: "location_choice" } })] });
+  const key = taraLocationSetupKey(setup);
+  assert.equal(taraLocationSetupKey(structuredClone(setup)), key);
+  assert.notEqual(taraLocationSetupKey({ ...setup, setup: { ...setup.setup, crops: ["peach"] } }), key);
+  assert.notEqual(taraLocationSetupKey({ ...setup, turns: [turn({ id: "new-location-question", role: "assistant", data: { action: "location_choice" } })] }), key);
+  assert.equal(taraLocationSetupKey({ ...setup, setup: { ...setup.setup, stage: "complete" } }), null);
 });
 
 test("field notes and conversation remain chronological, with stable saved-event ordering and no duplicate answer", () => {

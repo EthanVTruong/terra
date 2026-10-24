@@ -38,6 +38,15 @@ def create_app(*, simulation=None, state_dir=None, static_dir=None):
         except (ValueError, KeyError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    @app.post("/api/demo/point")
+    def point(body: dict = Body(...)):
+        if set(body) != {"lat", "lon"}:
+            raise HTTPException(status_code=422, detail="Provide lat and lon")
+        try:
+            return engine.point(body["lat"], body["lon"])
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     @app.post("/api/demo/questions")
     def question(body: dict = Body(...)):
         if set(body) - {"text", "request_id"} or "text" not in body:

@@ -5,7 +5,7 @@ This separate local application has two synchronized views:
 - `/stations`: manual temperature and reporting controls, plus raw and Terra-filtered temperature heatmaps.
 - `/terra`: the source-grounded Grok Bot style grower conversation, factual questions, retained note evidence and a simulated phone notification.
 
-Both use the same isolated server on loopback port 8520. No changes enter the ordinary live monitor or its journals. No weather provider, model fitting, LLM or SMS transport runs. The optional basemap is ordinary attributed OpenStreetMap browser tiles; all numerical evidence and computation remain local and work without those tiles.
+Both use the same isolated server on loopback port 8520. No changes enter the ordinary live monitor or its journals. No weather provider, model fitting, LLM or SMS transport runs. The optional basemap is attributed Esri Light Gray Canvas browser tiles (base and place-name layers, without point-of-interest icons); all numerical evidence and computation remain local and work without those tiles.
 
 ## Run
 

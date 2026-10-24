@@ -32,6 +32,38 @@ The station list needs no key and **was** verified live (recorded in
 - **Rate limit**: 1 request/s enforced client-side; transient errors (network, 5xx, non-JSON) retried 4x with exponential backoff (tenacity).
 - **PRISM** (UNVERIFIED, P2): URL template `https://services.nacse.org/prism/data/get/us/800m/{var}/{yyyymmdd}` is a guess, overridable via `PRISM_URL_TEMPLATE`; terms, daily window and latency not checked. The endpoint failed TLS through the build proxy.
 
+## Model vs physics: what the validation showed (CIMIS, 2026-10-24)
+
+Experiments in `/tmp/claude-0/ablation` during the build; all variants scored on identical rows.
+
+- **Never-seen stations** (GroupKFold by station, seasons 2019-20..2021-22, 99 stations, 1.18M hours): physics (IDW + lapse)
+  2.426 F MAE; model with direct target 2.61 F (2.60 F without lat/lon, 2.61 F without lat/lon/elevation); model trained on the
+  residual over physics 2.43-2.44 F. The model does not beat physics for places it has no history for.
+- **Known stations, later season** (train 2019-20 + 2020-21, test 2021-22, 90 stations, 379k hours): physics 2.39 F; physics +
+  per-station night/day offset 2.18 F; model 2.12 F; **model + per-station offset 2.06 F** (median season chill-hour error 81 h vs
+  120 h for physics). For QC and gap filling at stations with history, the station-aware model is clearly better.
+- Decision: production QC / fill uses the model + learned offsets (as built). Places with no station history (chill map,
+  virtual stations, blind tests, the Durham rescue) use the physics estimate with its own leave-stations-out uncertainty bins
+  (`model.unseen_method: idw_lapse`; set `model` to switch). Training now reports `holdout_known_stations` (held-out seasons at
+  trained stations, with and without offsets) as the headline accuracy.
+- **Production model `cimis-v1`** (132 stations, 18 training seasons, 7.21M hours, 839 trees): on the held-out 2023-24 +
+  2024-25 seasons at 84 known stations (724k hours, identical rows): model + offset **1.946 F** MAE (night 2.005, day 1.888;
+  season chill-hour error median 61 h, mean 90 h, bias -1 h); model 2.009 F; physics + offset 2.023 F (63 h / 103 h);
+  physics 2.194 F (104 h / 155 h). Leave-stations-out (never-seen stations, identical rows): model 2.532 F, physics 2.479 F.
+- **Durham rescue** (station 12 hidden entirely, 20 pre-closure seasons, fitted physics): 1.96 F MAE, season chill-hour error
+  median 80 h / mean 92 h, consistently warm-biased. With Durham's own night/day offset learned from the previous season:
+  median 30 h / mean 49 h (2023-24: 887 h predicted vs 880 h observed; 2024-25: 1,058 vs 1,033 h).
+- **Fitted physics for places with no station** (`chillwatch fit-physics`, leave-stations-out): grid over lapse shrink
+  {0, .25, .5, .75, 1} x elevation-difference weight scale {none, 300, 600, 1000, 2000 ft}, fitted on 2018-19..2022-23.
+  Best: shrink 0.5, exp(-(dz/600 ft)^2) weights. Held-out 2023-24 + 2024-25: 2.190 -> 2.141 F MAE (-2.2%), chill median
+  103 -> 101 h. The full regional lapse over-corrects across elevation; weighting neighbors at similar elevation helps most.
+  The model's own `t_base` feature keeps the spec's estimate so inference matches training.
+- An independent review of these experiments found no leakage or scoring bug; it noted the residual models early-stopped
+  at 1-6 rounds (so "residual ML ~ physics" is really "physics + a constant"), and that every model variant kept
+  station-identifying features, so a fully station-agnostic model remains untested.
+- ASOS (`asos-v1`, 83 airport stations, leave-stations-out): model 2.71 F vs physics 2.49 F on their own (not identical) rows,
+  consistent with the CIMIS finding.
+
 ## Design decisions
 
 - **Station ids**: CIMIS stations keep their CIMIS number as `station_id`; other sources get ids from 100000 up (`store.assign_station_id`).

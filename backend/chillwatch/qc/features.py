@@ -98,12 +98,22 @@ def location_features(
         cols["prism_tmin"] = day.map(p["tmin_f"]).to_numpy(dtype="float64")
         cols["prism_tmax"] = day.map(p["tmax_f"]).to_numpy(dtype="float64")
     X = pd.DataFrame(cols, index=fld.hours)
+    # fitted physics for places without a station (config baseline.unseen_*); the model's own
+    # t_base feature above stays the spec's estimate so features match training
+    b = config.thresholds()["baseline"]
+    shrink, scale = float(b.get("unseen_lapse_shrink", 1.0)), b.get("unseen_dz_scale_ft")
+    if shrink != 1.0 or scale:
+        tp, _ = idw_baseline(adjusted_neighbor_temps(fld.W, idx, dz, gamma, shrink), dist, dz_ft=dz,
+                             dz_scale_ft=scale)
+    else:
+        tp = tb
     # nearest *valid* neighbor distance / |dz| per hour, for uncertainty bins
     valid = np.isfinite(adj)
     first = np.where(valid.any(axis=1), valid.argmax(axis=1), -1)
     nd = np.where(first >= 0, dist[np.arange(H), np.clip(first, 0, None)], np.nan)
     ndz = np.where(first >= 0, np.abs(dz[np.arange(H), np.clip(first, 0, None)]), np.nan)
-    aux = {"n_valid": n, "nearest_km": nd, "nearest_dz_ft": ndz, "t_base": tb, "nbr_median": cols["nbr_median"]}
+    aux = {"n_valid": n, "nearest_km": nd, "nearest_dz_ft": ndz, "t_base": tb, "nbr_median": cols["nbr_median"],
+           "t_phys": tp}
     return X, aux
 
 

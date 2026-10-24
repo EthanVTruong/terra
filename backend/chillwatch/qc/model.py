@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,7 @@ import pandas as pd
 from sklearn.model_selection import GroupKFold, GroupShuffleSplit
 
 from .. import config
+from ..normalize import to_pst
 from ..repair import uncertainty as unc
 from ..timeutil import season_bounds, utc
 from .features import EXTRA_FEATURES, feature_names, is_night, location_features, station_features
@@ -116,7 +118,7 @@ def _params(seed: int | None = None) -> dict[str, Any]:
         "deterministic": True,
         "force_row_wise": True,
         "verbose": -1,
-        "num_threads": 0,
+        "num_threads": int(os.environ.get("CHILLWATCH_LGB_THREADS", m.get("num_threads", 0))),
     }
 
 
@@ -141,7 +143,7 @@ def training_frame(
         keep = np.isfinite(y) & (aux["n_valid"] >= 1)
         if not keep.any():
             continue
-        X = X[keep].copy()
+        X = X[keep].astype("float32")
         if mask_prism and "prism_tmin" in X.columns and rng is not None:
             m = rng.random(len(X)) < mask_prism
             X.loc[m, ["prism_tmin", "prism_tmax"]] = np.nan
@@ -157,24 +159,37 @@ def training_frame(
     return pd.concat(frames, ignore_index=True)
 
 
-def _fit(train: pd.DataFrame, feats: list[str], seed: int, num_round: int | None = None) -> lgb.Booster:
+def _log_progress(period: int, tag: str) -> Any:
+    def cb(env: Any) -> None:
+        if period and (env.iteration + 1) % period == 0:
+            vals = ", ".join(f"{name} {value:.4f}" for _, name, value, _ in env.evaluation_result_list)
+            log.info("%s round %d %s", tag, env.iteration + 1, vals)
+    return cb
+
+
+def _fit(train: pd.DataFrame, feats: list[str], seed: int, num_round: int | None = None,
+         tag: str = "fit") -> lgb.Booster:
     m = config.thresholds()["model"]
     params = _params(seed)
     if num_round is not None:
-        ds = lgb.Dataset(train[feats].to_numpy(dtype="float64"), train["y"].to_numpy(), feature_name=feats)
+        ds = lgb.Dataset(train[feats].to_numpy(dtype="float32"), train["y"].to_numpy(), feature_name=feats)
         return lgb.train(params, ds, num_boost_round=max(1, num_round))
     gss = GroupShuffleSplit(n_splits=1, test_size=float(m["valid_station_fraction"]), random_state=seed)
     tr_idx, va_idx = next(gss.split(train, groups=train["station_id"]))
     tr, va = train.iloc[tr_idx], train.iloc[va_idx]
-    dtr = lgb.Dataset(tr[feats].to_numpy(dtype="float64"), tr["y"].to_numpy(), feature_name=feats)
-    dva = lgb.Dataset(va[feats].to_numpy(dtype="float64"), va["y"].to_numpy(), reference=dtr)
-    return lgb.train(
+    dtr = lgb.Dataset(tr[feats].to_numpy(dtype="float32"), tr["y"].to_numpy(), feature_name=feats)
+    dva = lgb.Dataset(va[feats].to_numpy(dtype="float32"), va["y"].to_numpy(), reference=dtr)
+    b = lgb.train(
         params,
         dtr,
         num_boost_round=int(m["num_boost_round"]),
         valid_sets=[dva],
-        callbacks=[lgb.early_stopping(int(m["early_stopping_rounds"]), verbose=False)],
+        valid_names=["held-out stations"],
+        callbacks=[lgb.early_stopping(int(m["early_stopping_rounds"]), verbose=False),
+                   _log_progress(int(m.get("log_every", 100)), tag)],
     )
+    log.info("%s: best round %d", tag, b.best_iteration or b.current_iteration())
+    return b
 
 
 def robust_sigma(r: np.ndarray) -> float:
@@ -184,16 +199,17 @@ def robust_sigma(r: np.ndarray) -> float:
     return float(1.4826 * np.median(np.abs(r - np.median(r))))
 
 
-def fit_model(train: pd.DataFrame, feats: list[str], seed: int) -> tuple[lgb.Booster, dict[str, Any]]:
+def fit_model(train: pd.DataFrame, feats: list[str], seed: int, tag: str = "model"
+              ) -> tuple[lgb.Booster, dict[str, Any]]:
     """Fit with early stopping, drop |residual| > 5 robust sigma (dirty labels), refit once."""
     m = config.thresholds()["model"]
-    b = _fit(train, feats, seed)
-    r = train["y"].to_numpy() - b.predict(train[feats].to_numpy(dtype="float64"))
+    b = _fit(train, feats, seed, tag=f"{tag} first fit")
+    r = train["y"].to_numpy() - b.predict(train[feats].to_numpy(dtype="float32"))
     s = robust_sigma(r)
     keep = np.abs(r) <= float(m["dirty_label_sigma"]) * max(s, 1e-6)
     info = {"rows": int(len(train)), "dirty_removed": int((~keep).sum()), "sigma_first_fit": s,
             "best_iter_first": int(b.best_iteration or b.current_iteration())}
-    b2 = _fit(train[keep], feats, seed)
+    b2 = _fit(train[keep], feats, seed, tag=f"{tag} refit")
     info["best_iter"] = int(b2.best_iteration or b2.current_iteration())
     return b2, info
 
@@ -206,11 +222,12 @@ def chill_hours(temps: np.ndarray) -> float:
 
 
 def chill_mask(ts: pd.Series | pd.DatetimeIndex) -> np.ndarray:
-    """Hours counted for chill: from Nov 1 (PST) within the season."""
-    start = config.thresholds()["chill"]["start_mmdd"]
+    """Hours counted for chill: PST dates from chill.start_mmdd (Nov 1) through chill.end_mmdd (Mar 31)."""
+    c = config.thresholds()["chill"]
+    start, end = c["start_mmdd"], c.get("end_mmdd", "06-30")
     local = pd.DatetimeIndex(ts).tz_convert("UTC").tz_localize(None) - pd.Timedelta(hours=8, seconds=1)
     mmdd = local.strftime("%m-%d")
-    return np.asarray((mmdd >= start) | (local.month < 7))
+    return np.asarray((mmdd >= start) | (mmdd <= end)) if start > end else np.asarray((mmdd >= start) & (mmdd <= end))
 
 
 def error_report(df: pd.DataFrame, pred_col: str = "pred") -> dict[str, Any]:
@@ -254,6 +271,16 @@ def error_report(df: pd.DataFrame, pred_col: str = "pred") -> dict[str, Any]:
 
 
 # =========================================================================== train
+def slim_readings(r: pd.DataFrame) -> pd.DataFrame:
+    """Only what building training frames needs (numeric, compact): no raw paths or estimates."""
+    keep = ["station_id", "ts", "temp_f", "qc_status", *[c for c in EXTRA_FEATURES if c in r.columns]]
+    out = r[keep].copy()
+    for c in ("temp_f", *[c for c in EXTRA_FEATURES if c in r.columns]):
+        out[c] = out[c].astype("float32")
+    out["qc_status"] = out["qc_status"].astype("category")
+    return out
+
+
 def _season_frame(job: tuple[Any, ...]) -> tuple[str, pd.DataFrame, set[str]]:
     """One season's training rows (runs in a worker process)."""
     season, r, stations, start, end, extras = job
@@ -277,6 +304,8 @@ def train(
     drop_ids: set[int] | None = None,
     max_rows: int | None = None,
     activate: bool = True,
+    fold_procedure: str | None = None,
+    evaluate_holdout: bool = True,
 ) -> ModelBundle:
     """Train the neighbor model on non-holdout seasons and run LOSO validation.
 
@@ -303,7 +332,7 @@ def train(
     jobs = []
     for s in train_seasons:
         start, end = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
-        r = store.readings(start, end, stations["station_id"].tolist())
+        r = slim_readings(store.readings(start, end, stations["station_id"].tolist()))
         if r.empty or r["temp_f"].notna().sum() == 0:
             continue
         jobs.append((s, r, start, end))
@@ -332,6 +361,9 @@ def train(
             data[f] = np.nan
     booster, info = fit_model(data, feats, seed)
     data["t_base_pred"] = data["t_base"]
+    holdout_report = None
+    if evaluate_holdout and not drop_ids:
+        holdout_report = _holdout_known_stations(store, stations, booster, feats, data, reg, extras, workers)
 
     # ---------------- LOSO / GroupKFold by station
     folds = int(loso_folds if loso_folds is not None else m["loso_folds"])
@@ -339,13 +371,21 @@ def train(
     n_groups = len(np.unique(groups))
     n_splits = n_groups if folds == 0 else min(folds, n_groups)
     oof = np.full(len(data), np.nan)
+    fold_procedure = str(fold_procedure or m.get("loso_procedure", "full"))
+    fold_info = []
     if n_splits >= 2:
         for k, (tr, va) in enumerate(GroupKFold(n_splits=n_splits).split(data, groups=groups)):
-            b = _fit(data.iloc[tr], feats, seed, num_round=info["best_iter"])
-            oof[va] = b.predict(data.iloc[va][feats].to_numpy(dtype="float64"))
+            if fold_procedure == "full":
+                # the shipped procedure inside the fold: early stopping on the fold's own training
+                # stations + dirty-label removal, so no validation-fold station informs the fit
+                b, fi = fit_model(data.iloc[tr], feats, seed, tag=f"fold {k + 1}/{n_splits}")
+                fold_info.append(fi)
+            else:
+                b = _fit(data.iloc[tr], feats, seed, num_round=info["best_iter"])
+            oof[va] = b.predict(data.iloc[va][feats].to_numpy(dtype="float32"))
             log.info("LOSO fold %d/%d done", k + 1, n_splits)
     if n_splits < 2:  # no CV requested: in-sample residuals (optimistic; labeled in metrics)
-        oof = np.asarray(booster.predict(data[feats].to_numpy(dtype="float64")))
+        oof = np.asarray(booster.predict(data[feats].to_numpy(dtype="float32")))
     data["pred"] = oof
     data["residual"] = data["y"] - data["pred"]
     data["residual_idw"] = data["y"] - data["t_base"]
@@ -357,11 +397,23 @@ def train(
         "holdout_seasons": reg.get("holdout_seasons", []),
         "features": feats,
         "fit": info,
-        "validation": f"GroupKFold by station, {n_splits} folds" if n_splits >= 2 else "none (in-sample)",
+        "validation": (f"GroupKFold by station, {n_splits} folds, fold models trained with "
+                       + ("the full procedure (own early stopping + dirty-label removal)" if fold_procedure == "full"
+                          else "the main model's round count")) if n_splits >= 2 else "none (in-sample)",
+        "fold_fits": fold_info,
         "dropped_stations": sorted(int(x) for x in (drop_ids or ())),
-        "loso_model": error_report(data, "pred"),
-        "loso_idw_lapse": error_report(data.assign(pred_idw=data["t_base"]), "pred_idw"),
         "n_stations": int(n_groups),
+    }
+    key = "loso" if n_splits >= 2 else "in_sample"
+    common = np.isfinite(data["pred"].to_numpy()) & np.isfinite(data["t_base"].to_numpy())
+    metrics[f"{key}_model"] = error_report(data, "pred")
+    metrics[f"{key}_idw_lapse"] = error_report(data.assign(pred_idw=data["t_base"]), "pred_idw")
+    # like-for-like comparison: the same hours for both (the model also covers 1-neighbor hours)
+    if holdout_report is not None:
+        metrics["holdout_known_stations"] = holdout_report
+    metrics[f"{key}_common_rows"] = {
+        "model": error_report(data[common], "pred"),
+        "idw_lapse": error_report(data[common].assign(pred_idw=data.loc[common, "t_base"]), "pred_idw"),
     }
     ok = np.isfinite(data["residual"].to_numpy())
     unc_model = unc.fit_bins(
@@ -385,6 +437,60 @@ def train(
         (path.parent / "ACTIVE").write_text(version)
     _register(bundle, store, activate)
     return bundle
+
+
+def _holdout_known_stations(store: Any, stations: pd.DataFrame, booster: lgb.Booster, feats: list[str],
+                            data: pd.DataFrame, reg: dict[str, Any], extras: tuple[str, ...],
+                            workers: int) -> dict[str, Any] | None:
+    """Accuracy at stations the model was trained on, in the held-out (never trained) seasons.
+
+    This is the QC / gap-fill situation. Per-station night/day offsets come from the most recent
+    training season (median residual), as the production offsets would.
+    """
+    hold = list(reg.get("holdout_seasons", []))
+    jobs = []
+    for s in hold:
+        a, b = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
+        r = slim_readings(store.readings(a, b, stations["station_id"].tolist()))
+        if len(r) and r["temp_f"].notna().any():
+            jobs.append((s, r, stations, a, b, extras))
+    if not jobs:
+        return None
+    if workers > 1 and len(jobs) > 1:
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=min(workers, len(jobs))) as ex:
+            built = list(ex.map(_season_frame, jobs))
+    else:
+        built = [_season_frame(j) for j in jobs]
+    frames = [tf for _, tf, _ in built if len(tf)]
+    if not frames:
+        return None
+    h = pd.concat(frames, ignore_index=True)
+    h = h[h["station_id"].isin(set(data["station_id"]))].reset_index(drop=True)
+    for f in feats:
+        if f not in h.columns:
+            h[f] = np.nan
+    h["pred"] = booster.predict(h[feats].to_numpy(dtype="float32"))
+    last = data[data["season"] == data["season"].max()]
+    r_last = last["y"].to_numpy() - booster.predict(last[feats].to_numpy(dtype="float32"))
+    key = pd.MultiIndex.from_arrays([h["station_id"], h["night"]])
+    off_m = pd.Series(r_last, index=pd.MultiIndex.from_arrays([last["station_id"], last["night"]])).groupby(level=[0, 1]).median()
+    off_i = (last["y"] - last["t_base"]).groupby([last["station_id"], last["night"]]).median()
+    h["pred_off"] = h["pred"] + off_m.reindex(key).fillna(0).to_numpy()
+    h["idw"] = h["t_base"]
+    h["idw_off"] = h["t_base"] + off_i.reindex(key).fillna(0).to_numpy()
+    common = np.isfinite(h[["pred", "pred_off", "idw", "idw_off"]].to_numpy()).all(axis=1)
+    hc = h[common]
+    return {
+        "seasons": [s for s, _, _ in built],
+        "stations": int(hc["station_id"].nunique()),
+        "offsets_from": str(data["season"].max()),
+        "model": error_report(hc, "pred"),
+        "model_plus_offset": error_report(hc, "pred_off"),
+        "idw_lapse": error_report(hc, "idw"),
+        "idw_lapse_plus_offset": error_report(hc, "idw_off"),
+    }
 
 
 def _register(bundle: ModelBundle, store: Any, active: bool) -> None:
@@ -425,22 +531,27 @@ def predict_location_frame(
     exclude: set[int] | None = None,
     offsets: pd.DataFrame | None = None,
     prism: pd.DataFrame | None = None,
+    use_model: bool = True,
 ) -> pd.DataFrame:
-    """Expected temperature over ``fld.hours`` for a location (pure: field in, frame out)."""
+    """Expected temperature over ``fld.hours`` for a location (pure: field in, frame out).
+
+    ``use_model=False`` gives the physics estimate (IDW + lapse) with its own uncertainty bins.
+    """
     X, aux = location_features(fld, lat, lon, elevation_ft, exclude=exclude, prism=prism)
     n = aux["n_valid"]
     night = is_night(fld.hours)
-    pred = bundle.predict(X) if bundle.booster is not None else np.full(len(X), np.nan)
-    use_model = np.isfinite(pred) & (n >= 1)
-    tb = aux["t_base"]
-    use_idw = ~use_model & np.isfinite(tb)
-    method = np.where(use_model, "model", np.where(use_idw, "idw_lapse", "none"))
-    exp = np.where(use_model, pred, np.where(use_idw, tb, np.nan))
+    pred = bundle.predict(X) if (bundle.booster is not None and use_model) else np.full(len(X), np.nan)
+    model_ok = np.isfinite(pred) & (n >= 1)
+    # without the model (places with no station history): the fitted physics estimate
+    tb = aux["t_base"] if use_model else aux["t_phys"]
+    use_idw = ~model_ok & np.isfinite(tb)
+    method = np.where(model_ok, "model", np.where(use_idw, "idw_lapse", "none"))
+    exp = np.where(model_ok, pred, np.where(use_idw, tb, np.nan))
     sd_m, q10_m, q90_m = unc.lookup(bundle.unc_model, aux["nearest_km"], aux["nearest_dz_ft"], night)
     sd_i, q10_i, q90_i = unc.lookup(bundle.unc_idw, aux["nearest_km"], aux["nearest_dz_ft"], night)
-    sd = np.where(use_model, sd_m, np.where(use_idw, sd_i, np.nan))
-    q10 = np.where(use_model, q10_m, np.where(use_idw, q10_i, np.nan))
-    q90 = np.where(use_model, q90_m, np.where(use_idw, q90_i, np.nan))
+    sd = np.where(model_ok, sd_m, np.where(use_idw, sd_i, np.nan))
+    q10 = np.where(model_ok, q10_m, np.where(use_idw, q10_i, np.nan))
+    q90 = np.where(model_ok, q90_m, np.where(use_idw, q90_i, np.nan))
     df = pd.DataFrame(
         {
             "ts": fld.hours,
@@ -493,6 +604,11 @@ def _offset_series(hours: pd.DatetimeIndex, night: np.ndarray, offsets: pd.DataF
         has = j >= 0
         jj = np.clip(j, 0, None)
         val = np.where(night, ok["night_f"].to_numpy(dtype="float64")[jj], ok["day_f"].to_numpy(dtype="float64")[jj])
+        if "hourly_f" in ok:  # 24 PST hour-of-day values; rows without them keep night/day
+            table = np.array([json.loads(v) if isinstance(v, str) and v else [np.nan] * 24
+                              for v in ok["hourly_f"]], dtype="float64").reshape(len(ok), 24)
+            hv = table[jj, to_pst(pd.DatetimeIndex(hours)).hour.to_numpy()]
+            val = np.where(np.isfinite(hv), hv, val)
         out = np.where(has & np.isfinite(val), val, out)
     return out
 
@@ -527,8 +643,17 @@ def predict_at_location(
 
     ctx = ctx or get_context()
     fld = ctx.field(start, end)
-    df = predict_location_frame(fld, ctx.model, lat, lon, elevation_ft)
+    df = predict_location_frame(fld, ctx.model, lat, lon, elevation_ft, use_model=unseen_uses_model())
     return df[PRED_COLUMNS].reset_index(drop=True)
+
+
+def unseen_uses_model() -> bool:
+    """Whether places with no station history use the ML model (else the physics estimate).
+
+    Validation on CIMIS: for never-seen stations the model did not beat IDW + lapse, while at
+    stations with history it did; see docs/DECISIONS.md.
+    """
+    return str(config.thresholds()["model"].get("unseen_method", "idw_lapse")) == "model"
 
 
 # =========================================================================== offsets
@@ -543,6 +668,27 @@ def compute_offset(
     n_f = float(np.median(r[night])) if night.any() else 0.0
     d_f = float(np.median(r[~night])) if (~night).any() else 0.0
     return n_f, d_f, int(len(d))
+
+
+def hourly_offsets(readings: pd.DataFrame, expected: pd.DataFrame, night_f: float, day_f: float,
+                   k: float | None = None) -> list[float]:
+    """Per PST hour-of-day median residual, each pulled toward its night/day value with weight n / (n + k).
+
+    24 values indexed by PST hour (0-23). Hourly bins follow the daily bias cycle better than two
+    bins (bench/experiments/offset_bins.json); the pull keeps thin hours stable.
+    """
+    k = float(k if k is not None else config.thresholds()["offsets"].get("hour_shrink_k", 14))
+    d = readings.merge(expected, on="ts", how="inner")
+    d = d[(d["qc_status"] == "ok") & d["temp_f"].notna() & d["expected_f"].notna()]
+    r = (d["temp_f"] - (d["expected_f"] - d.get("offset_f", 0.0))).to_numpy(dtype="float64")
+    hour = to_pst(pd.DatetimeIndex(d["ts"])).hour.to_numpy()
+    out = []
+    for h in range(24):
+        base = night_f if (h >= 19 or h <= 6) else day_f
+        rh = r[hour == h]
+        w = len(rh) / (len(rh) + k) if len(rh) else 0.0
+        out.append(float(w * np.median(rh) + (1 - w) * base) if len(rh) else float(base))
+    return out
 
 
 def set_offset_from_window(
@@ -560,6 +706,7 @@ def set_offset_from_window(
         "kind": kind,
         "night_f": n_f,
         "day_f": d_f,
+        "hourly_f": json.dumps(hourly_offsets(r, e, n_f, d_f)),
         "window_start": utc(start),
         "window_end": utc(end),
         "created_at": pd.Timestamp.now(tz="UTC"),
@@ -570,16 +717,30 @@ def set_offset_from_window(
 
 
 def update_learned_offsets(as_of: datetime, ctx: Any | None = None, station_ids: list[int] | None = None) -> int:
-    """Weekly job: per-station night/day median residual over the last 28 days of ok readings."""
+    """Weekly job: per-station median residual (night/day and hour of day) over 28 days of ok readings.
+
+    ``offsets.lag_days`` ends the 28-day window that many days before ``as_of``, so detection has
+    that long to flag a new drift or offset before learning can absorb it as station bias;
+    ``offsets.max_weekly_change_f`` limits how far a learned offset may move from the previous
+    one. The offset takes effect at ``as_of`` (stored as ``window_end``; ``window_start`` is the
+    start of the data window).
+    """
     from ..context import get_context
 
     ctx = ctx or get_context()
-    days = int(config.thresholds()["offsets"]["window_days"])
-    end = utc(as_of)
+    o = config.thresholds()["offsets"]
+    days = int(o["window_days"])
+    lag = pd.Timedelta(days=int(o.get("lag_days", 0)))
+    cap = o.get("max_weekly_change_f")
+    effective = utc(as_of)
+    end = effective - lag
     start = end - pd.Timedelta(days=days)
-    ids = station_ids or ctx.active_station_ids(end)
+    ids = station_ids or ctx.active_station_ids(effective)
     exp = ctx.expected(start, end, ids, with_offsets=False)
     rd = ctx.store.readings(start, end, ids)
+    prev = ctx.store.offsets()
+    if len(prev):
+        prev = prev[(prev["kind"] == "learned") & (pd.to_datetime(prev["window_end"], utc=True) <= effective)]
     n_added = 0
     for sid in ids:
         e = exp[exp["station_id"] == sid]
@@ -589,9 +750,20 @@ def update_learned_offsets(as_of: datetime, ctx: Any | None = None, station_ids:
         n_f, d_f, n = compute_offset(r, e)
         if n < 24 * 7:
             continue
+        hourly = hourly_offsets(r, e, n_f, d_f)
+        last = prev[prev["station_id"] == sid] if len(prev) else prev
+        if cap is not None and len(last):
+            last = last.sort_values("window_end").iloc[-1]
+            c = float(cap)
+            lh = json.loads(last["hourly_f"]) if isinstance(last.get("hourly_f"), str) else None
+            n_f = float(np.clip(n_f, last["night_f"] - c, last["night_f"] + c))
+            d_f = float(np.clip(d_f, last["day_f"] - c, last["day_f"] + c))
+            if lh is not None:
+                hourly = [float(np.clip(v, lv - c, lv + c)) for v, lv in zip(hourly, lh, strict=True)]
         ctx.store.add_offset({
             "station_id": int(sid), "kind": "learned", "night_f": n_f, "day_f": d_f,
-            "window_start": start, "window_end": end, "created_at": pd.Timestamp.now(tz="UTC"),
+            "hourly_f": json.dumps(hourly),
+            "window_start": start, "window_end": effective, "created_at": pd.Timestamp.now(tz="UTC"),
         })
         n_added += 1
     ctx.invalidate()

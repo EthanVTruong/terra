@@ -1,0 +1,2112 @@
+{
+ "paired": {
+  "untouched_2026-03|obs_et": {
+   "held-out, same 4 Terra peers: CW IDW vs ET median": {
+    "pooled": {
+     "n": 2483,
+     "days": 30,
+     "mae_diff": -0.094,
+     "ci95": [
+      -0.138,
+      -0.05
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 486,
+      "days": 29,
+      "mae_diff": -0.228,
+      "ci95": [
+       -0.35,
+       -0.105
+      ]
+     },
+     "139": {
+      "n": 491,
+      "days": 30,
+      "mae_diff": -0.131,
+      "ci95": [
+       -0.23,
+       -0.04
+      ]
+     },
+     "212": {
+      "n": 502,
+      "days": 30,
+      "mae_diff": 0.115,
+      "ci95": [
+       0.021,
+       0.198
+      ]
+     },
+     "226": {
+      "n": 501,
+      "days": 30,
+      "mae_diff": -0.382,
+      "ci95": [
+       -0.485,
+       -0.291
+      ]
+     },
+     "235": {
+      "n": 503,
+      "days": 30,
+      "mae_diff": 0.151,
+      "ci95": [
+       0.057,
+       0.262
+      ]
+     }
+    }
+   },
+   "held-out: CW physics full network vs ET median": {
+    "pooled": {
+     "n": 2483,
+     "days": 30,
+     "mae_diff": -0.285,
+     "ci95": [
+      -0.358,
+      -0.217
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 486,
+      "days": 29,
+      "mae_diff": -0.198,
+      "ci95": [
+       -0.353,
+       -0.018
+      ]
+     },
+     "139": {
+      "n": 491,
+      "days": 30,
+      "mae_diff": -0.081,
+      "ci95": [
+       -0.17,
+       0.01
+      ]
+     },
+     "212": {
+      "n": 502,
+      "days": 30,
+      "mae_diff": -0.819,
+      "ci95": [
+       -1.043,
+       -0.591
+      ]
+     },
+     "226": {
+      "n": 501,
+      "days": 30,
+      "mae_diff": -0.445,
+      "ci95": [
+       -0.603,
+       -0.319
+      ]
+     },
+     "235": {
+      "n": 503,
+      "days": 30,
+      "mae_diff": 0.122,
+      "ci95": [
+       -0.022,
+       0.29
+      ]
+     }
+    }
+   },
+   "held-out: full network vs 4 Terra peers (network gain)": {
+    "pooled": {
+     "n": 2705,
+     "days": 31,
+     "mae_diff": -0.213,
+     "ci95": [
+      -0.287,
+      -0.15
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 494,
+      "days": 29,
+      "mae_diff": 0.04,
+      "ci95": [
+       -0.049,
+       0.162
+      ]
+     },
+     "139": {
+      "n": 559,
+      "days": 31,
+      "mae_diff": -0.176,
+      "ci95": [
+       -0.408,
+       -0.017
+      ]
+     },
+     "212": {
+      "n": 565,
+      "days": 31,
+      "mae_diff": -0.991,
+      "ci95": [
+       -1.197,
+       -0.787
+      ]
+     },
+     "226": {
+      "n": 521,
+      "days": 30,
+      "mae_diff": -0.118,
+      "ci95": [
+       -0.223,
+       -0.042
+      ]
+     },
+     "235": {
+      "n": 566,
+      "days": 31,
+      "mae_diff": 0.217,
+      "ci95": [
+       0.039,
+       0.446
+      ]
+     }
+    }
+   },
+   "known station: CW model+offset vs ET-approx": {
+    "pooled": {
+     "n": 2483,
+     "days": 30,
+     "mae_diff": -0.263,
+     "ci95": [
+      -0.36,
+      -0.178
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 486,
+      "days": 29,
+      "mae_diff": -0.153,
+      "ci95": [
+       -0.296,
+       -0.011
+      ]
+     },
+     "139": {
+      "n": 491,
+      "days": 30,
+      "mae_diff": 0.063,
+      "ci95": [
+       -0.045,
+       0.169
+      ]
+     },
+     "212": {
+      "n": 502,
+      "days": 30,
+      "mae_diff": -0.663,
+      "ci95": [
+       -0.927,
+       -0.382
+      ]
+     },
+     "226": {
+      "n": 501,
+      "days": 30,
+      "mae_diff": -0.388,
+      "ci95": [
+       -0.552,
+       -0.248
+      ]
+     },
+     "235": {
+      "n": 503,
+      "days": 30,
+      "mae_diff": -0.163,
+      "ci95": [
+       -0.329,
+       -0.015
+      ]
+     }
+    }
+   },
+   "known station, ET eligibility: CW model+offset vs ET-approx": {
+    "pooled": {
+     "n": 2483,
+     "days": 30,
+     "mae_diff": -0.251,
+     "ci95": [
+      -0.336,
+      -0.168
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 486,
+      "days": 29,
+      "mae_diff": -0.194,
+      "ci95": [
+       -0.32,
+       -0.081
+      ]
+     },
+     "139": {
+      "n": 491,
+      "days": 30,
+      "mae_diff": 0.099,
+      "ci95": [
+       -0.008,
+       0.207
+      ]
+     },
+     "212": {
+      "n": 502,
+      "days": 30,
+      "mae_diff": -0.654,
+      "ci95": [
+       -0.91,
+       -0.398
+      ]
+     },
+     "226": {
+      "n": 501,
+      "days": 30,
+      "mae_diff": -0.321,
+      "ci95": [
+       -0.43,
+       -0.227
+      ]
+     },
+     "235": {
+      "n": 503,
+      "days": 30,
+      "mae_diff": -0.175,
+      "ci95": [
+       -0.345,
+       -0.022
+      ]
+     }
+    }
+   },
+   "eligibility: blank-flag-only vs CW (Y kept) neighbors": {
+    "pooled": {
+     "n": 2794,
+     "days": 32,
+     "mae_diff": -0.039,
+     "ci95": [
+      -0.095,
+      0.007
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 497,
+      "days": 29,
+      "mae_diff": -0.106,
+      "ci95": [
+       -0.263,
+       -0.004
+      ]
+     },
+     "139": {
+      "n": 587,
+      "days": 32,
+      "mae_diff": 0.341,
+      "ci95": [
+       0.122,
+       0.613
+      ]
+     },
+     "212": {
+      "n": 590,
+      "days": 31,
+      "mae_diff": -0.158,
+      "ci95": [
+       -0.27,
+       -0.064
+      ]
+     },
+     "226": {
+      "n": 525,
+      "days": 30,
+      "mae_diff": 0.142,
+      "ci95": [
+       0.073,
+       0.231
+      ]
+     },
+     "235": {
+      "n": 595,
+      "days": 31,
+      "mae_diff": -0.401,
+      "ci95": [
+       -0.656,
+       -0.204
+      ]
+     }
+    }
+   }
+  },
+  "untouched_2026-03|obs_cw": {
+   "held-out, same 4 Terra peers: CW IDW vs ET median": {
+    "pooled": {
+     "n": 2681,
+     "days": 31,
+     "mae_diff": -0.157,
+     "ci95": [
+      -0.229,
+      -0.103
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 573,
+      "days": 31,
+      "mae_diff": -0.394,
+      "ci95": [
+       -0.589,
+       -0.246
+      ]
+     },
+     "139": {
+      "n": 513,
+      "days": 30,
+      "mae_diff": -0.146,
+      "ci95": [
+       -0.253,
+       -0.043
+      ]
+     },
+     "212": {
+      "n": 518,
+      "days": 30,
+      "mae_diff": 0.12,
+      "ci95": [
+       0.03,
+       0.204
+      ]
+     },
+     "226": {
+      "n": 559,
+      "days": 31,
+      "mae_diff": -0.46,
+      "ci95": [
+       -0.589,
+       -0.354
+      ]
+     },
+     "235": {
+      "n": 518,
+      "days": 30,
+      "mae_diff": 0.145,
+      "ci95": [
+       0.053,
+       0.252
+      ]
+     }
+    }
+   },
+   "held-out: CW physics full network vs ET median": {
+    "pooled": {
+     "n": 2681,
+     "days": 31,
+     "mae_diff": -0.396,
+     "ci95": [
+      -0.52,
+      -0.301
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 573,
+      "days": 31,
+      "mae_diff": -0.486,
+      "ci95": [
+       -0.738,
+       -0.266
+      ]
+     },
+     "139": {
+      "n": 513,
+      "days": 30,
+      "mae_diff": -0.09,
+      "ci95": [
+       -0.201,
+       0.018
+      ]
+     },
+     "212": {
+      "n": 518,
+      "days": 30,
+      "mae_diff": -0.787,
+      "ci95": [
+       -1.0,
+       -0.568
+      ]
+     },
+     "226": {
+      "n": 559,
+      "days": 31,
+      "mae_diff": -0.702,
+      "ci95": [
+       -0.976,
+       -0.482
+      ]
+     },
+     "235": {
+      "n": 518,
+      "days": 30,
+      "mae_diff": 0.119,
+      "ci95": [
+       -0.011,
+       0.288
+      ]
+     }
+    }
+   },
+   "held-out: full network vs 4 Terra peers (network gain)": {
+    "pooled": {
+     "n": 3064,
+     "days": 32,
+     "mae_diff": -0.321,
+     "ci95": [
+      -0.445,
+      -0.225
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 630,
+      "days": 32,
+      "mae_diff": -0.209,
+      "ci95": [
+       -0.388,
+       -0.074
+      ]
+     },
+     "139": {
+      "n": 599,
+      "days": 31,
+      "mae_diff": -0.25,
+      "ci95": [
+       -0.56,
+       -0.044
+      ]
+     },
+     "212": {
+      "n": 608,
+      "days": 32,
+      "mae_diff": -0.933,
+      "ci95": [
+       -1.12,
+       -0.746
+      ]
+     },
+     "226": {
+      "n": 624,
+      "days": 31,
+      "mae_diff": -0.4,
+      "ci95": [
+       -0.646,
+       -0.206
+      ]
+     },
+     "235": {
+      "n": 603,
+      "days": 32,
+      "mae_diff": 0.19,
+      "ci95": [
+       0.014,
+       0.403
+      ]
+     }
+    }
+   },
+   "known station: CW model+offset vs ET-approx": {
+    "pooled": {
+     "n": 2681,
+     "days": 31,
+     "mae_diff": -0.359,
+     "ci95": [
+      -0.498,
+      -0.249
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 573,
+      "days": 31,
+      "mae_diff": -0.369,
+      "ci95": [
+       -0.614,
+       -0.18
+      ]
+     },
+     "139": {
+      "n": 513,
+      "days": 30,
+      "mae_diff": 0.077,
+      "ci95": [
+       -0.045,
+       0.199
+      ]
+     },
+     "212": {
+      "n": 518,
+      "days": 30,
+      "mae_diff": -0.634,
+      "ci95": [
+       -0.892,
+       -0.367
+      ]
+     },
+     "226": {
+      "n": 559,
+      "days": 31,
+      "mae_diff": -0.667,
+      "ci95": [
+       -0.978,
+       -0.43
+      ]
+     },
+     "235": {
+      "n": 518,
+      "days": 30,
+      "mae_diff": -0.172,
+      "ci95": [
+       -0.324,
+       -0.021
+      ]
+     }
+    }
+   },
+   "known station, ET eligibility: CW model+offset vs ET-approx": {
+    "pooled": {
+     "n": 2681,
+     "days": 31,
+     "mae_diff": -0.24,
+     "ci95": [
+      -0.329,
+      -0.153
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 573,
+      "days": 31,
+      "mae_diff": -0.239,
+      "ci95": [
+       -0.373,
+       -0.124
+      ]
+     },
+     "139": {
+      "n": 513,
+      "days": 30,
+      "mae_diff": 0.129,
+      "ci95": [
+       0.01,
+       0.246
+      ]
+     },
+     "212": {
+      "n": 518,
+      "days": 30,
+      "mae_diff": -0.585,
+      "ci95": [
+       -0.823,
+       -0.341
+      ]
+     },
+     "226": {
+      "n": 559,
+      "days": 31,
+      "mae_diff": -0.33,
+      "ci95": [
+       -0.425,
+       -0.241
+      ]
+     },
+     "235": {
+      "n": 518,
+      "days": 30,
+      "mae_diff": -0.165,
+      "ci95": [
+       -0.339,
+       -0.013
+      ]
+     }
+    }
+   },
+   "eligibility: blank-flag-only vs CW (Y kept) neighbors": {
+    "pooled": {
+     "n": 3246,
+     "days": 32,
+     "mae_diff": 0.148,
+     "ci95": [
+      0.065,
+      0.252
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 656,
+      "days": 32,
+      "mae_diff": 0.246,
+      "ci95": [
+       0.063,
+       0.463
+      ]
+     },
+     "139": {
+      "n": 633,
+      "days": 32,
+      "mae_diff": 0.478,
+      "ci95": [
+       0.214,
+       0.804
+      ]
+     },
+     "212": {
+      "n": 648,
+      "days": 31,
+      "mae_diff": -0.086,
+      "ci95": [
+       -0.191,
+       0.003
+      ]
+     },
+     "226": {
+      "n": 654,
+      "days": 31,
+      "mae_diff": 0.479,
+      "ci95": [
+       0.277,
+       0.729
+      ]
+     },
+     "235": {
+      "n": 655,
+      "days": 32,
+      "mae_diff": -0.369,
+      "ci95": [
+       -0.616,
+       -0.173
+      ]
+     }
+    }
+   }
+  },
+  "inspected_winter|obs_et": {
+   "held-out, same 4 Terra peers: CW IDW vs ET median": {
+    "pooled": {
+     "n": 10051,
+     "days": 91,
+     "mae_diff": -0.078,
+     "ci95": [
+      -0.103,
+      -0.057
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2024,
+      "days": 91,
+      "mae_diff": -0.163,
+      "ci95": [
+       -0.217,
+       -0.11
+      ]
+     },
+     "139": {
+      "n": 1977,
+      "days": 91,
+      "mae_diff": -0.046,
+      "ci95": [
+       -0.095,
+       0.003
+      ]
+     },
+     "212": {
+      "n": 1990,
+      "days": 91,
+      "mae_diff": 0.034,
+      "ci95": [
+       -0.0,
+       0.073
+      ]
+     },
+     "226": {
+      "n": 2044,
+      "days": 91,
+      "mae_diff": -0.31,
+      "ci95": [
+       -0.373,
+       -0.248
+      ]
+     },
+     "235": {
+      "n": 2016,
+      "days": 91,
+      "mae_diff": 0.097,
+      "ci95": [
+       0.051,
+       0.146
+      ]
+     }
+    }
+   },
+   "held-out: CW physics full network vs ET median": {
+    "pooled": {
+     "n": 10051,
+     "days": 91,
+     "mae_diff": -0.218,
+     "ci95": [
+      -0.266,
+      -0.171
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2024,
+      "days": 91,
+      "mae_diff": -0.203,
+      "ci95": [
+       -0.259,
+       -0.149
+      ]
+     },
+     "139": {
+      "n": 1977,
+      "days": 91,
+      "mae_diff": -0.127,
+      "ci95": [
+       -0.18,
+       -0.077
+      ]
+     },
+     "212": {
+      "n": 1990,
+      "days": 91,
+      "mae_diff": -0.511,
+      "ci95": [
+       -0.678,
+       -0.349
+      ]
+     },
+     "226": {
+      "n": 2044,
+      "days": 91,
+      "mae_diff": -0.304,
+      "ci95": [
+       -0.375,
+       -0.24
+      ]
+     },
+     "235": {
+      "n": 2016,
+      "days": 91,
+      "mae_diff": 0.054,
+      "ci95": [
+       -0.024,
+       0.134
+      ]
+     }
+    }
+   },
+   "held-out: full network vs 4 Terra peers (network gain)": {
+    "pooled": {
+     "n": 10162,
+     "days": 91,
+     "mae_diff": -0.14,
+     "ci95": [
+      -0.177,
+      -0.105
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2042,
+      "days": 91,
+      "mae_diff": -0.043,
+      "ci95": [
+       -0.068,
+       -0.018
+      ]
+     },
+     "139": {
+      "n": 2005,
+      "days": 91,
+      "mae_diff": -0.081,
+      "ci95": [
+       -0.116,
+       -0.047
+      ]
+     },
+     "212": {
+      "n": 2003,
+      "days": 91,
+      "mae_diff": -0.544,
+      "ci95": [
+       -0.715,
+       -0.388
+      ]
+     },
+     "226": {
+      "n": 2076,
+      "days": 91,
+      "mae_diff": 0.005,
+      "ci95": [
+       -0.017,
+       0.027
+      ]
+     },
+     "235": {
+      "n": 2036,
+      "days": 91,
+      "mae_diff": -0.044,
+      "ci95": [
+       -0.112,
+       0.024
+      ]
+     }
+    }
+   },
+   "known station: CW model+offset vs ET-approx": {
+    "pooled": {
+     "n": 10051,
+     "days": 91,
+     "mae_diff": -0.246,
+     "ci95": [
+      -0.289,
+      -0.202
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2024,
+      "days": 91,
+      "mae_diff": -0.248,
+      "ci95": [
+       -0.303,
+       -0.198
+      ]
+     },
+     "139": {
+      "n": 1977,
+      "days": 91,
+      "mae_diff": -0.093,
+      "ci95": [
+       -0.147,
+       -0.038
+      ]
+     },
+     "212": {
+      "n": 1990,
+      "days": 91,
+      "mae_diff": -0.594,
+      "ci95": [
+       -0.725,
+       -0.476
+      ]
+     },
+     "226": {
+      "n": 2044,
+      "days": 91,
+      "mae_diff": -0.182,
+      "ci95": [
+       -0.244,
+       -0.12
+      ]
+     },
+     "235": {
+      "n": 2016,
+      "days": 91,
+      "mae_diff": -0.116,
+      "ci95": [
+       -0.202,
+       -0.026
+      ]
+     }
+    }
+   },
+   "known station, ET eligibility: CW model+offset vs ET-approx": {
+    "pooled": {
+     "n": 10051,
+     "days": 91,
+     "mae_diff": -0.237,
+     "ci95": [
+      -0.278,
+      -0.194
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2024,
+      "days": 91,
+      "mae_diff": -0.246,
+      "ci95": [
+       -0.298,
+       -0.198
+      ]
+     },
+     "139": {
+      "n": 1977,
+      "days": 91,
+      "mae_diff": -0.063,
+      "ci95": [
+       -0.122,
+       -0.005
+      ]
+     },
+     "212": {
+      "n": 1990,
+      "days": 91,
+      "mae_diff": -0.591,
+      "ci95": [
+       -0.723,
+       -0.464
+      ]
+     },
+     "226": {
+      "n": 2044,
+      "days": 91,
+      "mae_diff": -0.176,
+      "ci95": [
+       -0.238,
+       -0.117
+      ]
+     },
+     "235": {
+      "n": 2016,
+      "days": 91,
+      "mae_diff": -0.111,
+      "ci95": [
+       -0.2,
+       -0.026
+      ]
+     }
+    }
+   },
+   "eligibility: blank-flag-only vs CW (Y kept) neighbors": {
+    "pooled": {
+     "n": 10214,
+     "days": 91,
+     "mae_diff": 0.001,
+     "ci95": [
+      -0.003,
+      0.004
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2049,
+      "days": 91,
+      "mae_diff": -0.002,
+      "ci95": [
+       -0.011,
+       0.006
+      ]
+     },
+     "139": {
+      "n": 2027,
+      "days": 91,
+      "mae_diff": 0.008,
+      "ci95": [
+       -0.007,
+       0.024
+      ]
+     },
+     "212": {
+      "n": 2014,
+      "days": 91,
+      "mae_diff": -0.004,
+      "ci95": [
+       -0.016,
+       0.007
+      ]
+     },
+     "226": {
+      "n": 2080,
+      "days": 91,
+      "mae_diff": 0.0,
+      "ci95": [
+       -0.013,
+       0.014
+      ]
+     },
+     "235": {
+      "n": 2044,
+      "days": 91,
+      "mae_diff": 0.001,
+      "ci95": [
+       -0.008,
+       0.01
+      ]
+     }
+    }
+   }
+  },
+  "inspected_winter|obs_cw": {
+   "held-out, same 4 Terra peers: CW IDW vs ET median": {
+    "pooled": {
+     "n": 10250,
+     "days": 91,
+     "mae_diff": -0.078,
+     "ci95": [
+      -0.101,
+      -0.057
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2064,
+      "days": 91,
+      "mae_diff": -0.165,
+      "ci95": [
+       -0.221,
+       -0.112
+      ]
+     },
+     "139": {
+      "n": 2054,
+      "days": 91,
+      "mae_diff": -0.043,
+      "ci95": [
+       -0.092,
+       0.005
+      ]
+     },
+     "212": {
+      "n": 2021,
+      "days": 91,
+      "mae_diff": 0.034,
+      "ci95": [
+       -0.003,
+       0.071
+      ]
+     },
+     "226": {
+      "n": 2050,
+      "days": 91,
+      "mae_diff": -0.308,
+      "ci95": [
+       -0.372,
+       -0.248
+      ]
+     },
+     "235": {
+      "n": 2061,
+      "days": 91,
+      "mae_diff": 0.094,
+      "ci95": [
+       0.049,
+       0.141
+      ]
+     }
+    }
+   },
+   "held-out: CW physics full network vs ET median": {
+    "pooled": {
+     "n": 10250,
+     "days": 91,
+     "mae_diff": -0.216,
+     "ci95": [
+      -0.269,
+      -0.167
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2064,
+      "days": 91,
+      "mae_diff": -0.205,
+      "ci95": [
+       -0.261,
+       -0.152
+      ]
+     },
+     "139": {
+      "n": 2054,
+      "days": 91,
+      "mae_diff": -0.119,
+      "ci95": [
+       -0.169,
+       -0.072
+      ]
+     },
+     "212": {
+      "n": 2021,
+      "days": 91,
+      "mae_diff": -0.5,
+      "ci95": [
+       -0.663,
+       -0.337
+      ]
+     },
+     "226": {
+      "n": 2050,
+      "days": 91,
+      "mae_diff": -0.303,
+      "ci95": [
+       -0.373,
+       -0.236
+      ]
+     },
+     "235": {
+      "n": 2061,
+      "days": 91,
+      "mae_diff": 0.04,
+      "ci95": [
+       -0.04,
+       0.123
+      ]
+     }
+    }
+   },
+   "held-out: full network vs 4 Terra peers (network gain)": {
+    "pooled": {
+     "n": 10480,
+     "days": 91,
+     "mae_diff": -0.14,
+     "ci95": [
+      -0.175,
+      -0.104
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2118,
+      "days": 91,
+      "mae_diff": -0.046,
+      "ci95": [
+       -0.071,
+       -0.021
+      ]
+     },
+     "139": {
+      "n": 2093,
+      "days": 91,
+      "mae_diff": -0.076,
+      "ci95": [
+       -0.106,
+       -0.042
+      ]
+     },
+     "212": {
+      "n": 2057,
+      "days": 91,
+      "mae_diff": -0.528,
+      "ci95": [
+       -0.69,
+       -0.366
+      ]
+     },
+     "226": {
+      "n": 2100,
+      "days": 91,
+      "mae_diff": -0.0,
+      "ci95": [
+       -0.024,
+       0.024
+      ]
+     },
+     "235": {
+      "n": 2112,
+      "days": 91,
+      "mae_diff": -0.057,
+      "ci95": [
+       -0.121,
+       0.007
+      ]
+     }
+    }
+   },
+   "known station: CW model+offset vs ET-approx": {
+    "pooled": {
+     "n": 10250,
+     "days": 91,
+     "mae_diff": -0.248,
+     "ci95": [
+      -0.291,
+      -0.204
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2064,
+      "days": 91,
+      "mae_diff": -0.247,
+      "ci95": [
+       -0.297,
+       -0.199
+      ]
+     },
+     "139": {
+      "n": 2054,
+      "days": 91,
+      "mae_diff": -0.09,
+      "ci95": [
+       -0.143,
+       -0.038
+      ]
+     },
+     "212": {
+      "n": 2021,
+      "days": 91,
+      "mae_diff": -0.603,
+      "ci95": [
+       -0.732,
+       -0.481
+      ]
+     },
+     "226": {
+      "n": 2050,
+      "days": 91,
+      "mae_diff": -0.181,
+      "ci95": [
+       -0.242,
+       -0.122
+      ]
+     },
+     "235": {
+      "n": 2061,
+      "days": 91,
+      "mae_diff": -0.125,
+      "ci95": [
+       -0.211,
+       -0.04
+      ]
+     }
+    }
+   },
+   "known station, ET eligibility: CW model+offset vs ET-approx": {
+    "pooled": {
+     "n": 10250,
+     "days": 91,
+     "mae_diff": -0.235,
+     "ci95": [
+      -0.281,
+      -0.192
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2064,
+      "days": 91,
+      "mae_diff": -0.245,
+      "ci95": [
+       -0.296,
+       -0.193
+      ]
+     },
+     "139": {
+      "n": 2054,
+      "days": 91,
+      "mae_diff": -0.057,
+      "ci95": [
+       -0.115,
+       0.001
+      ]
+     },
+     "212": {
+      "n": 2021,
+      "days": 91,
+      "mae_diff": -0.59,
+      "ci95": [
+       -0.717,
+       -0.463
+      ]
+     },
+     "226": {
+      "n": 2050,
+      "days": 91,
+      "mae_diff": -0.174,
+      "ci95": [
+       -0.24,
+       -0.111
+      ]
+     },
+     "235": {
+      "n": 2061,
+      "days": 91,
+      "mae_diff": -0.113,
+      "ci95": [
+       -0.202,
+       -0.029
+      ]
+     }
+    }
+   },
+   "eligibility: blank-flag-only vs CW (Y kept) neighbors": {
+    "pooled": {
+     "n": 10563,
+     "days": 91,
+     "mae_diff": 0.005,
+     "ci95": [
+      0.0,
+      0.009
+     ]
+    },
+    "per_station": {
+     "6": {
+      "n": 2126,
+      "days": 91,
+      "mae_diff": 0.001,
+      "ci95": [
+       -0.01,
+       0.012
+      ]
+     },
+     "139": {
+      "n": 2121,
+      "days": 91,
+      "mae_diff": 0.011,
+      "ci95": [
+       -0.003,
+       0.027
+      ]
+     },
+     "212": {
+      "n": 2069,
+      "days": 91,
+      "mae_diff": -0.004,
+      "ci95": [
+       -0.017,
+       0.008
+      ]
+     },
+     "226": {
+      "n": 2110,
+      "days": 91,
+      "mae_diff": 0.004,
+      "ci95": [
+       -0.012,
+       0.02
+      ]
+     },
+     "235": {
+      "n": 2137,
+      "days": 91,
+      "mae_diff": 0.01,
+      "ci95": [
+       -0.001,
+       0.021
+      ]
+     }
+    }
+   }
+  }
+ },
+ "chill": {
+  "et4_peer_median": {
+   "net_err_h_per_station": {
+    "6": 53,
+    "139": 37,
+    "212": -135,
+    "226": 86,
+    "235": -58
+   },
+   "gross_misclassified_h_per_station": {
+    "6": 101,
+    "139": 137,
+    "212": 191,
+    "226": 120,
+    "235": 156
+   },
+   "mean_abs_net": 73.8,
+   "mean_gross": 141.0
+  },
+  "phys_et4": {
+   "net_err_h_per_station": {
+    "6": 22,
+    "139": 6,
+    "212": -135,
+    "226": 57,
+    "235": -87
+   },
+   "gross_misclassified_h_per_station": {
+    "6": 78,
+    "139": 128,
+    "212": 191,
+    "226": 85,
+    "235": 169
+   },
+   "mean_abs_net": 61.4,
+   "mean_gross": 130.2
+  },
+  "phys_full": {
+   "net_err_h_per_station": {
+    "6": 34,
+    "139": 9,
+    "212": -89,
+    "226": 62,
+    "235": -85
+   },
+   "gross_misclassified_h_per_station": {
+    "6": 74,
+    "139": 123,
+    "212": 133,
+    "226": 90,
+    "235": 157
+   },
+   "mean_abs_net": 55.8,
+   "mean_gross": 115.4
+  },
+  "phys_full_et_elig": {
+   "net_err_h_per_station": {
+    "6": 33,
+    "139": 7,
+    "212": -91,
+    "226": 59,
+    "235": -86
+   },
+   "gross_misclassified_h_per_station": {
+    "6": 73,
+    "139": 125,
+    "212": 133,
+    "226": 87,
+    "235": 156
+   },
+   "mean_abs_net": 55.2,
+   "mean_gross": 114.8
+  },
+  "et4_plus_offset": {
+   "net_err_h_per_station": {
+    "6": 12,
+    "139": 6,
+    "212": -44,
+    "226": -9,
+    "235": 22
+   },
+   "gross_misclassified_h_per_station": {
+    "6": 110,
+    "139": 134,
+    "212": 150,
+    "226": 109,
+    "235": 148
+   },
+   "mean_abs_net": 18.6,
+   "mean_gross": 130.2
+  },
+  "model_off": {
+   "net_err_h_per_station": {
+    "6": -3,
+    "139": -6,
+    "212": 7,
+    "226": -33,
+    "235": 56
+   },
+   "gross_misclassified_h_per_station": {
+    "6": 59,
+    "139": 130,
+    "212": 73,
+    "226": 87,
+    "235": 146
+   },
+   "mean_abs_net": 21.0,
+   "mean_gross": 99.0
+  },
+  "model_off_et_elig": {
+   "net_err_h_per_station": {
+    "6": -3,
+    "139": -12,
+    "212": 2,
+    "226": -36,
+    "235": 54
+   },
+   "gross_misclassified_h_per_station": {
+    "6": 59,
+    "139": 134,
+    "212": 74,
+    "226": 90,
+    "235": 144
+   },
+   "mean_abs_net": 21.4,
+   "mean_gross": 100.2
+  },
+  "obs_chill_hours_per_station": {
+   "6": 790,
+   "139": 733,
+   "212": 904,
+   "226": 763,
+   "235": 869
+  },
+  "common_hours_per_station": {
+   "6": 2024,
+   "139": 1977,
+   "212": 1989,
+   "226": 2044,
+   "235": 2016
+  }
+ },
+ "eligibility": {
+  "untouched_2026-03": {
+   "y_hours": 786,
+   "et4_peer_median": {
+    "n": 198,
+    "bias": -5.16,
+    "mae": 5.24
+   },
+   "phys_full": {
+    "n": 786,
+    "bias": -1.47,
+    "mae": 2.23
+   },
+   "phys_full_et_elig": {
+    "n": 452,
+    "bias": -3.76,
+    "mae": 4.14
+   },
+   "model_off": {
+    "n": 786,
+    "bias": -1.74,
+    "mae": 2.16
+   },
+   "model_off_et_elig": {
+    "n": 691,
+    "bias": -5.67,
+    "mae": 5.75
+   },
+   "et4_median_unavailable_frac_of_et_truth": 0.143,
+   "et4_median_unavailable_frac_all_hours": 0.279
+  },
+  "inspected_winter": {
+   "y_hours": 469,
+   "et4_peer_median": {
+    "n": 199,
+    "bias": 0.53,
+    "mae": 1.56
+   },
+   "phys_full": {
+    "n": 469,
+    "bias": 0.41,
+    "mae": 1.14
+   },
+   "phys_full_et_elig": {
+    "n": 349,
+    "bias": 0.31,
+    "mae": 1.31
+   },
+   "model_off": {
+    "n": 469,
+    "bias": 0.2,
+    "mae": 1.11
+   },
+   "model_off_et_elig": {
+    "n": 417,
+    "bias": -0.3,
+    "mae": 1.67
+   },
+   "et4_median_unavailable_frac_of_et_truth": 0.021,
+   "et4_median_unavailable_frac_all_hours": 0.046
+  }
+ },
+ "fidelity": {
+  "davis_2026-01-11T09Z": {
+   "et_handoff_expected_f": 37.65,
+   "et_approx_from_cw_db": 37.65,
+   "peer_median": 36.5,
+   "n_peers": 4,
+   "cw_model_plus_offset": 37.59,
+   "observed_f": 37.0
+  }
+ },
+ "orchard": {
+  "inspected_winter|asos": {
+   "truth": "obs_cw",
+   "truth_hours": 12742,
+   "common_hours": 12264,
+   "mae": {
+    "et5_median": 1.423,
+    "phys_et5_shrink0.0": 1.272,
+    "phys_et5_shrink0.5": 1.271,
+    "phys_et5_shrink1.0": 1.273,
+    "phys_full_et_elig": 1.189,
+    "phys_full": 1.18
+   },
+   "bias": {
+    "et5_median": -0.243,
+    "phys_et5_shrink0.0": -0.283,
+    "phys_et5_shrink0.5": -0.282,
+    "phys_et5_shrink1.0": -0.28,
+    "phys_full_et_elig": -0.227,
+    "phys_full": -0.227
+   },
+   "per_site_mae": {
+    "DWA": {
+     "et5_median": 1.158,
+     "phys_et5_shrink0.0": 1.049,
+     "phys_et5_shrink0.5": 1.048,
+     "phys_et5_shrink1.0": 1.048,
+     "phys_full_et_elig": 1.052,
+     "phys_full": 1.048
+    },
+    "EDU": {
+     "et5_median": 1.041,
+     "phys_et5_shrink0.0": 0.897,
+     "phys_et5_shrink0.5": 0.903,
+     "phys_et5_shrink1.0": 0.91,
+     "phys_full_et_elig": 0.897,
+     "phys_full": 0.892
+    },
+    "SAC": {
+     "et5_median": 1.523,
+     "phys_et5_shrink0.0": 1.432,
+     "phys_et5_shrink0.5": 1.433,
+     "phys_et5_shrink1.0": 1.439,
+     "phys_full_et_elig": 1.053,
+     "phys_full": 1.029
+    },
+    "SMF": {
+     "et5_median": 1.428,
+     "phys_et5_shrink0.0": 1.176,
+     "phys_et5_shrink0.5": 1.178,
+     "phys_et5_shrink1.0": 1.184,
+     "phys_full_et_elig": 1.115,
+     "phys_full": 1.1
+    },
+    "SUU": {
+     "et5_median": 1.82,
+     "phys_et5_shrink0.0": 1.715,
+     "phys_et5_shrink0.5": 1.707,
+     "phys_et5_shrink1.0": 1.701,
+     "phys_full_et_elig": 1.621,
+     "phys_full": 1.619
+    },
+    "VCB": {
+     "et5_median": 1.584,
+     "phys_et5_shrink0.0": 1.381,
+     "phys_et5_shrink0.5": 1.374,
+     "phys_et5_shrink1.0": 1.373,
+     "phys_full_et_elig": 1.413,
+     "phys_full": 1.406
+    }
+   },
+   "availability_current_rule": {
+    "et5_median": 0.964,
+    "phys_et5_shrink0.0": 0.983,
+    "phys_et5_shrink0.5": 0.983,
+    "phys_et5_shrink1.0": 0.983,
+    "phys_full_et_elig": 0.982,
+    "phys_full": 1.0
+   },
+   "availability_3_peer_rule": {
+    "et5_median": 0.964,
+    "phys_et5": 0.964,
+    "phys_full": 1.0
+   },
+   "paired": {
+    "phys_et5_shrink0.5 - et5_median": {
+     "n": 12279,
+     "days": 91,
+     "mae_diff": -0.152,
+     "ci95": [
+      -0.197,
+      -0.113
+     ]
+    },
+    "phys_et5_shrink0.0 - et5_median": {
+     "n": 12279,
+     "days": 91,
+     "mae_diff": -0.151,
+     "ci95": [
+      -0.193,
+      -0.113
+     ]
+    },
+    "phys_et5_shrink0.5 - phys_et5_shrink0.0": {
+     "n": 12528,
+     "days": 91,
+     "mae_diff": -0.001,
+     "ci95": [
+      -0.004,
+      0.002
+     ]
+    },
+    "phys_full_et_elig - phys_et5_shrink0.5": {
+     "n": 12472,
+     "days": 91,
+     "mae_diff": -0.082,
+     "ci95": [
+      -0.1,
+      -0.062
+     ]
+    },
+    "phys_full - phys_et5_shrink0.5": {
+     "n": 12528,
+     "days": 91,
+     "mae_diff": -0.097,
+     "ci95": [
+      -0.117,
+      -0.076
+     ]
+    }
+   }
+  },
+  "inspected_winter|cimis": {
+   "truth": "obs_et",
+   "truth_hours": 8086,
+   "common_hours": 7994,
+   "mae": {
+    "et5_median": 1.727,
+    "phys_et5_shrink0.0": 1.478,
+    "phys_et5_shrink0.5": 1.485,
+    "phys_et5_shrink1.0": 1.506,
+    "phys_full_et_elig": 0.919,
+    "phys_full": 0.92
+   },
+   "bias": {
+    "et5_median": 0.186,
+    "phys_et5_shrink0.0": -0.478,
+    "phys_et5_shrink0.5": -0.565,
+    "phys_et5_shrink1.0": -0.652,
+    "phys_full_et_elig": -0.022,
+    "phys_full": -0.016
+   },
+   "per_site_mae": {
+    "140": {
+     "et5_median": 1.723,
+     "phys_et5_shrink0.0": 1.533,
+     "phys_et5_shrink0.5": 1.56,
+     "phys_et5_shrink1.0": 1.593,
+     "phys_full_et_elig": 0.982,
+     "phys_full": 0.987
+    },
+    "242": {
+     "et5_median": 1.76,
+     "phys_et5_shrink0.0": 1.434,
+     "phys_et5_shrink0.5": 1.421,
+     "phys_et5_shrink1.0": 1.424,
+     "phys_full_et_elig": 0.832,
+     "phys_full": 0.832
+    },
+    "243": {
+     "et5_median": 1.597,
+     "phys_et5_shrink0.0": 1.334,
+     "phys_et5_shrink0.5": 1.331,
+     "phys_et5_shrink1.0": 1.342,
+     "phys_full_et_elig": 0.804,
+     "phys_full": 0.802
+    },
+    "247": {
+     "et5_median": 1.825,
+     "phys_et5_shrink0.0": 1.606,
+     "phys_et5_shrink0.5": 1.624,
+     "phys_et5_shrink1.0": 1.66,
+     "phys_full_et_elig": 1.054,
+     "phys_full": 1.059
+    }
+   },
+   "availability_current_rule": {
+    "et5_median": 0.99,
+    "phys_et5_shrink0.0": 0.996,
+    "phys_et5_shrink0.5": 0.996,
+    "phys_et5_shrink1.0": 0.996,
+    "phys_full_et_elig": 0.996,
+    "phys_full": 1.0
+   },
+   "availability_3_peer_rule": {
+    "et5_median": 0.99,
+    "phys_et5": 0.989,
+    "phys_full": 1.0
+   },
+   "paired": {
+    "phys_et5_shrink0.5 - et5_median": {
+     "n": 8002,
+     "days": 91,
+     "mae_diff": -0.242,
+     "ci95": [
+      -0.349,
+      -0.137
+     ]
+    },
+    "phys_et5_shrink0.0 - et5_median": {
+     "n": 8002,
+     "days": 91,
+     "mae_diff": -0.249,
+     "ci95": [
+      -0.349,
+      -0.15
+     ]
+    },
+    "phys_et5_shrink0.5 - phys_et5_shrink0.0": {
+     "n": 8053,
+     "days": 91,
+     "mae_diff": 0.007,
+     "ci95": [
+      -0.004,
+      0.017
+     ]
+    },
+    "phys_full_et_elig - phys_et5_shrink0.5": {
+     "n": 8039,
+     "days": 91,
+     "mae_diff": -0.563,
+     "ci95": [
+      -0.645,
+      -0.484
+     ]
+    },
+    "phys_full - phys_et5_shrink0.5": {
+     "n": 8053,
+     "days": 91,
+     "mae_diff": -0.56,
+     "ci95": [
+      -0.643,
+      -0.48
+     ]
+    }
+   }
+  },
+  "untouched_2026-03|asos": {
+   "truth": "obs_cw",
+   "truth_hours": 4346,
+   "common_hours": 3393,
+   "mae": {
+    "et5_median": 2.062,
+    "phys_et5_shrink0.0": 1.86,
+    "phys_et5_shrink0.5": 1.87,
+    "phys_et5_shrink1.0": 1.881,
+    "phys_full_et_elig": 1.848,
+    "phys_full": 1.791
+   },
+   "bias": {
+    "et5_median": -0.184,
+    "phys_et5_shrink0.0": -0.05,
+    "phys_et5_shrink0.5": -0.047,
+    "phys_et5_shrink1.0": -0.045,
+    "phys_full_et_elig": -0.189,
+    "phys_full": 0.119
+   },
+   "per_site_mae": {
+    "DWA": {
+     "et5_median": 2.021,
+     "phys_et5_shrink0.0": 1.904,
+     "phys_et5_shrink0.5": 1.916,
+     "phys_et5_shrink1.0": 1.93,
+     "phys_full_et_elig": 1.906,
+     "phys_full": 1.85
+    },
+    "EDU": {
+     "et5_median": 1.688,
+     "phys_et5_shrink0.0": 1.44,
+     "phys_et5_shrink0.5": 1.449,
+     "phys_et5_shrink1.0": 1.459,
+     "phys_full_et_elig": 1.464,
+     "phys_full": 1.267
+    },
+    "SAC": {
+     "et5_median": 1.634,
+     "phys_et5_shrink0.0": 1.579,
+     "phys_et5_shrink0.5": 1.589,
+     "phys_et5_shrink1.0": 1.605,
+     "phys_full_et_elig": 1.547,
+     "phys_full": 1.401
+    },
+    "SMF": {
+     "et5_median": 1.882,
+     "phys_et5_shrink0.0": 1.742,
+     "phys_et5_shrink0.5": 1.749,
+     "phys_et5_shrink1.0": 1.757,
+     "phys_full_et_elig": 1.67,
+     "phys_full": 1.515
+    },
+    "SUU": {
+     "et5_median": 2.825,
+     "phys_et5_shrink0.0": 2.13,
+     "phys_et5_shrink0.5": 2.144,
+     "phys_et5_shrink1.0": 2.159,
+     "phys_full_et_elig": 2.126,
+     "phys_full": 2.186
+    },
+    "VCB": {
+     "et5_median": 2.366,
+     "phys_et5_shrink0.0": 2.363,
+     "phys_et5_shrink0.5": 2.37,
+     "phys_et5_shrink1.0": 2.378,
+     "phys_full_et_elig": 2.375,
+     "phys_full": 2.529
+    }
+   },
+   "availability_current_rule": {
+    "et5_median": 0.783,
+    "phys_et5_shrink0.0": 0.859,
+    "phys_et5_shrink0.5": 0.859,
+    "phys_et5_shrink1.0": 0.859,
+    "phys_full_et_elig": 0.873,
+    "phys_full": 1.0
+   },
+   "availability_3_peer_rule": {
+    "et5_median": 0.783,
+    "phys_et5": 0.783,
+    "phys_full": 0.999
+   },
+   "paired": {
+    "phys_et5_shrink0.5 - et5_median": {
+     "n": 3401,
+     "days": 31,
+     "mae_diff": -0.192,
+     "ci95": [
+      -0.264,
+      -0.136
+     ]
+    },
+    "phys_et5_shrink0.0 - et5_median": {
+     "n": 3401,
+     "days": 31,
+     "mae_diff": -0.202,
+     "ci95": [
+      -0.266,
+      -0.145
+     ]
+    },
+    "phys_et5_shrink0.5 - phys_et5_shrink0.0": {
+     "n": 3734,
+     "days": 32,
+     "mae_diff": 0.009,
+     "ci95": [
+      0.003,
+      0.014
+     ]
+    },
+    "phys_full_et_elig - phys_et5_shrink0.5": {
+     "n": 3688,
+     "days": 32,
+     "mae_diff": -0.019,
+     "ci95": [
+      -0.051,
+      0.014
+     ]
+    },
+    "phys_full - phys_et5_shrink0.5": {
+     "n": 3734,
+     "days": 32,
+     "mae_diff": -0.141,
+     "ci95": [
+      -0.243,
+      -0.046
+     ]
+    }
+   }
+  },
+  "untouched_2026-03|cimis": {
+   "truth": "obs_et",
+   "truth_hours": 2263,
+   "common_hours": 2105,
+   "mae": {
+    "et5_median": 2.439,
+    "phys_et5_shrink0.0": 2.142,
+    "phys_et5_shrink0.5": 2.152,
+    "phys_et5_shrink1.0": 2.173,
+    "phys_full_et_elig": 1.668,
+    "phys_full": 1.656
+   },
+   "bias": {
+    "et5_median": 0.822,
+    "phys_et5_shrink0.0": -0.185,
+    "phys_et5_shrink0.5": -0.301,
+    "phys_et5_shrink1.0": -0.416,
+    "phys_full_et_elig": -0.153,
+    "phys_full": 0.102
+   },
+   "per_site_mae": {
+    "140": {
+     "et5_median": 2.231,
+     "phys_et5_shrink0.0": 2.294,
+     "phys_et5_shrink0.5": 2.35,
+     "phys_et5_shrink1.0": 2.411,
+     "phys_full_et_elig": 1.651,
+     "phys_full": 1.46
+    },
+    "242": {
+     "et5_median": 2.58,
+     "phys_et5_shrink0.0": 1.815,
+     "phys_et5_shrink0.5": 1.766,
+     "phys_et5_shrink1.0": 1.733,
+     "phys_full_et_elig": 1.615,
+     "phys_full": 1.711
+    },
+    "243": {
+     "et5_median": 2.071,
+     "phys_et5_shrink0.0": 1.61,
+     "phys_et5_shrink0.5": 1.595,
+     "phys_et5_shrink1.0": 1.593,
+     "phys_full_et_elig": 1.205,
+     "phys_full": 1.238
+    },
+    "247": {
+     "et5_median": 2.883,
+     "phys_et5_shrink0.0": 2.897,
+     "phys_et5_shrink0.5": 2.951,
+     "phys_et5_shrink1.0": 3.012,
+     "phys_full_et_elig": 2.228,
+     "phys_full": 2.236
+    }
+   },
+   "availability_current_rule": {
+    "et5_median": 0.934,
+    "phys_et5_shrink0.0": 0.972,
+    "phys_et5_shrink0.5": 0.972,
+    "phys_et5_shrink1.0": 0.972,
+    "phys_full_et_elig": 0.975,
+    "phys_full": 1.0
+   },
+   "availability_3_peer_rule": {
+    "et5_median": 0.934,
+    "phys_et5": 0.914,
+    "phys_full": 1.0
+   },
+   "paired": {
+    "phys_et5_shrink0.5 - et5_median": {
+     "n": 2113,
+     "days": 31,
+     "mae_diff": -0.286,
+     "ci95": [
+      -0.441,
+      -0.129
+     ]
+    },
+    "phys_et5_shrink0.0 - et5_median": {
+     "n": 2113,
+     "days": 31,
+     "mae_diff": -0.296,
+     "ci95": [
+      -0.439,
+      -0.15
+     ]
+    },
+    "phys_et5_shrink0.5 - phys_et5_shrink0.0": {
+     "n": 2200,
+     "days": 31,
+     "mae_diff": 0.01,
+     "ci95": [
+      -0.003,
+      0.022
+     ]
+    },
+    "phys_full_et_elig - phys_et5_shrink0.5": {
+     "n": 2176,
+     "days": 31,
+     "mae_diff": -0.498,
+     "ci95": [
+      -0.612,
+      -0.39
+     ]
+    },
+    "phys_full - phys_et5_shrink0.5": {
+     "n": 2200,
+     "days": 31,
+     "mae_diff": -0.506,
+     "ci95": [
+      -0.623,
+      -0.393
+     ]
+    }
+   }
+  }
+ }
+}

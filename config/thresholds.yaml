@@ -12,6 +12,23 @@ lapse:
 
 baseline:
   min_neighbors: 2        # spec
+  # physics estimate for places with no station history (map, virtual stations); fitted by
+  # `chillwatch fit-physics` (leave-stations-out). 1.0 / null = the spec's IDW + full lapse.
+  # Fitted 2026-10-24 on CIMIS 2018-19..2022-23 (2.289 -> 2.237 F) and checked on the held-out
+  # 2023-24 + 2024-25 seasons: 2.190 -> 2.141 F MAE, chill median 103 -> 101 h (data/models/physics_fit.json).
+  unseen_lapse_shrink: 0.5
+  unseen_dz_scale_ft: 600
+
+# estimate_location (backend/chillwatch/estimate.py): the Terra-facing estimate for a place
+# with no station. See docs/TERRA_COMPATIBILITY.md.
+estimate:
+  # Apply the lapse only when the usable stations that hour span this much elevation. A slope
+  # from stations ~1 F apart over Terra's 129 ft span is ~8 F/kft of noise (it sat at the
+  # +-10 F/kft clip half the time and added nothing); over 500 ft the same noise is ~2 F/kft.
+  lapse_min_span_ft: 500    # TODO source: from the noise argument above, not fitted
+  min_peers: 3              # Terra QC's rule: at least three usable other stations
+  # Months (PST) with data and validation behind them; other months return insufficient_data.
+  validated_months: [10, 11, 12, 1, 2, 3]
 
 normalize:
   min_coverage: 0.75      # spec, sub-hourly -> hourly
@@ -70,14 +87,30 @@ severity:                  # TODO source: severities other than offline are not 
 offsets:
   window_days: 28         # spec
   recompute_days: 7       # spec (weekly)
+  # Offsets are kept per PST hour of day (24 bins), each pulled toward its night/day median
+  # with weight n / (n + hour_shrink_k). Held-out 2023-25, weekly 28-day learning: MAE
+  # 1.734 -> 1.678 F, chill-hour net error 104 -> 97 h vs night/day (bench/experiments/offset_bins.json).
+  hour_shrink_k: 14       # TODO source: chosen, not fitted (~half the samples a 28-day bin has)
+  # Weekly learning can absorb a new drift/offset fault as "station bias" before detection
+  # flags it. lag_days ends the 28-day window this many days before the update; a learned
+  # offset may also move at most max_weekly_change_f per update (null = no limit).
+  lag_days: 0             # spec (no lag)
+  max_weekly_change_f: null
 
 repair:
   long_gap_days: 14       # spec
+
+grid:                      # chill-hour map (repair/grid.py)
+  min_stations: 2         # spec (>= 2 neighbors within the neighbor radius)
+  min_coverage: 0.9       # TODO source: share of chill-window hours that must have an estimate
+  max_dz_ft: 1500         # TODO source: mask cells this far above/below the nearest station
+  water_below_ft: -50     # cells below this ground elevation are water (terrain tiles carry bathymetry)
 
 chill:
   min_f: 32.0             # spec
   max_f: 45.0             # spec
   start_mmdd: "11-01"     # spec
+  end_mmdd: "03-31"       # the window the spec's Oct-Mar seasons covered (data is now year-round)
 
 model:
   objective: huber        # spec
@@ -91,9 +124,13 @@ model:
   valid_station_fraction: 0.15  # TODO source: station-grouped early-stopping split
   dirty_label_sigma: 5.0  # spec
   loso_folds: 5           # GroupKFold by station; 0 = true leave-one-station-out
+  loso_procedure: full    # full = each fold model gets its own early stopping + dirty-label removal; fixed = main model's round count
+  unseen_method: idw_lapse  # places with no station history (map, virtual stations, blind tests): idw_lapse | model
+  log_every: 100          # log validation loss every N boosting rounds
+  num_threads: 0          # 0 = all cores; set lower (or CHILLWATCH_LGB_THREADS) when sharing the machine
   prism_mask_fraction: 0.3  # spec
   seed: 42
-  build_workers: 4        # processes building per-season training frames
+  build_workers: 3        # processes building per-season training frames (each needs ~1-2 GB on CIMIS)
   blind_max_train_rows: 1500000  # TODO source: subsample when retraining for blind_test
 
 uncertainty:

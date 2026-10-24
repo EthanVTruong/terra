@@ -144,7 +144,7 @@ class MemoryStore:
         self._stations = pd.DataFrame(columns=STATION_TABLE_COLUMNS)
         self._data: dict[int, pd.DataFrame] = {}
         self._offsets = pd.DataFrame(
-            columns=["station_id", "kind", "night_f", "day_f", "window_start", "window_end", "created_at"]
+            columns=["station_id", "kind", "night_f", "day_f", "hourly_f", "window_start", "window_end", "created_at"]
         )
         if stations is not None:
             self.upsert_stations(stations)

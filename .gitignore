@@ -13,3 +13,5 @@ bench/results/*.json
 !bench/results/.gitkeep
 data_asos/
 .env
+data/grid/
+data/experiments/

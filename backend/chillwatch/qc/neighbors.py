@@ -167,29 +167,98 @@ def row_nanmedian(a: np.ndarray) -> np.ndarray:
     return med
 
 
-def adjusted_neighbor_temps(
-    W: np.ndarray, idx: np.ndarray, dz: np.ndarray, gamma: np.ndarray
+def _kth_remaining(srt: np.ndarray, shifted: np.ndarray, rows: np.ndarray, k: np.ndarray) -> np.ndarray:
+    """k-th smallest value per row of ``srt`` after removing the entries whose sorted ranks minus
+    their order index are ``shifted`` (the standard rank-skipping count)."""
+    t = (shifted <= k[:, None]).sum(axis=1)
+    pos = np.clip(k + t, 0, srt.shape[1] - 1)
+    return srt[rows, pos]
+
+
+def theil_sen_lapse_excluding_each(
+    W: np.ndarray, elevation_ft: np.ndarray, min_stations: int | None = None, clip: float | None = None,
+    chunk: int = 512,
 ) -> np.ndarray:
-    """(H, k) lapse-adjusted neighbor temperatures (NaN where neighbor missing/invalid)."""
+    """``out[:, j]`` = the hourly Theil-Sen lapse rate fitted without station ``j`` (all j at once).
+
+    Exact equivalent of calling :func:`theil_sen_lapse` with column j blanked, for every j:
+    each hour's pairwise slopes are sorted once; removing station j's pairs shifts the median
+    rank by the number of removed slopes ranked below it, found by counting.
+    """
+    th = config.thresholds()["lapse"]
+    min_stations = int(min_stations or th["min_stations"])
+    clip = float(clip if clip is not None else th["clip_f_per_kft"])
+    z = np.asarray(elevation_ft, dtype="float64")
+    H, S = W.shape
+    out = np.full((H, S), np.nan)
+    ii, jj = np.triu_indices(S, k=1)
+    dzp = z[jj] - z[ii]
+    keep = np.isfinite(dzp) & (dzp != 0)
+    ii, jj, dzp = ii[keep], jj[keep], dzp[keep]
+    if len(ii) == 0:
+        return out
+    pairs_of = [np.flatnonzero((ii == s) | (jj == s)) for s in range(S)]
+    for s0 in range(0, H, chunk):
+        block = W[s0 : s0 + chunk]
+        h = block.shape[0]
+        slopes = (block[:, jj] - block[:, ii]) / dzp * 1000.0
+        order = np.argsort(slopes, axis=1, kind="stable")  # NaN last
+        srt = np.take_along_axis(slopes, order, axis=1)
+        rank = np.empty_like(order)
+        np.put_along_axis(rank, order, np.arange(order.shape[1])[None, :].repeat(h, axis=0), axis=1)
+        n_fin = np.isfinite(slopes).sum(axis=1)
+        n_valid_st = np.isfinite(block).sum(axis=1)
+        rows = np.arange(h)
+        for s in range(S):
+            idx = pairs_of[s]
+            if len(idx) == 0:
+                continue
+            r = np.sort(rank[:, idx], axis=1)
+            removed_fin = np.isfinite(slopes[:, idx]).sum(axis=1)
+            n_rem = n_fin - removed_fin
+            shifted = r - np.arange(r.shape[1])[None, :]
+
+            lo = np.maximum((n_rem - 1) // 2, 0)
+            hi = np.maximum(n_rem // 2, 0)
+            med = (_kth_remaining(srt, shifted, rows, lo) + _kth_remaining(srt, shifted, rows, hi)) / 2.0
+            med[n_rem <= 0] = np.nan
+            enough = (n_valid_st - np.isfinite(block[:, s])) >= min_stations
+            med[~enough] = np.nan
+            out[s0 : s0 + h, s] = med
+    return np.clip(out, -clip, clip)
+
+
+def adjusted_neighbor_temps(
+    W: np.ndarray, idx: np.ndarray, dz: np.ndarray, gamma: np.ndarray, shrink: float = 1.0
+) -> np.ndarray:
+    """(H, k) lapse-adjusted neighbor temperatures (NaN where neighbor missing/invalid).
+
+    ``shrink`` scales the lapse term (1 = the spec's full adjustment).
+    """
     H = W.shape[0]
     rows = np.arange(H)[:, None]
     vals = np.where(idx >= 0, W[rows, np.clip(idx, 0, None)], np.nan)
     g = np.where(np.isfinite(gamma), gamma, 0.0)[:, None]
-    return vals + g * dz / 1000.0
+    return vals + shrink * g * dz / 1000.0
 
 
 def idw_baseline(
-    adj: np.ndarray, dist_km: np.ndarray, min_neighbors: int | None = None, min_distance_km: float | None = None
+    adj: np.ndarray, dist_km: np.ndarray, min_neighbors: int | None = None, min_distance_km: float | None = None,
+    dz_ft: np.ndarray | None = None, dz_scale_ft: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """``T_base = sum(w_i * adj_i) / sum(w_i)``, ``w_i = 1/d_i^2`` over valid neighbors.
 
-    Returns (T_base, n_valid); T_base is NaN when fewer than ``min_neighbors`` are valid.
+    With ``dz_scale_ft`` the weights also fall off with elevation difference:
+    ``w_i *= exp(-(dz_i / dz_scale_ft)^2)``. Returns (T_base, n_valid); T_base is NaN when
+    fewer than ``min_neighbors`` are valid.
     """
     th = config.thresholds()
     min_neighbors = int(min_neighbors or th["baseline"]["min_neighbors"])
     dmin = float(min_distance_km if min_distance_km is not None else th["neighbors"]["min_distance_km"])
     valid = np.isfinite(adj) & np.isfinite(dist_km)
     w = np.where(valid, 1.0 / np.maximum(np.nan_to_num(dist_km, nan=1.0), dmin) ** 2, 0.0)
+    if dz_scale_ft and dz_ft is not None:
+        w = w * np.exp(-((np.nan_to_num(dz_ft) / float(dz_scale_ft)) ** 2))
     num = np.where(valid, adj, 0.0) * w
     sw = w.sum(axis=1)
     n = valid.sum(axis=1)
@@ -212,12 +281,17 @@ class Field:
     gamma: np.ndarray
     extras: dict[str, np.ndarray] = field(default_factory=dict)
     _gamma_ex: dict[frozenset[int], np.ndarray] = field(default_factory=dict, repr=False)
+    _gamma_each: np.ndarray | None = field(default=None, repr=False)
 
     def gamma_excluding(self, exclude: set[int] | None) -> np.ndarray:
         """Hourly lapse rate fitted without the given stations (so a target never informs its own features)."""
         cols = [self.pos[s] for s in (exclude or ()) if s in self.pos]
         if not cols:
             return self.gamma
+        if len(cols) == 1:
+            if self._gamma_each is None:
+                self._gamma_each = theil_sen_lapse_excluding_each(self.W, self.elevation)
+            return self._gamma_each[:, cols[0]]
         key = frozenset(cols)
         if key not in self._gamma_ex:
             W2 = self.W.copy()

@@ -97,3 +97,35 @@ def test_field_excludes_invalid_and_out_of_range(syn_stations):
     col = f.W[:, f.pos[6]]
     assert col[0] == 40 and np.isnan(col[1]) and np.isnan(col[2])
     assert f.raw[2, f.pos[6]] == 41
+
+
+def test_fast_leave_one_out_lapse_matches_reference():
+    from chillwatch.qc.neighbors import theil_sen_lapse_excluding_each
+
+    rng = np.random.default_rng(3)
+    S, H = 15, 200
+    z = rng.uniform(0, 3000, S)
+    z[2] = z[5]  # a tie: that pair has no slope
+    W = 50 + rng.normal(0, 3, (H, S)) + rng.uniform(-5, 5, (H, 1)) * z / 1000
+    W[rng.random((H, S)) < 0.3] = np.nan
+    fast = theil_sen_lapse_excluding_each(W, z, chunk=64)
+    for j in range(S):
+        W2 = W.copy()
+        W2[:, j] = np.nan
+        ref = theil_sen_lapse(W2, z)
+        np.testing.assert_array_equal(np.isnan(fast[:, j]), np.isnan(ref))
+        np.testing.assert_allclose(fast[:, j][~np.isnan(ref)], ref[~np.isnan(ref)], rtol=0, atol=1e-12)
+
+
+def test_shrink_and_dz_kernel():
+    W = np.array([[40.0, 50.0]])
+    idx = np.array([[0, 1]])
+    dz = np.array([[1000.0, 0.0]])
+    assert adjusted_neighbor_temps(W, idx, dz, np.array([4.0]), shrink=0.5)[0, 0] == 42.0
+    adj = np.array([[40.0, 50.0]])
+    dist = np.array([[10.0, 10.0]])
+    tb_plain, _ = idw_baseline(adj, dist)
+    tb_dz, _ = idw_baseline(adj, dist, dz_ft=np.array([[1200.0, 0.0]]), dz_scale_ft=600.0)
+    assert tb_plain[0] == 45.0
+    w0 = np.exp(-4.0)
+    assert tb_dz[0] == pytest.approx((40 * w0 + 50) / (w0 + 1))

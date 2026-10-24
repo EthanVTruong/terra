@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowClockwise, ArrowRight, ArrowUp, ArrowUpRight, BellSimple, CaretDown, CaretRight, Check, CircleNotch, Info, MapPin, MapTrifold, Plus, SidebarSimple, SpeakerHigh, SpeakerSlash, WarningCircle, X } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowRight, ArrowUp, ArrowUpRight, BellSimple, CaretDown, CaretRight, Check, CircleNotch, Info, MapPin, MapTrifold, Minus, Plus, SidebarSimple, SpeakerHigh, SpeakerSlash, WarningCircle, X } from '@phosphor-icons/react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 const number = (v, d = 1) => Number.isFinite(v) ? v.toFixed(d) : '—';
 const degrees = v => Number.isFinite(v) ? `${number(v)}°` : '—';
@@ -279,9 +279,11 @@ function HeatField({
 const BASEMAP_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_';
 function BaseMap({
   bounds: b,
+  width,
   layer = 'Base'
 }) {
-  const z = 10,
+  // Pick the tile level whose 256px tiles best match the map's on-screen width.
+  const z = Math.max(8, Math.min(16, Math.round(Math.log2(width * 360 / (256 * (b.east - b.west)))))),
     n = 2 ** z,
     left = (b.west + 180) / 360 * n,
     right = (b.east + 180) / 360 * n,
@@ -304,26 +306,30 @@ function BaseMap({
     }} />)}</div>;
 }
 const latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI;
-// Panning keeps the view centre over the estimated field.
-function clampPan(bounds, [x, y]) {
-  const limitX = (bounds.east - bounds.west) / 720,
-    limitY = (mercatorY(bounds.south) - mercatorY(bounds.north)) / 2;
+const MAX_ZOOM = 4;
+const domainSpan = bounds => [(bounds.east - bounds.west) / 360, mercatorY(bounds.south) - mercatorY(bounds.north)];
+// View size in Web Mercator units. Zoom 1 covers the estimated field exactly along one axis.
+function viewSpan(bounds, aspect, zoom) {
+  let [dx, dy] = domainSpan(bounds);
+  if (dx / dy > aspect) dx = dy * aspect;else dy = dx / aspect;
+  return [dx / zoom, dy / zoom];
+}
+// The view never leaves the estimated field, so the heatmap always fills the map.
+function clampPan(bounds, span, [x, y]) {
+  const [fx, fy] = domainSpan(bounds),
+    limitX = Math.max(0, (fx - span[0]) / 2),
+    limitY = Math.max(0, (fy - span[1]) / 2);
   return [Math.max(-limitX, Math.min(limitX, x)), Math.max(-limitY, Math.min(limitY, y))];
 }
-function fitMapBounds(bounds, aspect, pan = [0, 0]) {
+function fitMapBounds(bounds, span, pan) {
   const cx = (bounds.west + bounds.east) / 720 + .5 + pan[0],
-    cy = (mercatorY(bounds.north) + mercatorY(bounds.south)) / 2 + pan[1];
-  let dx = (bounds.east - bounds.west) / 360,
-    dy = mercatorY(bounds.south) - mercatorY(bounds.north);
-  // Cover rather than contain, so the estimated field fills the whole map.
-  if (dx / dy > aspect) dx = dy * aspect;else dy = dx / aspect;
+    cy = (mercatorY(bounds.north) + mercatorY(bounds.south)) / 2 + pan[1],
+    [dx, dy] = span;
   return {
     west: (cx - dx / 2 - .5) * 360,
     east: (cx + dx / 2 - .5) * 360,
     north: latitude(cy - dy / 2),
-    south: latitude(cy + dy / 2),
-    dx,
-    dy
+    south: latitude(cy + dy / 2)
   };
 }
 function pointAt(b, fx, fy) {
@@ -333,6 +339,10 @@ function pointAt(b, fx, fy) {
   };
 }
 const MAX_SPOTS = 6;
+function spotValue(reading, layer) {
+  const estimate = reading?.layers?.[layer];
+  return estimate?.status === 'ok' ? degrees(estimate.temperature_f) : estimate ? 'No estimate' : '…';
+}
 // Map spots that are not stations: read-only estimates from the same estimator as the heatmap.
 function useSpotReadings(spots, fingerprint) {
   const [readings, setReadings] = useState({});
@@ -363,20 +373,30 @@ function WeatherMap({
   state,
   selected,
   onSelect,
-  layer
+  layer,
+  spots,
+  readings,
+  onAddSpot
 }) {
   const ref = useRef(null),
     drag = useRef(null),
     dragged = useRef(false),
-    [aspect, setAspect] = useState(1.8),
-    [pan, setPan] = useState([0, 0]),
-    [spots, setSpots] = useState([]),
+    [size, setSize] = useState({
+      width: 900,
+      height: 500
+    }),
+    [view, setView] = useState({
+      zoom: 1,
+      pan: [0, 0]
+    }),
     domain = state.heatmap.bounds,
-    b = fitMapBounds(domain, aspect, pan),
+    aspect = size.width / size.height,
+    span = viewSpan(domain, aspect, view.zoom),
+    pan = clampPan(domain, span, view.pan),
+    b = fitMapBounds(domain, span, pan),
     cells = state.heatmap.layers?.[layer] || state.heatmap.cells || [],
     [lo, hi] = heatRange(cells),
-    available = cells.some(c => Number.isFinite(c.temperature_f) && c.status === 'ok'),
-    readings = useSpotReadings(spots, state.heatmap.fingerprint);
+    available = cells.some(c => Number.isFinite(c.temperature_f) && c.status === 'ok');
   function pointerDown(e) {
     if (e.button !== 0) return;
     drag.current = {
@@ -395,8 +415,36 @@ function WeatherMap({
     if (!start.moved) ref.current.setPointerCapture(e.pointerId);
     start.moved = true;
     const box = ref.current.getBoundingClientRect();
-    setPan(clampPan(domain, [start.pan[0] - dx / box.width * b.dx, start.pan[1] - dy / box.height * b.dy]));
+    setView(v => ({
+      ...v,
+      pan: clampPan(domain, span, [start.pan[0] - dx / box.width * span[0], start.pan[1] - dy / box.height * span[1]])
+    }));
   }
+  // Zoom around a point given as a fraction of the map box, keeping that spot under the cursor.
+  const zoomBy = useCallback((factor, fx = .5, fy = .5) => setView(v => {
+    const zoom = Math.max(1, Math.min(MAX_ZOOM, v.zoom * factor)),
+      before = viewSpan(domain, aspect, v.zoom),
+      after = viewSpan(domain, aspect, zoom),
+      start = clampPan(domain, before, v.pan);
+    return {
+      zoom,
+      pan: clampPan(domain, after, [start[0] + (fx - .5) * (before[0] - after[0]), start[1] + (fy - .5) * (before[1] - after[1])])
+    };
+  }), [domain.north, domain.south, domain.east, domain.west, aspect]);
+  useEffect(() => {
+    const target = ref.current;
+    if (!target) return;
+    // Non-passive so the wheel zooms the map instead of scrolling the page.
+    const wheel = e => {
+      e.preventDefault();
+      const box = target.getBoundingClientRect();
+      zoomBy(Math.exp(-e.deltaY * .0015), (e.clientX - box.left) / box.width, (e.clientY - box.top) / box.height);
+    };
+    target.addEventListener('wheel', wheel, {
+      passive: false
+    });
+    return () => target.removeEventListener('wheel', wheel);
+  }, [zoomBy]);
   function pointerUp() {
     dragged.current = Boolean(drag.current?.moved);
     drag.current = null;
@@ -409,16 +457,15 @@ function WeatherMap({
         lon
       } = pointAt(b, (e.clientX - box.left) / box.width, (e.clientY - box.top) / box.height);
     if (lat < domain.south || lat > domain.north || lon < domain.west || lon > domain.east) return;
-    setSpots(current => [...current, {
-      id: `${lat.toFixed(4)},${lon.toFixed(4)}`,
-      lat,
-      lon
-    }].slice(-MAX_SPOTS));
+    onAddSpot(lat, lon);
   }
   useEffect(() => {
     const observer = new ResizeObserver(entries => {
       const box = entries[0].contentRect;
-      if (box.height) setAspect(box.width / box.height);
+      if (box.height) setSize({
+        width: box.width,
+        height: box.height
+      });
     });
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
@@ -431,21 +478,23 @@ function WeatherMap({
     width: `${parseFloat(opposite.left) - parseFloat(corner.left)}%`,
     height: `${parseFloat(opposite.top) - parseFloat(corner.top)}%`
   };
-  return <div className="weather-map" ref={ref} role="group" aria-label={`${layer === 'raw' ? 'Raw' : 'Terra filtered'} estimated temperature heatmap. Drag to move; click to check a spot.`} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onClickCapture={e => {
+  return <div className="weather-map" ref={ref} role="group" aria-label={`${layer === 'raw' ? 'Raw' : 'Terra filtered'} estimated temperature heatmap. Drag to move, scroll to zoom, click to check a spot.`} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onClickCapture={e => {
       if (dragged.current) {
         e.stopPropagation();
         dragged.current = false;
       }
-    }} onClick={toggleSpot}><BaseMap bounds={b} /><div className="heat-domain" style={fieldStyle}><HeatField cells={cells} lo={lo} hi={hi} /></div><BaseMap bounds={b} layer="Reference" /><div className="map-region">SACRAMENTO VALLEY</div>{state.stations.map(station => {
+    }} onClick={toggleSpot}><BaseMap bounds={b} width={size.width} /><div className="heat-domain" style={fieldStyle}><HeatField cells={cells} lo={lo} hi={hi} /></div><BaseMap bounds={b} width={size.width} layer="Reference" /><div className="map-region">SACRAMENTO VALLEY</div>{state.stations.map(station => {
       const pos = position(station.lat, station.lon, b),
         right = parseFloat(pos.left) > 70,
         bottom = parseFloat(pos.top) > 82;
       return <button key={station.id} className={`map-station${selected === station.id ? ' selected' : ''}${!station.online ? ' is-offline' : flagged(station) ? ' is-flagged' : ''}${right ? ' caption-left' : ''}${bottom ? ' caption-up' : ''}`} style={pos} onClick={() => onSelect(station.id)} aria-label={`Select ${station.name}, ${station.online ? degrees(station.value_f) + ' Fahrenheit' : 'offline'}`} aria-pressed={selected === station.id}><span className="map-point" /><span className="map-station-caption"><strong>{station.name}</strong><span>{station.online ? degrees(station.value_f) : 'Offline'}{station.online && flagged(station) && <WarningCircle size={12} />}</span>{layer === 'filtered' && state.assessment.estimator_qc_exclusions.some(row => row.station_id === station.id) && <small>Excluded from field</small>}</span></button>;
     })}{spots.map(spot => {
-      const estimate = readings[spot.id]?.layers?.[layer],
-        value = estimate?.status === 'ok' ? degrees(estimate.temperature_f) : estimate ? 'No estimate' : '…';
-      return <button key={spot.id} className="map-spot" style={position(spot.lat, spot.lon, b)} onClick={() => setSpots(current => current.filter(s => s.id !== spot.id))} aria-label={`Remove spot, ${value}`} title="Remove spot"><span className="map-spot-point" /><span className="map-spot-caption">{value}<X size={10} /></span></button>;
-    })}{(pan[0] !== 0 || pan[1] !== 0) && <button className="map-recenter" onClick={() => setPan([0, 0])}><ArrowClockwise size={12} />Recenter</button>}<div className="orchard-pin" style={position(state.orchard.lat, state.orchard.lon, b)}><MapPin size={22} weight="fill" /><span>Demo orchard</span></div>{!available && <div className="map-no-support"><WarningCircle size={18} /><strong>No supported temperature surface</strong><span>Not enough usable station readings</span></div>}<div className="map-legend"><strong>Temperature (°F)</strong><div>{Array.from({
+      const value = spotValue(readings[spot.id], layer);
+      return <button key={spot.id} className={`map-spot${selected === spot.id ? ' selected' : ''}`} style={position(spot.lat, spot.lon, b)} onClick={() => onSelect(spot.id)} aria-label={`Select map spot, ${value}`} aria-pressed={selected === spot.id}><span className="map-spot-point" /><span className="map-spot-caption"><strong>Map spot</strong>{value}</span></button>;
+    })}{(state.sensors || []).map(sensor => <button key={sensor.id} className={`map-spot is-sensor${selected === sensor.id ? ' selected' : ''}`} style={position(sensor.lat, sensor.lon, b)} onClick={() => onSelect(sensor.id)} aria-label={`Select test sensor, ${degrees(sensor.value_f)} Fahrenheit`} aria-pressed={selected === sensor.id}><span className="map-spot-point" /><span className="map-spot-caption"><strong>Test sensor</strong>{degrees(sensor.value_f)}</span></button>)}<div className="map-zoom" role="group" aria-label="Map zoom"><button onClick={() => zoomBy(1.5)} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in" title="Zoom in"><Plus size={14} /></button><button onClick={() => zoomBy(1 / 1.5)} disabled={view.zoom <= 1} aria-label="Zoom out" title="Zoom out"><Minus size={14} /></button>{(view.zoom > 1 || pan[0] !== 0 || pan[1] !== 0) && <button onClick={() => setView({
+          zoom: 1,
+          pan: [0, 0]
+        })} aria-label="Reset map view" title="Reset view"><ArrowClockwise size={13} /></button>}</div><div className="orchard-pin" style={position(state.orchard.lat, state.orchard.lon, b)}><MapPin size={22} weight="fill" /><span>Demo orchard</span></div>{!available && <div className="map-no-support"><WarningCircle size={18} /><strong>No supported temperature surface</strong><span>Not enough usable station readings</span></div>}<div className="map-legend"><strong>Temperature (°F)</strong><div>{Array.from({
           length: 32
         }, (_, i) => <i key={i} style={{
           background: `rgb(${heatColor(i / 31, 0, 1).join(',')})`
@@ -539,6 +588,55 @@ function StationControl({
           });
         }}><span /></button></div>)}</div><div className="support-summary"><span>Orchard support</span><strong>{support(state.assessment)} of {state.stations.length}</strong></div><p className="control-footnote">Temperature changes apply to this hour only.</p></aside>;
 }
+// Controls for a map spot or test sensor. Setting a spot's temperature places a test sensor there.
+function SpotControl({
+  state,
+  target,
+  sensor,
+  reading,
+  layer,
+  act,
+  busy,
+  onPlaced,
+  onRemoved
+}) {
+  const estimate = reading?.layers?.[layer],
+    start = sensor ? target.value_f : estimate?.status === 'ok' ? Math.round(estimate.temperature_f * 10) / 10 : 50,
+    [draft, setDraft] = useState(String(start)),
+    timer = useRef(null);
+  useEffect(() => {
+    setDraft(String(start));
+  }, [target.id, start]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  function change(v) {
+    const n = Number(v);
+    setDraft(v);
+    clearTimeout(timer.current);
+    if (!String(v).trim() || !Number.isFinite(n) || n < -10 || n > 125) return;
+    timer.current = setTimeout(async () => {
+      if (sensor) {
+        act({
+          type: 'sensor_value',
+          sensor_id: target.id,
+          value_f: n
+        });
+        return;
+      }
+      const next = await act({
+        type: 'sensor',
+        lat: target.lat,
+        lon: target.lon,
+        value_f: n
+      });
+      const placed = next?.sensors?.at(-1);
+      if (placed) onPlaced(target.id, placed.id);
+    }, 350);
+  }
+  return <aside className="station-controls" aria-label={sensor ? 'Selected test sensor controls' : 'Selected map spot controls'}><div className="selected-station-heading"><h2>{sensor ? 'Test sensor' : 'Map spot'}</h2><span className="station-state">{sensor ? 'Uncalibrated' : 'Estimate'}</span></div><p className="spot-coordinates">{target.lat.toFixed(3)}, {target.lon.toFixed(3)} · 60 ft</p><div className="temperature-control"><label htmlFor="spot-temperature">{sensor ? 'Sensor reading' : 'Set a test reading'} <span>°F</span></label><div className="temperature-value"><input id="spot-temperature" aria-label={`${sensor ? 'Test sensor' : 'Map spot'} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={busy && !sensor} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${sensor ? 'test sensor' : 'map spot'} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} onChange={e => change(e.target.value)} /></div>{!sensor && <div className="station-comparison"><div><span>Estimated here</span><strong>{spotValue(reading, layer)}</strong></div><div><span>Layer</span><strong>{layer === 'raw' ? 'Raw' : 'Filtered'}</strong></div></div>}<p className="reading-state">{sensor ? 'This reading feeds the heatmap and orchard estimate. Terra’s station checks only cover the five calibrated stations, so they can’t judge it.' : 'Changing the temperature places a test sensor here.'}</p><button className="quiet-button spot-remove" disabled={busy} onClick={() => sensor ? act({
+      type: 'sensor_remove',
+      sensor_id: target.id
+    }).then(onRemoved) : onRemoved()}><X size={13} />{sensor ? 'Remove test sensor' : 'Remove spot'}</button><p className="control-footnote">Select a station on the map to return to its controls.</p></aside>;
+}
 function StationApp({
   demo
 }) {
@@ -549,13 +647,37 @@ function StationApp({
     } = demo,
     [selected, setSelected] = useState(6),
     [layer, setLayer] = useState('raw'),
+    [spots, setSpots] = useState([]),
+    readings = useSpotReadings(spots, state.heatmap.fingerprint),
     phone = usePhone(state, 'stations'),
     available = supported(state.assessment),
-    health = state.monitor.demo_health;
-  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div><StationControl state={state} selected={selected} setSelected={setSelected} act={act} busy={busy} layer={layer} /></div><footer className="lab-footer"><div className="scenario-controls"><span>Try</span>{[['normal', 'Original'], ['minor', 'Small change'], ['spike', 'Station spike'], [health.incident_active ? 'recover' : 'support_loss', health.incident_active ? 'Restore +3h' : 'Support loss']].map(([name, label]) => <button key={name} disabled={busy || name === 'recover' && state.controls.remaining_hours < 3} onClick={() => act({
+    health = state.monitor.demo_health,
+    selectedSpot = spots.find(s => s.id === selected),
+    selectedSensor = (state.sensors || []).find(s => s.id === selected),
+    stationId = state.stations.some(s => s.id === selected) ? selected : state.stations[0].id,
+    edited = state.stations.some(s => s.override !== null && s.override !== undefined) || (state.sensors || []).length > 0;
+  function addSpot(lat, lon) {
+    const id = `spot:${lat.toFixed(4)},${lon.toFixed(4)}`;
+    setSpots(current => [...current.filter(s => s.id !== id), {
+      id,
+      lat,
+      lon
+    }].slice(-MAX_SPOTS));
+    setSelected(id);
+  }
+  function removeSpot(id) {
+    setSpots(current => current.filter(s => s.id !== id));
+  }
+  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selectedSpot || selectedSensor ? selected : stationId} onSelect={setSelected} layer={layer} spots={spots} readings={readings} onAddSpot={addSpot} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div>{selectedSpot || selectedSensor ? <SpotControl key={selected} state={state} target={selectedSpot || selectedSensor} sensor={Boolean(selectedSensor)} reading={selectedSpot && readings[selectedSpot.id]} layer={layer} act={act} busy={busy} onPlaced={(spotId, sensorId) => {
+          removeSpot(spotId);
+          setSelected(sensorId);
+        }} onRemoved={() => {
+          if (selectedSpot) removeSpot(selectedSpot.id);
+          setSelected(stationId);
+        }} /> : <StationControl state={state} selected={stationId} setSelected={setSelected} act={act} busy={busy} layer={layer} />}</div><footer className="lab-footer"><div className="scenario-controls"><span>Try</span>{[['normal', 'Original'], ['minor', 'Small change'], ['spike', 'Station spike'], [health.incident_active ? 'recover' : 'support_loss', health.incident_active ? 'Restore +3h' : 'Support loss']].map(([name, label]) => <button key={name} disabled={busy || name === 'recover' && state.controls.remaining_hours < 3} onClick={() => act({
             type: 'preset',
             name
-          })}>{label}</button>)}<button disabled={busy || !state.stations.some(s => s.override !== null && s.override !== undefined)} onClick={() => act({
+          })}>{label}</button>)}<button disabled={busy || !edited} onClick={() => act({
             type: 'reset_temperatures'
           })}><ArrowClockwise size={12} />Reset temperatures</button></div><div className="time-controls"><span>{clock(state.clock.current_utc, true)}</span><button className="quiet-button" disabled={busy || state.controls.remaining_hours < 1} onClick={() => act({
             type: 'advance',

@@ -155,6 +155,32 @@ class DemoSimulationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.demo.action({"type": "reset_temperatures", "station_id": 6})
 
+    def test_test_sensor_feeds_estimates_but_never_frozen_station_qc(self):
+        baseline = self.demo.state()["assessment"]["location_estimate"]["temperature"]
+        placed = self.demo.action({"type": "sensor", "lat": 38.56, "lon": -121.79, "value_f": 70})
+        sensor = placed["sensors"][0]
+        self.assertFalse(sensor["calibrated"])
+        self.assertNotIn(sensor["id"], {s["id"] for s in placed["stations"]})
+        estimate = placed["assessment"]["location_estimate"]
+        self.assertIn(sensor["id"], estimate["used_station_ids"])
+        self.assertGreater(estimate["temperature"], baseline)
+        self.assertTrue(self.demo.scored.station_id.isin(self.demo.station_ids).all())
+        spot = self.demo.point(38.56, -121.79)
+        self.assertIn(sensor["id"], spot["layers"]["filtered"]["used_station_ids"])
+        warmer = self.demo.action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": 90})
+        self.assertGreater(warmer["assessment"]["location_estimate"]["temperature"], estimate["temperature"])
+        removed = self.demo.action({"type": "sensor_remove", "sensor_id": sensor["id"]})
+        self.assertEqual(removed["sensors"], [])
+        self.assertAlmostEqual(removed["assessment"]["location_estimate"]["temperature"], baseline)
+        self.demo.action({"type": "sensor", "lat": 38.56, "lon": -121.79, "value_f": 70})
+        self.assertEqual(self.demo.action({"type": "reset_temperatures"})["sensors"], [])
+        for action in ({"type": "sensor", "lat": 45.0, "lon": -121.79, "value_f": 70},
+                       {"type": "sensor", "lat": 38.56, "lon": -121.79, "value_f": 200},
+                       {"type": "sensor_value", "sensor_id": 6, "value_f": 50},
+                       {"type": "sensor_remove", "sensor_id": True}):
+            with self.subTest(action=action), self.assertRaises(ValueError):
+                self.demo.action(action)
+
     def test_spot_estimate_is_native_estimator_and_read_only(self):
         spiked = self.demo.action({"type": "preset", "name": "spike"})
         spot = self.demo.point(38.6, -121.9)

@@ -1,0 +1,38 @@
+{
+  "project": "Terra",
+  "collection": "Lime Peek",
+  "status": "user-approved for later reuse",
+  "approvedOn": "2026-10-24",
+  "approval": "ET approved both saved Canva versions with perfect, save to filebase; clarified Terra project files and requested1080px.",
+  "format": "PNG",
+  "background": "Opaque forest green",
+  "exportMethod": "Downloaded the actual4096x4096 PNG exports from the saved Canva designs, then resized proportionally to1080x1080 using high-quality bicubic interpolation; no layout/content edits.",
+  "assets": [
+    {
+      "file": "terra-wordmark-1080.png",
+      "variant": "wordmark",
+      "description": "Approved larger terra wordmark with the lime cube peeking from the lower-left.",
+      "width": 1080,
+      "height": 1080,
+      "bytes": 1213195,
+      "sha256": "48aa13f9b307fc37b9abcc0ab4b064aa358cbea7b97fef530cc7b5544fb13955",
+      "canvaDesignId": "DAHY50X-kKA",
+      "canvaEditUrl": "https://www.canva.com/d/YcgYm8Cs8dtMR70",
+      "masterFile": ".terra-local/logo-final/2026-10-24/canva-exports/terra-wordmark-4096.png",
+      "masterSha256": "db2849dc5e415f32845aba52227ceee531e9639165503485d496e8557ffac3ed"
+    },
+    {
+      "file": "terra-cube-1080.png",
+      "variant": "character-only",
+      "description": "Approved larger lime cube composition with no text.",
+      "width": 1080,
+      "height": 1080,
+      "bytes": 1343498,
+      "sha256": "3076e93cb85dbbfb7ead87da6bbd52af0ff81e414b654de1e43d93ee9d408523",
+      "canvaDesignId": "DAHY50bqmiE",
+      "canvaEditUrl": "https://www.canva.com/d/pt5_h6xgwcOhtIw",
+      "masterFile": ".terra-local/logo-final/2026-10-24/canva-exports/terra-cube-4096.png",
+      "masterSha256": "b33c858e82e10b96c1130ebbc760c374d025e8941acfcc1904d5e0a608ee4891"
+    }
+  ]
+}

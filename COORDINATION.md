@@ -3,6 +3,30 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-conversation-contract",
+  "owner": "et",
+  "status": "active",
+  "intent": "ET approved the Tara conversational draft and asks that its brevity, useful comparisons, optional reaction/no-reply behavior and grower setup become part of the current workflow. Record the accepted behavior and concrete integration acceptance in a canonical project contract. Preserve the active cleanup writer, ChatGPT connection, demo and UI owners; no runtime, provider, delivery, ingestion or training changes in this documentation slice.",
+  "branch": "codex/tara-conversation-contract",
+  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "docs/terra/conversation-contract.md", "docs/terra/pipeline-contract.md", "spec.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+    "summary": "Accepted conversational requirements are being promoted from this chat's reviewed draft into the shared workflow contract. This slice changes documentation only.",
+    "evidence": ["Direct ET correction and approval on October 24: brief natural copy, clock times only when relevant, useful comparisons, optional attached thumbs-up for benign acknowledgment and silence for simple thanks/feed reopening."],
+    "uncertainty": "Shared main's text-only writer does not implement reactions or conversational onboarding. Active backend-cleanup and ChatGPT branches own runtime reconciliation. No live conversational inference or new UI behavior is claimed.",
+    "next": "Complete canonical contract, link it from the pipeline/product entry points, run the scoped repository check and hand off the small documentation branch for integration."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-twilio-sms",
   "owner": "et",
   "status": "done",

@@ -563,7 +563,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "task",
   "id": "farm-chill-ops",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User explicitly requested a goal to finish the compact LLM contract/system prompt and tidy persistent farm-chill-ops backend after the product interview. Build the scoped seasonal monitor, orchard storage, selective event lifecycle, local inbox, factual Q&A, optional LLM/fallback, CLI/HTTP and verification. No new model fitting, bulk provider backfill, GDD/forecast/SMS/hosting/auth scope. Preserve Nathan and active live-query work.",
   "branch": "codex/farm-chill-ops",
   "base": "7f37e2670103fc2efa83c272e1cab285e3616620",
@@ -584,13 +584,18 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "7f37e2670103fc2efa83c272e1cab285e3616620",
-    "summary": "Isolated worktree based on committed live-query interface. Product choices locked: Nonpareil/Davis; estimated 32-45F chill from Nov1; separate FNRIC details; two completed days below20 before pace warning; one opening/escalation/recovery; recovery3valid readings; combine urgent-first; LLM message-only; important changes only, anytime; source faults quiet while orchard estimate usable.",
+    "revision": "4c3b4e8ce8a51e5a15e05e861f46b1762479ca3a",
+    "summary": "Implemented the scoped persistent farm-chill-ops backend, compact message contract/system prompt, additive API and independent worker.64 focused farm/API cases plus187 existing pure QC/estimator/live/HTTP and31 harness checks pass. Original numerical models/provider implementation unchanged. Branch is ready for root-owned unified UI/SMS/runtime integration; no main merge or push from this chat.",
     "evidence": [
-      "Goal explicitly created in figure out terra spec chat. Prior 64 estimator/adapter checks passed; live-query owner independently verifies the evolving transport."
+      "PASS python -B terra.py check --base7f37e2670103fc2efa83c272e1cab285e3616620 --task farm-chill-ops: farm-chill-ops-tests,terra-harness,terra-json-tests and filesystem/coordination. Active-scope overlap was explicitly coordinated with root/UI/SMS owners.",
+      "Actual saved-weather assessment demo: ok/insufficient_data/ok/ok/ok through real frozen e1QC and Nathan estimate_location, producing one welcome, one limited notice and one3-reading recovery. All messages labelled Demo replay; rerun reuses saved IDs.",
+      "Separate Python process add/once/restart/once/2-tick bounded run with provider/LLM credentials removed and SMS disabled preserves exactly one initial message and same ID; no browser required.",
+      "One focused receipt repair: atomic monotonic merge preserves delivered against older OR newer delayed provider_accepted; failed is terminal; tests pass. Canonical receipt fields and source_event_id persisted; reconciliation runs on every drain.",
+      "docs/terra/farm-chill-ops/verification.json contains module SHA256s and proof scope. API fixture, compact example/schema and exact prompt are in that directory; run/API/event policies in docs/terra/farm-chill-ops.md.",
+      "create_router(monitor,mutation_guard=shared_raising_guard) is the canonical HTTP hook. Monitor.check persists,groups,publishes,then always reconciles/drains immutable notification envelopes. SMS starts opted out; setup can atomically opt in before first check. Local published is never SMS delivered."
     ],
-    "uncertainty": "Live-query owner has uncommitted fixes that are excluded from this isolated base. No key/provider call, external delivery or deployment is authorized by this task. Real same-orchard 5-season history may be unavailable; withhold comparison.400h cultivar page does not establish matched chill definition, so default target is a configured reference only, not a biological requirement.",
-    "next": "Implement persistent monitor and compact writer contract, exercise restart/failure/causal replay paths, run scoped checks and leave a reviewable branch."
+    "uncertainty": "Based on committed live interface7f37; root owns later live fixes, SMS f85549a and combined runtime merge/checks. No actual provider/LLM/SMS send or deployment in our verification. Real five-season matching orchard history remains unpopulated unless explicitly imported; incomplete/mismatched history withholds pace.400h is only a configured cultivar reference, not a matched biological requirement. No GDD/forecast expansion or model refitting.",
+    "next": "Root merge/reconcile this clean isolated branch with current live/SMS/runtime, include create_router before catchall and inject the shared guard/dispatcher/absolute DB; run final cross-layer/native/portable/browser acceptance. Preserve this branch and the original Terra staged prototype."
   }
 }
 ```

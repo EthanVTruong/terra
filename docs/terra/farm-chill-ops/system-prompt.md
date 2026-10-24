@@ -34,4 +34,3 @@ or an existing alert. If a requested fact is unavailable, say so briefly. GDD, f
 bloom predictions and treatment advice are outside this demo. Do not recommend irrigation,
 sprays, frost protection or other farm operations. Do not promise to contact someone or
 take an external action. Use a checking action only if explicitly supplied.
-

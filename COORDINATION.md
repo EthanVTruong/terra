@@ -3,6 +3,41 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-ui-quiet",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests removing repeated Local inbox /Demo orchard /Orchard updates /Monitoring subtext and replacing the wordmark with the approved square character. Follow-up: group notes by Pacific calendar day, show clocks below bubbles, and collapse the evidence heading/date stack. Presentation only: preserve exact stored messages/JSON, real delivery states, demo/replay context in Details and source controls, and visible data warnings.",
+  "branch": "codex/terra-ui-quiet",
+  "base": "78e835d",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [
+    "web/design-qa.md"
+  ],
+  "handoff": {
+    "revision": "d2d6ea6cad0f7f7410f9c9295203149499f6cfc9",
+    "summary": "Approved cube character replaces the wordmark and favicon. Repeated orchard/local-inbox/monitoring labels are trimmed; Pacific day dividers and clock-only note footers replace repeated full dates. Evidence uses one compact heading/time row. Exact messages, JSON, numeric evidence, source warnings and actual delivery states are preserved.",
+    "evidence": [
+      "Production build; seven UI and four packaging tests pass. Configured scoped checks pass against origin/main 78e835d: farm, harness, JSON, pipeline, runtime and SMS.",
+      "Actual unified API on 8512 and preview on 8504 verified at 1280x900, 390x844 and 320x568. No horizontal overflow; mobile focus wrap/Escape/opener return, raw JSON preservation and historical mode/date verified. Screenshots: .terra-local/ui-quiet/desktop.png, mobile.png and mobile-evidence.png. Exact Grok article centered timestamp inspected; Terra multi-day behavior is an adaptation."
+    ],
+    "uncertainty": "Visual review is ready; branch is not integrated into main. Backend and external accounts were not changed by this refinement. Existing full-pipeline task owns final integration.",
+    "next": "Review the updated 8504 preview. Integration owner can consume codex/terra-ui-quiet as a small presentation change after review."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-twilio-sms",
   "owner": "et",
   "status": "done",

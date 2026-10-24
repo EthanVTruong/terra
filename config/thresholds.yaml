@@ -99,6 +99,7 @@ model:
   loso_folds: 5           # GroupKFold by station; 0 = true leave-one-station-out
   loso_procedure: full    # full = each fold model gets its own early stopping + dirty-label removal
   log_every: 100          # log validation loss every N boosting rounds
+  num_threads: 0          # 0 = all cores; set lower (or CHILLWATCH_LGB_THREADS) when sharing the machine
   prism_mask_fraction: 0.3  # spec
   seed: 42
   build_workers: 4        # processes building per-season training frames

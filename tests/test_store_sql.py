@@ -7,7 +7,10 @@ import pytest
 from chillwatch.store import SqlStore
 from conftest import utc
 
-URL = os.environ.get("CHILLWATCH_TEST_DB_URL", "postgresql+psycopg://chillwatch:chillwatch@localhost:5432/chillwatch")
+# a database of its own: the end-to-end test deletes and rewrites rows for synthetic station ids
+# that are also real CIMIS ids (6 Davis, 70, 71, ...), so it must never point at the real data
+URL = os.environ.get("CHILLWATCH_TEST_DB_URL",
+                     "postgresql+psycopg://chillwatch:chillwatch@localhost:5432/chillwatch_test")
 
 
 @pytest.fixture()

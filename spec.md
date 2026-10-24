@@ -1,5 +1,9 @@
 # Terra · Always-On Monitoring Agent
 
+The [Tara conversation contract](docs/terra/conversation-contract.md) records the
+accepted grower voice, concise alerts and follow-ups, optional reactions/silence
+and conversational setup requirements. Its integration status remains explicit.
+
 Status: target product spec. The current milestone connects the cleaned
 statistical station detector to Nathan's existing location estimator, emits
 strict JSON assessments and displays those facts in the web UI. On-demand live

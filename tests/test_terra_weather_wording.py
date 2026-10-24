@@ -5,6 +5,7 @@ import json
 import pytest
 
 from terra_monitoring.weather_wording import write_weather
+from terra_monitoring.farm_ops.writer import Writer
 
 
 def packet(kind="weather_discrepancy", *, variable="relative_humidity_pct", mode="current"):
@@ -29,6 +30,14 @@ class Generator:
         self.calls.append(deepcopy(kwargs))
         selected = {key: event["allowed_templates"][1] for key, event in kwargs["packet"]["events"].items()}
         return self.transform(selected) if self.transform else {"text": json.dumps(selected), "status": "completed"}
+
+
+def test_configured_monitor_writer_uses_weather_generator():
+    generator = Generator()
+    result = Writer(generator=generator, voice="text").write(packet())
+    assert len(generator.calls) == 1
+    assert result["provider"] == "chatgpt_plan" and result["outcome"] == "completed"
+    assert "95%" in result["text"] and "40%" in result["text"]
 
 
 @pytest.mark.parametrize("variable", ["relative_humidity_pct", "wind_speed_mph", "solar_radiation_w_m2"])

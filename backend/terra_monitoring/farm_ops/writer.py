@@ -396,8 +396,12 @@ class Writer:
 
     def write(self, packet):
         if any(e["type"].startswith("weather_") for e in packet.get("events", [])):
-            # Numerical/quality wording remains grounded while the new policy is
-            # provisional. Unsupported vocabulary never reaches a paid writer.
+            from ..weather_wording import write_weather
+            result = write_weather(packet, self.generator)
+            if result is not None:
+                return result
+            # Mixed event families keep all original roles and clocks through
+            # the existing deterministic renderer.
             return {"text": fallback(packet), "provider": "template", "outcome": "weather_factual_response"}
         if self.voice == "text" and (self.generator is not None or not self.key or not self.model):
             from . import texting

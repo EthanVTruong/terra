@@ -90,6 +90,8 @@ class DemoSimulation:
         else:
             if self.session.get("source_sha256") != self.provenance["sha256"]:
                 raise ValueError("An existing demo session uses different source weather")
+            if self.session.get("weather_source_sha256") != (self.weather_provenance or {}).get("sha256"):
+                raise ValueError("This session predates the weather-variable source; choose a fresh simulation state directory")
             self._evaluate()
 
     def _save(self):
@@ -100,6 +102,7 @@ class DemoSimulation:
         run = uuid.uuid4().hex[:16]
         self.session = {"run_id": run, "orchard_id": "sim-" + run, "clock": START,
                         "source_sha256": self.provenance["sha256"], "revision": 0,
+                        "weather_source_sha256": (self.weather_provenance or {}).get("sha256"),
                         "frames": {}, "offline": [], "actions": [], "evaluations": {}, "weather_overrides": {}}
         self.monitor.create_orchard("Demo West Orchard", orchard_id=self.session["orchard_id"],
                                     mode="injected", **ORCHARD)
@@ -130,6 +133,9 @@ class DemoSimulation:
                             field + "_source_value": override["value"], field + "_source_flag": override["source_flag"],
                             field + "_quality": "missing" if override["value"] is None else "flagged" if override["source_flag"] else "usable",
                             field + "_availability_reason": "missing_value" if override["value"] is None else "source_warning" if override["source_flag"] else "available"})
+                reason = row[field + "_availability_reason"]
+                row[field + "_available"] = reason == "available"
+                row[field + "_availability_reasons"] = [] if reason == "available" else [reason]
                 row.setdefault("demo_weather_overrides", {})[field] = deepcopy(override)
             if value is not None:
                 row["temperature_f"] = value
@@ -140,14 +146,16 @@ class DemoSimulation:
                 for field in VARIABLES:
                     if field in row:
                         row.update({field: None, field + "_quality": "missing",
-                                    field + "_availability_reason": "simulated_offline"})
+                                    field + "_availability_reason": "simulated_offline", field + "_available": False,
+                                    field + "_availability_reasons": ["simulated_offline"]})
             rows.append(row)
         return pd.DataFrame(rows)
 
     def _evaluate(self):
         observations = self._inputs()
         now = pd.Timestamp(self.session["clock"])
-        snapshot = fingerprint({"source": self.provenance["sha256"], "frames": self.session["frames"],
+        snapshot = fingerprint({"source": self.provenance["sha256"], "weather_source": self.weather_provenance,
+                                "frames": self.session["frames"],
                                 "clock": self.session["clock"]})
         self.packet = assess_location(**ORCHARD, valid_utc=now, as_of=now,
             observations=observations, stations=self.stations, snapshot_id="demo:" + snapshot,

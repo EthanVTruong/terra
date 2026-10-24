@@ -1,6 +1,6 @@
 # Terra integration coordination
 
-## Multivariable agent facts and Terra naming
+## Independent weather lifecycle verification
 
 ```json
 {
@@ -79,17 +79,34 @@
   "intent": "User requests humidity, wind and solar checks through cleaned CIMIS observations, grounded agent responses and simulation handoff, with missing/source-quality statuses separate and visible Terra naming. Preserve frozen temperature QC and Nathan numerical algorithms. Bounded source validation only; no model training, bulk backfill or real SMS sends.",
   "branch": "codex/terra-multivariable-flags",
   "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
-  "domains": ["terra-qc-json"],
-  "paths": ["backend/terra_monitoring/**", "config/terra/**", "tests/test_terra_*.py", "tests/fixtures/terra/**", "web/**", "docs/terra/**", "spec.md", "README.md", "COORDINATION.md"],
+  "domains": [
+    "terra-qc-json"
+  ],
+  "paths": [
+    "backend/terra_monitoring/**",
+    "config/terra/**",
+    "tests/test_terra_*.py",
+    "tests/fixtures/terra/**",
+    "web/**",
+    "docs/terra/**",
+    "spec.md",
+    "README.md",
+    "COORDINATION.md"
+  ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "8f028a8",
-    "summary": "Isolated worktrees created; sim and consolidation owners informed. Root owns integration, workers own new detector and grounded conversation slices.",
-    "evidence": [],
-    "uncertainty": "Nathan sim redesign is concurrent. New conservative rules are provisional peer-discrepancy checks; no validated field fault accuracy is claimed.",
-    "next": "Verify official fields, implement per-variable assessment and lifecycle, integrate identical sim/agent path, validate regression and full scenarios, publish handoff."
+    "revision": "ccf06a7ddb55fd1259d318f596ddf33ad00070cd",
+    "summary": "Integrated independent humidity/wind/solar normalizer, provisional peer checks, variable data-health, durable selective events, grounded optional ChatGPT wording and direct Q&A, pinned real-source sim inputs and controls. Visible Terra naming preserves legacy internal keys.",
+    "evidence": [
+      "480 bounded actual CIMIS station-hours decoded with individual units/QC; 360 March temperature overlaps match original exactly at 0.0F maximum difference. Both retained snapshots produce zero provisional numerical findings; wind I warnings stay separate. docs/terra/weather-source-audit.json.",
+      "62 pure detector cases and 64 focused native lifecycle, sim, factual conversation and wording cases passed in separate runs; final combined126case receipt and required scoped harness are in progress.",
+      "Actual browser wind60mph injection produced persisted note/simulated phone and exact agent response; marking Y withheld that reading and stated source-quality warning, without modifying temperature estimate. Browser logs empty; proof .terra-local/verification/weather-agent-browser.png.",
+      "Both production and simulation Vite/Sites builds pass. No external SMS/LLM calls, shared runtime changes, reference fitting or Nathan numerical edits. docs/terra/weather-simulation-handoff.md gives exact versioned actions, source hashes, limits and owner handoff."
+    ],
+    "uncertainty": "Initial conservative peer rules are provisional; naturally labelled fault sensitivity/false-positive rate and crop-risk rules are unvalidated. Historical publication visibility is snapshot-only. Existing source/main and runtime owners retain sole merge/activation responsibility; Nathan redesign owner identity has not been independently confirmed.",
+    "next": "Complete combined regression/CI, integrate through sole main owner and provide exact commit/contract to Nathan sim owner; retain isolated preview18540 and existing live8512/demo8520/18522 state."
   }
 }
 ```
@@ -417,7 +434,7 @@
     "summary": "SMS software handoff ready: fixed-recipient transport, explicit real-detector simulated demo, immutable farm-message delivery, durable attempt/retry/receipt journal and shared guarded server assembly. Ordinary queries remain pure. Integration owner owns combined farm worker/UI merge; no second worker or message queue added.",
     "evidence": [
       "145 transport/envelope tests and58 HTTP/composition tests pass. Full configured scoped check passes on the transport source against actual upstream22d4594; final assembly-hook cases separately pass. Production build and4packaging cases pass; browser disabled-send/setup/focus-return verified; preview8513 healthok and removed raw-send route404.",
-      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPÃ¢â€ â€™MockTransportÃ¢â€ â€™receiptÃ¢â€ â€™pauseÃ¢â€ â€™restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
+      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢MockTransportÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢receiptÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢pauseÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
       "Actual read-only Twilio account and owned-number APIs both HTTP200: accountactiveTrial, ownedSMSsenders0. Console shows100freeSMS, predefined templates and a trialsharedsender. Requested recipient absent from verified tester list. Recipient entered in Add a verified tester; Verify not pressed; zero OTPs, real SMS or paid actions.",
       "Existing account credentials plus opted-in recipient saved only in ignored private runtime configuration; shared CIMIS environment preserved. Redacted local readiness record available to integration owner. Original Terra staged checkout, Nathan implementation and frozen reference preserved."
     ],
@@ -480,7 +497,6 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_demo_simulation.py",
     "tests/test_terra_full_flow.py",
     "tests/test_terra_qc_*.py",
-    "tests/test_terra_weather.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
     "requirements-terra-dev.txt",
@@ -504,7 +520,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_chatgpt*.py",
     "tests/test_terra_conversation*.py",
     "run_terra.py",
-    "tests/test_terra_bootstrap.py"
+    "tests/test_terra_bootstrap.py",
+    "tests/test_terra_weather*.py"
   ],
   "depends_on": [],
   "checks": [
@@ -517,7 +534,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-pipeline-tests",
     "terra-chatgpt-tests",
     "terra-conversation-tests",
-    "terra-setup-tests"
+    "terra-setup-tests",
+    "terra-weather-tests"
   ]
 }
 ```
@@ -610,7 +628,6 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "docs/terra/**",
     "tests/test_terra_json.py",
     "tests/test_terra_qc_*.py",
-    "tests/test_terra_weather.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
     "requirements-terra-dev.txt",
@@ -667,7 +684,6 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "docs/terra/**",
     "tests/test_terra_json.py",
     "tests/test_terra_qc_*.py",
-    "tests/test_terra_weather.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
     "requirements-terra-dev.txt",
@@ -694,7 +710,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "evidence": [
       "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
       "Windows and macOS minimal-runtime jobs each passed 64 targeted cases plus 31 harness cases. Production web build and four packaging cases passed. Independent review verified 15 focused regressions and all six source-import hashes plus the frozen reference SHA.",
-      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1Ã¢â‚¬â€œ41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
+      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
       "Two grid and eight synthetic model/scenario cases passed, including all four faults with original assertions, seeds, folds and thresholds. Calendar/fixture coverage needed repair; no numerical algorithm or real-data model refit changed.",
       "GitHub confirmed merged=true at 1d5caf7, containing reviewed head 5ffec23 and prior Nathan main 229106c. The merged tree matched tested source exactly. Original Terra still has the same nine staged entries and numstat counts.",
       "Completion follow-up check passed against actual merged origin/main 1d5caf7 (31 harness + 64 targeted cases). Only .gitignore and this coordination record changed afterward; application source remains identical to tested 5ffec23."
@@ -808,7 +824,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "id": "terra-full-pipeline",
   "owner": "et",
   "status": "active",
-  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataÃ¢â€ â€™flagÃ¢â€ â€™message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
+  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢flagÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
   "branch": "codex/terra-end-to-end",
   "base": "37948ed4f76cbbfbef7b4570d8ed06b84c6e8723",
   "domains": [
@@ -1585,5 +1601,30 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {"revision": null, "summary": "Implemented versioned independent humidity/wind/solar normalization and causal peer discrepancy checks; temperature reference and Nathan code unchanged.", "evidence": ["62 focused weather tests plus 7 immutable-reference tests PASS; tests cover source units/QC independence, finite JSON, regional/noise controls, moderate/extreme rules, gaps, stale/current clocks, duplicates and causal revisions.", "docs/terra/weather-contract.md documents exact API, policy, simulation and agent handoff, including initial provisional threshold limits."], "uncertainty": "Initial conservative peer thresholds are provisional, not naturally labelled fault validation. Root owns live/sim/conversation integration and broader acceptance.", "next": "Root cherry-picks the isolated implementation, verifies real bounded source payloads and end-to-end sim/agent incident lifecycle."}
+}
+```
+
+## Weather integration checks
+
+```json
+{
+  "kind": "check",
+  "id": "terra-weather-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_weather.py",
+    "tests/test_terra_weather_integration.py",
+    "tests/test_terra_weather_lifecycle_review.py",
+    "tests/test_terra_weather_wording.py",
+    "tests/test_terra_conversation_weather_variables.py",
+    "-q"
+  ],
+  "timeout": 120
 }
 ```

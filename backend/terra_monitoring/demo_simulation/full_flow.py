@@ -122,6 +122,7 @@ class ReplayBridge:
             engine = self.engine
             now = pd.Timestamp(engine.session["clock"])
             snapshot = fingerprint({"source": engine.provenance["sha256"],
+                                    "weather_source": engine.weather_provenance,
                                     "frames": engine.session["frames"], "clock": now.isoformat()})
             return assess_location(**{key: profile[key] for key in ("lat", "lon", "elevation_ft")},
                 valid_utc=now, as_of=now, observations=engine._inputs(), stations=engine.stations,
@@ -319,6 +320,10 @@ def create_app(*, simulation=None, state_dir=None, web_root=None, demo_root=None
     @app.get("/demo-static/{path:path}")
     def demo_static(path: str):
         return FileResponse(_asset(demo, path))
+
+    @app.get("/terra-cube-1080.png")
+    def station_brand():
+        return FileResponse(_asset(demo, "terra-cube-1080.png"))
 
     @app.get("/terra")
     @app.get("/terra/")

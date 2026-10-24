@@ -77,7 +77,8 @@ def _canonical(rows: list[dict]) -> tuple[list[dict], int, int]:
                               for item in group}
                 if len(signatures) > 1:
                     row.update({field: None, field + "_quality": "invalid",
-                                field + "_availability_reason": "conflicting_duplicate"})
+                                field + "_availability_reason": "conflicting_duplicate", field + "_available": False,
+                                field + "_availability_reasons": ["conflicting_duplicate"]})
         result.append(row)
     return result, duplicates, conflicts
 

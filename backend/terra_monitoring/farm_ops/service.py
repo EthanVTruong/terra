@@ -318,6 +318,9 @@ class Monitor:
                 health_open = event["type"] == "monitoring_limited"
                 pace_open = event["type"] == "chill_pace"
                 obsolete = (health_open and not state.get("health_incident")) or (pace_open and not state.get("pace_incident"))
+                if event["type"].startswith("weather_"):
+                    from ..weather_events import notification_current
+                    obsolete = not notification_current({**event, "orchard_id": orchard_id}, state)
                 if not obsolete:
                     keep.append(event)
             if not pending:
@@ -404,8 +407,25 @@ class Monitor:
             if existing:
                 return existing
         from ..conversation.routing import QUESTIONS, route
+        from ..conversation.local_facts import WEATHER_INTENTS, weather_answer
         from .writer import fallback
-        local_route = route(question, context="chill_total", known_subjects=[profile.get("name"), profile.get("crop"), profile.get("variety"), *profile.get("crops", [])])
+        previous_question = self.store.get("local-weather-context:" + orchard_id, {})
+        local_route = route(question, context=previous_question.get("intent", "chill_total"), known_subjects=[profile.get("name"), profile.get("crop"), profile.get("variety"), *profile.get("crops", [])])
+        if local_route in WEATHER_INTENTS:
+            referenced = bool(re.fullmatch(r"\s*(?:is (?:that|this|it) (?:normal|usual|okay)|does (?:that|this) look normal)[?.!\s]*", question, re.I))
+            evidence_id = previous_question.get("evidence_id") if referenced else None
+            answer, weather_facts = weather_answer(local_route, self, orchard_id,
+                evidence_id=evidence_id, referenced=referenced)
+            event = _event(profile, "explain_alert", "answer", "info", now, {"explanation": answer}, uuid.uuid4().hex)
+            packet = message_input(profile, [event], now.isoformat(), question={"intent": local_route, "text": question.strip()})
+            packet["saved_weather_facts"] = weather_facts
+            result = {"text": answer, "provider": "template", "outcome": "local_weather_response"}
+            message = self.store.publish(orchard_id, packet, result, [], now, question_id=request_id or uuid.uuid4().hex)
+            state = self.store.get("watch:" + orchard_id, {})
+            with self.store.connect(write=True) as db:
+                self.store.set_state(db, "local-weather-context:" + orchard_id,
+                    {"intent": local_route, "evidence_id": evidence_id or state.get("latest_evidence_id")})
+            return message
         text = question.lower()
         status = self.status(orchard_id, now=now)
         if re.search(r"gdd|gdh|forecast|next week|next two|bloom|spray|irrigat", text):
@@ -433,6 +453,8 @@ class Monitor:
         eligible = local_route in QUESTIONS or text.strip() in {"status", "total"}
         result = self.writer.write(packet) if eligible and intent != "unsupported" else {
             "text": fallback(packet), "provider": "template", "outcome": "local_response"}
+        with self.store.connect(write=True) as db:
+            self.store.set_state(db, "local-weather-context:" + orchard_id, {"intent": intent})
         return self.store.publish(orchard_id, packet, result, [], now, question_id=question_id)
 
     def set_sms_opt_in(self, orchard_id, enabled):
@@ -485,7 +507,7 @@ class Monitor:
                         reason = "revised_reference"
                 elif kind.startswith("weather_"):
                     from ..weather_events import notification_current
-                    if not notification_current(event, state):
+                    if not notification_current({**event, "orchard_id": profile["id"]}, state):
                         reason = "superseded_weather_event"
         primary = events[0] if events else None
         category = primary["category"] if primary and primary["category"] in {"data_health", "weather"} else "chill"

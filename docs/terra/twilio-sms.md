@@ -115,6 +115,22 @@ possible acceptance is treated conservatively; no blind automatic resend occurs.
 Known provider failures remain visible. This prioritizes avoiding duplicate texts
 over pretending that every network interruption is recoverable automatically.
 
+Farm messages rejected definitively by Twilio with HTTP 429 and no acceptance/SID
+can retry only when the caller rechecks and dispatches the same unexpired,
+eligible immutable envelope. The persisted backoff is 30 then 120 seconds, with
+three attempts total. Ambiguous responses, timeouts, crashes after claim and
+unknown acceptance never retry automatically. The per-attempt journal retains
+each rejection and enforces the daily cap across process restarts.
+
+The worker calls `reconcile_pending(limit=10)` on startup/ticks independently of
+the browser. It polls only saved nonterminal SIDs and never sends. Results retain
+the original `source_event_id` after restart, so the farm store can update its
+transport receipt separately from local inbox publication. The canonical fields
+are `status` (`provider_accepted`, `delivered`, `retry_wait`, `uncertain`, etc.),
+`provider_status`, `provider_message_id`, `updated_at_utc`, `source_event_id`, and
+the transport `event_id` used by `receipt()`. Failed polls rotate through bounded
+batches so one unavailable receipt does not starve others.
+
 The browser sees masked phone numbers and redacted status codes. Account secrets,
 full recipient numbers and provider error bodies never enter API responses.
 SMS browser operations require a server-generated control token, a literal loopback Host

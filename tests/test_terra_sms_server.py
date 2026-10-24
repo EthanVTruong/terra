@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import copy
+import sys
+import types
 from urllib.parse import parse_qs
 
+from fastapi import APIRouter, Depends
 from fastapi.testclient import TestClient
 import httpx
 import pytest
@@ -73,6 +76,58 @@ def authorize(client):
     response = client.get("/api/sms/status")
     assert response.status_code == 200
     return {"X-Terra-SMS-Control": response.json()["control_token"], "Origin": LOCAL}
+
+
+def test_shared_mutation_guard_raises_before_farm_side_effects_even_with_sms_disabled(tmp_path):
+    app = create_app(service=FakeQuery(), sms_dispatcher=FakeSMS(), web_root=tmp_path)
+    effects = []
+
+    @app.post("/guarded", dependencies=[Depends(app.state.local_mutation_guard)])
+    def guarded():
+        effects.append("changed")
+        return {"ok": True}
+
+    with TestClient(app, base_url=LOCAL) as client:
+        assert client.post("/guarded").status_code == 403
+        headers = authorize(client)
+        assert client.post("/guarded", headers={**headers, "Origin": "https://evil.example"}).status_code == 403
+        assert effects == []
+        assert client.post("/guarded", headers=headers).json() == {"ok": True}
+        assert effects == ["changed"]
+
+
+def test_optional_farm_router_precedes_fallback_and_uses_shared_raising_guard(tmp_path, monkeypatch):
+    monitor, effects, received = object(), [], []
+
+    def create_router(given_monitor, *, mutation_guard):
+        received.append(given_monitor)
+        router = APIRouter()
+
+        @router.get("/api/orchards")
+        def orchards():
+            return [{"id": "example-orchard"}]
+
+        @router.post("/api/monitor/check", dependencies=[Depends(mutation_guard)])
+        def check():
+            effects.append("checked")
+            return {"checked": True}
+
+        return router
+
+    package = types.ModuleType("terra_monitoring.farm_ops")
+    package.__path__ = []
+    api = types.ModuleType("terra_monitoring.farm_ops.api")
+    api.create_router = create_router
+    monkeypatch.setitem(sys.modules, package.__name__, package)
+    monkeypatch.setitem(sys.modules, api.__name__, api)
+    app = create_app(service=FakeQuery(), sms_dispatcher=FakeSMS(), web_root=tmp_path, farm_monitor=monitor)
+    assert received == [monitor] and app.state.farm_monitor is monitor and effects == []
+    with TestClient(app, base_url=LOCAL) as client:
+        assert client.get("/api/orchards").json() == [{"id": "example-orchard"}]
+        assert client.post("/api/monitor/check").status_code == 403 and effects == []
+        assert client.post("/api/monitor/check", headers=authorize(client)).json() == {"checked": True}
+        assert effects == ["checked"]
+        assert client.get("/api/unknown").status_code == 404
 
 
 def test_demo_http_composes_real_detector_durable_dispatch_and_receipt(tmp_path):

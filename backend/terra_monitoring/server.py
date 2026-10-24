@@ -87,7 +87,7 @@ def _service_error(exc: Exception) -> Response:
 
 
 def create_app(service: QueryService | None = None, web_root: str | Path | None = None,
-               sms_dispatcher: Any = None) -> FastAPI:
+               sms_dispatcher: Any = None, farm_monitor: Any = None) -> FastAPI:
     """Create a local app with an injectable synchronous query service.
 
     Service calls run outside the event loop. The service owns provider keys,
@@ -103,6 +103,7 @@ def create_app(service: QueryService | None = None, web_root: str | Path | None 
         sms_dispatcher = SMSDispatcher.from_env()
     app.state.sms_dispatcher = sms_dispatcher
     app.state.sms_control_token = secrets.token_urlsafe(32)
+    app.state.farm_monitor = farm_monitor
 
     @app.middleware("http")
     async def local_page_headers(request: Request, call_next):
@@ -157,6 +158,13 @@ def create_app(service: QueryService | None = None, web_root: str | Path | None 
         supplied = request.headers.get("x-terra-sms-control", "")
         return _sms_local_request(request) and secrets.compare_digest(supplied.encode("utf-8"), app.state.sms_control_token.encode("ascii"))
 
+    def local_mutation_guard(request: Request) -> None:
+        """Shared raising dependency for local farm/monitor mutation routes."""
+        if not sms_authorized(request):
+            raise HTTPException(status_code=403, detail="Local authorization required")
+
+    app.state.local_mutation_guard = local_mutation_guard
+
     async def sms_invoke(operation: Any, *args: Any) -> Response:
         try:
             payload = await run_in_threadpool(operation, *args)
@@ -194,6 +202,13 @@ def create_app(service: QueryService | None = None, web_root: str | Path | None 
         if not sms_authorized(request):
             return _error("sms_unauthorized", "Reload the local Terra page to authorize SMS controls.", 403)
         return await sms_invoke(app.state.sms_dispatcher.disable)
+
+    if farm_monitor is not None:
+        # The integration runtime supplies the one shared monitor. Register its
+        # routes before the API namespace fallback and static app; never create
+        # a worker or import farm storage on the basic query/demo path.
+        from .farm_ops.api import create_router
+        app.include_router(create_router(farm_monitor, mutation_guard=app.state.local_mutation_guard))
 
     # Reserve the API namespace ahead of static serving. An unknown API path
     # must never turn into the UI's index page or a success response.

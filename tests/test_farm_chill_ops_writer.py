@@ -290,3 +290,18 @@ def test_plan_error_invalid_status_or_reply_never_silently_uses_api_key(reply):
     data = packet()
     assert_fallback(writer.write(data), data)
     assert not calls
+
+
+def test_sensor_flag_is_template_only_and_never_calls_a_provider():
+    profile = {"mode": "current", "name": "West Orchard", "crop": "almond", "variety": "Nonpareil", "demo_location": False}
+    event = {"id": "one", "type": "sensor_flag", "transition": "opening", "severity": "strong",
+             "occurred_at": "2026-01-11T09:00:00+00:00", "facts": {
+                 "observed_f": 80.0, "expected_f": 47.0, "deviation_f": 33.0, "observation_time": "2026-01-11T09:00:00+00:00"}}
+    data = message_input(profile, [event], "2026-01-11T09:01:00+00:00")
+
+    def refuse(request):
+        raise AssertionError("A sensor flag must not reach a provider")
+    result = configured_writer(refuse).write(data)
+    assert result["provider"] == "template"
+    assert result["text"] == fallback(data)
+    assert "your local sensor read 80 F, 33 F above the 47 F the nearby weather stations predict there" in result["text"]

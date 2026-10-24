@@ -1,5 +1,31 @@
 # Terra integration coordination
 
+## Custom sensor alerts in connected grower chat
+
+```json
+{
+  "kind": "task",
+  "id": "terra-sensor-chat-repair",
+  "owner": "et",
+  "status": "done",
+  "intent": "Direct user request to fix custom test-sensor alerts missing from chat after opening simulation. Reuse computed native sensor flags for each isolated grower watch and regress actual connected HTTP/feed/evidence behavior without changing numerical policy or live delivery.",
+  "branch": "codex/terra-sensor-chat-repair",
+  "base": "db7310e",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/engine.py", "backend/terra_monitoring/demo_simulation/full_flow.py", "tests/test_terra_full_flow.py", "tests/test_terra_simulation_connection.py"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "ed669611669e609a3480e8b0bfcf6ec3dc274774",
+    "summary": "Shared native computed temperature sensor flags now reach every saved grower watch in the same isolated replay, with atomic same-frame evaluation and each farm's own assessment geometry. Numerical classification, source data, live state and delivery policy are unchanged.",
+    "evidence": ["Actual runtime connect/action/feed regression passes: normal48F stays quiet, strong90F publishes, repeat and next-hour checks deduplicate, normal closes quietly, new excursion reopens and prior Details stay unchanged; current native store and disabled SMS remain intact.", "The same new regression with exact db7310e ReplayBridge.evaluate restored in an isolated process fails specifically at zero delivered sensor notes instead of one. Ignored baseline-failure.txt retains that witness.", "Two-grower full-flow regression passes for custom temperature and60mph sensor wind; both farms retain their distinct coordinates, elevation and identity in immutable note evidence.", "All177 affected cases pass across test_terra_simulation_connection.py10, test_terra_full_flow.py17, test_terra_demo_simulation.py19, test_terra_weather_integration.py4 and test_farm_chill_ops_writer.py127. No failures or skips; only existing Starlette TestClient deprecation warning.", "Product hashes agree with independent parent browser proof: engine31330d265a48f727a1a8b5e94247495b6e500ef2ceb95ddc610368fd96a2172f and full_flow7e88f57e395725e63177980bb6bd801bc9f153b08c74547f04dfe9a14fb4f166. Coordination validation and git diff whitespace checks pass."],
+    "uncertainty": "All session sensors share replay inputs without farm ownership/radius metadata; repair preserves that existing policy. Humidity/wind/solar already flow through packet weather findings, with custom wind positively regressed. No external provider, genuine account generation or phone send was performed by this worker.",
+    "next": "Parent hands frozen source ed66961 to the existing sole integrator for its combined final gate and main publication. No worker push or merge; affected test process exited0 and worker source is frozen."
+  }
+}
+```
+
 ## Contextual ChatGPT conversation and concise insight engine
 
 ```json

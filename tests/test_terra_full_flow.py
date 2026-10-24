@@ -91,6 +91,14 @@ class FullFlowTests(unittest.TestCase):
             self.assertTrue(self.feed(identity)["monitor"]["comparison_available"])
             self.assertEqual(self.client.post("/api/tara/setup", headers=self.headers, json=body).status_code, 200)
             self.assertEqual(resolver.call_count, 1)
+        before_sensor = self.bridge.assessment(profile)["provenance"]["data_snapshot_id"]
+        placed = self.action({"type": "sensor", "lat": 38.56, "lon": -121.79, "value_f": 70.0})
+        sensor_id = placed["sensors"][0]["id"]
+        with_sensor = self.bridge.assessment(profile)["provenance"]["data_snapshot_id"]
+        self.assertNotEqual(before_sensor, with_sensor)
+        self.action({"type": "sensor_value", "sensor_id": sensor_id, "value_f": 80.0})
+        self.assertNotEqual(with_sensor, self.bridge.assessment(profile)["provenance"]["data_snapshot_id"])
+        self.action({"type": "sensor_remove", "sensor_id": sensor_id})
         self.action({"type": "weather", "station_id": 6, "variable": "wind_speed_mph", "value": 60, "source_flag": ""})
         events = self.bridge.store.events(identity)
         self.assertTrue(any(event["type"] == "weather_discrepancy" for event in events))

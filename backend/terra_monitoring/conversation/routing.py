@@ -10,6 +10,7 @@ QUESTIONS = {
     "station_health": "Is supporting station weather coverage usable?",
     "explain_alert": "Explain the latest alert.",
 }
+LOCAL_INTENTS = {"profile_crops", "profile_location", "profile_notifications", "profile_monitor", "chill_method"}
 OFF_TOPIC = re.compile(r"\b(minecraft|stardew|fortnite|pokemon|video ?games?|gaming|roblox|skyrim|zelda|elden ring|chill music|poem|joke|recipe|javascript|python code)\b", re.I)
 THANKS = re.compile(r"^(?:(?:no )?thank(?:s| you)(?: so much)?(?: for (?:(?:the|your) )?(?:update|help))?|appreciate it|cheers|bye|goodbye)[.!\s👍]*$", re.I)
 ACK = re.compile(r"^(?:got it|sounds good|okay|ok|great|understood|all right|👍)[.!\s]*$", re.I)
@@ -134,7 +135,7 @@ def route(text, context=None, known_subjects=()):
     if re.fullmatch(r"(?:thanks[,! ]*)?why", low) and context in QUESTIONS and context != "explain_alert":
         return "cause_limit"
     if re.fullmatch(r"(?:why|why is that|how far|what does (?:that|this) mean|what about (?:that|this)|explain (?:that|this))", low):
-        return context if context in QUESTIONS else "needs_context"
+        return context if context in QUESTIONS or context in LOCAL_INTENTS else "needs_context"
     if re.search(r"\b(chill|chilling|station|coverage)\b", low):
         return "clarify"
     if re.search(r"\b(monitoring|monitor|farm|orchard|location|growing|crop)\b", low):

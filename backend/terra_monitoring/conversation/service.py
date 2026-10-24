@@ -5,7 +5,7 @@ import json
 import re
 
 from ..farm_ops.store import encoded, fingerprint, utc
-from .routing import ACK, THANKS, PROMPT, QUESTIONS, crops_from, route
+from .routing import ACK, THANKS, PROMPT, QUESTIONS, LOCAL_INTENTS, crops_from, route
 from .ownership import active, current_owner, owner_status
 
 
@@ -121,7 +121,7 @@ class ConversationService:
             for turn in reversed(self._turns(orchard_id)):
                 if turn.get("role") == "assistant":
                     intent = turn.get("data", {}).get("intent")
-                    context = intent if intent in QUESTIONS else "farm"
+                    context = intent if intent in QUESTIONS or intent in LOCAL_INTENTS else "farm"
                     event_ids = turn.get("data", {}).get("source_event_ids", []) if intent in QUESTIONS else []
                     break
             # A farm supplies history's subject, not a fictitious earlier reply.
@@ -302,7 +302,7 @@ class ConversationService:
             return finish()
         if intent == "ack":
             return finish(reaction=True)
-        if intent in {"profile_crops", "profile_location", "profile_notifications", "profile_monitor", "chill_method"}:
+        if intent in LOCAL_INTENTS:
             from .local_facts import profile_answer
             answer, facts = profile_answer(intent, self.state(selected))
             return finish(text=answer, data={"intent": intent, "local_facts": facts})

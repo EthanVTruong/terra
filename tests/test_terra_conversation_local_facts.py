@@ -44,6 +44,17 @@ def test_ambiguous_ellipsis_needs_an_actual_prior_factual_reply(conversation):
     assert not writer.packets
 
 
+@pytest.mark.parametrize("question,expected", [("Are you monitoring?", "profile_monitor"), ("How do you count chill hours?", "chill_method")])
+def test_followups_keep_the_latest_actual_local_answer_context(conversation, question, expected):
+    service, _, writer = conversation
+    orchard = setup_farm(service)
+    first = service.message(request_id="context-fact", text=question, orchard_id=orchard)
+    followup = service.message(request_id="context-followup", text="What does that mean?", orchard_id=orchard)
+    assert followup["assistant_turn"]["data"]["intent"] == expected
+    assert followup["assistant_turn"]["data"]["local_facts"] == first["assistant_turn"]["data"]["local_facts"]
+    assert not writer.packets
+
+
 def test_gap_uses_existing_comparable_summary_and_keeps_actual_source_date(conversation):
     service, monitor, writer = conversation
     orchard = setup_farm(service)

@@ -3,6 +3,41 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-submission-readme",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests a concise final-submission README for humans and agents, grounded in current product functionality and the work being built by other contributors. Review their existing records read-only without messaging them. Explain the product, reproducible preview/live/demo entry points, scientific limits and minimal contributor instructions; preserve all implementation, private state and unrelated edits.",
+  "branch": "codex/terra-readme-submission",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "README.md",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "011a99757e005f9204ff69024a0661f1a952756a",
+    "summary": "Completed the concise final-submission README on an isolated branch: 607 words versus 1079, clear product capabilities, one-command historical preview, explicit live-weather/ChatGPT/notification setup, controlled replay demonstration, short agent instructions and a four-area code map. Product claims are grounded in current main; all implementation and private state are preserved.",
+    "evidence": [
+      "README source commit 011a99757e005f9204ff69024a0661f1a952756a; comparison base 8f028a8320661c4a59344f1e3067e8af2bb79a74.",
+      "All 14 relative links resolve. UTF-8/LF, git diff --check and actual run_terra.py --help pass. Read-only independent review found no material correction.",
+      "Required terra.py check --base origin/main --task terra-submission-readme passes coordination/filesystem and all 11 configured groups: chatgpt, conversation, demo, farm, full-flow, harness, JSON, pipeline, runtime, setup and SMS.",
+      "Reviewed current main source/runbooks plus read-only existing location-onboarding, multivariable and consolidation records. No existing chats messaged; no provider, SMS, runtime, credential or scientific changes."
+    ],
+    "uncertainty": "Checked against current main 8f028a8. Location simplification and multivariable extensions are still independent work; this README uses stable product wording and does not advertise their unmerged behavior. Scientific acceptance and full native/PostgreSQL CI are separate from the passing scoped checks.",
+    "next": "Publish the two documentation commits as a small reviewable PR for the sole consolidation owner. Scope is frozen; no additional research, QA loop, application edits or live actions."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-product-consolidation",
   "owner": "et",
   "status": "active",

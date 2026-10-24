@@ -46,6 +46,13 @@ Experiments in `/tmp/claude-0/ablation` during the build; all variants scored on
   virtual stations, blind tests, the Durham rescue) use the physics estimate with its own leave-stations-out uncertainty bins
   (`model.unseen_method: idw_lapse`; set `model` to switch). Training now reports `holdout_known_stations` (held-out seasons at
   trained stations, with and without offsets) as the headline accuracy.
+- **Production model `cimis-v1`** (132 stations, 18 training seasons, 7.21M hours, 839 trees): on the held-out 2023-24 +
+  2024-25 seasons at 84 known stations (724k hours, identical rows): model + offset **1.946 F** MAE (night 2.005, day 1.888;
+  season chill-hour error median 61 h, mean 90 h, bias -1 h); model 2.009 F; physics + offset 2.023 F (63 h / 103 h);
+  physics 2.194 F (104 h / 155 h). Leave-stations-out (never-seen stations, identical rows): model 2.532 F, physics 2.479 F.
+- **Durham rescue** (station 12 hidden entirely, 20 pre-closure seasons, fitted physics): 1.96 F MAE, season chill-hour error
+  median 80 h / mean 92 h, consistently warm-biased. With Durham's own night/day offset learned from the previous season:
+  median 30 h / mean 49 h (2023-24: 887 h predicted vs 880 h observed; 2024-25: 1,058 vs 1,033 h).
 - **Fitted physics for places with no station** (`chillwatch fit-physics`, leave-stations-out): grid over lapse shrink
   {0, .25, .5, .75, 1} x elevation-difference weight scale {none, 300, 600, 1000, 2000 ft}, fitted on 2018-19..2022-23.
   Best: shrink 0.5, exp(-(dz/600 ft)^2) weights. Held-out 2023-24 + 2024-25: 2.190 -> 2.141 F MAE (-2.2%), chill median

@@ -86,6 +86,18 @@ export function restoreFarmLocation(value) {
   return { name: value.name.slice(0, 80), lat: value.lat.slice(0, 40), lon: value.lon.slice(0, 40), elevation: value.elevation.slice(0, 40), source: ["preset", "device"].includes(value.source) ? value.source : "manual", confirmed: value.confirmed };
 }
 
+export function mergeTaraTimeline(turns, fieldNotes = []) {
+  const linked = new Set(turns.filter((turn) => turn.role === "assistant" && identifier(turn.data?.message_id)).map((turn) => turn.data.message_id));
+  const entries = turns.map((turn, index) => ({ type: "turn", key: `turn:${turn.id}`, value: turn, order: index }));
+  const noteIds = new Set();
+  for (const note of fieldNotes) {
+    if (!object(note) || !identifier(note.id) || !date(note.created_at) || linked.has(note.id) || noteIds.has(note.id)) continue;
+    noteIds.add(note.id);
+    entries.push({ type: "note", key: `note:${note.id}`, value: note, order: entries.length });
+  }
+  return entries.sort((a, b) => Date.parse(a.value.created_at) - Date.parse(b.value.created_at) || a.order - b.order);
+}
+
 export function validateFarmLocation(draft) {
   const lat = Number(draft.lat), lon = Number(draft.lon), elevation = Number(draft.elevation);
   if (!draft.name.trim() || draft.name.trim().length > 80) throw new Error("Give this farm a short name.");

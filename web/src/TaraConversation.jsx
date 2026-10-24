@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { timestamp } from "./presentation";
-import { createTaraOperation, readTaraDraft, readTaraStorage, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
+import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 
 const EMPTY_PRESETS = [];
@@ -194,46 +194,55 @@ function NotificationChoice({ conversation }) {
   return <div className="tara-setup-controls"><p className="tara-capability">Browser alerts work while Terra is open. Updates always stay in chat.</p><div className="tara-actions"><button className="query-submit" type="button" onClick={() => choose(true)} disabled={!supported || conversation.locked || busy}>{busy ? "Saving choice…" : "Enable browser alerts"}<Icon name="phone" size={14} /></button><button className="query-cancel" type="button" onClick={() => choose(false)} disabled={conversation.locked || busy}>Keep in chat</button></div>{!supported ? <p className="tara-capability">This browser doesn’t support alerts. In-chat updates are available.</p> : null}{error ? <p className="query-error" role="alert">{error}</p> : null}</div>;
 }
 
-function useBrowserAlerts(conversation, farm) {
-  const baseline = useRef({ orchardId: null, seen: new Set() });
+export function useTaraBrowserAlerts(conversation, farm, { enabled = true } = {}) {
+  const baseline = useRef({ orchardId: null, seen: new Set(), enabled: false });
   const [error, setError] = useState("");
   const orchardId = conversation.state?.orchard_id;
   useEffect(() => {
     const feed = farm?.feed;
     if (!orchardId || feed?.orchard_id !== orchardId) return;
     const notes = (feed.messages || []).filter((note) => note.kind === "proactive");
-    if (baseline.current.orchardId !== orchardId) { baseline.current = { orchardId, seen: new Set(notes.map((note) => note.id)) }; return; }
+    if (!enabled || baseline.current.orchardId !== orchardId || !baseline.current.enabled) { baseline.current = { orchardId, seen: new Set(notes.map((note) => note.id)), enabled }; setError(""); return; }
     const additions = notes.filter((note) => !baseline.current.seen.has(note.id));
     for (const note of notes) baseline.current.seen.add(note.id);
     if (!conversation.state.notifications.enabled || conversation.state.notifications.capability !== "browser_open" || typeof window.Notification !== "function" || Notification.permission !== "granted") return;
+    const profile = conversation.state.orchards.find((item) => item.id === orchardId);
+    const farmName = profile?.name || farm?.orchard?.name || "Terra update";
+    const title = profile?.mode === "replay" ? `Demo replay · ${farmName}` : profile?.mode === "injected" ? `Injected demo · ${farmName}` : profile?.demo_location ? `Demo farm · ${farmName}` : farmName;
     for (const note of additions) {
-      try { new Notification(farm?.orchard?.name || "Terra update", { body: note.text, tag: `terra-${note.id}` }); }
+      try { new Notification(title, { body: note.text, tag: `terra-${note.id}` }); }
       catch { setError("Browser alerts are unavailable here. Your updates remain in chat."); }
     }
-  }, [conversation.state?.notifications.enabled, conversation.state?.notifications.capability, farm?.feed, farm?.orchard?.name, orchardId]);
+  }, [conversation.state?.notifications.enabled, conversation.state?.notifications.capability, conversation.state?.orchards, enabled, farm?.feed, farm?.orchard?.name, orchardId]);
   return error;
 }
 
-export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS, farm, onSelectOrchard, onDetails, onOpenConnection, showFarmSelector = true }) {
+export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS, farm, onSelectOrchard, onDetails, onOpenConnection, showFarmSelector = true, fieldNotes = EMPTY_PRESETS, renderFieldNote, alertsManaged = false, notificationError = "" }) {
   const { state, loading, locked } = conversation;
-  const notificationError = useBrowserAlerts(conversation, farm);
+  const internalNotificationError = useTaraBrowserAlerts(conversation, farm, { enabled: !alertsManaged });
+  const alertsError = notificationError || internalNotificationError;
   if (!state) return <div className="tara-conversation"><p className="tara-status" role="status">{loading ? "Opening conversation…" : "The conversation is unavailable."}</p>{!loading ? <button className="tara-text-button" onClick={conversation.refresh}>Retry conversation</button> : null}</div>;
   const orchard = state.orchards.find((item) => item.id === state.orchard_id);
   const mode = orchard?.mode;
   const modeLabel = mode === "replay" ? "Replay · demo" : mode === "injected" ? "Injected data · demo" : orchard?.demo_location ? "Demonstration farm" : null;
   const turns = state.turns;
+  const timeline = mergeTaraTimeline(turns, typeof renderFieldNote === "function" ? fieldNotes.filter((note) => note && (!note.orchard_id || note.orchard_id === state.orchard_id)) : EMPTY_PRESETS);
   return <div className="tara-conversation">
     <div className="tara-context"><div className="tara-farm-label"><span>{orchard?.name || "Your farm"}</span>{modeLabel ? <span className="tara-mode">{modeLabel}</span> : null}</div><div className="tara-context-actions">{showFarmSelector && state.orchards.length > 0 ? <select aria-label="Conversation farm" value={state.orchard_id || ""} disabled={locked} onChange={(event) => onSelectOrchard?.(event.target.value)}><option value="" disabled>Farm setup</option>{state.orchards.map((item) => <option key={item.id} value={item.id}>{item.name}{item.demo_location ? " · demo" : ""}</option>)}</select> : null}{state.setup.stage === "complete" ? <button className="tara-text-button" type="button" disabled={locked} onClick={() => conversation.setup("restart")}>Set up another farm</button> : null}{onOpenConnection ? <button className="tara-text-button" type="button" onClick={onOpenConnection}>Message writing</button> : null}</div></div>
     <div className="tara-turns" role="log" aria-label="Conversation with Tara" aria-live={loading ? "off" : "polite"} aria-relevant="additions text">
       {turns.length === 0 && state.setup.stage === "crop" && state.initial_prompt ? <article className="tara-turn tara-assistant"><div className="incoming-bubble">{state.initial_prompt}</div></article> : null}
-      {turns.map((turn, index) => turn.role === "event" ? <div className="tara-saved-event" key={turn.id}><Icon name={turn.kind === "location" ? "location" : "phone"} size={15} /><span>{turn.text}</span><Icon name="check" size={14} /></div> : <article className={`tara-turn tara-${turn.role}`} key={turn.id}>
+      {timeline.map((entry, index) => {
+        if (entry.type === "note") return <React.Fragment key={entry.key}>{renderFieldNote(entry.value)}</React.Fragment>;
+        const turn = entry.value;
+        return turn.role === "event" ? <div className="tara-saved-event" key={entry.key}><Icon name={turn.kind === "location" ? "location" : "phone"} size={15} /><span>{turn.text}</span><Icon name="check" size={14} /></div> : <article className={`tara-turn tara-${turn.role}`} key={entry.key}>
         <div className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"}><span>{turn.text}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Tara reacted with a thumbs up">👍</span> : null}</div>
-        <div className="tara-turn-meta"><time dateTime={turn.created_at} title={timestamp(turn.created_at)} className={index === 0 || shortDate(turn.created_at) !== shortDate(turns[index - 1].created_at) ? undefined : "sr-only"}>{shortDate(turn.created_at)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}{turn.data?.message_id && onDetails ? <button className="tara-text-button" onClick={(event) => onDetails(event, { id: turn.data.message_id, text: turn.text, kind: "answer", created_at: turn.created_at })}>Details</button> : null}</div>
-      </article>)}
+        <div className="tara-turn-meta"><time dateTime={turn.created_at} title={timestamp(turn.created_at)} className={index === 0 || shortDate(turn.created_at) !== shortDate(timeline[index - 1].value.created_at) ? undefined : "sr-only"}>{shortDate(turn.created_at)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}{turn.data?.message_id && onDetails ? <button className="tara-text-button" onClick={(event) => onDetails(event, { id: turn.data.message_id, text: turn.text, kind: "answer", created_at: turn.created_at })}>Details</button> : null}</div>
+      </article>; })}
     </div>
     {state.setup.stage === "location" ? <FarmLocation conversation={conversation} stationPresets={stationPresets} /> : state.setup.stage === "notifications" ? <NotificationChoice conversation={conversation} /> : null}
     {state.setup.stage === "complete" ? <div className={`tara-monitoring tara-monitoring-${conversation.stale ? "unavailable" : state.monitoring.status}`} role="status"><Icon name="location" size={14} /><span>{conversation.stale ? "Monitoring status couldn’t be refreshed" : state.monitoring.status === "ready" ? "Monitoring" : state.monitoring.status === "pending" ? "Farm saved · connecting monitoring data" : state.monitoring.status === "unavailable" ? "Farm saved · monitoring unavailable" : "Monitoring not configured"}</span></div> : null}
-    {notificationError ? <p className="query-error" role="status">{notificationError}</p> : null}
+    {state.notifications.enabled ? <p className="tara-alert-scope">{state.notifications.capability === "browser_open" && typeof window.Notification === "function" && Notification.permission === "granted" ? "Browser alerts for this farm while Terra is open" : "Browser alerts need permission · updates stay in chat"}</p> : null}
+    {alertsError ? <p className="query-error" role="status">{alertsError}</p> : null}
   </div>;
 }
 

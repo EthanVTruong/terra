@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTaraOperation, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
+import { createTaraOperation, mergeTaraTimeline, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
 
 const turn = (extra = {}) => ({ id: "turn-1", role: "user", kind: "text", text: "Thanks", created_at: "2026-10-24T16:00:00Z", reply_to: null, reactions: [], delivery: "local_saved", ...extra });
 const snapshot = (extra = {}) => ({ schema_version: "terra-conversation-v1", setup: { stage: "complete", crops: ["almond"], orchard_id: "farm-1" }, orchard_id: "farm-1", orchards: [{ id: "farm-1", name: "West Orchard" }], turns: [], monitoring: { status: "pending" }, notifications: { enabled: false, capability: "browser_open" }, pending_requests: [], ...extra });
@@ -59,4 +59,12 @@ test("farm confirmation requires an explicit valid location and elevation, inclu
   for (const patch of [{ confirmed: false }, { lat: "" }, { lon: "" }, { elevation: "" }, { lat: "91" }, { elevation: "NaN" }, { elevation: "20001" }, { name: "" }]) assert.throws(() => validateFarmLocation({ ...location, ...patch }));
   assert.equal(restoreFarmLocation({ name: [] }).name, "");
   assert.equal(restoreFarmLocation(location).confirmed, true);
+});
+
+test("field notes and conversation remain chronological, with stable saved-event ordering and no duplicate answer", () => {
+  const turns = [turn({ id: "saved-location", role: "event", kind: "location" }), turn({ id: "next-question", role: "assistant", text: "Want browser alerts?" }), turn({ id: "answer-turn", role: "assistant", created_at: "2026-10-24T16:02:00Z", data: { message_id: "stored-answer" } })];
+  const notes = [{ id: "alert-later", kind: "proactive", created_at: "2026-10-24T16:03:00Z" }, { id: "stored-answer", kind: "answer", created_at: "2026-10-24T16:02:00Z" }, { id: "alert-first", kind: "proactive", created_at: "2026-10-24T15:59:00Z" }];
+  assert.deepEqual(mergeTaraTimeline(turns, notes).map((entry) => entry.value.id), ["alert-first", "saved-location", "next-question", "answer-turn", "alert-later"]);
+  assert.equal(mergeTaraTimeline(turns, [...notes, notes[0]]).filter((entry) => entry.value.id === "alert-later").length, 1);
+  assert.equal(mergeTaraTimeline(turns, [{ id: "bad", created_at: "unknown" }]).length, turns.length);
 });

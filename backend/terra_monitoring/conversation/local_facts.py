@@ -49,7 +49,8 @@ def _observation_date(stamp):
 def gap_answer(summary):
     """Use comparison_hours, not leap-day-inclusive display totals."""
     values = {key: summary.get(key) for key in ("comparison_hours", "historical_median_hours", "cutoff", "data_through",
-              "method", "estimator_method_version", "complete", "coverage", "comparison_coverage", "reference_count")}
+              "method", "estimator_method_version", "complete", "coverage", "comparison_coverage", "reference_count",
+              "active_season", "status", "season_start")}
     comparable = (values["method"] == METHOD and values["complete"] is True
                   and _finite(values["comparison_hours"]) and values["comparison_hours"] >= 0
                   and _finite(values["historical_median_hours"]) and values["historical_median_hours"] >= 0
@@ -68,12 +69,15 @@ def gap_answer(summary):
     except (ValueError, TypeError):
         return "A dated historical comparison isn't available yet.", values
     difference = values["historical_median_hours"] - values["comparison_hours"]
-    date = cutoff.strftime("%b %d").replace(" 0", " ")
+    date = cutoff.strftime("%b %d, %Y").replace(" 0", " ")
+    completed = values["active_season"] is False or values["status"] == "offseason"
     if difference == 0:
-        text = f"Estimated chill matches the historical median through {date}."
+        text = (f"For the completed season through {date}, estimated chill matched the historical median." if completed
+                else f"Estimated chill matches the historical median through {date}.")
     else:
         direction = "behind" if difference > 0 else "ahead of"
-        text = f"About {abs(difference):g} estimated chill hours {direction} the usual pace through {date}."
+        text = (f"For the completed season through {date}, estimated chill was about {abs(difference):g} hours {direction} the usual pace." if completed
+                else f"About {abs(difference):g} estimated chill hours {direction} the usual pace through {date}.")
     if source != cutoff:
-        text += " Latest usable data is from " + source.strftime("%b %d").replace(" 0", " ") + "."
+        text += (" Latest usable data was from " if completed else " Latest usable data is from ") + source.strftime("%b %d, %Y").replace(" 0", " ") + "."
     return text, {**values, "difference_hours": difference, "source_date": source.isoformat(), "comparison_date": cutoff.isoformat()}

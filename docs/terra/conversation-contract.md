@@ -111,11 +111,12 @@ of 40 hours. The monitor has already selected a meaningful low-pace event.
 
 ## Current integration status and acceptance
 
-The writer at backend-cleanup merge `e4292b2` still emits text messages, with
-application-rendered source times included in the prose. It now uses role-bound
-quantities for generated wording. ChatGPT connection and conversational UI work
-remain separate slices; this document does not replace their ownership or alter
-existing records. Existing persisted messages remain immutable.
+The [implemented grower conversation](tara-conversation.md) now connects setup,
+local response decisions, a real composer, attached reactions and silence to the
+existing monitoring and ChatGPT workflows. The writer retains role-bound facts
+and strict validation. Existing persisted messages remain immutable. The linked
+implementation record distinguishes live inference, simulated permissions and
+integration handoff evidence.
 
 The current workflow integration must account for:
 
@@ -134,6 +135,5 @@ The current workflow integration must account for:
 - Cutoff versus onset semantics, stale data and unavailable comparisons remaining
   correct after shortening the prose.
 
-These are acceptance requirements, not claims of completed runtime verification.
-Integration should record which behaviors are shipped, independently verified,
-or still pending instead of treating this documentation change as implementation.
+These remain acceptance requirements. Final CI and retained-data runtime rollout
+are recorded by the integration owner separately from the behavior contract.

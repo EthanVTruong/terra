@@ -129,7 +129,7 @@ def test_real_runtime_routes_select_plan_writer_only_for_relevant_input(tmp_path
     from terra_monitoring.runtime import create_runtime_app
     from terra_monitoring.sms import SMSDispatcher
 
-    provider = Generator("supporting weather data cannot currently verify the orchard estimate")
+    provider = Generator("supporting weather data is unavailable for the orchard estimate")
     monkeypatch.setattr(local, "AuthManager", lambda path: SimpleNamespace(close=lambda: None))
     monkeypatch.setattr(local, "ChatGPTPlanClient", lambda auth, path: provider)
     source = LiveQueryService(app_key="", data_dir=tmp_path / "source")
@@ -168,7 +168,7 @@ def test_real_runtime_routes_select_plan_writer_only_for_relevant_input(tmp_path
         answer = post("/api/tara/messages", question)
         assert answer["outcome"] == "message"
         assert answer["assistant_turn"]["data"]["generation"] == "chatgpt_plan"
-        assert "cannot currently verify" in answer["assistant_turn"]["text"]
+        assert "unavailable for the orchard estimate" in answer["assistant_turn"]["text"]
         assert len(provider.calls) == 1
         again = post("/api/tara/messages", question)
         assert again["assistant_turn"]["id"] == answer["assistant_turn"]["id"]

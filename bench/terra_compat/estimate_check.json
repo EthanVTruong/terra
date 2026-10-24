@@ -1,0 +1,126 @@
+{
+ "untouched_2026-03": {
+  "EDU": {
+   "hours": 744,
+   "ok": 581,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 744
+   },
+   "mae_vs_asos": 1.44
+  },
+  "DWA": {
+   "hours": 744,
+   "ok": 581,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 744
+   },
+   "mae_vs_asos": 1.904
+  },
+  "SMF": {
+   "hours": 744,
+   "ok": 581,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 744
+   },
+   "mae_vs_asos": 1.742
+  },
+  "SAC": {
+   "hours": 744,
+   "ok": 581,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 744
+   },
+   "mae_vs_asos": 1.587
+  },
+  "VCB": {
+   "hours": 744,
+   "ok": 581,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 744
+   },
+   "mae_vs_asos": 2.363
+  },
+  "SUU": {
+   "hours": 744,
+   "ok": 581,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 744
+   },
+   "mae_vs_asos": 2.135
+  }
+ },
+ "inspected_winter": {
+  "EDU": {
+   "hours": 2160,
+   "ok": 2082,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 2160
+   },
+   "mae_vs_asos": 0.897
+  },
+  "DWA": {
+   "hours": 2160,
+   "ok": 2082,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 2160
+   },
+   "mae_vs_asos": 1.049
+  },
+  "SMF": {
+   "hours": 2160,
+   "ok": 2082,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 2160
+   },
+   "mae_vs_asos": 1.176
+  },
+  "SAC": {
+   "hours": 2160,
+   "ok": 2082,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 2160
+   },
+   "mae_vs_asos": 1.431
+  },
+  "VCB": {
+   "hours": 2160,
+   "ok": 2082,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 2160
+   },
+   "mae_vs_asos": 1.381
+  },
+  "SUU": {
+   "hours": 2160,
+   "ok": 2082,
+   "same_hours_as_3_peer_rule": true,
+   "max_abs_diff_vs_evaluated": 0.0,
+   "methods": {
+    "idw": 2160
+   },
+   "mae_vs_asos": 1.715
+  }
+ }
+}

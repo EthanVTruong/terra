@@ -77,14 +77,16 @@ class CusumEvent:
 
 def cusum_events(
     z: np.ndarray, r: np.ndarray, sigma: float, k: float, h: float, mean_sigma: float,
-    extra_gate: Any = None,
+    extra_gate: Any = None, mean_scale: float | None = None,
 ) -> list[CusumEvent]:
     """Two-sided CUSUM on standardized residuals with a 24 h mean-residual gate.
 
     NaN hours are skipped (sums carried). An event alarms when S >= h and the trailing
-    24 h mean residual exceeds ``mean_sigma * sigma`` in the same direction; it ends when
-    the trailing 24 h mean falls back under 1 sigma, and the sums restart.
+    24 h mean residual exceeds ``mean_sigma * mean_scale`` in the same direction; it ends when
+    the trailing 24 h mean falls back under 1 ``mean_scale``, and the sums restart.
+    ``mean_scale`` defaults to the hourly ``sigma`` (the spec's reading).
     """
+    scale = sigma if mean_scale is None else mean_scale
     n = len(z)
     events: list[CusumEvent] = []
     sp = sm = 0.0
@@ -103,9 +105,9 @@ def cusum_events(
                 zero_m = i + 1
             m = mean24[i]
             fire = 0
-            if sp >= h and np.isfinite(m) and m > mean_sigma * sigma:
+            if sp >= h and np.isfinite(m) and m > mean_sigma * scale:
                 fire = 1
-            elif sm >= h and np.isfinite(m) and m < -mean_sigma * sigma:
+            elif sm >= h and np.isfinite(m) and m < -mean_sigma * scale:
                 fire = -1
             if fire and (extra_gate is None or extra_gate(m)):
                 onset = zero_p if fire > 0 else zero_m
@@ -113,7 +115,7 @@ def cusum_events(
                 j = i + 1
                 while j < n:
                     mj = mean24[j]
-                    if np.isfinite(mj) and fire * mj < sigma:
+                    if np.isfinite(mj) and fire * mj < scale:
                         end = j
                         break
                     j += 1
@@ -284,9 +286,17 @@ def detect_station(
             def gate(m: float) -> bool:
                 return abs(m + accepted_offset) > grow * abs(accepted_offset)
 
+        # scale of the 24 h mean gate: the hourly sigma (spec), or the spread of 24 h means
+        # themselves ("daily"), which is what a 24 h mean should be compared with
+        mean_scale = None
+        if rt.get("mean24_basis", "hourly") == "daily":
+            m24 = pd.Series(np.where(ok_mask, r_ns, np.nan)).rolling(24, min_periods=12).mean().to_numpy()
+            if np.isfinite(m24).sum() >= int(rt["min_sigma_hours"]):
+                mean_scale = robust_sigma(m24, float(rt.get("mean24_floor_f", 0.25)))
+            # else: too little history, keep the spec's scale
         shifted = np.zeros(H, dtype=bool)
         for ev in cusum_events(z, r_ns, sigma, float(rt["cusum_k"]), float(rt["cusum_h"]),
-                               float(rt["mean24_sigma"]), gate):
+                               float(rt["mean24_sigma"]), gate, mean_scale):
             stop = ev.end if ev.end is not None else H - 1
             cls = classify_shift(r_ns, ev.onset, ev.alarm, stop, int(rt["offset_step_hours"]),
                                  int(rt["ambiguous_ramp_hours"]))

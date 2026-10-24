@@ -97,7 +97,7 @@ def test_auth_error_not_halved(tmp_path):
 
 
 @respx.mock
-def test_one_failing_station_does_not_stop_others(tmp_path):
+def test_one_failing_station_does_not_stop_others(tmp_path, monkeypatch):
     payload = json.loads((FIX / "cimis_hourly_6.json").read_text())
 
     def handler(request):
@@ -115,7 +115,7 @@ def test_one_failing_station_does_not_stop_others(tmp_path):
                        "connect_date": pd.Timestamp("1990-01-01"), "disconnect_date": pd.NaT, "in_region": True})
     store = MemoryStore(st)
     s = src(tmp_path)
-    s._get.retry.stop = __import__("tenacity").stop_after_attempt(1)  # fail fast
+    monkeypatch.setattr(s._get.retry, "stop", __import__("tenacity").stop_after_attempt(1))  # fail fast
     res = backfill(s, store, date(2024, 1, 1), date(2024, 1, 2))
     assert isinstance(res[70], Exception)
     assert res[6] == 48 and res[71] == 48
@@ -198,3 +198,15 @@ def test_ingest_station_with_no_data_inserts_missing_rows():
     assert ingest_station(Empty(), store, st, date(2010, 1, 1), date(2010, 1, 2)) == 48
     r = store.readings()
     assert (r["qc_status"] == "missing").all() and r["temp_f"].isna().all()
+
+
+@respx.mock
+def test_backend_outage_400_is_retried(tmp_path, monkeypatch):
+    payload = json.loads((FIX / "cimis_hourly_6.json").read_text())
+    outage = httpx.Response(400, json={"title": "One or more validation errors occurred.", "status": 400,
+                                       "errors": {"Error": ["Connection refused (backend:8043)"]}})
+    route = respx.get(DATA_URL).mock(side_effect=[outage, httpx.Response(200, json=payload)])
+    s = src(tmp_path)
+    monkeypatch.setattr(s._get.retry, "wait", __import__("tenacity").wait_none())
+    assert len(s.fetch_hourly("6", date(2024, 1, 1), date(2024, 1, 2))) == 48
+    assert route.call_count == 2

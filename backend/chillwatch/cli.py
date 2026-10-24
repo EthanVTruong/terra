@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 import typer
 
+from . import config
+
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="ChillWatch data / QC / ML layer")
 stations_app = typer.Typer(no_args_is_help=True, help="Station metadata")
 app.add_typer(stations_app, name="stations")
@@ -119,15 +121,21 @@ def export_parquet_cmd() -> None:
 
 @app.command("train")
 def train_cmd(version: str = typer.Option(None), folds: int = typer.Option(None, help="0 = true LOSO"),
+              fold_procedure: str = typer.Option(None, help="full | fixed (fold models reuse the main round count)"),
               verbose: bool = True) -> None:
     """Train the neighbor model on non-holdout seasons; writes data/models/{version}/metrics.json."""
     _setup(verbose)
     from .qc.model import train
 
-    b = train(_ctx().store, version=version, loso_folds=folds)
+    b = train(_ctx().store, version=version, loso_folds=folds, fold_procedure=fold_procedure)
     m = b.metrics
-    typer.echo(json.dumps({"version": b.version, "fit": m["fit"], "loso_model": m["loso_model"],
-                           "loso_idw_lapse": {"mae_f": m["loso_idw_lapse"]["mae_f"]}}, indent=2))
+    key = "loso" if "loso_model" in m else "in_sample"
+    hk = m.get("holdout_known_stations") or {}
+    typer.echo(json.dumps({"version": b.version, "validation": m["validation"], "fit": m["fit"],
+                           "holdout_known_stations_mae_f": {k: v["mae_f"] for k, v in hk.items()
+                                                            if isinstance(v, dict) and "mae_f" in v},
+                           f"{key}_model": m[f"{key}_model"],
+                           f"{key}_common_rows": m[f"{key}_common_rows"]}, indent=2, default=str))
 
 
 @app.command()
@@ -196,6 +204,46 @@ def bench(faults: int = 100, seed: int = 42, gapfill_blocks: int = 200, max_days
     r = run_bench(faults, seed, ctx=_ctx(), gapfill_blocks=gapfill_blocks, max_days=max_days)
     typer.echo(Path(r["paths"][1]).read_text())
     typer.echo(f"written: {r['paths']}")
+
+
+@app.command("fit-physics")
+def fit_physics(fit_seasons: str = typer.Option("2018-19,2019-20,2020-21,2021-22,2022-23"),
+                check_seasons: str = typer.Option(None, help="default: the region's holdout seasons"),
+                verbose: bool = True) -> None:
+    """Fit the no-station physics estimate (lapse shrink, elevation weighting) leave-stations-out."""
+    _setup(verbose)
+    from .repair.physics_fit import fit
+
+    check = check_seasons.split(",") if check_seasons else list(config.region().get("holdout_seasons", []))
+    res = fit(_ctx(), fit_seasons.split(","), check)
+    out = config.data_dir() / "models" / "physics_fit.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(res, indent=2, default=str))
+    typer.echo(json.dumps({"best": res["best"], "fit": {k: res["fit"][k] for k in ("best", "spec")},
+                           "check": res["check"]}, indent=2, default=str))
+    typer.echo(f"written {out}; set baseline.unseen_lapse_shrink / unseen_dz_scale_ft in config/thresholds.yaml")
+
+
+@app.command()
+def grid(season: str = typer.Option(None, help="default: the region's demo season"),
+         km: float = typer.Option(5.0, help="grid spacing"),
+         end: str = typer.Option(None, help="season to date: last hour to include (UTC)"),
+         out: Path = typer.Option(None, help="default: data/grid/"),
+         physics_only: bool = typer.Option(False, help="IDW + lapse baseline instead of the model"),
+         label: str = typer.Option(""), verbose: bool = True) -> None:
+    """Chill-hour map: estimate every grid cell from nearby stations (CSV, GeoJSON, PNG)."""
+    _setup(verbose)
+    from .qc.model import idw_only_bundle
+    from .repair.grid import predict_grid, write_grid
+
+    ctx = _ctx()
+    if physics_only:
+        ctx.model = idw_only_bundle()
+    season = season or config.region()["demo_season"]
+    df = predict_grid(ctx, season, km=km, end=pd.Timestamp(end, tz="UTC") if end else None)
+    paths = write_grid(df, ctx.region_stations(), out or config.data_dir() / "grid",
+                       label or ("physics baseline" if physics_only else ""))
+    typer.echo(json.dumps(paths, indent=2))
 
 
 @app.command("blind-test")

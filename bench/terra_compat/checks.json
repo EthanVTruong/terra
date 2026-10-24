@@ -1,0 +1,180 @@
+{
+ "scramble": {
+  "6": {
+   "hours": 72,
+   "outputs_compared": 21,
+   "max_abs_diff": 0.0,
+   "same_missing_pattern": true
+  },
+  "226": {
+   "hours": 72,
+   "outputs_compared": 21,
+   "max_abs_diff": 0.0,
+   "same_missing_pattern": true
+  },
+  "139": {
+   "hours": 72,
+   "outputs_compared": 21,
+   "max_abs_diff": 0.0,
+   "same_missing_pattern": true
+  },
+  "212": {
+   "hours": 72,
+   "outputs_compared": 21,
+   "max_abs_diff": 0.0,
+   "same_missing_pattern": true
+  },
+  "235": {
+   "hours": 72,
+   "outputs_compared": 21,
+   "max_abs_diff": 0.0,
+   "same_missing_pattern": true
+  }
+ },
+ "y_vs_asos": {
+  "untouched_2026-03": {
+   "6": {
+    "asos": "EDU",
+    "km": 1.0,
+    "blank": {
+     "n": 469,
+     "mean_diff": 0.55,
+     "mae": 1.24
+    },
+    "Y": {
+     "n": 215,
+     "mean_diff": 0.71,
+     "mae": 1.47
+    }
+   },
+   "226": {
+    "asos": "DWA",
+    "km": 11.1,
+    "blank": {
+     "n": 527,
+     "mean_diff": 1.0,
+     "mae": 2.01
+    },
+    "Y": {
+     "n": 203,
+     "mean_diff": 1.56,
+     "mae": 2.69
+    }
+   },
+   "139": {
+    "asos": "DWA",
+    "km": 13.7,
+    "blank": {
+     "n": 665,
+     "mean_diff": 0.68,
+     "mae": 2.52
+    },
+    "Y": {
+     "n": 77,
+     "mean_diff": 5.79,
+     "mae": 6.22
+    }
+   },
+   "212": {
+    "asos": "SUU",
+    "km": 16.4,
+    "blank": {
+     "n": 549,
+     "mean_diff": -0.71,
+     "mae": 2.0
+    },
+    "Y": {
+     "n": 119,
+     "mean_diff": -0.33,
+     "mae": 1.98
+    }
+   },
+   "235": {
+    "asos": "SMF",
+    "km": 11.5,
+    "blank": {
+     "n": 606,
+     "mean_diff": -1.57,
+     "mae": 2.15
+    },
+    "Y": {
+     "n": 138,
+     "mean_diff": -0.27,
+     "mae": 1.5
+    }
+   }
+  },
+  "inspected_winter": {
+   "6": {
+    "asos": "EDU",
+    "km": 1.0,
+    "blank": {
+     "n": 1995,
+     "mean_diff": 0.37,
+     "mae": 0.9
+    },
+    "Y": {
+     "n": 106,
+     "mean_diff": 0.46,
+     "mae": 0.84
+    }
+   },
+   "226": {
+    "asos": "DWA",
+    "km": 11.1,
+    "blank": {
+     "n": 2086,
+     "mean_diff": 0.29,
+     "mae": 1.16
+    },
+    "Y": {
+     "n": 59,
+     "mean_diff": 0.06,
+     "mae": 0.97
+    }
+   },
+   "139": {
+    "asos": "DWA",
+    "km": 13.7,
+    "blank": {
+     "n": 2037,
+     "mean_diff": -0.26,
+     "mae": 1.49
+    },
+    "Y": {
+     "n": 108,
+     "mean_diff": -1.09,
+     "mae": 1.59
+    }
+   },
+   "212": {
+    "asos": "SUU",
+    "km": 16.4,
+    "blank": {
+     "n": 1894,
+     "mean_diff": -1.44,
+     "mae": 2.06
+    },
+    "Y": {
+     "n": 79,
+     "mean_diff": -1.16,
+     "mae": 1.65
+    }
+   },
+   "235": {
+    "asos": "SMF",
+    "km": 11.5,
+    "blank": {
+     "n": 2047,
+     "mean_diff": -0.88,
+     "mae": 1.34
+    },
+    "Y": {
+     "n": 112,
+     "mean_diff": -0.87,
+     "mae": 1.03
+    }
+   }
+  }
+ }
+}

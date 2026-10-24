@@ -1,0 +1,275 @@
+{
+ "lapse_stats": {
+  "untouched_2026-03": {
+   "hours": 744,
+   "finite": 0.6116,
+   "clipped_at_10": 0.4409,
+   "median_abs_f_per_kft": 10.0
+  },
+  "inspected_winter": {
+   "hours": 2160,
+   "finite": 0.8662,
+   "clipped_at_10": 0.513,
+   "median_abs_f_per_kft": 10.0
+  }
+ },
+ "spike_full_network": {
+  "clean": {
+   "27": {
+    "model": 37.21,
+    "physics": 36.97
+   },
+   "30": {
+    "model": 36.29,
+    "physics": 36.36
+   },
+   "32": {
+    "model": 39.65,
+    "physics": 39.07
+   },
+   "121": {
+    "model": 35.41,
+    "physics": 36.25
+   },
+   "122": {
+    "model": 36.16,
+    "physics": 34.27
+   },
+   "139": {
+    "model": 36.63,
+    "physics": 36.41
+   },
+   "155": {
+    "model": 39.0,
+    "physics": 36.68
+   },
+   "196": {
+    "model": 39.57,
+    "physics": 37.15
+   },
+   "212": {
+    "model": 35.56,
+    "physics": 36.06
+   },
+   "226": {
+    "model": 37.79,
+    "physics": 36.94
+   },
+   "235": {
+    "model": 36.12,
+    "physics": 37.26
+   },
+   "273": {
+    "model": 36.65,
+    "physics": 36.71
+   }
+  },
+  "spike_unflagged": {
+   "27": {
+    "model": 38.81,
+    "physics": 40.11
+   },
+   "30": {
+    "model": 38.15,
+    "physics": 37.44
+   },
+   "32": {
+    "model": 40.2,
+    "physics": 39.5
+   },
+   "121": {
+    "model": 42.87,
+    "physics": 44.82
+   },
+   "122": {
+    "model": 36.63,
+    "physics": 34.76
+   },
+   "139": {
+    "model": 44.81,
+    "physics": 46.45
+   },
+   "155": {
+    "model": 46.1,
+    "physics": 42.28
+   },
+   "196": {
+    "model": 41.72,
+    "physics": 41.04
+   },
+   "212": {
+    "model": 36.69,
+    "physics": 38.43
+   },
+   "226": {
+    "model": 47.47,
+    "physics": 47.8
+   },
+   "235": {
+    "model": 38.45,
+    "physics": 42.24
+   },
+   "273": {
+    "model": 37.8,
+    "physics": 39.4
+   }
+  },
+  "spike_flagged": {
+   "27": {
+    "model": 37.35,
+    "physics": 36.97
+   },
+   "30": {
+    "model": 36.56,
+    "physics": 36.34
+   },
+   "32": {
+    "model": 39.83,
+    "physics": 39.11
+   },
+   "121": {
+    "model": 35.44,
+    "physics": 35.83
+   },
+   "122": {
+    "model": 36.1,
+    "physics": 34.21
+   },
+   "139": {
+    "model": 36.44,
+    "physics": 35.97
+   },
+   "155": {
+    "model": 39.08,
+    "physics": 36.59
+   },
+   "196": {
+    "model": 39.26,
+    "physics": 37.17
+   },
+   "212": {
+    "model": 35.7,
+    "physics": 35.95
+   },
+   "226": {
+    "model": 38.11,
+    "physics": 36.89
+   },
+   "235": {
+    "model": 36.44,
+    "physics": 37.33
+   },
+   "273": {
+    "model": 36.61,
+    "physics": 36.68
+   }
+  },
+  "clean_davis_dropped": {
+   "27": {
+    "model": 37.35,
+    "physics": 36.97
+   },
+   "30": {
+    "model": 36.56,
+    "physics": 36.34
+   },
+   "32": {
+    "model": 39.83,
+    "physics": 39.11
+   },
+   "121": {
+    "model": 35.44,
+    "physics": 35.83
+   },
+   "122": {
+    "model": 36.1,
+    "physics": 34.21
+   },
+   "139": {
+    "model": 36.44,
+    "physics": 35.97
+   },
+   "155": {
+    "model": 39.08,
+    "physics": 36.59
+   },
+   "196": {
+    "model": 39.26,
+    "physics": 37.17
+   },
+   "212": {
+    "model": 35.7,
+    "physics": 35.95
+   },
+   "226": {
+    "model": 38.11,
+    "physics": 36.89
+   },
+   "235": {
+    "model": 36.44,
+    "physics": 37.33
+   },
+   "273": {
+    "model": 36.61,
+    "physics": 36.68
+   }
+  }
+ },
+ "davis_vs_edu": {
+  "untouched_2026-03": {
+   "Y": {
+    "n": 215,
+    "mean_diff": 0.71,
+    "mae": 1.47,
+    "mean_temp": 71.5
+   },
+   "blank": {
+    "n": 469,
+    "mean_diff": 0.55,
+    "mae": 1.24,
+    "mean_temp": 60.4
+   }
+  },
+  "inspected_winter": {
+   "blank": {
+    "n": 1995,
+    "mean_diff": 0.37,
+    "mae": 0.9,
+    "mean_temp": 48.7
+   },
+   "Y": {
+    "n": 106,
+    "mean_diff": 0.46,
+    "mae": 0.84,
+    "mean_temp": 60.2
+   }
+  }
+ },
+ "cw_offsets_et_eligibility": {
+  "6": {
+   "night_f": 0.26,
+   "day_f": -0.246,
+   "n": 8516
+  },
+  "226": {
+   "night_f": 0.1,
+   "day_f": 0.138,
+   "n": 8528
+  },
+  "139": {
+   "night_f": 0.085,
+   "day_f": -0.054,
+   "n": 8326
+  },
+  "212": {
+   "night_f": -0.744,
+   "day_f": 0.009,
+   "n": 8531
+  },
+  "235": {
+   "night_f": -0.803,
+   "day_f": -0.31,
+   "n": 8508
+  }
+ }
+}

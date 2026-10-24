@@ -93,9 +93,11 @@ def bootstrap_traces(
 ) -> pd.DataFrame:
     """Resampled ``used_temp_f`` traces for a station-season (error bars for chill totals).
 
-    Observed hours are kept as-is; estimated hours get LOSO residuals added, resampled
-    in 24-hour blocks (whole local days, same uncertainty bin when possible) to keep the
-    within-day error correlation. Returns a frame indexed by ts with ``n`` trace columns.
+    Observed hours are kept as-is. Estimated hours get leave-stations-out residuals added,
+    drawn as whole local days (24-hour blocks) to keep the within-day error correlation, and
+    rescaled to each hour's own uncertainty (``est_sd``: its distance x |dz| x night/day bin,
+    the IDW table for physics-filled hours, the widest bin for long gaps).
+    Returns a frame indexed by ts with ``n`` trace columns.
     """
     from ..context import get_context
     from ..timeutil import season_bounds
@@ -103,13 +105,18 @@ def bootstrap_traces(
     ctx = ctx or get_context()
     reg = config.region()
     start, end = season_bounds(season, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
-    r = ctx.store.readings(start, end, [station_id]).sort_values("ts")
-    base = r.set_index("ts")["used_temp_f"].astype("float64")
-    est = r.set_index("ts")["is_estimated"].astype(bool).to_numpy()
+    r = ctx.store.readings(start, end, [station_id]).sort_values("ts").set_index("ts")
+    base = r["used_temp_f"].astype("float64")
+    est = r["is_estimated"].astype(bool).to_numpy()
     traces = np.repeat(base.to_numpy()[:, None], n, axis=1)
     if not est.any():
         return pd.DataFrame(traces, index=base.index, columns=[f"trace_{i}" for i in range(n)])
     pool = ctx.model.oof_blocks()  # (n_blocks, 24) residual blocks
+    flat = pool[np.isfinite(pool)]
+    pool_sd = float(1.4826 * np.median(np.abs(flat - np.median(flat)))) if flat.size else 1.0
+    pool_sd = pool_sd if pool_sd > 0 else 1.0
+    sd = r["est_sd"].to_numpy(dtype="float64")
+    scale = np.where(np.isfinite(sd), sd / pool_sd, 1.0)
     rng = np.random.default_rng(seed)
     hours = pd.DatetimeIndex(base.index)
     local_hour = ((hours.tz_convert("UTC").tz_localize(None) - pd.Timedelta(hours=9)).hour).to_numpy()
@@ -117,5 +124,5 @@ def bootstrap_traces(
     for d in pd.unique(day_key[est]):
         m = (day_key == d) & est
         picks = rng.integers(0, len(pool), size=n)
-        traces[m, :] += pool[picks][:, local_hour[m]].T
+        traces[m, :] += pool[picks][:, local_hour[m]].T * scale[m][:, None]
     return pd.DataFrame(traces, index=base.index, columns=[f"trace_{i}" for i in range(n)])

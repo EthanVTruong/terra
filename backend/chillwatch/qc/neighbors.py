@@ -167,6 +167,14 @@ def row_nanmedian(a: np.ndarray) -> np.ndarray:
     return med
 
 
+def _kth_remaining(srt: np.ndarray, shifted: np.ndarray, rows: np.ndarray, k: np.ndarray) -> np.ndarray:
+    """k-th smallest value per row of ``srt`` after removing the entries whose sorted ranks minus
+    their order index are ``shifted`` (the standard rank-skipping count)."""
+    t = (shifted <= k[:, None]).sum(axis=1)
+    pos = np.clip(k + t, 0, srt.shape[1] - 1)
+    return srt[rows, pos]
+
+
 def theil_sen_lapse_excluding_each(
     W: np.ndarray, elevation_ft: np.ndarray, min_stations: int | None = None, clip: float | None = None,
     chunk: int = 512,
@@ -210,14 +218,9 @@ def theil_sen_lapse_excluding_each(
             n_rem = n_fin - removed_fin
             shifted = r - np.arange(r.shape[1])[None, :]
 
-            def kth(k: np.ndarray) -> np.ndarray:
-                t = (shifted <= k[:, None]).sum(axis=1)
-                pos = np.clip(k + t, 0, srt.shape[1] - 1)
-                return srt[rows, pos]
-
             lo = np.maximum((n_rem - 1) // 2, 0)
             hi = np.maximum(n_rem // 2, 0)
-            med = (kth(lo) + kth(hi)) / 2.0
+            med = (_kth_remaining(srt, shifted, rows, lo) + _kth_remaining(srt, shifted, rows, hi)) / 2.0
             med[n_rem <= 0] = np.nan
             enough = (n_valid_st - np.isfinite(block[:, s])) >= min_stations
             med[~enough] = np.nan

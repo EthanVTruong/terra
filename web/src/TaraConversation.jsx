@@ -176,8 +176,9 @@ function FarmLocation({ conversation }) {
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
     } catch { handled = true; finish(); if (alive.current) setError("Location access is unavailable. Check your browser settings, then try again."); }
   }
-  return <div className="tara-setup-controls">
-    <button type="button" className="query-submit" onClick={useDevice} disabled={conversation.locked || phase !== "idle"} aria-busy={phase !== "idle"}>{phase === "locating" ? "Finding location…" : phase === "saving" ? "Saving location…" : "Use my location"}<Icon name="location" size={14} /></button>
+  return <div className="tara-setup-controls tara-location-request">
+    <p className="sr-only" role="status">Share your farm location to continue.</p>
+    <button type="button" className="tara-location-button" onClick={useDevice} disabled={conversation.locked || phase !== "idle"} aria-busy={phase !== "idle"}><Icon name="location" size={16} /><span>{phase === "locating" ? "Finding location…" : phase === "saving" ? "Saving location…" : "Use my location"}</span></button>
     {error ? <p className="query-error" role="status">{error}</p> : null}
   </div>;
 }
@@ -239,7 +240,8 @@ export function TaraConversation({ conversation, farm, onSelectOrchard, onDetail
   const mode = orchard?.mode;
   const modeLabel = mode === "replay" ? "Replay · demo" : mode === "injected" ? "Injected data · demo" : orchard?.demo_location ? "Demonstration farm" : null;
   const turns = state.turns;
-  const timeline = mergeTaraTimeline(turns, typeof renderFieldNote === "function" ? fieldNotes.filter((note) => note && (!note.orchard_id || note.orchard_id === state.orchard_id)) : EMPTY_PRESETS);
+  const visibleTurns = turns.filter((turn) => turn.role !== "assistant" || turn.data?.action !== "location_choice");
+  const timeline = mergeTaraTimeline(visibleTurns, typeof renderFieldNote === "function" ? fieldNotes.filter((note) => note && (!note.orchard_id || note.orchard_id === state.orchard_id)) : EMPTY_PRESETS);
   return <div className="tara-conversation">
     {showFarmSelector && <div className="tara-context"><div className="tara-farm-label"><span>{orchard?.name || "Your farm"}</span>{modeLabel ? <span className="tara-mode">{modeLabel}</span> : null}</div><div className="tara-context-actions">{showFarmSelector && state.orchards.length > 0 ? <select aria-label="Conversation farm" value={state.orchard_id || ""} disabled={locked} onChange={(event) => onSelectOrchard?.(event.target.value)}><option value="" disabled>Farm setup</option>{state.orchards.map((item) => <option key={item.id} value={item.id}>{item.name}{item.demo_location ? " · demo" : ""}</option>)}</select> : null}{state.setup.stage === "complete" ? <button className="tara-text-button" type="button" disabled={locked} onClick={() => conversation.setup("restart")}>Set up another farm</button> : null}{onOpenConnection ? <button className="tara-text-button" type="button" onClick={onOpenConnection}>Message writing</button> : null}</div></div>}
     <div className="tara-turns" role="log" aria-label="Conversation with Terra" aria-live={loading ? "off" : "polite"} aria-relevant="additions text">
@@ -254,7 +256,7 @@ export function TaraConversation({ conversation, farm, onSelectOrchard, onDetail
           {showDay && <div className="day-separator"><time dateTime={localDay(published)} title={timestamp(published)}>{dayLabel(published)}</time></div>}
           {entry.type === "note" ? renderFieldNote(turn) : turn.role === "event" ? <div className={`tara-saved-event${turn.kind === "notice" ? " tara-notice-event" : ""}`}><Icon name={turn.kind === "location" ? "location" : turn.kind === "notice" ? "file" : "phone"} size={15} /><span>{turn.text}</span>{turn.kind !== "notice" ? <Icon name="check" size={14} /> : null}</div> : <article className={`tara-turn tara-${turn.role}`}>
             <Bubble type={hasDetails ? "button" : undefined} className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"} title={hasDetails ? "View readings" : undefined} aria-label={hasDetails ? `Open answer from ${timestamp(published)}` : undefined} aria-describedby={hasDetails ? `tara-turn-text-${turn.id}` : undefined} onClick={hasDetails ? (event) => onDetails(event, { id: turn.data.message_id, orchard_id: state.orchard_id, text: turn.text, kind: "answer", created_at: turn.created_at }) : undefined}><span id={`tara-turn-text-${turn.id}`}>{taraDisplayText(turn)}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Terra reacted with a thumbs up">👍</span> : null}</Bubble>
-            <div className="tara-turn-meta"><time dateTime={published} title={timestamp(published)} aria-label={timestamp(published)}>{clockTime(published)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}</div>
+            <div className="tara-turn-meta"><time dateTime={published} title={timestamp(published)} aria-label={timestamp(published)}>{clockTime(published)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span className="tara-read-receipt" role="img" aria-label="Received by Terra" title="Received by Terra"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="" /></span> : null}</div>
           </article>}
         </React.Fragment>;
       })}

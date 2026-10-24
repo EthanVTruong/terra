@@ -1,5 +1,43 @@
 # Terra integration coordination
 
+## Receipt and location refinement
+
+```json
+{
+  "kind": "task",
+  "id": "terra-bean-location-polish",
+  "owner": "et",
+  "status": "done",
+  "intent": "Latest direct ET feedback: make the Terra receipt a horizontal bean and surface location as one polished button without the redundant question or form. Preserve the current native device/USGS flow; deliver a narrow patch to the sole integration owner.",
+  "branch": "codex/terra-bean-location-polish",
+  "base": "5b98159",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "web/src/TaraConversation.jsx",
+    "web/src/tara-conversation.css",
+    "backend/terra_monitoring/conversation/service.py",
+    "tests/test_terra_conversation.py",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "5b98159",
+    "summary": "Horizontal27x15organic Terra character receipt, one44px pin button in soft green, redundant location-choice helper copy hidden only in display. Preserves native device/USGS validation, busy/retry/stale guards and stored messages. Opening greeting now persists before first user turn and on restart; no stored note clock changes.",
+    "evidence": [
+      "Conversation/API suite including new retry/refresh/farm-migration/restart greeting regression passes. Frontend51helper and4packaging cases pass;2existing optional browser cases skipped. Production build passes.",
+      "Actual isolated8542 browser: greeting stays above sent walnut message; only Use my location button shown with no reference/coordinate/question clutter; refresh retains order. Snapshot C:/Users/mreth/.codex/visualizations/2026/10/24/01a16f75-4321-7d63-b72c-4b0bd9fb7e82/terra-bean-location.png."
+    ],
+    "uncertainty": "Actual location permission/terrain fetch not exercised by this visual refinement; underlying accepted native flow is unchanged. Main integration and live activation remain owned by existing chats.",
+    "next": "Hand exact finite patch to sole integration owner alongside frozenPR19. Stop isolatedQA and release source lane; preserve branch/evidence until canonical cutover."
+  }
+}
+```
+
 ```json
 {
   "kind": "task",

@@ -116,6 +116,21 @@ def route(text, context=None, known_subjects=()):
         return "unsupported"
     if re.search(r"\b(explain|why|what does .*mean|meaning)\b", low) and re.search(r"\b(alert|warning|flag|note)\b", low):
         return _bounded("explain_alert", low, known_subjects)
+    historical = re.search(r"\b(?:last year|past years?|previous years?|historical|history)\b", low)
+    weather_subject = re.search(r"\b(?:temperatures?|weather|cold|hot|warm)\b", low)
+    chill_subject = re.search(r"\bchill(?:ing)?\b", low)
+    if historical and weather_subject:
+        if chill_subject:
+            return "needs_context"
+        # A current estimate cannot answer a past-weather question, and the
+        # orchard's seasonal chill comparison is a different quantity.
+        return _bounded("weather_history_unavailable", low, known_subjects)
+    year_followup = re.fullmatch(r"(?:compared? (?:with|to) last year|what about last year|last year)", low)
+    if year_followup:
+        if context in {"temperature", "temperature_normal", "weather_history_unavailable"}:
+            return "weather_history_unavailable"
+        if context not in {"chill_total", "history", "history_gap"}:
+            return "needs_context"
     normal_context = {"chill_total": "history", "history": "history", "history_gap": "history",
                       "station_health": "station_health", "freshness": "station_health",
                       "temperature": "temperature_normal", "temperature_normal": "temperature_normal",
@@ -161,7 +176,7 @@ def route(text, context=None, known_subjects=()):
     if re.fullmatch(r"(?:thanks[,! ]*)?why", low) and context in QUESTIONS and context != "explain_alert":
         return "cause_limit"
     if re.fullmatch(r"(?:why|why is that|how far|what does (?:that|this) mean|what about (?:that|this)|explain (?:that|this))", low):
-        return context if context in QUESTIONS or context in LOCAL_INTENTS or context in {"temperature", "temperature_normal", "freshness", "station_findings"} else "needs_context"
+        return context if context in QUESTIONS or context in LOCAL_INTENTS or context in {"temperature", "temperature_normal", "freshness", "station_findings", "weather_history_unavailable"} else "needs_context"
     if re.search(r"\b(chill|chilling|station|coverage|temperature|weather|readings?|estimate|data)\b", low):
         return "clarify"
     if re.search(r"\b(monitoring|monitor|farm|orchard|location|growing|crop)\b", low):

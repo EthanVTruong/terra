@@ -41,6 +41,7 @@ def test_ordinary_factual_questions_keep_their_meaning(text, intent):
     ("temperature", "temperature_normal"), ("temperature_normal", "temperature_normal"),
     ("station_findings", "station_findings"), ("explain_alert", "explain_alert"),
     (None, "needs_context"), ("unknown", "needs_context"),
+    ("weather_history_unavailable", "needs_context"),
 ])
 @pytest.mark.parametrize("text", ["Is that normal?", "Is this normal?", "Thanks, is that normal?"])
 def test_normal_followup_uses_the_actual_previous_subject(context, intent, text):
@@ -50,6 +51,48 @@ def test_normal_followup_uses_the_actual_previous_subject(context, intent, text)
 @pytest.mark.parametrize("context", ["temperature", "temperature_normal", "freshness", "station_findings"])
 def test_retained_local_fact_context_supports_substantive_followups(context):
     assert route("What does that mean?", context) == context
+
+
+@pytest.mark.parametrize("text", [
+    "What was the temperature last year?", "Compare temperature with last year",
+    "Compare the weather with last year", "What was the weather like last year?",
+    "Was it this cold last year?", "Is the temperature normal compared with last year?",
+])
+@pytest.mark.parametrize("context", [None, "temperature", "chill_total", "station_health"])
+def test_explicit_past_weather_never_returns_a_current_temperature_or_chill_total(text, context):
+    assert route(text, context) == "weather_history_unavailable"
+    assert route(text, context) not in QUESTIONS
+
+
+@pytest.mark.parametrize("context,intent", [
+    ("temperature", "weather_history_unavailable"),
+    ("temperature_normal", "weather_history_unavailable"),
+    ("weather_history_unavailable", "weather_history_unavailable"),
+    ("station_health", "needs_context"), ("freshness", "needs_context"),
+    ("station_findings", "needs_context"), ("profile_monitor", "needs_context"),
+    ("explain_alert", "needs_context"), ("farm", "needs_context"),
+    (None, "needs_context"), ("unknown", "needs_context"),
+    ("chill_total", "history"), ("history", "history"), ("history_gap", "history"),
+])
+@pytest.mark.parametrize("text", ["Compared with last year?", "What about last year?", "Last year?"])
+def test_elliptical_year_comparison_keeps_the_previous_metric(context, intent, text):
+    assert route(text, context) == intent
+
+
+@pytest.mark.parametrize("context", ["temperature", "station_health", "freshness", "chill_total"])
+def test_explicit_chill_comparisons_keep_existing_chill_history(context):
+    assert route("Compare chill with last year", context) == "history"
+
+
+@pytest.mark.parametrize("text,intent", [
+    ("Compare chill and temperature with last year", "needs_context"),
+    ("Predict weather next week compared with last year", "unsupported"),
+    ("What was the temperature last year at quantum tacos", "clarify"),
+    ("What was the weather in Minecraft last year", "off_topic"),
+])
+def test_weather_history_does_not_broaden_scope_or_override_forecast_limits(text, intent):
+    assert route(text, "temperature") == intent
+    assert route(text, "temperature") not in QUESTIONS
 
 
 @pytest.mark.parametrize("text", [

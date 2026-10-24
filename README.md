@@ -17,7 +17,7 @@ The launcher creates `.venv`, installs the pinned product runtime, builds the we
 
 The preview shows **saved historical assessments and controlled examples**, not current weather. It disables weather credentials, ChatGPT and SMS, skips the background worker, and uses separate state in `.terra-local/preview`. These examples exercise the frozen QC reference and existing temperature estimator; launching Terra does not train a model.
 
-Terra opens with Tara's grower conversation: enter your crops, explicitly confirm your farm location and elevation, then choose browser notifications or in-chat updates. Farm questions use saved facts and retained note evidence; ChatGPT writing is optional. Reopening the conversation preserves its history and stays quiet. See [the conversation guide](docs/terra/tara-conversation.md).
+Terra opens with Terra's grower conversation: enter your crops, explicitly confirm your farm location and elevation, then choose browser notifications or in-chat updates. Farm questions use saved facts and retained note evidence; ChatGPT writing is optional. Reopening the conversation preserves its history and stays quiet. See [the conversation guide](docs/terra/tara-conversation.md).
 
 ```sh
 python run_terra.py --doctor
@@ -56,7 +56,7 @@ For frontend iteration, see [web/README.md](web/README.md). The launcher uses `r
 
 The [station lab and grower demo](docs/terra/demo-simulation.md) replay real March 2026 observations from after detector fitting and calibration. Manual controls change a copy of the readings; the frozen detector, existing estimator and orchard monitor calculate the outcome. A suspect station can be excluded while enough peers still support the orchard; insufficient support produces the grower note. Advancing through three subsequent usable hours demonstrates recovery.
 
-The [production-interface replay guide](docs/terra/full-flow-verification/replay.md) runs the actual Tara onboarding, inbox, Details and follow-up flow against the same controlled weather in a separate local process. Both demonstration entry points are included in this repository. Their phone cards are simulated; configured Twilio delivery and its persisted receipt remain separate.
+The [production-interface replay guide](docs/terra/full-flow-verification/replay.md) runs the actual Terra onboarding, inbox, Details and follow-up flow against the same controlled weather in a separate local process. Both demonstration entry points are included in this repository. Their phone cards are simulated; configured Twilio delivery and its persisted receipt remain separate.
 
 ## ChillWatch data / ML layer
 

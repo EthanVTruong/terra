@@ -1,5 +1,47 @@
 # Terra integration coordination
 
+## Multivariable agent facts and Terra naming
+
+```json
+{
+  "kind": "task",
+  "id": "terra-multivariable-agent",
+  "owner": "et",
+  "status": "done",
+  "intent": "User-authorized humidity, wind and solar factual Q&A plus visible Terra naming, preserving immutable evidence and separate source-health states. Root owns detector, live acquisition, proactive events and simulation integration.",
+  "branch": "codex/terra-multivariable-agent",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": [
+    "terra-qc-json"
+  ],
+  "paths": [
+    "backend/terra_monitoring/conversation/**",
+    "backend/terra_monitoring/farm_ops/conversational_writer.py",
+    "web/src/**",
+    "docs/terra/**",
+    "README.md",
+    "spec.md",
+    "tests/test_terra_conversation_weather_variables.py",
+    "tests/test_terra_conversation_writer_integration.py",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": null,
+    "summary": "Grounded humidity/wind/solar factual replies, immutable note references, separate quality/availability and provisional discrepancy wording implemented. Visible assistant/product prose now Terra, preserving legacy route/storage compatibility keys. Root owns live numerical and simulation integration.",
+    "evidence": [
+      "382 conversation cases pass; focused saved-weather cases52 and new multivariable cases19 pass.",
+      "UI state suite47pass/2existing skips. git diff --check passes. No LLM/provider/SMS calls.",
+      "Required terra.py check --base origin/main --task terra-multivariable-agent started; root retains final combined integration verification."
+    ],
+    "uncertainty": "No universal crop-risk thresholds or orchard-specific RH/wind/solar estimates. Additional-variable station comparison policy remains provisional. Legacy internal tara identifiers retained for compatibility.",
+    "next": "Root cherry-pick tested isolated slice; verify against numerical contract, live ingestion, proactive events and simulation controls, then record combined check result."
+  }
+}
+```
+
 ## Multivariable CIMIS monitoring
 
 ```json

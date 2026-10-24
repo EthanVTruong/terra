@@ -2,7 +2,7 @@
 
 This document records the earlier PR #3 QC/JSON checkpoint. For the complete
 grower product and local launch, start with [the project README](../../README.md).
-The [Tara workflow](tara-conversation.md), [controlled demonstration](demo-simulation.md)
+The [Terra workflow](tara-conversation.md), [controlled demonstration](demo-simulation.md)
 and [production-interface replay](full-flow-verification/replay.md) document the
 subsequent conversation, monitoring and demonstration integrations.
 

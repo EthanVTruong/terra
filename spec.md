@@ -1,6 +1,6 @@
 # Terra · Always-On Monitoring Agent
 
-The [Tara conversation contract](docs/terra/conversation-contract.md) records the
+The [Terra conversation contract](docs/terra/conversation-contract.md) records the
 accepted grower voice, concise alerts and follow-ups, optional reactions/silence
 and conversational setup requirements. Its integration status remains explicit.
 

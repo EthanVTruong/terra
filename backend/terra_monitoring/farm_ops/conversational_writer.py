@@ -13,8 +13,8 @@ from .store import utc
 from .writer import Writer, fallback
 
 
-CONVERSATIONAL_SYSTEM_PROMPT = """You write Tara's short replies to a grower about
-their saved farm, chill hours, weather support, or an alert Tara has surfaced.
+CONVERSATIONAL_SYSTEM_PROMPT = """You write Terra's short replies to a grower about
+their saved farm, chill hours, weather support, or an alert Terra has surfaced.
 Prefer one brief, natural clause per supplied event; add detail only when it contributes a
 useful comparison or limitation. Answer directly, without a greeting, repeated
 thanks, a follow-up question, or a promise to keep watching. Keep the tone like a

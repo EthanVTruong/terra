@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-PROMPT = "Hey, I'm Tara. What are you growing?"
+PROMPT = "Hey, I'm Terra. What are you growing?"
 QUESTIONS = {
     "chill_total": "How much chill has accumulated?",
     "history": "Compare historical chill pace.",
@@ -22,8 +22,10 @@ historical history pace behind ahead accumulated accumulating accumulation total
 temperature temperatures weather data station stations neighbor neighbors neighboring support supporting coverage reliable reliability usable
 available unavailable incomplete complete missing spotty stale old new reading readings quality alert alerts warning warnings flag flags note notes
 mean means meaning wrong off low high too long season seasonal orchard farm condition conditions status getting looking doing good okay ok back
-still more less not no enough under over slow slowly recent look like says say help hey hi tara count counting current gap difference am s t
+still more less not no enough under over slow slowly recent look like says say help hey hi terra count counting current gap difference am s t
 got but cold hot warm degrees fahrenheit fresh freshness age outdated acting up suspect flagged findings taken recorded updated checked there
+humidity relative rh wind winds windy speed speeds mph solar radiation sunlight sun percent percentage watts meter meters square w m
+factors variables factor variable measure measured measurements discrepancy discrepancies unusual changes change cloudy daylight bright
 jan january feb february mar march apr april
 may jun june jul july aug august sep september oct october nov november dec december pst pdt utc""".split())
 
@@ -81,7 +83,7 @@ def route(text, context=None, known_subjects=()):
             if OFF_TOPIC.search(prefix) or not explicit:
                 continue
             part = prefix
-        if not re.search(r"\b(chill|chilling|station|stations|weather|temperature|cold|warm|hot|readings?|estimate|normal|coverage|data|history|historical|compare[ds]?|comparison|last year|past years?|how far|behind|why|explain|mean|farm|orchard|crops?|growing|location|monitor(?:ing)?|trees|plants|bloom|forecast|predict\w*|gdd|gdh|spray|irrigat\w*|alerts?|notifications?|sms|texting)\b", part):
+        if not re.search(r"\b(chill|chilling|station|stations|weather|temperature|humidity|rh|wind|winds|windy|solar|radiation|sunlight|cold|warm|hot|readings?|estimate|normal|coverage|data|history|historical|compare[ds]?|comparison|last year|past years?|how far|behind|why|explain|mean|farm|orchard|crops?|growing|location|monitor(?:ing)?|trees|plants|bloom|forecast|predict\w*|gdd|gdh|spray|irrigat\w*|alerts?|notifications?|sms|texting)\b", part):
             continue
         factual.append(part)
     scoped = " ".join(factual).strip()
@@ -101,7 +103,7 @@ def route(text, context=None, known_subjects=()):
         "profile_location": r"(?:where(?:'s| is) (?:my|our|the) (?:farm|orchard)(?: (?:saved|located))?|what(?:'s| is) (?:my|our|the) (?:saved )?(?:(?:farm|orchard) )?location|what location did i save)",
         "profile_notifications": r"(?:are (?:my |our |the )?(?:browser )?(?:alerts|notifications) (?:enabled|on|off)|what(?:'s| is) (?:my |the )?(?:browser )?notification (?:status|preference))",
         "profile_monitor": r"(?:are you monitoring(?: (?:my|our|the) (?:farm|orchard))?|is monitoring (?:active|running|enabled|on)|is (?:the )?monitor (?:active|running|on)|is (?:my|our|the) (?:farm|orchard) (?:ready|being monitored)|are we ready)",
-        "chill_method": r"(?:how (?:do|does) (?:you|terra|tara) (?:count|calculate|measure) chill(?: hours)?|how (?:is|are) chill(?: hours)? (?:counted|calculated)|what (?:counts|is counted) as (?:a )?chill(?: hour)?|what(?:'s| is) (?:the |your )?chill (?:method|calculation)|when does chill (?:counting |accumulation )?start|what are chill hours)",
+        "chill_method": r"(?:how (?:do|does) (?:you|terra) (?:count|calculate|measure) chill(?: hours)?|how (?:is|are) chill(?: hours)? (?:counted|calculated)|what (?:counts|is counted) as (?:a )?chill(?: hour)?|what(?:'s| is) (?:the |your )?chill (?:method|calculation)|when does chill (?:counting |accumulation )?start|what are chill hours)",
     }
     for intent, pattern in local_patterns.items():
         if re.fullmatch(pattern, re.sub(r"^(?:thanks|thank you)[, ]+", "", low)):
@@ -114,10 +116,8 @@ def route(text, context=None, known_subjects=()):
         return "biological_limit"
     if re.search(r"\b(forecast|predict\w*|gdd|gdh|next week|next two|tomorrow|spray|irrigat\w*|frost protection|treatment)\b", low):
         return "unsupported"
-    if re.search(r"\b(explain|why|what does .*mean|meaning)\b", low) and re.search(r"\b(alert|warning|flag|note)\b", low):
-        return _bounded("explain_alert", low, known_subjects)
     historical = re.search(r"\b(?:last year|past years?|previous years?|historical|history)\b", low)
-    weather_subject = re.search(r"\b(?:temperatures?|weather|cold|hot|warm)\b", low)
+    weather_subject = re.search(r"\b(?:temperatures?|weather|cold|hot|warm|humidity|rh|wind|winds|solar|radiation|sunlight)\b", low)
     chill_subject = re.search(r"\bchill(?:ing)?\b", low)
     if historical and weather_subject:
         if chill_subject:
@@ -125,16 +125,27 @@ def route(text, context=None, known_subjects=()):
         # A current estimate cannot answer a past-weather question, and the
         # orchard's seasonal chill comparison is a different quantity.
         return _bounded("weather_history_unavailable", low, known_subjects)
+    weather_variables = [intent for intent, pattern in (
+        ("humidity", r"\b(?:humidity|rh)\b"),
+        ("wind", r"\b(?:wind|winds|windy)\b"),
+        ("solar_radiation", r"\b(?:solar|radiation|sunlight)\b")) if re.search(pattern, low)]
+    if weather_variables:
+        return _bounded(weather_variables[0] if len(weather_variables) == 1 else "weather_variables", low, known_subjects)
+    if re.search(r"\bweather (?:factors|variables|measurements)\b", low):
+        return _bounded("weather_variables", low, known_subjects)
+    if re.search(r"\b(explain|why|what does .*mean|meaning)\b", low) and re.search(r"\b(alert|warning|flag|note)\b", low):
+        return _bounded("explain_alert", low, known_subjects)
     year_followup = re.fullmatch(r"(?:compared? (?:with|to) last year|what about last year|last year)", low)
     if year_followup:
-        if context in {"temperature", "temperature_normal", "weather_history_unavailable"}:
+        if context in {"temperature", "temperature_normal", "weather_history_unavailable", "humidity", "wind", "solar_radiation", "weather_variables"}:
             return "weather_history_unavailable"
         if context not in {"chill_total", "history", "history_gap"}:
             return "needs_context"
     normal_context = {"chill_total": "history", "history": "history", "history_gap": "history",
                       "station_health": "station_health", "freshness": "station_health",
                       "temperature": "temperature_normal", "temperature_normal": "temperature_normal",
-                      "station_findings": "station_findings", "explain_alert": "explain_alert"}
+                      "station_findings": "station_findings", "explain_alert": "explain_alert",
+                      "humidity": "humidity", "wind": "wind", "solar_radiation": "solar_radiation", "weather_variables": "weather_variables"}
     if re.fullmatch(r"(?:is (?:that|this|it) (?:normal|usual|okay)|does (?:that|this) look normal)", low):
         return normal_context.get(context, "needs_context")
     if re.search(r"\btemperature\b", low) and re.search(r"\bnormal\b", low):
@@ -176,7 +187,7 @@ def route(text, context=None, known_subjects=()):
     if re.fullmatch(r"(?:thanks[,! ]*)?why", low) and context in QUESTIONS and context != "explain_alert":
         return "cause_limit"
     if re.fullmatch(r"(?:why|why is that|how far|what does (?:that|this) mean|what about (?:that|this)|explain (?:that|this))", low):
-        return context if context in QUESTIONS or context in LOCAL_INTENTS or context in {"temperature", "temperature_normal", "freshness", "station_findings", "weather_history_unavailable"} else "needs_context"
+        return context if context in QUESTIONS or context in LOCAL_INTENTS or context in {"temperature", "temperature_normal", "freshness", "station_findings", "weather_history_unavailable", "humidity", "wind", "solar_radiation", "weather_variables"} else "needs_context"
     if re.search(r"\b(chill|chilling|station|coverage|temperature|weather|readings?|estimate|data)\b", low):
         return "clarify"
     if re.search(r"\b(monitoring|monitor|farm|orchard|location|growing|crop)\b", low):

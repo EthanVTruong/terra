@@ -17,7 +17,7 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": null,
+    "revision": "b5c2f92053061a9a2ca3dcc19ec3b54d4c6548b8",
     "summary": "Both existing local-answer branches now let the selected plan generator author supported saved-profile and weather prose once. A bounded adapter reuses the weather discrepancy validator and validates other entity/quantity/status roles; private saved values are inserted locally in one pass. Original local_facts, references, clocks, scope and durable request deduplication remain authoritative. Prior simulation branch79cb69a remains preserved.",
     "evidence": [
       "48 focused cases PASS in6.97s, including actual guarded runtime API to selected fake generator; profile/temperature/independent variables, source dates, old references, replay, missing facts, privacy, swapped roles, units, polarity, advice, malformed/refused output and one-call retry/restart are covered. No actual inference/provider/acquisition/SMS was used.",

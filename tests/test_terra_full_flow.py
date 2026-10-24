@@ -80,6 +80,42 @@ class FullFlowTests(unittest.TestCase):
         self.assertEqual(packet["query"]["elevation_ft"], 42.0)
         self.assertFalse(self.client.get("/api/context").json()["configured"])
 
+    def test_grower_profile_list_starts_empty_without_removing_station_lab_core(self):
+        core_id = self.engine.session["orchard_id"]
+        original_core = deepcopy(self.engine.store.orchard(core_id))
+        original_notes = deepcopy(self.engine.store.messages(core_id))
+        self.assertEqual(self.client.get("/api/orchards").json(), {"orchards": []})
+        self.assertEqual(self.client.get(f"/api/orchards/{core_id}").status_code, 404)
+        self.assertEqual(self.client.get(f"/api/orchards/{core_id}/messages").status_code, 404)
+        self.assertEqual(self.client.post(f"/api/orchards/{core_id}/questions", headers=self.headers,
+            json={"question": "How much chill?", "request_id": "core-hidden"}).status_code, 404)
+        user = self.create_farm(lat=38.57, elevation_ft=42.0)
+        self.assertEqual(self.client.get("/api/orchards").json(), {"orchards": [user]})
+        self.assertEqual(self.engine.store.orchard(core_id), original_core)
+        self.assertEqual(self.engine.store.messages(core_id), original_notes)
+        lab = self.client.get("/api/demo/state").json()
+        self.assertEqual(lab["orchard"]["id"], core_id)
+        self.assertEqual([m["id"] for m in lab["messages"]], [m["id"] for m in original_notes])
+
+    def test_native_conversation_state_hides_core_and_preserves_supplied_profile(self):
+        try:
+            from terra_monitoring.conversation.service import ConversationService
+        except ModuleNotFoundError:
+            self.skipTest("Native Tara API has not been integrated into this branch yet")
+        conversation = ConversationService(self.bridge, notification_capability="browser_open")
+        state = conversation.state()
+        self.assertEqual(state["orchards"], [])
+        self.assertIsNone(state["orchard_id"])
+        profile = self.bridge.create_orchard("Walnuts", orchard_id="crop-farm", lat=38.57, lon=-121.79,
+            elevation_ft=42.0, crops=["walnut", "peach"], variety="Chandler")
+        state = conversation.state(orchard_id=profile["id"])
+        self.assertEqual([p["id"] for p in state["orchards"]], [profile["id"]])
+        self.assertEqual(state["setup"]["crops"], ["walnut", "peach"])
+        self.assertEqual(state["setup"]["variety"], "Chandler")
+        self.assertEqual(state["setup"]["location"]["lat"], 38.57)
+        with self.assertRaises(KeyError):
+            conversation.state(orchard_id=self.engine.session["orchard_id"])
+
     def test_spike_flows_through_native_evidence_without_manufacturing_grower_alert(self):
         self.create_farm()
         original_ids = [m["id"] for m in self.feed()["messages"]]

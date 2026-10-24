@@ -59,7 +59,10 @@ weather, numerical assessment, monitor and message paths.
 ## Isolation and replay controls
 
 The original core station-demo profile cannot be replaced through the production
-API. Saved user profiles are immutable, as in the native store. **Original**
+API. It is also hidden from the production orchard list and native conversation
+state: a fresh grower visit starts with no farm and no seeded demo welcome. The
+station lab retains its original profile and messages in the same underlying
+journal. Saved user profiles are immutable, as in the native store. **Original**
 restores current-hour station controls. After saving a user farm, the entire-run
 Reset action is refused: moving the observation clock backwards would contaminate
 that farm's causal history. Start a new process with a new state directory for a

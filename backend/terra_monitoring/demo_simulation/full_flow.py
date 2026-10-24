@@ -61,6 +61,44 @@ def _state_directory(value):
     return directory
 
 
+class UserFarmStore:
+    """Native persistence with core station-demo profiles hidden from growers."""
+
+    def __init__(self, store):
+        self._store = store
+
+    def __getattr__(self, name):
+        return getattr(self._store, name)
+
+    @staticmethod
+    def _guard(orchard_id):
+        if str(orchard_id).startswith("sim-"):
+            raise KeyError("The station-lab core farm is not a grower profile")
+
+    def orchards(self):
+        return [profile for profile in self._store.orchards() if not profile["id"].startswith("sim-")]
+
+    def orchard(self, orchard_id):
+        self._guard(orchard_id)
+        return self._store.orchard(orchard_id)
+
+    def save_orchard(self, profile, **kwargs):
+        self._guard(profile["id"])
+        return self._store.save_orchard(profile, **kwargs)
+
+    def messages(self, orchard_id, *args, **kwargs):
+        self._guard(orchard_id)
+        return self._store.messages(orchard_id, *args, **kwargs)
+
+    def details(self, orchard_id, message_id):
+        self._guard(orchard_id)
+        return self._store.details(orchard_id, message_id)
+
+    def message(self, message_id):
+        message = self._store.message(message_id)
+        return None if message and message["orchard_id"].startswith("sim-") else message
+
+
 class ReplayBridge:
     """Use one real monitor/store, but keep every user-created farm injected."""
 
@@ -69,10 +107,10 @@ class ReplayBridge:
     def __init__(self, engine):
         self.engine = engine
         self.monitor = engine.monitor
-        self.store = engine.store
+        self.store = UserFarmStore(engine.store)
         if self.monitor.source is not None or self.monitor.delivery is not None:
             raise ValueError("Full-flow replay requires a monitor without acquisition or delivery")
-        if any(profile.get("mode") != "injected" for profile in self.store.orchards()):
+        if any(profile.get("mode") != "injected" for profile in engine.store.orchards()):
             raise ValueError("The replay journal must contain only injected profiles")
 
     def __getattr__(self, name):
@@ -122,9 +160,18 @@ class ReplayBridge:
             return saved
 
     def set_sms_opt_in(self, orchard_id, enabled):
+        self.store.orchard(orchard_id)
         if enabled:
             raise ValueError("External delivery is disabled in full-flow replay")
         return self.monitor.set_sms_opt_in(orchard_id, False)
+
+    def status(self, orchard_id, **kwargs):
+        self.store.orchard(orchard_id)
+        return self.monitor.status(orchard_id, **kwargs)
+
+    def ask(self, orchard_id, question, **kwargs):
+        self.store.orchard(orchard_id)
+        return self.monitor.ask(orchard_id, question, **kwargs)
 
     def check(self):
         with self.engine._lock:

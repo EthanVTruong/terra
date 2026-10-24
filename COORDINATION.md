@@ -29,7 +29,7 @@
       "Sources: current Apple HIG toggles, GOV.UK phone confirmation and Twilio Verify/trial docs. User chose fixed verified phone; full enrollment remains a future reference. web/phone-connection-design.md documents logistics. Screenshots .terra-local/phone-connection/; selected inline preview terra-verified-phone.html in thread visualization root."
     ],
     "uncertainty": "The live SMS server still needs delivery setup; frontend checks do not configure credentials, enable sending or prove handset delivery. Main has backend/contract updates and separate ChatGPT/placeholder transport work; reconcile this UI branch once with current main and the transport owner, preserving trial content_mode and existing writer/auth work. No App.jsx or writer/auth changes in this phone refinement.",
-    "next": "Integration owner consumes codex/terra-ui-quiet, reconciles current main and incoming trial-placeholder transport labels, then runs current integration checks. Operator completes SMS delivery configuration; UI will show Ready for its fixed verified phone. User can then opt this orchard in explicitly."
+    "next": "Integration owner consumes codex/terra-ui-quiet, reconciles current main and incoming trial-placeholder transport labels, then runs current integration checks. Operator completes SMS delivery configuration; UI will show Ready for its fixed verified phone. User can then opt this orchard in explicitly. Preserve the integration owner’s announced FarmFeed.jsx fix: non-current stale saved readings get a quiet Replay only / saved readings do not describe current conditions banner; actual current-data unavailable behavior stays unchanged. This incoming fix is an announced intent, not a revision verified on this branch."
   }
 }
 ```

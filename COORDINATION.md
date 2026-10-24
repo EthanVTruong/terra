@@ -41,7 +41,7 @@
       "No numerical/backend behavior, private state, provider configuration, live process or sender preference changed. Historical font provenance/screenshots and prior checkpoint evidence remain labelled."
     ],
     "uncertainty": "Final combined CI, fresh-clone build/packaging and system-font browser verification belong to the coordinating owner. The historical reference font has no recorded redistribution grant; removal avoids claiming one.",
-    "next": "Hand this commit to the existing integration owner once. Preserve both task records if coordination entries overlap; run final combined source gates and record exact release receipt before main publication."
+    "next": "Frozen source eca1100 consumed once by canonical integration owner. Final exact-head gates and independent public-clone acceptance belong to the two release owners; no further source changes."
   }
 }
 ```
@@ -244,7 +244,7 @@
   "status": "active",
   "intent": "Integrate all approved product functionality into main: selected quiet cube-branded chat with complete messaging, saved evidence and ChatGPT-plan writing; one-button device location with real terrain elevation; Nathan draggable/interpolated Station lab; temperature plus independent humidity/wind/solar and missing-data monitoring through the same live or replay feed. Preserve private runtime and human drafts. Consolidate local work into one TechProjects/Terra folder, retain recoverable historical work, and stop completed chat loops.",
   "branch": "codex/terra-consolidate-main",
-  "base": "4fba93297b8128ce5b41c9b0dece6adf252884c9",
+  "base": "db0a57e932c8a3c2dcac957eeec6d15dc0ec2a6b",
   "domains": [
     "terra-coordination",
     "terra-qc-json",
@@ -265,14 +265,15 @@
     "tests/test_terra_harness.py",
     "AGENTS.md",
     "config/terra/**",
-    "spec.md"
+    "spec.md",
+    "pyproject.toml"
   ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "b89198feac6ba819c40f7f2ee9ef9913a0624f83",
-    "summary": "One final candidate now contains quiet UI d390d39/visible Terra labels b8eeea7, addressed alert routing eb7eee1, device c2604e5, all-variable weather/map bridge62cbbd5, Nathan main4fba932, product-first README b952d46 and final demo proof0dba4bd. The single reconciliation preserves location-display/retry semantics together with the plus/input/send capsule and mounted ChatGPT provider; routing retains get/tara/terra and independent weather vocabulary. Final combined verification caught and repaired device setup bypassing the replay factory (db05ebd) and new weather wording using a preset selector. Weather b89198f genuinely authors validated prose for pure/supported mixed facts through one configured generator; referenced weather alerts now retain original station/variable facts at the conversation caller.",
+    "revision": "a046879f5aa194a7abb6c62b53e104496f026b2c",
+    "summary": "One final candidate now contains quiet UI d390d39/visible Terra labels b8eeea7, addressed alert routing eb7eee1, device c2604e5, all-variable weather/map bridge62cbbd5, Nathan main4fba932, product-first README b952d46 and final demo proof0dba4bd. The single reconciliation preserves location-display/retry semantics together with the plus/input/send capsule and mounted ChatGPT provider; routing retains get/tara/terra and independent weather vocabulary. Final combined verification caught and repaired device setup bypassing the replay factory (db05ebd) and new weather wording using a preset selector. Weather b89198f genuinely authors validated prose for pure/supported mixed facts through one configured generator; referenced weather alerts now retain original station/variable facts at the conversation caller. Nathan db0a57e zoom/adjustable point sensors and the eca1100 open-source docs/license/font patch are now included. Root MIT license and package metadata agree; the selected layout/cube/composer use the existing system font fallback, so the earlier exact-font comparison is historical.",
     "evidence": [
       "Device owner: all393 conversation cases,30 focused device cases,12 native-browser and51 pure/helper checks; full11-group scoped8f gate passed. Actual App to guarded API to official USGS lookup verified using a public Davis test position; no actual OS permission click or human setup write.",
       "Weather owner62cbbd5: all12 required groups passed against actual main4fba932;127 focused weather cases, both builds and55 UI/packaging checks passed with2 existing optional skips. Actual map spot to shared feed to persisted wind note and grounded question passed; source warnings remain separate.480 bounded real station-hours audited;360 overlapping temperature values are identical.",
@@ -284,9 +285,11 @@
       "Device factory repair: all30 device cases plus actual device setup to injected profile to wind note to same-journal restart pass. Strictly keyed terrain provenance is attached before immutable creation; existing mode, evaluation and SMS defaults stay with the shared factory.",
       "Weather writer repair b89198f:347 affected weather/core writer/lifecycle/conversation tests pass. Novel valid prose is accepted; invented or swapped quantities/units/entities, contrary state, unsupported causes/advice and malformed output fall back truthfully. Supported mixed events use existing core validators in the same single generation. Canonical explain_alert is supported without raw question forwarding.",
       "Actual referenced-weather ConversationService to ConversationalWriter regression preserves original event/note/date/station/60mph/6mph/+54mph and exact retry with one configured fake generator call; all14 writer integration cases pass. No actual paid provider call was used for these source checks.",
-      "Combined browser and guarded API proof verified a real crop message, one location button, public Davis terrain lookup, saved location, separate in-chat notification choice and local saved-profile reply. This exposed the factory mismatch before merge; the final repaired-source smoke and exact-head gates remain required."
+      "Combined browser and guarded API proof verified a real crop message, one location button, public Davis terrain lookup, saved location, separate in-chat notification choice and local saved-profile reply. This exposed the factory mismatch before merge; the final repaired-source smoke and exact-head gates remain required.",
+      "Final combined-source production and Station lab builds,51 pure/helper UI cases and8 packaging cases pass;2 existing optional browser cases skipped. All51 demo/full-flow/weather integration cases pass after the final native map merge. Native point sensors are included in both lab and grower data-snapshot fingerprints.",
+      "Actual final guarded API flow preserved injected factory mode, real public Davis terrain provenance and usable comparison; map spot query and wind60mph action returned200 and the production feed retained the station note. A transient terrain503 retained clean setup and the same-ID retry succeeded. No native permission, SMS, worker or paid generation was used."
     ],
-    "uncertainty": "Final combined exact-head CI and actual4f-base scoped gates are required before merge. Exclusive runtime owner then performs retained-state canonical-path activation. No live/private migration or historical-data deletion has occurred in source integration.",
+    "uncertainty": "Final exact-head CI and actualdb0-base scoped checks must pass before merge. Fresh public-clone owner independently verifies setup/browser acceptance after merge; the exclusive runtime owner then activates canonical paths with retained-state backups. Historical replay journals are preserved with compatible source rather than silently migrated.",
     "next": "Run one combined exact-head gate cycle, publish through PR16, then coordinate private/runtime quiesce, consistent backups and canonical TechProjects/Terra migration. Remove verified inactive worktrees and rebuildable copies only after preservation; retain two to three core chats without waiting loops."
   }
 }

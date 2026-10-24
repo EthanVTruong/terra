@@ -7,10 +7,10 @@
   "kind": "task",
   "id": "terra-bean-location-polish",
   "owner": "et",
-  "status": "done",
-  "intent": "Latest direct ET feedback: make the Terra receipt a horizontal bean and surface location as one polished button without the redundant question or form. Preserve the current native device/USGS flow; deliver a narrow patch to the sole integration owner.",
-  "branch": "codex/terra-bean-location-polish",
-  "base": "5b98159",
+  "status": "active",
+  "intent": "Latest direct ET correction: restore a short location message followed by the polished Use my location button; replace the face crop with a full-head transparent Terra cutout peeking above a small rounded bean backing. Incorporate the shared UI into main through the sole integrator.",
+  "branch": "codex/terra-peek-receipt",
+  "base": "96c1bb1",
   "domains": [
     "terra-qc-json",
     "terra-coordination"
@@ -18,22 +18,21 @@
   "paths": [
     "web/src/TaraConversation.jsx",
     "web/src/tara-conversation.css",
-    "backend/terra_monitoring/conversation/service.py",
-    "tests/test_terra_conversation.py",
+    "web/public/brand/terra-peek-receipt.png",
+    "web/public/brand/terra-peek-receipt.md",
     "COORDINATION.md"
   ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "5b98159",
-    "summary": "Horizontal27x15organic Terra character receipt, one44px pin button in soft green, redundant location-choice helper copy hidden only in display. Preserves native device/USGS validation, busy/retry/stale guards and stored messages. Opening greeting now persists before first user turn and on restart; no stored note clock changes.",
+    "revision": "96c1bb1",
+    "summary": "New correction isolated on a sibling task branch in the same protected worktree. Original durable greeting fix and native location action preserved. No App/menu/auth/simulation edits.",
     "evidence": [
-      "Conversation/API suite including new retry/refresh/farm-migration/restart greeting regression passes. Frontend51helper and4packaging cases pass;2existing optional browser cases skipped. Production build passes.",
-      "Actual isolated8542 browser: greeting stays above sent walnut message; only Use my location button shown with no reference/coordinate/question clutter; refresh retains order. Snapshot C:/Users/mreth/.codex/visualizations/2026/10/24/01a16f75-4321-7d63-b72c-4b0bd9fb7e82/terra-bean-location.png."
+      "Transparent derivative generated with built-in imagegen from the approved cube, full head visible; original assets unchanged."
     ],
-    "uncertainty": "Actual location permission/terrain fetch not exercised by this visual refinement; underlying accepted native flow is unchanged. Main integration and live activation remain owned by existing chats.",
-    "next": "Hand exact finite patch to sole integration owner alongside frozenPR19. Stop isolatedQA and release source lane; preserve branch/evidence until canonical cutover."
+    "uncertainty": "Visual verification and exact finite source handoff pending. Main integration remains with Consolidate branches into main.",
+    "next": "Preview, build/check and deliver the finite peeking-receipt/restored-message patch; verify source acceptance into the common UI."
   }
 }
 ```

@@ -27,17 +27,28 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
                        monitor: Any = None, state_dir: str | Path | None = None,
                        start_worker: bool = False, poll_seconds: int = 300,
                        web_root: str | Path | None = None, clock: Any = None,
-                       shutdown_timeout: float = 30.0):
+                       shutdown_timeout: float = 30.0, chatgpt_enabled: bool = False,
+                       chatgpt_state_dir: str | Path | None = None):
     """Assemble one shared source, monitor and transport with explicit lifecycle.
 
     Initializing the app may initialize its local journals, but never polls,
     creates orchards, enables subscriptions or sends messages. ``start_worker``
     only takes effect when the ASGI lifespan starts. Injected monitor dependencies
     are reused and incompatible explicit service/transport injections are rejected.
+    ChatGPT controls are opt-in for embedding callers. Enabling them gives a
+    runtime-created monitor the plan writer; an injected monitor's writer remains
+    authoritative. Construction never signs in, fetches models or runs inference.
     """
     interval = _interval(poll_seconds)
     if not isinstance(start_worker, bool):
         raise ValueError("start_worker must be boolean.")
+    if not isinstance(chatgpt_enabled, bool):
+        raise ValueError("chatgpt_enabled must be boolean.")
+    if chatgpt_state_dir is not None:
+        if not chatgpt_enabled:
+            raise ValueError("chatgpt_state_dir requires chatgpt_enabled.")
+        if not Path(chatgpt_state_dir).expanduser().is_absolute():
+            raise ValueError("chatgpt_state_dir must be an absolute stable path.")
     if (isinstance(shutdown_timeout, bool) or not isinstance(shutdown_timeout, (int, float))
             or not 0 < shutdown_timeout <= 120):
         raise ValueError("Shutdown timeout must be between 0 and 120 seconds.")
@@ -53,6 +64,7 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
     existing_source = getattr(monitor, "source", None)
     existing_live = getattr(existing_source, "service", None)
     existing_sms = getattr(monitor, "delivery", None)
+    existing_writer = getattr(monitor, "writer", None)
     if existing_source is not None and existing_live is None:
         raise ValueError("The monitor source must expose its shared live service.")
     if live_service is not None and existing_live is not None and live_service is not existing_live:
@@ -120,6 +132,15 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
                             "Terra monitor is finishing an in-flight operation after shutdown timeout.")
 
     app.router.lifespan_context = lifespan
+    if chatgpt_enabled:
+        from .chatgpt.local import attach_controls
+        from .farm_ops.writer import Writer
+
+        # Wrap the complete runtime lifespan so the OAuth manager closes only
+        # after the monitor worker has finished its normal shutdown.
+        attach_controls(app, chatgpt_state_dir if chatgpt_state_dir is not None else resolved / "chatgpt")
+        if existing_writer is None:
+            monitor.writer = Writer(generator=app.state.chatgpt_provider)
     return app
 
 
@@ -132,6 +153,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--sms-env-file", type=Path, help="Explicit private SMS configuration file")
     parser.add_argument("--interval", type=int, default=300, help="Monitor polling seconds (default: 300)")
     parser.add_argument("--no-worker", action="store_true", help="Serve the API/UI without starting polling")
+    parser.add_argument("--no-chatgpt", action="store_true", help="Disable optional ChatGPT plan controls and use the configured writer")
+    parser.add_argument("--chatgpt-state-dir", type=Path, help="Explicit absolute protected ChatGPT state directory")
     parser.add_argument("--web-root", type=Path, help="Built web client directory")
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
@@ -151,7 +174,8 @@ def main(argv: list[str] | None = None) -> None:
         parser.error(str(exc))
     try:
         app = create_runtime_app(state_dir=args.state_dir, start_worker=not args.no_worker,
-                                 poll_seconds=args.interval, web_root=args.web_root)
+                                 poll_seconds=args.interval, web_root=args.web_root,
+                                 chatgpt_enabled=not args.no_chatgpt, chatgpt_state_dir=args.chatgpt_state_dir)
     except JournalSelectionError as exc:
         parser.error(str(exc))
     except (OSError, TypeError, ValueError):

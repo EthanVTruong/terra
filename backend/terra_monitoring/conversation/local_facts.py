@@ -85,14 +85,37 @@ def gap_answer(summary):
     return text, {**values, "difference_hours": difference, "source_date": source.isoformat(), "comparison_date": cutoff.isoformat()}
 
 
-WEATHER_INTENTS = {"temperature", "freshness", "station_findings", "temperature_normal"}
+WEATHER_INTENTS = {"temperature", "freshness", "station_findings", "temperature_normal", "weather_history_unavailable"}
 
 
 def _weather_time(value):
     return utc(value).astimezone(PST).strftime("%b %d, %Y, %I:%M %p PST").replace(" 0", " ")
 
 
-def weather_answer(intent, monitor, orchard_id):
+def _referenced_assessment(monitor, orchard_id, evidence_id):
+    """Resolve an immutable assessment through a saved farm-owned reference."""
+    with monitor.store.connect() as db:
+        owned = db.execute("""SELECT 1 FROM revisions WHERE orchard=? AND json_extract(payload,'$.evidence_id')=?
+            UNION ALL SELECT 1 FROM events WHERE orchard=? AND json_extract(payload,'$.evidence_id')=? LIMIT 1""",
+            (orchard_id, evidence_id, orchard_id, evidence_id)).fetchone()
+        if not owned and db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='tara_turns'").fetchone():
+            owned = db.execute("""SELECT 1 FROM tara_turns WHERE thread=? AND
+                (json_extract(payload,'$.data.local_facts.evidence_id')=? OR
+                 json_extract(payload,'$.data.local_facts.temperature_evidence_id')=?) LIMIT 1""",
+                (orchard_id, evidence_id, evidence_id)).fetchone()
+        if not owned:
+            raise ValueError("The referenced assessment does not belong to this farm")
+        saved = db.execute("SELECT payload FROM evidence WHERE id=?", (evidence_id,)).fetchone()
+    if not saved:
+        raise ValueError("The referenced assessment is unavailable")
+    assessment = json.loads(saved[0])
+    # Reuse native mode, pin, unit, clock and reference validation; this does
+    # not rerun QC or interpolation and does not read a replacement hour row.
+    row = monitor._reading(monitor.store.orchard(orchard_id), assessment, utc(monitor.clock()))
+    return assessment, {**row, "evidence_id": evidence_id}
+
+
+def weather_answer(intent, monitor, orchard_id, *, evidence_id=None, referenced=False):
     """Describe the saved assessment; never fetch, rescore or diagnose a sensor.
 
     The monitor owns current availability, and ``eligible`` owns stored-reading
@@ -101,18 +124,27 @@ def weather_answer(intent, monitor, orchard_id):
     """
     if intent not in WEATHER_INTENTS:
         raise ValueError("Unsupported saved-weather request")
+    if intent == "weather_history_unavailable":
+        return "Historical weather comparisons aren't available here.", {"available": False, "reason": "historical_weather_comparison_not_supported"}
+    if referenced and not evidence_id:
+        return "That note doesn't have a saved temperature assessment to inspect.", {"referenced_snapshot": True, "evidence_id": None, "comparison_available": False}
     status = monitor.status(orchard_id)
     watch = monitor.store.get("watch:" + orchard_id, {})
     assessment = {}
-    evidence_id = watch.get("latest_evidence_id")
-    if evidence_id:
+    if referenced:
+        assessment, row = _referenced_assessment(monitor, orchard_id, evidence_id)
+        rows = [row]
+        watch = {"last_observation": row["valid_utc"], "method_version": row["method_version"]}
+    else:
+        evidence_id = watch.get("latest_evidence_id")
+        rows = monitor.store.hours(orchard_id)
+    if evidence_id and not referenced:
         with monitor.store.connect() as db:
             saved = db.execute("SELECT payload FROM evidence WHERE id=?", (evidence_id,)).fetchone()
         if saved:
             assessment = json.loads(saved[0])
     estimate = assessment.get("location_estimate", {})
     stamp = watch.get("last_observation")
-    rows = monitor.store.hours(orchard_id)
     # A retained estimate from another pin or estimator contract is not a
     # substitute for this farm's current evidence.
     usable = next((row for row in reversed(rows) if eligible(row)
@@ -121,27 +153,33 @@ def weather_answer(intent, monitor, orchard_id):
                    and utc(row["valid_utc"]) <= utc(monitor.clock())), None)
     replay = status["orchard"]["mode"] != "current"
     supported = bool(estimate.get("status") == "ok" and usable and usable["valid_utc"] == stamp)
-    available = supported if replay else bool(status["comparison_available"] and supported)
+    available = supported if replay or referenced else bool(status["comparison_available"] and supported)
     stale = not replay and bool(estimate.get("status") == "stale" or usable
         and utc(monitor.clock()) - utc(usable["valid_utc"]) > timedelta(hours=CURRENT_MAX_AGE_HOURS))
-    source_error = status.get("source_error")
+    source_error = None if referenced else status.get("source_error")
+    checked = assessment.get("query", {}).get("as_of_utc") if referenced else status.get("last_checked")
     findings = assessment.get("station_findings", [])
     health = assessment.get("data_health", [])
     facts = {"data_mode": status["orchard"]["mode"], "evidence_id": evidence_id,
-             "observation_time": stamp, "last_checked": status.get("last_checked"),
+             "observation_time": stamp, "last_checked": checked,
+             "referenced_snapshot": referenced, "current_conditions_verified": not referenced and not replay and available,
              "comparison_available": available, "source_error": source_error,
              "stale": stale,
              "temperature_f": usable["temperature_f"] if usable else None,
              "temperature_time": usable["valid_utc"] if usable else None,
-             "temperature_evidence_id": usable.get("evidence_id") if usable else None,
+             "temperature_evidence_id": (evidence_id if usable["valid_utc"] == stamp else usable.get("evidence_id")) if usable else None,
              "estimate_status": estimate.get("status"), "used_station_ids": estimate.get("used_station_ids", []),
              "station_findings": [{k: finding[k] for k in ("station_id", "severity", "reason") if k in finding}
                                   for finding in findings],
              "data_health": [{k: item[k] for k in ("station_id", "reason", "source_quality") if k in item}
                              for item in health]}
-    prefix = "Replay only: " if replay else ""
+    prefix = "Replay only: " if replay else "Saved assessment: " if referenced else ""
     at = _weather_time(stamp) if stamp else None
     if intent == "temperature":
+        if referenced:
+            text = (f"The referenced orchard estimate was {usable['temperature_f']:g}°F at {_weather_time(usable['valid_utc'])}."
+                    if usable else "An orchard temperature estimate wasn't available in that assessment.")
+            return prefix + text, facts
         if usable:
             when = _weather_time(usable["valid_utc"])
             if available and not source_error:
@@ -158,7 +196,9 @@ def weather_answer(intent, monitor, orchard_id):
                 text += f" Weather support was insufficient at {at}."
         return prefix + text, facts
     if intent == "freshness":
-        if not stamp:
+        if referenced:
+            text = f"That assessment used readings from {at}; it doesn't verify current conditions."
+        elif not stamp:
             text = "No weather reading has been saved for this farm yet."
         elif replay:
             text = f"These are saved readings from {at}, not current weather."
@@ -178,7 +218,8 @@ def weather_answer(intent, monitor, orchard_id):
         if not available and not replay:
             text += " This doesn't verify current conditions."
     elif not available:
-        text = "There isn't enough usable weather support to judge a station discrepancy."
+        text = ("That assessment didn't have enough usable weather support to judge a station discrepancy." if referenced else
+                "There isn't enough usable weather support to judge a station discrepancy.")
     elif health:
         warned = sorted({int(item["station_id"]) for item in health if "station_id" in item})
         text = "No statistical station discrepancy was flagged"

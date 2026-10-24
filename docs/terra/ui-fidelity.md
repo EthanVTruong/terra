@@ -65,7 +65,7 @@ Local screenshots and the combined source/implementation comparison are under
 
 ## Additive monitoring/phone checkpoint
 
-The next UI commit reconciles the canonical /api/orchards feed/setup/details
+The additive UI commit reconciles the canonical /api/orchards feed/setup/details
 contract and the existing SMS-owner component. It preserves pure /api/assess.
 Initial setup leaves orchard SMS opt-in off. The Phone Alerts popover supports
 explicit simulation, receipt refresh and pause, and displays actual masked setup.
@@ -75,6 +75,7 @@ The Vite proxy preserves the original Host so its browser Origin remains an exac
 match at the root's unchanged local-session guard. Protected setup/subscription
 requests obtain the current opaque token from the existing status endpoint.
 
-The root integration owner will replace the prior8512 service with the unified
-runtime. Until the final focused browser pass, the combined UI gate remains
-blocked in web/design-qa.md; the independent visual slice has passed.
+The actual unified runtime on8512 was verified through the8504 UI: one labelled
+demo, persisted current notes, exact linked60.6°F evidence, the real new-hour
+unavailable state, disabled phone controls and mobile focus. The combined UI gate
+now passes in web/design-qa.md. Phone activation/delivery remains separately gated.

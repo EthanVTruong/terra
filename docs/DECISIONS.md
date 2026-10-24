@@ -123,7 +123,8 @@ See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below com
   for synthetic ids that are real CIMIS ids (6 Davis, 70, 71, ...).
 - **Mock pipeline** (`bench/experiments/mock_pipeline.py`): the whole pipeline on synthetic data with known truth passes
   10 of 10 checks. It covers interpolation vs baselines, lapse at a foothill site, coverage, offsets, detection, the
-  findings handoff and gap filling.
+  findings handoff and gap filling. False alarms on its 20 clean stations: 0.39 per station-month. The 5 °F drift was
+  found but typed as an offset; the bench counts drift and offset as interchangeable for recall.
 
 ## Design decisions
 

@@ -35,11 +35,65 @@
     1803.0
    ]
   },
-  "hour-of-day offsets recover an injected bias pattern": {
+  "hour-of-day offsets follow a within-night/within-day pattern better than night/day offsets": {
    "pass": true,
-   "max_abs_error_f": 0.0,
-   "recovered_night": 2.5,
-   "recovered_day": 0.5
+   "max_abs_error_f": 0.546,
+   "mean_abs_error_f": 0.287,
+   "night_day_pair_max_abs_error_f": 1.637,
+   "night_day_pair_mean_abs_error_f": 0.86,
+   "within_half_share_recovered": 0.667,
+   "pattern_f": [
+    2.75,
+    3.06,
+    3.3,
+    3.45,
+    3.5,
+    3.45,
+    3.3,
+    3.06,
+    2.75,
+    2.39,
+    2.0,
+    1.61,
+    1.25,
+    0.94,
+    0.7,
+    0.55,
+    0.5,
+    0.55,
+    0.7,
+    0.94,
+    1.25,
+    1.61,
+    2.0,
+    2.39
+   ],
+   "recovered_f": [
+    2.69,
+    2.9,
+    3.06,
+    3.16,
+    3.19,
+    3.16,
+    3.06,
+    2.69,
+    2.48,
+    2.24,
+    1.98,
+    1.72,
+    1.48,
+    1.28,
+    1.12,
+    1.02,
+    0.98,
+    1.02,
+    1.12,
+    1.49,
+    1.69,
+    1.93,
+    2.19,
+    2.45
+   ]
   },
   "spike, stuck and outage detected": {
    "pass": true,
@@ -64,7 +118,7 @@
   },
   "false alarms on clean stations below 1 per station-month": {
    "pass": true,
-   "per_station_month": 0.308,
+   "per_station_month": 0.385,
    "alarms": [
     [
      1,

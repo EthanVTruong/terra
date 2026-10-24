@@ -1,0 +1,23 @@
+{
+  "schema_version": "terra-assessment-index-v1",
+  "assessments": [
+    {
+      "id": "location",
+      "title": "Location + station flag",
+      "path": "./location.json",
+      "description": "Historical weather \u00b7 controlled spike \u00b7 no local sensor"
+    },
+    {
+      "id": "measured",
+      "title": "Measured Davis spike",
+      "path": "./measured.json",
+      "description": "Historical weather \u00b7 controlled spike \u00b7 frozen station comparison"
+    },
+    {
+      "id": "missing",
+      "title": "Unavailable peers",
+      "path": "./missing.json",
+      "description": "Historical weather \u00b7 controlled spike and two withheld peer streams"
+    }
+  ]
+}

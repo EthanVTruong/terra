@@ -18,6 +18,7 @@ on:
       - pyproject.toml
       - tests/**
       - terra.py
+      - run_terra.py
       - COORDINATION.md
       - spec.md
       - README.md
@@ -112,7 +113,8 @@ jobs:
                               'tests/test_farm_chill_ops.py', 'tests/test_farm_chill_ops_api.py',
                               'tests/test_farm_chill_ops_writer.py', 'tests/test_farm_chill_ops_state.py',
                               'tests/test_backend_input_guards.py', 'tests/test_normalize.py',
-                              'tests/test_terra_runtime.py', 'tests/test_terra_pipeline.py', '-q'], check=True)
+                              'tests/test_terra_runtime.py', 'tests/test_terra_bootstrap.py',
+                              'tests/test_terra_pipeline.py', '-q'], check=True)
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 5

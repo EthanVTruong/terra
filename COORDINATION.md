@@ -245,7 +245,9 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_farm_chill_ops_api.py",
     "tests/test_farm_chill_ops*.py",
     "tests/test_terra_chatgpt*.py",
-    "tests/test_terra_conversation*.py"
+    "tests/test_terra_conversation*.py",
+    "run_terra.py",
+    "tests/test_terra_bootstrap.py"
   ],
   "depends_on": [],
   "checks": [
@@ -255,7 +257,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-runtime-tests",
     "terra-pipeline-tests",
     "terra-chatgpt-tests",
-    "terra-conversation-tests"
+    "terra-conversation-tests",
+    "terra-setup-tests"
   ]
 }
 ```
@@ -975,5 +978,69 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_writer_integration.py",
     "-q"
   ]
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-setup-audit",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests diagnosing and reducing friction for fresh open-source local setup and eventual Vercel hosting. Audit a clean install; add a bounded portable first-run/doctor path, accurate setup/hosting documentation and package-manager metadata as supported by evidence. Preserve running services, provider flags, credentials, scientific logic, writer/auth integration and other UI branches. Hosted auth/storage/worker boundary changes are proposals, not silently implemented.",
+  "branch": "codex/terra-setup-audit",
+  "base": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "run_terra.py",
+    "tests/test_terra_bootstrap.py",
+    "README.md",
+    "docs/terra/setup-and-hosting.md",
+    "docs/terra/local-runtime.md",
+    "web/README.md",
+    "web/package.json",
+    ".github/workflows/terra.yml"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "b3325f8acc13ddbed2af3b0121957af69bdfe62f",
+    "summary": "Setup and hosting audit completed on current main. Added portable stdlib launcher/doctor with separate credential-free preview, canonical live passthrough, minimal pinned dependency installation, cached web build and occupied-port protection. Quickstart/toolchain/hosting documentation and portable CI coverage updated. Runtime/auth/worker/guard/scientific source and shared services untouched.",
+    "evidence": [
+      "Fresh worktree and newly created Python3.12 .venv installed all28 exact product runtime requirements; pip check passed. Frozen pnpm11.25 install and production build passed; repeat setup reused both without install/build.",
+      "All8 configured scoped check groups passed against actual maincb580227;9 new first-run boundary tests passed. Web packaging4 and delivery/ChatGPT UI11 cases passed; source lint, compile and git diff --check passed.",
+      "Isolated18519 UI/API smoke: historical and unavailable-peer examples render; current source configuredfalse, SMS flagsfalse/configuredfalse, worker heartbeat absent. Existing-port invocation refused before installation. Ctrl+C finished Uvicorn shutdown; retained preview journals kept. No provider request/inference/text/cloud action and no shared8512/8504/8517 process or private vault change.",
+      "Current official Vercel FastAPI/Services, SQLite, Cron and Daemons docs checked. Full hosted product still requires durable journals, hosted ownership/auth and deliberate monitor scheduling; static showcase is a separate capability.",
+      "Release alignment verified: main uses terra-wordmark while reviewed8504 UI branch4464760 uses terra-cube and contains unmerged quiet-copy/phone changes. Main has the newer ChatGPT control. Audit records the required reconciled UI integration; no component merge attempted in setup scope.",
+      "PR10 first CI macOS run passed all7 existing groups and preview isolation flags but caught a test-only /var versus /private/var canonical path mismatch. One focused repair normalizes the expected journal path; no runtime behavior or isolation assertion removed. Final-head CI rerun required."
+    ],
+    "uncertainty": "Local first-run smoke is Windows evidence; final-head Windows/macOS/backend/web CI remains a review gate. Reference-font redistribution and native/root license metadata need a provenance decision. Full hosted architecture/deployment and real provider readiness are not implemented by this setup pass. Reviewed UI4464760 remains separate from main; fresh clones will differ until its integration preserves the newer ChatGPT control.",
+    "next": "Review/publish this small setup branch, require final-head CI, then let integration owner consume it without restarting the shared service or changing its protected paths. Future cloud work starts with durable store/hosted authorization contracts, not relaxed localhost guards."
+  }
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-setup-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-p",
+    "test_terra_bootstrap.py",
+    "-q"
+  ],
+  "timeout": 120
 }
 ```

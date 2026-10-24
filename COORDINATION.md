@@ -1139,6 +1139,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_readiness.py",
     "tests/test_terra_conversation_recovery.py",
     "tests/test_terra_conversation_reference_times.py",
+    "tests/test_terra_conversation_timeline.py",
     "tests/test_terra_conversation_weather.py",
     "tests/test_terra_conversation_writer_integration.py",
     "-q"

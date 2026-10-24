@@ -19,6 +19,16 @@ def _weather_context(data):
             "temperature_evidence_id": facts.get("temperature_evidence_id")}
 
 
+def _publication_time(item):
+    value = item.get("published_at")
+    if not isinstance(value, str):
+        return None
+    try:
+        return utc(value)
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
 class RequestInProgress(ValueError):
     """A reserved request cannot safely be inferred again, even after restart."""
 
@@ -141,13 +151,25 @@ class ConversationService:
                            "weather_evidence_ids": list(dict.fromkeys(e["evidence_id"] for e in events if e.get("evidence_id"))),
                            "temperature_evidence_id": None}
         elif orchard_id:
+            assistant = None
             for turn in reversed(self._turns(orchard_id)):
                 if turn.get("role") == "assistant":
+                    assistant = turn
                     intent = turn.get("data", {}).get("intent")
                     context = intent if intent in QUESTIONS or intent in LOCAL_INTENTS or intent in _FACT_CONTEXTS else "farm"
                     event_ids = turn.get("data", {}).get("source_event_ids", []) if intent in QUESTIONS else []
                     weather = _weather_context(turn.get("data", {}))
                     break
+            # Match the latest visible proactive note when actual publication
+            # metadata establishes recency. Never guess from a replay clock or
+            # let a stored question-answer duplicate replace its Tara context.
+            notes = [note for note in self.store.messages(orchard_id)
+                     if note.get("kind") == "proactive" and _publication_time(note) is not None]
+            if notes:
+                newest = max(notes, key=_publication_time)
+                previous = _publication_time(assistant) if assistant else None
+                if assistant is None or previous is not None and _publication_time(newest) > previous:
+                    return self._context(orchard_id, newest["id"])
             # A farm supplies history's subject, not a fictitious earlier reply.
             context = context or "farm"
         return {"intent": context, "event_ids": event_ids, **weather}
@@ -209,10 +231,19 @@ class ConversationService:
     @staticmethod
     def _turn(identifier, role, text, created, *, kind="text", reply_to=None, data=None):
         return {"id": identifier, "role": role, "kind": kind, "text": text, "created_at": created,
+                "published_at": utc().isoformat(),
                 "reply_to": reply_to, "reactions": [], "delivery": "local_saved", "data": data or {}}
 
     @staticmethod
     def _put(db, thread, turn):
+        existing = db.execute("SELECT payload FROM tara_turns WHERE id=?", (turn["id"],)).fetchone()
+        if existing:
+            turn.clear()
+            turn.update(json.loads(existing[0]))
+            return
+        # Serialize publication with native notes in the shared SQLite journal,
+        # rather than timestamping a reply while it waits for the write lock.
+        turn["published_at"] = utc().isoformat()
         db.execute("INSERT OR IGNORE INTO tara_turns VALUES(?,?,?,?)", (turn["id"], thread, turn["created_at"], encoded(turn)))
 
     def _finish(self, request_id, thread, user, *, text=None, reaction=False, event=None, data=None, setup=None, preference=None, migrate=None):

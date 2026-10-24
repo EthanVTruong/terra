@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mergeTaraTimeline } from "../src/tara-state.js";
 import { clockTime, dayLabel, displayNoteText, evidenceTime, localDay, publicationTime } from "../src/presentation.js";
 
 test("notes group at Pacific midnight rather than UTC midnight", () => {
@@ -91,8 +92,14 @@ test("a publication-ordered mixed feed keeps one Pacific day across replay notes
     { id: "coverage-limited", created_at: source, published_at: "2026-10-24T16:02:00Z" },
     { id: "answer", created_at: "2026-10-24T16:03:00Z" },
   ];
-  assert.deepEqual(entries.map((entry) => localDay(publicationTime(entry))), Array(4).fill("2026-10-24"));
-  assert.deepEqual(entries.map((entry) => clockTime(publicationTime(entry))), ["9:00 AM", "9:01 AM", "9:02 AM", "9:03 AM"]);
-  assert.equal(entries[0].created_at, source);
-  assert.equal(entries[2].created_at, source);
+  const turns = [{ ...entries[1], role: "user" }, { ...entries[3], role: "assistant" }];
+  const newestFirstNotes = [entries[2], entries[0]];
+  const original = structuredClone({ turns, newestFirstNotes });
+  const merged = mergeTaraTimeline(turns, newestFirstNotes).map(({ value }) => value);
+  assert.deepEqual(merged.map(({ id }) => id), ["welcome", "question", "coverage-limited", "answer"]);
+  assert.deepEqual(merged.map((entry) => localDay(publicationTime(entry))), Array(4).fill("2026-10-24"));
+  assert.deepEqual(merged.map((entry) => clockTime(publicationTime(entry))), ["9:00 AM", "9:01 AM", "9:02 AM", "9:03 AM"]);
+  assert.equal(merged[0].created_at, source);
+  assert.equal(merged[2].created_at, source);
+  assert.deepEqual({ turns, newestFirstNotes }, original);
 });

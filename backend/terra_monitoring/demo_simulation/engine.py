@@ -25,6 +25,8 @@ from terra_monitoring.assessment import (
 from terra_monitoring.farm_ops.service import Monitor
 from terra_monitoring.farm_ops.store import Store, fingerprint, utc
 from terra_monitoring.farm_ops.writer import Writer
+from terra_monitoring.interpolation import load_policy as load_interpolation_policy
+from terra_monitoring.interpolation import spread as uncertainty_spread
 from terra_monitoring.weather import VARIABLES, _physical_reason
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -179,39 +181,52 @@ class DemoSimulation:
             rows.extend({"station_id": sensor["id"], "timestamp": hour, "temperature_f": sensor["value_f"],
                          "temperature_unit": "F", "quality": "usable", "source_flag": "", "timestamp_verified": True,
                          "timestamp_basis": "fixed_pst_hour_ending", "availability_reason": None,
-                         "source": "demo_test_sensor", "demo_override": {"kind": "test_sensor"}, **weather} for hour in hours)
+                         "source": "demo_test_sensor", "point_sensor": True, "demo_override": {"kind": "test_sensor"},
+                         **weather} for hour in hours)
         return pd.DataFrame(rows)
 
     def _sensor_limits(self):
-        # The frozen policy's widest calibrated residual bounds: an uncalibrated site gets no tighter band.
-        manifest = self.reference.manifest
-        bounds = manifest["range_calibration"]["bounds"].values()
-        return {"extreme_f": max(b["extreme_abs_residual_f"] for b in bounds),
-                "typical_low_f": min(b["typical_low_residual_f"] for b in bounds),
-                "typical_high_f": max(b["typical_high_residual_f"] for b in bounds),
-                "sustained_readings": int(manifest["temporal_policy"]["variables"]["temperature_f"]["sustained_readings"])}
+        """Temperature uncertainty measured from the replay: each calibrated station predicted by
+        Nathan's estimator from the others over recent hours, test sensors left out."""
+        policy, now = load_interpolation_policy(), utc(self.session["clock"])
+        hours = [h for h in (now - timedelta(hours=i) for i in range(policy["uncertainty_history_hours"])) if h >= utc(WARMUP)]
+        usable = self.cleaned[self.cleaned.operation_available & self.cleaned.available
+                              & self.cleaned.station_id.isin(self.station_ids)]
+        observed = {(int(r.station_id), pd.Timestamp(r.timestamp)): r.temperature_f for r in usable.itertuples()}
+        sensors = tuple(s["id"] for s in self.session["sensors"])
+        residuals = []
+        for metadata in self.station_metadata:
+            frame = estimate_location(metadata["lat"], metadata["lon"], metadata["elevation_ft"], hours, now,
+                self.cleaned[self.cleaned.operation_available], self.stations, None,
+                location_id="demo-loo", geometry_source="leave-one-out at a calibrated station",
+                exclude_station_ids=(metadata["id"], *sensors), max_age_hours=len(hours) + 1)
+            for row in frame.itertuples():
+                truth = observed.get((metadata["id"], pd.Timestamp(row.valid_utc)))
+                if truth is not None and row.status in {"ok", "stale"} and math.isfinite(row.temperature):
+                    residuals.append(truth - row.temperature)
+        width = uncertainty_spread("temperature_f", residuals, policy, hours=len(hours))
+        return {"uncertainty_f": width, "band_f": policy["band_multiplier"] * width,
+                "extreme_f": policy["extreme_multiplier"] * width, "sustained_readings": policy["sustained_readings"]}
 
     def _sensor_checks(self):
-        """Compare each test sensor with Nathan's estimate from the calibrated stations, the sensor held out.
-
-        Terra's frozen decision rule applies: one reading beyond the outer limit is
-        strong; the configured run of consecutive readings beyond the typical band is moderate.
-        """
+        """Compare each test sensor with Nathan's estimate from the calibrated stations (all sensors held out),
+        outside the measured uncertainty: beyond the extreme band once, or the band for consecutive readings."""
         if not self.session["sensors"]:
             return {}
         limits, now = self._sensor_limits(), utc(self.session["clock"])
         hours = [now - timedelta(hours=i) for i in reversed(range(limits["sustained_readings"]))]
         hours = [h for h in hours if h >= utc(WARMUP)]
         findings = self._layer_findings()[1][1]
+        sensors = tuple(s["id"] for s in self.session["sensors"])
         checks = {}
         for sensor in self.session["sensors"]:
             frame = estimate_location(sensor["lat"], sensor["lon"], ORCHARD["elevation_ft"], hours, now,
                 self.cleaned[self.cleaned.operation_available], self.stations, findings,
                 location_id="demo-sensor", geometry_source="test sensor location; configured 60 ft elevation",
-                exclude_station_ids=(sensor["id"],), max_age_hours=6)
+                exclude_station_ids=sensors, max_age_hours=6)
             residuals = [sensor["value_f"] - row.temperature if row.status == "ok" else None for row in frame.itertuples()]
             current = residuals[-1]
-            outside = [r is not None and not limits["typical_low_f"] <= r <= limits["typical_high_f"] for r in residuals]
+            outside = [r is not None and abs(r) > limits["band_f"] for r in residuals]
             level = ("none" if current is None else "strong" if abs(current) > limits["extreme_f"]
                      else "moderate" if len(outside) == limits["sustained_readings"] and all(outside) else "none")
             checks[sensor["id"]] = {"observed_f": sensor["value_f"], "level": level, **limits,

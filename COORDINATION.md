@@ -227,6 +227,9 @@
     "backend/terra_monitoring/demo_simulation/**",
     "backend/terra_monitoring/farm_ops/service.py",
     "backend/terra_monitoring/farm_ops/writer.py",
+    "backend/terra_monitoring/interpolation.py",
+    "backend/terra_monitoring/weather.py",
+    "config/terra/interpolation-policy-v1.json",
     "web/demo/**",
     "tests/test_terra_demo_simulation.py",
     "tests/test_farm_chill_ops_writer.py",
@@ -241,14 +244,15 @@
   "artifacts": [],
   "handoff": {
     "revision": "db0a57e932c8a3c2dcac957eeec6d15dc0ec2a6b",
-    "summary": "Additive interface changes: message-input schema event type sensor_flag; optional Monitor.apply collection key sensor_flags; terra-notification-v1 category temperature for sensor_flag. Test sensors are uncalibrated inputs the estimator already accepts; frozen QC scoring is restricted to the five calibrated stations. Each sensor is compared with estimate_location from the calibrated stations (sensor held out) under the frozen decision rule with the widest calibrated residual bounds (outer 9.43 F, typical -6.13/+4.87 F, 5 readings). Flags pass to Monitor.apply as sensor_flags; Monitor opens one sensor_flag incident per sensor (opening, one escalation to strong), closes it quietly when back in range, and the writer renders it template-only. A moved orchard pin is a new sim- orchard.",
+    "summary": "Additive interface changes: message-input schema event type sensor_flag; optional Monitor.apply collection key sensor_flags; terra-notification-v1 category temperature for sensor_flag. Test sensors are uncalibrated inputs the estimator already accepts; frozen QC scoring is restricted to the five calibrated stations. Each sensor is compared with estimate_location from the calibrated stations (sensor held out) under the frozen decision rule with the widest calibrated residual bounds (outer 9.43 F, typical -6.13/+4.87 F, 5 readings). Flags pass to Monitor.apply as sensor_flags; Monitor opens one sensor_flag incident per sensor (opening, one escalation to strong), closes it quietly when back in range, and the writer renders it template-only. A moved orchard pin is a new sim- orchard. Later (Nathan request): assess_weather and test-sensor temperature use terra-interpolation-policy-v1 instead of fixed limits and the borrowed frozen bounds: an inverse-distance-weighted median of reference stations plus each station's leave-one-out bias, with band/extreme at 2x/3x the robust leave-one-out spread over 24 replay hours; a cautious prior (matching the former 30/12/350 sustained limits at 2x) applies with under 6 hours of history. point_sensor rows are judged but are never peers or part of the spread. Real-station temperature keeps the frozen QC.",
     "evidence": [
       "tests/test_terra_demo_simulation.py: 19 pass, including test sensor feed/QC exclusion, out-of-range flag texted once per incident, and orchard move. tests/test_farm_chill_ops_writer.py sensor_flag template-only case passes without any provider call.",
       "Browser on 8520: 80 F sensor vs 47 F expected flagged strong (+33 F) and the simulated phone showed the persisted note; Set as orchard created a fresh watch with welcome.",
+      "Interpolation change: tests/test_terra_weather.py and tests/test_terra_weather_integration.py pass unchanged (including no findings on the recorded March baseline, where station 212 humidity was a false alarm before bias correction), plus the two demo test-sensor cases. Other suites were not rerun, at Nathan's request.",
       "terra.py check --base 8f028a8 --task terra-station-lab-sensors: 10 groups PASS; terra-conversation-tests timed out under a concurrent full-suite run and then passed when run alone. Full pytest suite passes except three ChillWatch files that need the uninstalled respx package."
     ],
     "uncertainty": "ET owns farm_ops: the sensor_flag event, its notification category and writer wording need ET review before live use. The estimator p10/p90 bins (data/models/physics_fit.json) were unavailable, so frozen station residual bounds stand in for an uncalibrated site; that proxy is not separately validated. Live SMS needs current-mode opt-in; this verification sent no real SMS.",
-    "next": "ET reviews the farm_ops changes and wording. If the fitted p10/p90 bins become available, consider them for the sensor band. terra.py check was not run with a recorded base task before these direct main commits."
+    "next": "ET reviews the interpolation replacement of terra-weather-policy-v1 limits in weather.py (affects station humidity/wind/solar alerts) and the farm_ops changes and wording. If the fitted p10/p90 bins become available, consider them for the sensor band. terra.py check was not run with a recorded base task before these direct main commits."
   }
 }
 ```

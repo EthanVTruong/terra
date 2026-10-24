@@ -1,5 +1,11 @@
 # Terra simulation verification
 
+Typography note: the captures and exact-font comparisons below describe the
+historical reference build. The open-source release uses the existing system
+sans-serif fallback and no longer distributes the xVf font. Layout sizes and
+spacing are retained; current cross-platform visual verification is separate.
+
+
 Date: 2026-10-24. Local monitoring baseline: `e4292b21594d20b3983a62447e2f4632aac0f3bd`.
 
 ## Visual truth and normalization

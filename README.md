@@ -29,7 +29,7 @@ The launcher creates `.venv`, installs pinned dependencies, builds the interface
 
 **Default preview:** saved historical assessments and controlled examples, with live weather, the worker, ChatGPT, and SMS disabled. State stays in `.terra-local/preview`.
 
-Enter your crops, select **Use my location**, and approve the browser request. Terra looks up ground elevation and selects nearby eligible stations. Choose notifications separately.
+Enter your crops, select **Use my location**, and approve the browser request. Terra looks up ground elevation and selects nearby eligible stations. Approving device location authorizes the one-button setup; manual coordinates and elevation remain available if device location or the terrain lookup is unavailable. Choose notifications separately.
 
 Troubleshoot with `python run_terra.py --doctor`; choose another port with `--port 8520`.
 
@@ -73,6 +73,14 @@ pnpm --dir web test:sites
 | Frozen station QC | `backend/terra_qc/`, `config/terra/` · [reference provenance](docs/terra/checkpoint.md) |
 | Ingestion, estimation, scientific tools | `backend/chillwatch/` · [ChillWatch guide](docs/DATA_ML_LAYER.md) |
 
-The separate native training/repair tools need additional dependencies. [CI](.github/workflows/terra.yml) covers the full backend, PostgreSQL, portable product checks, and web builds.
+The frozen statistical reference, station geometry and saved examples are included in the clone. No private training artifact is needed for the product preview or its temperature estimator. The separate native training/repair tools need additional dependencies and their own data/model setup. [CI](.github/workflows/terra.yml) covers the full backend, PostgreSQL, portable product checks, and web builds.
+
+## Scope and license
+
+Historical orchard pace comparisons need at least five sufficiently complete, matching reference seasons. A new install does not automatically fetch or construct that archive: recent weather alone cannot supply it. Until an archive is explicitly imported, Terra withholds historical pace conclusions. See [history requirements](docs/terra/farm-chill-ops.md#history-and-data-readiness).
+
+Humidity, hourly average wind and solar checks are provisional station-to-peer discrepancy rules. They do not estimate those variables at the orchard, measure gusts or diagnose crop danger. Forecasts, GDD, bloom predictions and treatment recommendations are outside the supported conversation.
+
+Terra is [MIT licensed](LICENSE). It uses system fonts; historical design screenshots retain the typography used during their original verification.
 
 Terra is currently local and single-user. Orchard temperatures are estimates; statistical flags are not confirmed sensor failures or crop-risk diagnoses. Controlled demos do not establish natural-fault accuracy.

@@ -1,5 +1,51 @@
 # Terra integration coordination
 
+```json
+{
+  "kind": "task",
+  "id": "terra-oss-release-docs",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests completion of main and open-source clone readiness. Reconcile current product/setup/readiness documentation, align package license metadata with the root MIT license, and resolve unlicensed reference-font distribution without feature or numerical changes. Root coordinates publication through the existing integration owner.",
+  "branch": "codex/terra-oss-release-docs",
+  "base": "c2e074194167657379255570e95eb47d887edf1e",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json",
+    "terra-portability"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "README.md",
+    "spec.md",
+    "pyproject.toml",
+    "docs/terra/**",
+    "web/public/fonts/**",
+    "web/src/styles.css",
+    "web/demo/public/xvf-reference.woff2",
+    "web/demo/src/styles.css",
+    "web/demo/src/App.jsx",
+    "web/demo/AGENTS.md",
+    "web/demo/design-qa.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "c2e074194167657379255570e95eb47d887edf1e",
+    "summary": "Completed bounded open-source release cleanup: current product/setup/history limits separated from historical checkpoints; package license metadata aligned to root MIT; both reference-font binaries removed with existing system fallback and unchanged layout dimensions. Native onboarding/Esri replay instructions reconciled. Root approved the font cleanup and owns final combined integration/browser verification.",
+    "evidence": [
+      "47 local Markdown links in changed docs, MIT metadata consistency, removed font assets/system fallback and git diff --check pass.",
+      "Scoped terra.py check against exact source base started; ChatGPT and conversation groups passed at handoff, remaining groups continue for the integration owner receipt.",
+      "Both packaging suites passed three static worker cases each; their build-output cases cannot pass in this unbuilt worktree (missing dist/client/index.html). No installs/builds were performed in this slice.",
+      "No numerical/backend behavior, private state, provider configuration, live process or sender preference changed. Historical font provenance/screenshots and prior checkpoint evidence remain labelled."
+    ],
+    "uncertainty": "Final combined CI, fresh-clone build/packaging and system-font browser verification belong to the coordinating owner. The historical reference font has no recorded redistribution grant; removal avoids claiming one.",
+    "next": "Hand this commit to the existing integration owner once. Preserve both task records if coordination entries overlap; run final combined source gates and record exact release receipt before main publication."
+  }
+}
+```
+
 ## Independent weather lifecycle verification
 
 ```json

@@ -1,8 +1,35 @@
 # Integrated pipeline readiness
 
-This record separates verified functionality from remaining integration and
-external account dependencies. Current integration owner: `terra-full-pipeline`.
-The [shared contract](pipeline-contract.md) defines accepted product policies.
+This record separates the implemented local product, release verification and
+installation-specific account/data readiness. The [shared contract](pipeline-contract.md)
+defines accepted product policies; [COORDINATION.md](../../COORDINATION.md) records
+the current integration owner and exact revision evidence.
+
+## Current local product
+
+| Capability | Included in the repository | Required from a new installation |
+| --- | --- | --- |
+| Saved preview | Launcher, web client source, immutable statistical reference, geometry and saved examples | Python/Node/pnpm prerequisites and internet for the initial dependency install; no provider account, database server or model training |
+| Conversation and evidence | Crop/location setup, retained notes, grounded supported follow-ups, exact Details and quiet reopening | Explicit location approval or manual submission; valid local data before readiness is claimed |
+| Live monitoring | Five-minute worker, local journals, restart/deduplication, QC and temperature estimation, coverage/chill lifecycle | Own CIMIS access, supported station coverage, persistent state, running process/computer |
+| Additional station weather | Independent humidity, average-wind and solar peer discrepancies/data-health states and grounded questions | Usable variable-specific observations; rules are provisional, without orchard estimates, gust or crop-risk claims |
+| Historical chill pace | Matched-method/cutoff/coverage checks and explicit archive import | At least five matching, sufficiently complete seasons; a new clone does not contain that orchard history |
+| Message writing | Factual local renderer and optional validated ChatGPT connection | Own eligible connection, explicit consent and selected model for generated prose |
+| Notifications | In-chat notes, open-page browser alerts and opt-in SMS transport/receipt journal | Browser permission for open-page alerts; own Twilio sender/recipient setup and orchard opt-in for SMS |
+| Controlled demos | Isolated station lab and production-interface replay through real QC/estimator/monitor | Separate demo build and documented launch; phone cards are simulation |
+
+The final combined revision must pass repository CI and fresh-clone verification
+before publication. Those source checks do not supply provider credentials or
+prove a new user's handset delivery. Terra remains local and single-user;
+hosted multi-user operation, email delivery, forecasts and agronomic advice are
+outside this release.
+
+## Initial integration acceptance (historical)
+
+The table and checklist below preserve the original integration's evidence and
+then-pending gates. They do not replace the current release receipt in
+COORDINATION.md. The trial delivery proves its specific configured placeholder
+path, not custom Terra message readiness for every installation.
 
 | Slice | Current evidence | Remaining acceptance |
 | --- | --- | --- |
@@ -13,7 +40,7 @@ The [shared contract](pipeline-contract.md) defines accepted product policies.
 | Twilio account | Candidate `089cb6f` controlled UI demo used the dedicated restricted Messages key and assigned trial `From`: HTTP 201, provider `delivered`, one attempt, and direct user handset confirmation. Two prior HTTP 403/`572003` failures without a SID stayed recorded. Restricted single-message read passed; listing access remained denied | Final sender-fix CI, merge and root-owned main restart. The trial sample does not contain Terra's actual finding; custom Terra text remains outside this verified template path |
 | GitHub contributors | Published histories and contributor API contain only Ethan and Nathan; supported background rebuild requested | Sidebar refresh is controlled by GitHub |
 
-Required combined acceptance:
+Original combined acceptance checklist (retain for regression coverage):
 
 - A controlled eligible fault traverses actual QC, persisted message selection,
   transport reservation and receipt handling. Real delivery evidence stays
@@ -76,8 +103,10 @@ unchanged.
 No matching five-season orchard archive is automatically populated. Historical
 pace stays unavailable until a matching, sufficiently complete archive is
 explicitly imported. The 400-hour cultivar value remains a configured reference,
-not a validated biological threshold. Optional LLM writing is not required for
-the deterministic inbox and was not enabled or billed.
+not a validated biological threshold. Optional LLM writing was not enabled or
+billed during that initial integration; later genuine connection/inference
+evidence is recorded in [the ChatGPT guide](chatgpt-plan.md). The factual inbox
+and supported local answers remain available without it.
 
 Use [the local-runtime runbook](local-runtime.md) for one-process operation and
 [the Twilio runbook](twilio-sms.md) for account gates and receipt semantics.

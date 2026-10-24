@@ -1,5 +1,11 @@
 # Terra UI fidelity pass — 2026-10-24
 
+Typography note: the captures and exact-font comparisons below describe the
+historical reference build. The open-source release uses the existing system
+sans-serif fallback and no longer distributes the xVf font. Layout sizes and
+spacing are retained; current cross-platform visual verification is separate.
+
+
 This is a presentation change on the committed current-location assessment app.
 The live request, validation, cancellation and exact packet boundaries remain in
 place. `POST /api/assess` remains read-only. No detector, estimator, data, provider,

@@ -119,6 +119,18 @@ def export_parquet_cmd() -> None:
     typer.echo(str(export_parquet(_ctx().store)))
 
 
+@app.command()
+def activate(version: str) -> None:
+    """Make a trained model (data/models/VERSION) the one estimates and detection use."""
+    from .qc.model import ModelBundle, _register
+
+    path = config.data_dir() / "models" / version
+    bundle = ModelBundle.load(path)  # fails loudly if the version does not exist
+    (path.parent / "ACTIVE").write_text(version)
+    _register(bundle, _ctx().store, True)
+    typer.echo(f"active model: {version}")
+
+
 @app.command("train")
 def train_cmd(version: str = typer.Option(None), folds: int = typer.Option(None, help="0 = true LOSO"),
               fold_procedure: str = typer.Option(None, help="full | fixed (fold models reuse the main round count)"),

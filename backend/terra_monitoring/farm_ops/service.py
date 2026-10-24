@@ -24,6 +24,10 @@ def orchard_profile(name="West Orchard", *, orchard_id=None, lat=38.6, lon=-121.
     if mode not in {"current", "replay", "injected"}:
         raise ValueError("Invalid monitoring mode")
     explicit_crop = crops is not None or crop is not None
+    if not explicit_crop and (variety is not None or crop_description is not None):
+        raise ValueError("Supply the crop with new variety or description metadata")
+    if crop is not None and crops is not None and crops != [crop]:
+        raise ValueError("Crop and crop list must agree")
     selected = crops if crops is not None else [crop] if crop is not None else ["almond"]
     if (not isinstance(selected, list) or not 1 <= len(selected) <= 12
             or any(not isinstance(item, str) or not item.strip() or len(item) > 80

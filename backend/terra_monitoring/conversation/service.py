@@ -280,8 +280,8 @@ class ConversationService:
                       "source_event_ids": source_event_ids if intent == "explain_alert" else [],
                       "generation_outcome": answer.get("generation_outcome"), "generation": answer.get("generation")})
 
-    def action(self, *, request_id, action, location=None, notifications=None):
-        body = {"action": action, "location": location, "notifications": notifications}
+    def action(self, *, request_id, action, location=None, notifications=None, orchard_id=None):
+        body = {"action": action, "location": location, "notifications": notifications, "orchard_id": orchard_id}
         existing = self._existing(request_id, body)
         if existing:
             return existing
@@ -304,6 +304,10 @@ class ConversationService:
             if notifications["enabled"] and (notifications["permission"] != "granted" or self.notification_capability != "browser_open"):
                 raise ValueError("Browser permission and supported open-browser delivery are required")
         setup = self._saved_setup() or empty_setup()
+        saved_setup = setup
+        if action == "notifications" and orchard_id:
+            self.store.orchard(orchard_id)
+            setup = self.state(orchard_id)["setup"]
         if action == "location" and setup["stage"] != "location":
             raise ValueError("Supply your crops before confirming a location")
         if action == "notifications" and not setup.get("orchard_id"):
@@ -327,4 +331,5 @@ class ConversationService:
         status = self.state(setup["orchard_id"])["monitoring"]["status"]
         text = "You're set. I'll flag meaningful changes here." if status == "ready" else "Your farm is saved. I'm waiting for usable weather data and the monitor."
         return self._finish(request_id, thread, None, text=text, event=event, preference=notifications,
-                            setup={**setup, "stage": "complete", "notification_preference": notifications})
+                            setup=({**setup, "stage": "complete", "notification_preference": notifications}
+                                   if saved_setup.get("orchard_id") == thread else None))

@@ -206,6 +206,10 @@ def test_legacy_writer_usage_gate_and_new_crop_reference(conversation):
     assert exact_pin["location_source"] == "caller-supplied orchard pin and elevation"
     with pytest.raises(ValueError):
         orchard_profile(crops=[""])
+    with pytest.raises(ValueError):
+        orchard_profile(variety="Gala")
+    with pytest.raises(ValueError):
+        orchard_profile(crop="almond", crops=["peach"])
 
 
 def test_readiness_requires_actual_fresh_worker_and_usable_data(conversation):
@@ -350,3 +354,15 @@ def test_farm_problems_get_a_local_substantive_reply(conversation, text):
     orchard = setup_farm(service)
     result = service.message(request_id="problem", text=text, orchard_id=orchard)
     assert result["outcome"] == "message" and not writer.packets
+
+
+def test_notification_action_targets_selected_farm_and_preserves_other_unfinished_setup(conversation):
+    service, monitor, writer = conversation
+    first = setup_farm(service)
+    monitor.create_orchard(orchard_id="other", crops=["apple"])
+    result = service.action(request_id="other-notifications", action="notifications", orchard_id="other",
+                            notifications={"enabled": True, "permission": "granted"})
+    assert result["state"]["orchard_id"] == "other" and result["state"]["notifications"]["enabled"]
+    assert not service.state(first)["notifications"]["enabled"]
+    assert service.state()["orchard_id"] == first and service.state()["setup"]["stage"] == "notifications"
+    assert not writer.packets

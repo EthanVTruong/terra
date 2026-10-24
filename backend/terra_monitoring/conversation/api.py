@@ -39,6 +39,7 @@ class NotificationInput(StrictBody):
 class SetupInput(StrictBody):
     request_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
     action: Literal["restart", "location", "notifications"]
+    orchard_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
     location: LocationInput | None = None
     notifications: NotificationInput | None = None
 

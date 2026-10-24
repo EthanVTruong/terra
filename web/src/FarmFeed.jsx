@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { clockTime, dayLabel, displayNoteText, localDay, timestamp } from "./presentation";
 import { deliveryLabel } from "./delivery";
+import { farmFeedPollInterval } from "./notification-return";
 
 const isObject = (value) => value && typeof value === "object" && !Array.isArray(value);
 const words = (value) => String(value || "Unavailable").replaceAll("_", " ");
@@ -15,7 +16,8 @@ function validFeed(value, id) {
   return value;
 }
 
-export function useFarmFeed(active, { pollInBackground = false } = {}) {
+export function useFarmFeed(active, { pollInBackground = false, replayOnly = false } = {}) {
+  const pollInterval = farmFeedPollInterval(replayOnly);
   const [orchards, setOrchards] = useState([]), [orchardId, setOrchardId] = useState("");
   const [available, setAvailable] = useState(false), [feed, setFeed] = useState(null);
   const [loading, setLoading] = useState(false), [error, setError] = useState("");
@@ -47,11 +49,11 @@ export function useFarmFeed(active, { pollInBackground = false } = {}) {
       finally { if (!disposed && current === version && selectedIdRef.current === orchardId) setLoading(false); }
     }
     load();
-    const poll = setInterval(() => { if (pollInBackground || document.visibilityState === "visible") load(); }, 30000);
+    const poll = setInterval(() => { if (pollInBackground || document.visibilityState === "visible") load(); }, pollInterval);
     const visible = () => { if (document.visibilityState === "visible") load(); };
     document.addEventListener("visibilitychange", visible);
     return () => { disposed = true; controller?.abort(); clearInterval(poll); document.removeEventListener("visibilitychange", visible); };
-  }, [active, orchardId, revision, pollInBackground]);
+  }, [active, orchardId, revision, pollInBackground, pollInterval]);
   const selectOrchard = useCallback((id) => { selectedIdRef.current = id; feedRef.current = null; setFeed(null); setError(""); setOrchardId(id); }, []);
   const addOrchard = useCallback((profile) => {
     setOrchards((previous) => [...previous.filter((item) => item.id !== profile.id), profile]);

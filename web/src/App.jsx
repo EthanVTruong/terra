@@ -8,6 +8,7 @@ import { writeTaraStorage } from "./tara-state";
 import SmsControls from "./SmsControls";
 import ChatGPTConnection from "./ChatGPTConnection";
 import { usePresence } from "./usePresence";
+import { farmNoteDetailsPath, farmNoteTarget } from "./notification-return";
 import "./tara-integration.css";
 
 const SCHEMA = "terra-location-assessment-v1";
@@ -157,9 +158,11 @@ export function App() {
     try { const value = localStorage.getItem("terra.tara.activeFarm"); return value && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : ""; }
     catch { return ""; }
   });
+  const [notificationNote, setNotificationNote] = useState(null);
   const [connectionRequest, setConnectionRequest] = useState(0), [connectionStatus, setConnectionStatus] = useState(null);
   const farmRef = useRef(null);
   const chooseTaraFarm = useCallback((id) => {
+    setNotificationNote(null);
     setTaraFarmId(id);
     try { if (id) localStorage.setItem("terra.tara.activeFarm", id); else localStorage.removeItem("terra.tara.activeFarm"); } catch { /* This tab can retain the selection in memory. */ }
     farmRef.current?.selectOrchard(id);
@@ -171,9 +174,10 @@ export function App() {
   const [farmDetails, setFarmDetails] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false), [detailsError, setDetailsError] = useState("");
-  const farm = useFarmFeed(view === "monitor" || browserAlerts, { pollInBackground: browserAlerts });
+  const [context, setContext] = useState(null);
+  const farm = useFarmFeed(view === "monitor" || browserAlerts, { pollInBackground: browserAlerts, replayOnly: context?.replay_only === true });
   farmRef.current = farm;
-  const browserAlertError = useTaraBrowserAlerts(tara, farm);
+  const browserAlertError = useTaraBrowserAlerts(tara, farm, { onOpen: openNotificationNote });
   const detailRequest = useRef({ version: 0, controller: null }), nearBottom = useRef(true);
   const [entries, setEntries] = useState([]);
   const [selectedId, setSelectedId] = useState("");
@@ -185,7 +189,6 @@ export function App() {
   const [pendingKind, setPendingKind] = useState(null);
   const [notice, setNotice] = useState("");
   const [indexRetry, setIndexRetry] = useState(0);
-  const [context, setContext] = useState(null);
   const [contextError, setContextError] = useState("");
   const [contextLoading, setContextLoading] = useState(true);
   const [contextRetry, setContextRetry] = useState(0);
@@ -320,6 +323,12 @@ export function App() {
     detailRequest.current.controller?.abort(); detailRequest.current.version += 1;
     setFarmDetails(null); setSelectedMessage(null); setDetailsLoading(false); setDetailsError("");
   }, [farm.orchardId]);
+  useEffect(() => {
+    // Switching farms clears old evidence; wait for both native views to agree.
+    if (!notificationNote || view !== "monitor" || notificationNote.orchard_id !== farm.orchardId || notificationNote.orchard_id !== tara.state?.orchard_id) return;
+    setNotificationNote(null);
+    openFarmDetails(null, notificationNote);
+  }, [notificationNote, view, farm.orchardId, tara.state?.orchard_id]);
   useEffect(() => () => detailRequest.current.controller?.abort(), []);
   useEffect(() => {
     if (view === "monitor" && nearBottom.current) requestAnimationFrame(() => {
@@ -422,17 +431,31 @@ export function App() {
     } catch (reason) { setQueryError(reason.message); }
   }
 
+  function openNotificationNote(message) {
+    const target = farmNoteTarget(message);
+    if (target.orchard_id !== taraFarmId) chooseTaraFarm(target.orchard_id);
+    openMonitor();
+    setNotificationNote(target);
+  }
+
   async function openFarmDetails(event, message) {
-    if (detailsLoading && selectedMessage === message.id) return;
-    opener.current = event.currentTarget; setPanelTab("temperature"); setPanelOpen(true);
+    let target;
+    try { target = farmNoteTarget(message, tara.state?.orchard_id || farm.orchardId); }
+    catch (reason) { setDetailsError(reason.message); return; }
+    if (target.orchard_id !== (tara.state?.orchard_id || farm.orchardId)) {
+      openNotificationNote(target);
+      return;
+    }
+    opener.current = event?.currentTarget || panelTrigger.current; setPanelTab("temperature"); setPanelOpen(true);
     if (mobile) setMobileJson(true);
+    if (detailsLoading && selectedMessage === message.id) return;
     detailRequest.current.controller?.abort();
     const task = { version: detailRequest.current.version + 1, controller: new AbortController() };
     detailRequest.current = task;
     setSelectedMessage(message.id); setFarmDetails(null); setDetailsLoading(true); setDetailsError("");
     try {
-      const detailFarmId = tara.state?.orchard_id || farm.orchardId;
-      const response = await fetch("/api/orchards/" + encodeURIComponent(detailFarmId) + "/messages/" + encodeURIComponent(message.id) + "/details", { signal: task.controller.signal });
+      const detailFarmId = target.orchard_id;
+      const response = await fetch(farmNoteDetailsPath(target), { signal: task.controller.signal });
       if (!response.ok) throw new Error("The note’s readings are unavailable. Tap the note to retry.");
       const value = await response.json();
       if (value.message?.id !== message.id || value.message?.orchard_id !== detailFarmId || !Array.isArray(value.assessments) || !Array.isArray(value.events)) throw new Error("The note’s evidence could not be read.");
@@ -473,7 +496,7 @@ export function App() {
   const usingPlan = connectionStatus?.plan_enabled && connectionStatus?.writer?.connected && !connectionStatus?.writer?.usage_paused && connectionStatus?.writer?.selected_model;
   return <main className={`app-window${showPanel ? " with-artifacts" : ""}${panelMounted ? " panel-mounted" : ""}`}>
     <section className="conversation" inert={mobile && mobileJson ? true : undefined} aria-hidden={mobile && mobileJson ? true : undefined}>
-      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} onStatus={setConnectionStatus} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { setPanelOpen(true); if (mobile) setMobileJson(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
+      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(context?.replay_only === true || querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{context?.replay_only === true ? "Replay" : querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} onStatus={setConnectionStatus} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { setPanelOpen(true); if (mobile) setMobileJson(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
       <div ref={messageScroll} className="message-scroll" aria-busy={view === "monitor" ? farm.loading : loading} onScroll={(event) => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}>
         {view === "monitor" ? <>
           {notice && <p className="request-notice" role="status">{notice}</p>}

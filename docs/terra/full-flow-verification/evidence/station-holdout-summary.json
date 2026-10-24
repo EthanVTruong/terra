@@ -1,0 +1,146 @@
+{
+  "schema_version": "terra-independent-cached-holdout-v1",
+  "source_file": "2026-03-16_2026-03-22.json",
+  "source_sha256": "1cccc2507af8e51187c36d9dfc70146cc5c75d2674083eb34a7b976d2766425d",
+  "rows": 840,
+  "warmup_rows": 120,
+  "first_utc": "2026-03-16T09:00:00+00:00",
+  "last_utc": "2026-03-23T08:00:00+00:00",
+  "causal_hourly_assessments": 168,
+  "causality": "Each assessment sees only observations at or before its valid hour; prior24h cached warmup; no future source rows supplied",
+  "reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+  "reference_sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
+  "training_end_exclusive": "2025-09-01T08:00:00+00:00",
+  "calibration_end_exclusive": "2025-12-01T08:00:00+00:00",
+  "quality_counts": {
+    "flagged": 452,
+    "usable": 388
+  },
+  "source_flag_counts": {
+    "Y": 430,
+    " ": 388,
+    "R": 22
+  },
+  "estimate_status_counts": {
+    "ok": 72,
+    "insufficient_data": 96
+  },
+  "estimate_reason_counts": {
+    "": 72,
+    "fewer_than_3_usable_peers": 96
+  },
+  "qc_row_status_counts": {
+    "source_warning": 452,
+    "reference_available": 195,
+    "insufficient_neighbors": 193
+  },
+  "operation_availability": {
+    "eligible_rows": 840,
+    "ineligible_rows": 0
+  },
+  "operation_caveat": "Frozen reference station metadata does not include verified historical operation epochs; missing dates retain existing permissive operation gate",
+  "natural_suspected_findings": [
+    {
+      "station_id": 6,
+      "reason": "extreme_departure",
+      "severity": "strong",
+      "start_utc": "2026-03-16T14:00:00+00:00",
+      "detected_at_utc": "2026-03-16T14:00:00+00:00",
+      "first_seen_utc": "2026-03-16T14:00:00+00:00",
+      "visible_hours": 2,
+      "last_seen_utc": "2026-03-16T15:00:00+00:00",
+      "detector_evidence": [
+        {
+          "timestamp": "2026-03-16T14:00:00+00:00",
+          "temperature_f": 57.9,
+          "expected_f": 49.625,
+          "residual_f": 8.274999999999999,
+          "level": "strong",
+          "neighbor_count": 4,
+          "sustained_low_residual_f": -2.174999999999996,
+          "sustained_high_residual_f": 4.174999999999997,
+          "extreme_abs_residual_f": 7.968399999999981,
+          "source_quality": "usable",
+          "original_source_flag": " "
+        }
+      ]
+    }
+  ],
+  "natural_grower_transition_counts": {
+    "welcome:initial": 1,
+    "monitoring_limited:opening": 7,
+    "monitoring_limited:escalation": 5,
+    "monitoring_recovered:recovery": 7
+  },
+  "selected_control_utc": "2026-03-17T08:00:00+00:00",
+  "side_effects": {
+    "network_calls": 0,
+    "live_runtime_changes": false,
+    "sms": false,
+    "llm": false,
+    "training": false,
+    "ingestion": false
+  },
+  "source_unchanged_after_checks": true,
+  "evidence_limit": "Existing previously inspected March holdout, newly exercised for this operator check; suspected station findings are not confirmed natural sensor-fault labels",
+  "scenarios": [
+    {
+      "name": "original",
+      "timestamp": "2026-03-17T08:00:00+00:00",
+      "original_f": 59.8,
+      "value_f": 59.8,
+      "estimate_status": "ok",
+      "estimate_reason": "",
+      "n_used": 5,
+      "station_findings": [],
+      "new_grower_note_count": 0
+    },
+    {
+      "name": "minor_plus1",
+      "timestamp": "2026-03-17T08:00:00+00:00",
+      "original_f": 59.8,
+      "value_f": 60.8,
+      "estimate_status": "ok",
+      "estimate_reason": "",
+      "n_used": 5,
+      "station_findings": [],
+      "new_grower_note_count": 0
+    },
+    {
+      "name": "spike_plus24",
+      "timestamp": "2026-03-17T08:00:00+00:00",
+      "original_f": 59.8,
+      "value_f": 83.8,
+      "estimate_status": "ok",
+      "estimate_reason": "",
+      "n_used": 4,
+      "station_findings": [
+        {
+          "station_id": 6,
+          "reason": "extreme_departure",
+          "severity": "strong"
+        }
+      ],
+      "new_grower_note_count": 0
+    },
+    {
+      "name": "support_loss",
+      "timestamp": "2026-03-17T08:00:00+00:00",
+      "original_f": 59.8,
+      "value_f": 59.8,
+      "estimate_status": "insufficient_data",
+      "estimate_reason": "fewer_than_3_usable_peers",
+      "n_used": 2,
+      "station_findings": [],
+      "new_grower_note_count": 1
+    }
+  ],
+  "boundary_probe": {
+    "timestamp": "2026-03-16T16:00:00+00:00",
+    "description": "A one-degree change can extend a pre-existing strong episode when the current row crosses the sustained threshold; episode severity is distinct from current row level. This is not a new immediate extreme triggered by a one-degree increment."
+  },
+  "full_evidence": {
+    "path": "C:\\Users\\mreth\\AppData\\Local\\Temp\\terra-station-holdout-ba7um80z\\station-holdout-review.json",
+    "sha256": "ce9452f84a18cef9e047dd898203086b5f76c4160e9ff8aea452d68a4df0738e"
+  }
+}

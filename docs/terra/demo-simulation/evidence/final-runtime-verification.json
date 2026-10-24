@@ -1,0 +1,16 @@
+{
+  "updated_monitor_e2e": true,
+  "recovery_current_utc": "2026-03-11T14:00:00+00:00",
+  "current_support": 5,
+  "original_note_support": 2,
+  "old_evidence_immutable": true,
+  "notifications_unique": true,
+  "side_effects": {
+    "real_sms": false,
+    "provider_calls": false,
+    "llm_calls": false,
+    "model_training": false,
+    "live_state": false
+  },
+  "data_sha256": "d84985213d73707dc54a6034256f73a8738fb21ccd64605141fd0a7ed48f2385"
+}

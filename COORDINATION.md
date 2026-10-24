@@ -26,15 +26,53 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "970ef873d5f1d258dad9b749a906b53336725d88",
-    "summary": "Root-selected single semantic reconciliation merges approved local UI polish 82b0102 with the isolated Tara and assigned-sender candidate. Both histories and all task sets remain preserved. Tara onboarding, recovery, notification controls, ChatGPT props and background polling remain; compact field notes and one Pacific day divider per mixed timeline are integrated. Evidence-backed answer buttons expose their full answer through a stable accessible description.",
+    "revision": "34773a9343daac920e9039108a7296a21b23ef85",
+    "summary": "The isolated consolidation now preserves the approved UI merge and main assigned-sender integration while incorporating exact frozen demo source 853336a12e9970fb3d06e5c895e45e4f24366075. One semantic repair combines the simulation, natural questions, immutable weather context, honest replay readiness and exact-note browser return with compact mixed-timeline presentation and accessible answer buttons. All source histories and coordination task/check blocks remain intact.",
     "evidence": [
-      "All nine configured scoped groups pass against captured upstream adced1ad91da099309172fdd8dddba6e3d215b1b: ChatGPT, conversation, farm, harness, JSON, pipeline, runtime, setup and SMS; coordination/filesystem and staged whitespace checks pass.",
-      "Root verified the reconciled source before the accessibility attribute repair: 34 of 34 available UI cases, production build and isolated browser onboarding from walnuts through confirmed Davis location, declined alerts, saved farm, grounded crop answer and quiet reload with zero browser errors.",
-      "Root arbitration selected this staged reconciliation as the one repair; the separate UI owner will independently review its commit. Only frontend, documentation and coordination changed in this merge; private state, numerical code, source branches and shared services were untouched."
+      "Targeted backend validation passes across all ten conversation, natural-language, readiness, weather, demo-simulation and full-flow test files; no failures or skipped tests reported. The only warning is the installed Starlette TestClient/httpx deprecation.",
+      "All 39 UI cases and eight packaging cases pass. Both main and simulation production builds pass after frozen-lockfile installation. The existing simulation bundle emits a nonblocking 632 kB chunk-size warning.",
+      "Preserved server opt-in timing and baseline reset while adding exact original-farm/note notification clicks; replay-only polling remains 1200 ms and live polling remains 30000 ms. Evidence-backed answer targets retain explicit orchard identity and stable accessible text descriptions. One Pacific day divider remains shared across the mixed conversation timeline.",
+      "All 39 coordination records, including 13 declared check blocks and the consolidation/full-flow/Tara/local-polish/demo task records, are retained. Whitespace validation passes. No numerical modules, model reference, private configuration, shared process or retained runtime state was changed."
     ],
-    "uncertainty": "Newer upstream main, the Tara owner's bounded repairs for old-note dates, returning-farm notification consent and mixed known/custom crops, and the demo owner's final candidate still require root integration and final combined validation. This source checkpoint does not claim main publication or a runtime rollout. No provider calls, credential edits or phone sends occurred.",
-    "next": "Root consumes this preserved-lineage UI merge, obtains the independent UI review, integrates the exact final Tara and demo candidates, refreshes upstream and runs final combined checks and CI before publishing main."
+    "uncertainty": "The Tara owner's bounded repairs for old-note dates, returning-farm notification consent and mixed known/custom crops remain separate, as does the demo owner's final metadata-only head. Root still owns final current-main reconciliation, the complete scoped check, independent review, exact-head CI, publication and runtime rollout. This checkpoint performs no external inference or phone send.",
+    "next": "Root consumes this preserved-history demo merge, integrates the exact final Tara and metadata-only demo heads, then performs final combined checks and publication. Keep the existing preview process and all source branches intact."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-full-flow-verification",
+  "owner": "et",
+  "status": "active",
+  "intent": "Subsequent user-requested goal: independently test final contributor revisions as first-time, returning and skeptical data-operator users; exercise onboarding, held-out simulation through frozen QC/Nathan and monitoring, no-alert controls, proactive UI messages, truthful delivery state and grounded follow-ups. Fix concrete defects and push the reviewed integrated simulation and verification changes after the complete flow passes. Preserve current runtime, credentials and original staged prototype.",
+  "branch": "codex/terra-demo-simulation",
+  "base": "cb58022",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "web/**",
+    "tests/test_terra*.py",
+    "tests/test_farm_chill_ops*.py",
+    "docs/terra/**",
+    ".github/workflows/terra.yml"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "d03f74f0a49532a2b7898fe53734b4864e17bdc9",
+    "summary": "Merged final writer/SMS main cb58022 and committed Tara checkpoint da04c2c into the isolated branch. Root owns one final reconciliation/verification cycle while preserving the Tara owner's branch and runtime. Separate workers now own natural-language routing/crop preservation, grounded local weather replies, and the stale native-route test fixture, each in separate worktrees. Root owns replay writer parity and browser journeys. No shared main/runtime/auth/SMS changes; refresh the contributor head before push and reconcile once if overlapping fixes arrive.",
+    "evidence": [
+      "Preserved original8520 demo state and both user-facing tabs; no reset or provider call. Runtime source remains separate from final contributor candidates until their handoff."
+    ],
+    "uncertainty": "Final conversational onboarding integration remains in progress in its owner checkout. Real automatic phone delivery remains disabled pending credential readiness; simulated notification and actual in-app message must be distinguished. Independent unfinished-candidate dialogue audit has reproducible ordinary-question failures to retest after final handoff.",
+    "next": "Inspect final contributor state, prepare independent held-out user-flow cases, then test the completed integrated candidate in isolated runtime/state before fixes and push."
   }
 }
 ```
@@ -103,6 +141,55 @@
     ],
     "uncertainty": "Final combined checks/CI and owner-controlled merged runtime verification remain pending. Actual current SMS settings are root-owned and must be retained; older disabled-state assumptions are superseded. Browser alerts work while Terra is open.",
     "next": "Publish this exact combined head/tree and final CI to integration owner. Root merges sender PR12 first, then Tara PR11 after combined green checks, verifies identical final application tree, and owns retained-data cutover. No independent PR11 merge, runtime/account writes, or further feature changes."
+  }
+}
+```
+
+## Interactive orchard-support simulation
+
+```json
+{
+  "kind": "check",
+  "id": "terra-demo-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_demo_simulation.py", "-q"],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-full-flow-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_full_flow.py", "-q"],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-demo-simulation",
+  "owner": "et",
+  "status": "done",
+  "intent": "Build a separate local two-view simulation: real held-out weather with manual station controls and Nathan-estimator heatmap; exact source-grounded Grok Bot style grower chat showing actual frozen QC and orchard-support events, evidence and simulated phone ping. No live-system changes, external messages, refit or provider calls.",
+  "branch": "codex/terra-demo-simulation",
+  "base": "e4292b21594d20b3983a62447e2f4632aac0f3bd",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "docs/terra/demo-simulation.md", "docs/terra/demo-simulation/**"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "6f419ff6376372e4b6f7e96cf27c4dd588c8ce26",
+    "summary": "Complete isolated two-app simulation: Station lab manual temperature/reporting controls, native raw/filtered heatmaps and exact source-grounded Grok Bot style grower chat. Real March weather outside fitting/calibration runs through frozen QC, Nathan estimate and actual orchard Monitor. Persisted proactive notes drive local simulated phone pings; old evidence remains immutable. Main loopback8520 demo is retained for ET; final browser checks used a separate8521 session.",
+    "evidence": [
+      "All7configured check groups pass against e4292b2, including14demo regressions with the updated3-subsequent-hour recovery rule. Production build,4packaging tests and app-local frozen pnpm install pass.",
+      "Browser verified precise/manual controls, pending-reset cancellation, no orchard false alert from one station spike, native heatmap exclusions, support-loss note/ping identity, factual question and evidence download,3new-hour recovery and retained old2-peer evidence after current support recovered to5.",
+      "web/demo/design-qa.md final result passed after independent source comparison and320px fix; exact xVf font hash,14/20 prose,8/12insets and16/16/16/6corners verified. Fresh final console warning/error log empty.",
+      "docs/terra/demo-simulation/evidence/final-runtime-verification.json; original weather d849852...2385 and reference809c78...90f unchanged. Existing scientific modules/configuration match pinned e4292b2; no real SMS/provider/LLM/refit or live-state writes."
+    ],
+    "uncertainty": "Visual taste remains available for ET refinement. Phone delivery is explicitly simulated; no actual handset receipt is claimed. Basemap tiles need network; numerical replay does not. Previously inspected held-out weather is not an untouched accuracy test. Later conversation-planning documentation is outside this additive simulation; the executable monitor baseline is pinned to e4292b2.",
+    "next": "Open8520/stations and8520/terra, preserve ET's current isolated session, and refine from concrete feedback. Do not reset the main demo automatically. Keep separate simulation paths and unchanged scientific reference; real SMS activation or hosting would be separate requested work."
   }
 }
 ```
@@ -290,6 +377,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "config/terra/**",
     "docs/terra/**",
     "tests/test_terra_json.py",
+    "tests/test_terra_demo_simulation.py",
+    "tests/test_terra_full_flow.py",
     "tests/test_terra_qc_*.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
@@ -319,6 +408,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "depends_on": [],
   "checks": [
     "terra-json-tests",
+    "terra-demo-tests",
+    "terra-full-flow-tests",
     "terra-sms-tests",
     "terra-farm-tests",
     "terra-runtime-tests",

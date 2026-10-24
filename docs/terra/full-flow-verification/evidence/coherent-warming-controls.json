@@ -1,0 +1,439 @@
+{
+  "schema_version": "terra-coherent-warming-control-v1",
+  "timestamp": "2026-03-17T08:00:00+00:00",
+  "source_file": "2026-03-16_2026-03-22.json",
+  "source_sha256": "1cccc2507af8e51187c36d9dfc70146cc5c75d2674083eb34a7b976d2766425d",
+  "source_unchanged": true,
+  "execution_source_revision": "ba37a820c988ff08172c2a56f10138f4b6ed6b35",
+  "reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+  "reference_sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
+  "estimator_method_version": "chillwatch-idw/ba874ff7bab7",
+  "site": {
+    "lat": 38.55,
+    "lon": -121.78,
+    "elevation_ft": 60.0
+  },
+  "cases": [
+    {
+      "name": "original",
+      "delta_f": 0,
+      "changed_station_ids": [],
+      "location_estimate": {
+        "location_id": "coherent-control",
+        "lat": 38.55,
+        "lon": -121.78,
+        "elevation_ft": 60.0,
+        "geometry_source": "caller-supplied",
+        "valid_utc": "2026-03-17T08:00:00+00:00",
+        "temperature": 59.732311007994845,
+        "unit": "degF",
+        "method": "idw",
+        "method_version": "chillwatch-idw/ba874ff7bab7",
+        "n_used": 5,
+        "used_station_ids": [
+          6,
+          226,
+          139,
+          212,
+          235
+        ],
+        "excluded": [],
+        "lapse_station_ids": [],
+        "data_through_utc": {
+          "6": "2026-03-17T08:00:00+00:00",
+          "139": "2026-03-17T08:00:00+00:00",
+          "212": "2026-03-17T08:00:00+00:00",
+          "226": "2026-03-17T08:00:00+00:00",
+          "235": "2026-03-17T08:00:00+00:00"
+        },
+        "as_of_utc": "2026-03-17T08:00:00+00:00",
+        "status": "ok",
+        "status_reason": ""
+      },
+      "qc_rows": [
+        {
+          "station_id": 6,
+          "temperature_f": 59.8,
+          "expected_f": 55.825,
+          "residual": 3.9749999999999943,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 139,
+          "temperature_f": 55.2,
+          "expected_f": 58.800000000000004,
+          "residual": -3.6000000000000014,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 212,
+          "temperature_f": 55.1,
+          "expected_f": 55.275000000000006,
+          "residual": -0.17500000000000426,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 226,
+          "temperature_f": 59.7,
+          "expected_f": 55.925000000000004,
+          "residual": 3.7749999999999986,
+          "level": "moderate",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 235,
+          "temperature_f": 52.9,
+          "expected_f": 57.050000000000004,
+          "residual": -4.150000000000006,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        }
+      ],
+      "station_findings": [],
+      "data_health": [],
+      "new_grower_note_count": 0,
+      "grower_event_counts": {
+        "welcome": 1
+      },
+      "max_residual_change_f": 0.0,
+      "orchard_change_f": 0.0
+    },
+    {
+      "name": "all_plus5",
+      "delta_f": 5,
+      "changed_station_ids": [
+        6,
+        139,
+        212,
+        226,
+        235
+      ],
+      "location_estimate": {
+        "location_id": "coherent-control",
+        "lat": 38.55,
+        "lon": -121.78,
+        "elevation_ft": 60.0,
+        "geometry_source": "caller-supplied",
+        "valid_utc": "2026-03-17T08:00:00+00:00",
+        "temperature": 64.73231100799485,
+        "unit": "degF",
+        "method": "idw",
+        "method_version": "chillwatch-idw/ba874ff7bab7",
+        "n_used": 5,
+        "used_station_ids": [
+          6,
+          226,
+          139,
+          212,
+          235
+        ],
+        "excluded": [],
+        "lapse_station_ids": [],
+        "data_through_utc": {
+          "6": "2026-03-17T08:00:00+00:00",
+          "139": "2026-03-17T08:00:00+00:00",
+          "212": "2026-03-17T08:00:00+00:00",
+          "226": "2026-03-17T08:00:00+00:00",
+          "235": "2026-03-17T08:00:00+00:00"
+        },
+        "as_of_utc": "2026-03-17T08:00:00+00:00",
+        "status": "ok",
+        "status_reason": ""
+      },
+      "qc_rows": [
+        {
+          "station_id": 6,
+          "temperature_f": 64.8,
+          "expected_f": 60.825,
+          "residual": 3.9749999999999943,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 139,
+          "temperature_f": 60.2,
+          "expected_f": 63.800000000000004,
+          "residual": -3.6000000000000014,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 212,
+          "temperature_f": 60.1,
+          "expected_f": 60.275000000000006,
+          "residual": -0.17500000000000426,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 226,
+          "temperature_f": 64.7,
+          "expected_f": 60.925000000000004,
+          "residual": 3.7749999999999986,
+          "level": "moderate",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 235,
+          "temperature_f": 57.9,
+          "expected_f": 62.050000000000004,
+          "residual": -4.150000000000006,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        }
+      ],
+      "station_findings": [],
+      "data_health": [],
+      "new_grower_note_count": 0,
+      "grower_event_counts": {
+        "welcome": 1
+      },
+      "max_residual_change_f": 0.0,
+      "orchard_change_f": 5.000000000000007
+    },
+    {
+      "name": "all_plus15",
+      "delta_f": 15,
+      "changed_station_ids": [
+        6,
+        139,
+        212,
+        226,
+        235
+      ],
+      "location_estimate": {
+        "location_id": "coherent-control",
+        "lat": 38.55,
+        "lon": -121.78,
+        "elevation_ft": 60.0,
+        "geometry_source": "caller-supplied",
+        "valid_utc": "2026-03-17T08:00:00+00:00",
+        "temperature": 74.73231100799485,
+        "unit": "degF",
+        "method": "idw",
+        "method_version": "chillwatch-idw/ba874ff7bab7",
+        "n_used": 5,
+        "used_station_ids": [
+          6,
+          226,
+          139,
+          212,
+          235
+        ],
+        "excluded": [],
+        "lapse_station_ids": [],
+        "data_through_utc": {
+          "6": "2026-03-17T08:00:00+00:00",
+          "139": "2026-03-17T08:00:00+00:00",
+          "212": "2026-03-17T08:00:00+00:00",
+          "226": "2026-03-17T08:00:00+00:00",
+          "235": "2026-03-17T08:00:00+00:00"
+        },
+        "as_of_utc": "2026-03-17T08:00:00+00:00",
+        "status": "ok",
+        "status_reason": ""
+      },
+      "qc_rows": [
+        {
+          "station_id": 6,
+          "temperature_f": 74.8,
+          "expected_f": 70.82499999999999,
+          "residual": 3.9750000000000085,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 139,
+          "temperature_f": 70.2,
+          "expected_f": 73.8,
+          "residual": -3.5999999999999943,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 212,
+          "temperature_f": 70.1,
+          "expected_f": 70.275,
+          "residual": -0.17500000000001137,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 226,
+          "temperature_f": 74.7,
+          "expected_f": 70.925,
+          "residual": 3.7750000000000057,
+          "level": "moderate",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 235,
+          "temperature_f": 67.9,
+          "expected_f": 72.05,
+          "residual": -4.1499999999999915,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        }
+      ],
+      "station_findings": [],
+      "data_health": [],
+      "new_grower_note_count": 0,
+      "grower_event_counts": {
+        "welcome": 1
+      },
+      "max_residual_change_f": 1.4210854715202004e-14,
+      "orchard_change_f": 15.000000000000007
+    },
+    {
+      "name": "davis_plus24",
+      "delta_f": 24,
+      "changed_station_ids": [
+        6
+      ],
+      "location_estimate": {
+        "location_id": "coherent-control",
+        "lat": 38.55,
+        "lon": -121.78,
+        "elevation_ft": 60.0,
+        "geometry_source": "caller-supplied",
+        "valid_utc": "2026-03-17T08:00:00+00:00",
+        "temperature": 57.22217005774833,
+        "unit": "degF",
+        "method": "idw",
+        "method_version": "chillwatch-idw/ba874ff7bab7",
+        "n_used": 4,
+        "used_station_ids": [
+          226,
+          139,
+          212,
+          235
+        ],
+        "excluded": [
+          {
+            "station_id": 6,
+            "reason": "terra_finding:extreme_departure"
+          }
+        ],
+        "lapse_station_ids": [],
+        "data_through_utc": {
+          "139": "2026-03-17T08:00:00+00:00",
+          "212": "2026-03-17T08:00:00+00:00",
+          "226": "2026-03-17T08:00:00+00:00",
+          "235": "2026-03-17T08:00:00+00:00"
+        },
+        "as_of_utc": "2026-03-17T08:00:00+00:00",
+        "status": "ok",
+        "status_reason": ""
+      },
+      "qc_rows": [
+        {
+          "station_id": 6,
+          "temperature_f": 83.8,
+          "expected_f": 55.825,
+          "residual": 27.974999999999994,
+          "level": "strong",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 139,
+          "temperature_f": 55.2,
+          "expected_f": 58.800000000000004,
+          "residual": -3.6000000000000014,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 212,
+          "temperature_f": 55.1,
+          "expected_f": 55.275000000000006,
+          "residual": -0.17500000000000426,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 226,
+          "temperature_f": 59.7,
+          "expected_f": 55.925000000000004,
+          "residual": 3.7749999999999986,
+          "level": "moderate",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        },
+        {
+          "station_id": 235,
+          "temperature_f": 52.9,
+          "expected_f": 57.050000000000004,
+          "residual": -4.150000000000006,
+          "level": "none",
+          "status": "reference_available",
+          "reference_status": "available",
+          "neighbor_count": 4
+        }
+      ],
+      "station_findings": [
+        {
+          "station_id": 6,
+          "reason": "extreme_departure",
+          "severity": "strong",
+          "detected_at_utc": "2026-03-17T08:00:00+00:00"
+        }
+      ],
+      "data_health": [],
+      "new_grower_note_count": 0,
+      "grower_event_counts": {
+        "welcome": 1
+      },
+      "max_residual_change_f": 24.0,
+      "orchard_change_f": -2.510140950246516
+    }
+  ],
+  "side_effects": {
+    "network_calls": 0,
+    "live_state": false,
+    "sms": false,
+    "llm": false,
+    "training": false,
+    "ingestion": false
+  },
+  "interpretation": "At this selected cached hour, coherent shifts preserve the peer-relative residuals; no claim of absolute weather safety or confirmed sensor accuracy follows."
+}

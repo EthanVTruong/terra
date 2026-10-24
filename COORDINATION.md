@@ -246,3 +246,39 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   }
 }
 ```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-authorship",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly requests existing Codex commits attributed to Ethan and existing Claude commits to Nathan so main has only those two human contributors. Correct exact assistant author/committer identities and assistant co-author trailers, preserve original commit trees/dates/topology and initial signature, retain recovery bundle/map, configure future project identity, and publish only main plus the corresponding existing ChillWatch branch with atomic exact-head leases. This specifically requested metadata rewrite is a bounded exception to the general no-force-push policy; do not overwrite new work or rewrite unrelated repositories.",
+  "branch": "codex/terra-authorship",
+  "base": "b25966788edb1144aa046015b6e2e5f707f116ca",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "AGENTS.md",
+    "COORDINATION.md",
+    "docs/terra/**"
+  ],
+  "depends_on": [
+    "terra-main-consolidation"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "b25966788edb1144aa046015b6e2e5f707f116ca",
+    "summary": "Authorship audit: 54 main commits (37 Claude,10 Codex,5 Ethan,2 Nathan). Verified identities from existing human commits; Nathan email resolves to Nathan-W123. Root owns correction; independent reviewer read-only. No remote rewrite yet.",
+    "evidence": [
+      "Full pre-rewrite bundle verified at .terra-local/authorship/20261024/before-authorship.bundle. All existing source and original staged prototype preserved.",
+      "Only two published heads exist: main b259667 and chillwatch-data-ml-layer 13be13f. Preserve all content; remove invalid signatures only on rewritten descendants, retain unchanged signed root."
+    ],
+    "uncertainty": "Rewritten commit IDs replace old published IDs; prior PR/CI references remain historical. GitHub contributor caches can lag and other clones need resync. Existing committer signatures cannot remain valid when signed metadata/parents change.",
+    "next": "Prepare mapped candidate, independently verify every tree/timestamp/topology and identities, lease-check current remote heads, publish bounded metadata rewrite atomically, update local refs and record map/completion."
+  }
+}
+```

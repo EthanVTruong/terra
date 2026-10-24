@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { timestamp } from "./presentation";
-import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
+import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 
 const EMPTY_PRESETS = [];
@@ -216,15 +216,17 @@ function NotificationChoice({ conversation }) {
 }
 
 export function useTaraBrowserAlerts(conversation, farm, { enabled = true } = {}) {
-  const baseline = useRef({ orchardId: null, seen: new Set(), enabled: false });
+  const baseline = useRef({ orchardId: null, seen: new Set(), enabled: false, enabledAt: null });
   const [error, setError] = useState("");
   const orchardId = conversation.state?.orchard_id;
+  const enabledAt = taraNotificationEnabledAt(conversation.state);
+  const effectiveEnabled = Boolean(enabled && enabledAt !== null);
   useEffect(() => {
     const feed = farm?.feed;
     if (!orchardId || feed?.orchard_id !== orchardId) return;
     const notes = (feed.messages || []).filter((note) => note.kind === "proactive");
-    if (!enabled || baseline.current.orchardId !== orchardId || !baseline.current.enabled) { baseline.current = { orchardId, seen: new Set(notes.map((note) => note.id)), enabled }; setError(""); return; }
-    const additions = notes.filter((note) => !baseline.current.seen.has(note.id));
+    if (!effectiveEnabled || baseline.current.orchardId !== orchardId || !baseline.current.enabled || baseline.current.enabledAt !== enabledAt) { baseline.current = { orchardId, seen: new Set(notes.map((note) => note.id)), enabled: effectiveEnabled, enabledAt }; setError(""); return; }
+    const additions = notes.filter((note) => !baseline.current.seen.has(note.id) && Date.parse(note.created_at) > enabledAt);
     for (const note of notes) baseline.current.seen.add(note.id);
     if (!conversation.state.notifications.enabled || conversation.state.notifications.capability !== "browser_open" || typeof window.Notification !== "function" || Notification.permission !== "granted") return;
     const profile = conversation.state.orchards.find((item) => item.id === orchardId);
@@ -234,7 +236,7 @@ export function useTaraBrowserAlerts(conversation, farm, { enabled = true } = {}
       try { new Notification(title, { body: note.text, tag: `terra-${note.id}` }); }
       catch { setError("Browser alerts are unavailable here. Your updates remain in chat."); }
     }
-  }, [conversation.state?.notifications.enabled, conversation.state?.notifications.capability, conversation.state?.orchards, enabled, farm?.feed, farm?.orchard?.name, orchardId]);
+  }, [conversation.state?.notifications.enabled, conversation.state?.notifications.capability, conversation.state?.orchards, effectiveEnabled, enabledAt, farm?.feed, farm?.orchard?.name, orchardId]);
   return error;
 }
 

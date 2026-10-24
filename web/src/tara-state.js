@@ -113,6 +113,18 @@ export function mergeTaraTimeline(turns, fieldNotes = []) {
   return entries.sort((a, b) => Date.parse(a.value.created_at) - Date.parse(b.value.created_at) || a.order - b.order);
 }
 
+export function taraNotificationEnabledAt(snapshot) {
+  if (snapshot?.notifications?.enabled !== true || snapshot.notifications.capability !== "browser_open") return null;
+  const events = snapshot.turns || [];
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (event.role !== "event" || event.kind !== "notification" || event.data?.saved !== true) continue;
+    const stamp = Date.parse(event.created_at);
+    return event.data.enabled === true && Number.isFinite(stamp) ? stamp : null;
+  }
+  return null;
+}
+
 export function validateFarmLocation(draft) {
   const lat = Number(draft.lat), lon = Number(draft.lon), elevation = Number(draft.elevation);
   if (!draft.name.trim() || draft.name.trim().length > 80) throw new Error("Give this farm a short name.");

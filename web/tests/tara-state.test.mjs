@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTaraOperation, mergeTaraTimeline, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
+import { createTaraOperation, mergeTaraTimeline, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
 
 const turn = (extra = {}) => ({ id: "turn-1", role: "user", kind: "text", text: "Thanks", created_at: "2026-10-24T16:00:00Z", reply_to: null, reactions: [], delivery: "local_saved", ...extra });
 const snapshot = (extra = {}) => ({ schema_version: "terra-conversation-v1", setup: { stage: "complete", crops: ["almond"], orchard_id: "farm-1" }, orchard_id: "farm-1", orchards: [{ id: "farm-1", name: "West Orchard" }], turns: [], monitoring: { status: "pending" }, notifications: { enabled: false, capability: "browser_open" }, pending_requests: [], ...extra });
@@ -95,4 +95,18 @@ test("a recovery acknowledgment has a new durable identity and requires the matc
   assert.throws(() => validateTaraResult({ ...result, state: snapshot({ turns: [notice], orchard_id: "other-farm" }) }, operation), /different farm/);
   assert.throws(() => validateTaraResult({ ...result, state: snapshot({ turns: [notice], pending_requests: [{ request_id: "old-request", created_at: notice.created_at, owner_status: "exited", reconcilable: true }] }) }, operation), /reconciled/);
   assert.throws(() => validateTaraResult({ ...result, event: { ...notice, data: { ...notice.data, target_request_id: "other-request" } } }, operation), /reconciled/);
+});
+
+test("browser alerts require the latest saved server notification choice, not a client clock or preference alone", () => {
+  const enabled = snapshot({ notifications: { enabled: true, capability: "browser_open" } });
+  const event = turn({ id: "enable", role: "event", kind: "notification", created_at: "2026-10-24T16:01:00Z", data: { saved: true, enabled: true } });
+  assert.equal(taraNotificationEnabledAt(enabled), null);
+  assert.equal(taraNotificationEnabledAt({ ...enabled, turns: [{ ...event, role: "assistant" }] }), null);
+  assert.equal(taraNotificationEnabledAt({ ...enabled, turns: [{ ...event, data: { enabled: true } }] }), null);
+  assert.equal(taraNotificationEnabledAt({ ...enabled, turns: [event] }), Date.parse(event.created_at));
+  const disabled = { ...event, id: "disable", created_at: "2026-10-24T16:02:00Z", data: { saved: true, enabled: false } };
+  assert.equal(taraNotificationEnabledAt({ ...enabled, turns: [event, disabled] }), null);
+  const enabledAgain = { ...event, id: "enable-again", created_at: "2026-10-24T16:03:00Z" };
+  assert.equal(taraNotificationEnabledAt({ ...enabled, turns: [event, disabled, enabledAgain] }), Date.parse(enabledAgain.created_at));
+  assert.equal(taraNotificationEnabledAt({ ...enabled, notifications: { enabled: false, capability: "browser_open" }, turns: [event] }), null);
 });

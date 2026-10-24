@@ -136,7 +136,7 @@ with patch('httpx.HTTPTransport.handle_request', forbidden), \\
                                     capture_output=True, text=True, timeout=30, check=True)
             self.assertEqual(json.loads(result.stdout), {
                 "http_status": 200, "state": "disconnected", "plan_enabled": False,
-                "accounts": [], "model": None, "auth_path": str(state / "chatgpt")})
+                "accounts": [], "model": None, "auth_path": str(state.resolve() / "chatgpt")})
             self.assertTrue((state / "chatgpt").is_dir())
 
     def test_live_launch_preserves_operator_environment_and_passes_explicit_files(self):

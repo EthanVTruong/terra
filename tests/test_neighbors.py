@@ -115,3 +115,17 @@ def test_fast_leave_one_out_lapse_matches_reference():
         ref = theil_sen_lapse(W2, z)
         np.testing.assert_array_equal(np.isnan(fast[:, j]), np.isnan(ref))
         np.testing.assert_allclose(fast[:, j][~np.isnan(ref)], ref[~np.isnan(ref)], rtol=0, atol=1e-12)
+
+
+def test_shrink_and_dz_kernel():
+    W = np.array([[40.0, 50.0]])
+    idx = np.array([[0, 1]])
+    dz = np.array([[1000.0, 0.0]])
+    assert adjusted_neighbor_temps(W, idx, dz, np.array([4.0]), shrink=0.5)[0, 0] == 42.0
+    adj = np.array([[40.0, 50.0]])
+    dist = np.array([[10.0, 10.0]])
+    tb_plain, _ = idw_baseline(adj, dist)
+    tb_dz, _ = idw_baseline(adj, dist, dz_ft=np.array([[1200.0, 0.0]]), dz_scale_ft=600.0)
+    assert tb_plain[0] == 45.0
+    w0 = np.exp(-4.0)
+    assert tb_dz[0] == pytest.approx((40 * w0 + 50) / (w0 + 1))

@@ -12,6 +12,10 @@ lapse:
 
 baseline:
   min_neighbors: 2        # spec
+  # physics estimate for places with no station history (map, virtual stations); fitted by
+  # `chillwatch fit-physics` (leave-stations-out). 1.0 / null = the spec's IDW + full lapse.
+  unseen_lapse_shrink: 1.0
+  unseen_dz_scale_ft: null
 
 normalize:
   min_coverage: 0.75      # spec, sub-hourly -> hourly

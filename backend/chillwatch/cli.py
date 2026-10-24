@@ -206,6 +206,24 @@ def bench(faults: int = 100, seed: int = 42, gapfill_blocks: int = 200, max_days
     typer.echo(f"written: {r['paths']}")
 
 
+@app.command("fit-physics")
+def fit_physics(fit_seasons: str = typer.Option("2018-19,2019-20,2020-21,2021-22,2022-23"),
+                check_seasons: str = typer.Option(None, help="default: the region's holdout seasons"),
+                verbose: bool = True) -> None:
+    """Fit the no-station physics estimate (lapse shrink, elevation weighting) leave-stations-out."""
+    _setup(verbose)
+    from .repair.physics_fit import fit
+
+    check = check_seasons.split(",") if check_seasons else list(config.region().get("holdout_seasons", []))
+    res = fit(_ctx(), fit_seasons.split(","), check)
+    out = config.data_dir() / "models" / "physics_fit.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(res, indent=2, default=str))
+    typer.echo(json.dumps({"best": res["best"], "fit": {k: res["fit"][k] for k in ("best", "spec")},
+                           "check": res["check"]}, indent=2, default=str))
+    typer.echo(f"written {out}; set baseline.unseen_lapse_shrink / unseen_dz_scale_ft in config/thresholds.yaml")
+
+
 @app.command()
 def grid(season: str = typer.Option(None, help="default: the region's demo season"),
          km: float = typer.Option(5.0, help="grid spacing"),

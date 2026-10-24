@@ -540,7 +540,8 @@ def predict_location_frame(
     night = is_night(fld.hours)
     pred = bundle.predict(X) if (bundle.booster is not None and use_model) else np.full(len(X), np.nan)
     model_ok = np.isfinite(pred) & (n >= 1)
-    tb = aux["t_base"]
+    # without the model (places with no station history): the fitted physics estimate
+    tb = aux["t_base"] if use_model else aux["t_phys"]
     use_idw = ~model_ok & np.isfinite(tb)
     method = np.where(model_ok, "model", np.where(use_idw, "idw_lapse", "none"))
     exp = np.where(model_ok, pred, np.where(use_idw, tb, np.nan))

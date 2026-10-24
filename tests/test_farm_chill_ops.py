@@ -277,11 +277,15 @@ def test_llm_call_uses_system_instructions_small_json_no_provider_state(watch):
     captured = []
     def respond(request):
         captured.append(json.loads(request.content))
+        choices = json.loads(captured[-1]["input"])["candidates"]
         return httpx.Response(200, json={"status": "completed", "output": [{"type": "message", "content": [
-            {"type": "output_text", "text": "Demo orchard: West Orchard has incomplete estimated chill as of Jan 11, 1:00 AM PST. Weather support is usable."}]}]})
+            {"type": "output_text", "text": json.dumps({"message": choices[0]})}]}]})
     monitor.writer = Writer(key="private", model="configured-test-model", client=httpx.Client(transport=httpx.MockTransport(respond)))
     apply(monitor, p)
     assert captured[0]["instructions"] == SYSTEM_PROMPT and captured[0]["store"] is False
+    schema = captured[0]["text"]["format"]
+    assert schema["type"] == "json_schema" and schema["strict"] is True
+    assert schema["schema"]["properties"]["message"]["enum"] == json.loads(captured[0]["input"])["candidates"]
     assert "observations" not in captured[0]["input"] and "peer_evidence" not in captured[0]["input"]
     assert monitor.store.messages(p["id"])[0]["generation"] == "openai"
 

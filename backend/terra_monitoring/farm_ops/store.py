@@ -27,6 +27,10 @@ def utc(value=None):
     return stamp.astimezone(timezone.utc)
 
 
+class QuestionInProgress(ValueError):
+    """The immutable request is reserved; generating it again may duplicate work."""
+
+
 class Store:
     def __init__(self, path=None):
         configured = path if path is not None else os.environ.get("TERRA_FARM_DB", DEFAULT_DB)
@@ -159,6 +163,44 @@ class Store:
         with self.connect() as db:
             return [json.loads(r[0]) for r in db.execute("SELECT payload FROM events WHERE orchard=? ORDER BY created,id", (orchard,))]
 
+    @staticmethod
+    def _events_by_ids(db, orchard, event_ids):
+        identifiers = list(dict.fromkeys(event_ids))
+        if not identifiers:
+            return []
+        placeholders = ",".join("?" for _ in identifiers)
+        rows = db.execute("SELECT payload FROM events WHERE orchard=? AND id IN (" + placeholders
+                          + ") ORDER BY created,id", (orchard, *identifiers))
+        return [json.loads(row[0]) for row in rows]
+
+    def events_by_ids(self, orchard, event_ids):
+        with self.connect() as db:
+            return self._events_by_ids(db, orchard, event_ids)
+
+    def reserve_question(self, orchard, message_id, question, now):
+        """Reserve generation atomically without holding a lock during its HTTP call.
+
+        A completed message is authoritative. An unfinished durable reservation
+        is never automatically expired: a crash cannot prove that generation
+        was not accepted by the optional provider. A caller may deliberately
+        choose a new request identity after reconciling an unfinished request.
+        """
+        with self.connect(write=True) as db:
+            row = db.execute("SELECT payload FROM messages WHERE orchard=? AND id=?", (orchard, message_id)).fetchone()
+            if row:
+                saved = json.loads(row[0])
+                if saved["llm_input"]["question"]["text"] != question:
+                    raise ValueError("A request identity cannot be reused for another question")
+                return saved
+            key = "question-request:" + message_id
+            reserved = self.state(db, key)
+            if reserved is not None:
+                if reserved["question"] != question:
+                    raise ValueError("A request identity cannot be reused for another question")
+                raise QuestionInProgress("This question request is already in progress or needs reconciliation")
+            self.set_state(db, key, {"question": question, "created_at": utc(now).isoformat()})
+        return None
+
     def publish(self, orchard, packet, result, event_ids, now, *, question_id=None, consumed_ids=None, created_at=None):
         message_id = fingerprint({"orchard": orchard, "events": sorted(event_ids), "question": question_id})
         body = {"id": message_id, "orchard_id": orchard, "created_at": utc(created_at or now).isoformat(),
@@ -173,6 +215,8 @@ class Store:
                 db.execute("UPDATE events SET published=1 WHERE orchard=? AND id=?", (orchard, event_id))
             db.execute("INSERT INTO writer_attempts(orchard,created,provider,outcome) VALUES(?,?,?,?)",
                        (orchard, body["created_at"], result["provider"], result["outcome"]))
+            if question_id is not None:
+                db.execute("DELETE FROM state WHERE key=?", ("question-request:" + message_id,))
             saved = db.execute("SELECT payload FROM messages WHERE id=?", (message_id,)).fetchone()
         return json.loads(saved[0])
 
@@ -187,20 +231,20 @@ class Store:
                 "SELECT payload FROM messages WHERE orchard=? ORDER BY created DESC,rowid DESC LIMIT ?", (orchard, limit))]
 
     def details(self, orchard, message_id):
-        messages = [m for m in self.messages(orchard, limit=1000) if m["id"] == message_id]
-        if not messages:
-            raise KeyError("Message not found")
-        message = messages[0]
-        events = [e for e in self.events(orchard) if e["id"] in message["event_ids"]]
-        refs = {e["evidence_id"] for e in events if e.get("evidence_id")}
         with self.connect() as db:
+            row = db.execute("SELECT payload FROM messages WHERE orchard=? AND id=?", (orchard, message_id)).fetchone()
+            if row is None:
+                raise KeyError("Message not found")
+            message = json.loads(row[0])
+            events = self._events_by_ids(db, orchard, message["event_ids"])
+            refs = {e["evidence_id"] for e in events if e.get("evidence_id")}
             facts = [json.loads(r[0]) for key in sorted(refs)
                      if (r := db.execute("SELECT payload FROM evidence WHERE id=?", (key,)).fetchone())]
-        return {"message": message, "events": events, "assessments": facts,
-                "fnric": self.get("fnric:" + orchard),
-                "history_archives": self.get("history:" + orchard, []),
-                "transport_receipt": self.get("transport:" + message_id),
-                "note": "Full evidence and exact compact LLM input; local publication is not SMS delivery."}
+            return {"message": message, "events": events, "assessments": facts,
+                    "fnric": self.state(db, "fnric:" + orchard),
+                    "history_archives": self.state(db, "history:" + orchard, []),
+                    "transport_receipt": self.state(db, "transport:" + message_id),
+                    "note": "Full evidence and exact compact LLM input; local publication is not SMS delivery."}
 
     def acquire(self, name, owner, now, *, seconds=120):
         clock = utc(now).timestamp()

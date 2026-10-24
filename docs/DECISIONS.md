@@ -46,6 +46,14 @@ Experiments in `/tmp/claude-0/ablation` during the build; all variants scored on
   virtual stations, blind tests, the Durham rescue) use the physics estimate with its own leave-stations-out uncertainty bins
   (`model.unseen_method: idw_lapse`; set `model` to switch). Training now reports `holdout_known_stations` (held-out seasons at
   trained stations, with and without offsets) as the headline accuracy.
+- **Fitted physics for places with no station** (`chillwatch fit-physics`, leave-stations-out): grid over lapse shrink
+  {0, .25, .5, .75, 1} x elevation-difference weight scale {none, 300, 600, 1000, 2000 ft}, fitted on 2018-19..2022-23.
+  Best: shrink 0.5, exp(-(dz/600 ft)^2) weights. Held-out 2023-24 + 2024-25: 2.190 -> 2.141 F MAE (-2.2%), chill median
+  103 -> 101 h. The full regional lapse over-corrects across elevation; weighting neighbors at similar elevation helps most.
+  The model's own `t_base` feature keeps the spec's estimate so inference matches training.
+- An independent review of these experiments found no leakage or scoring bug; it noted the residual models early-stopped
+  at 1-6 rounds (so "residual ML ~ physics" is really "physics + a constant"), and that every model variant kept
+  station-identifying features, so a fully station-agnostic model remains untested.
 - ASOS (`asos-v1`, 83 airport stations, leave-stations-out): model 2.71 F vs physics 2.49 F on their own (not identical) rows,
   consistent with the CIMIS finding.
 

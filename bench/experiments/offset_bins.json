@@ -1,0 +1,62 @@
+{
+ "A_previous_season": {
+  "none": {
+   "mae_from_nov1": 1.8752,
+   "chill_net_abs_median": 129.0,
+   "chill_net_abs_mean": 201.99,
+   "chill_gross_mean": 619.3
+  },
+  "night_day": {
+   "mae_from_nov1": 1.8185,
+   "chill_net_abs_median": 124.0,
+   "chill_net_abs_mean": 170.4,
+   "chill_gross_mean": 589.09
+  },
+  "hour_of_day": {
+   "mae_from_nov1": 1.7696,
+   "chill_net_abs_median": 119.0,
+   "chill_net_abs_mean": 153.94,
+   "chill_gross_mean": 572.36
+  },
+  "hour_blended": {
+   "mae_from_nov1": 1.7698,
+   "chill_net_abs_median": 123.0,
+   "chill_net_abs_mean": 154.31,
+   "chill_gross_mean": 573.34
+  },
+  "month_x_hour": {
+   "mae_from_nov1": 1.7989,
+   "chill_net_abs_median": 120.0,
+   "chill_net_abs_mean": 154.33,
+   "chill_gross_mean": 579.41
+  }
+ },
+ "B_rolling_28d_weekly": {
+  "none": {
+   "mae_from_nov1": 1.8717,
+   "chill_net_abs_median": 127.0,
+   "chill_net_abs_mean": 199.75,
+   "chill_gross_mean": 614.82
+  },
+  "night_day": {
+   "mae_from_nov1": 1.7344,
+   "chill_net_abs_median": 70.0,
+   "chill_net_abs_mean": 104.3,
+   "chill_gross_mean": 554.77
+  },
+  "hour_of_day": {
+   "mae_from_nov1": 1.6939,
+   "chill_net_abs_median": 72.0,
+   "chill_net_abs_mean": 96.4,
+   "chill_gross_mean": 542.28
+  },
+  "hour_blended": {
+   "mae_from_nov1": 1.6781,
+   "chill_net_abs_median": 69.5,
+   "chill_net_abs_mean": 97.34,
+   "chill_gross_mean": 539.11
+  }
+ },
+ "n_test_rows_A": 751236,
+ "n_test_rows_B": 640000
+}

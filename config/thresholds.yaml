@@ -19,6 +19,17 @@ baseline:
   unseen_lapse_shrink: 0.5
   unseen_dz_scale_ft: 600
 
+# estimate_location (backend/chillwatch/estimate.py): the Terra-facing estimate for a place
+# with no station. See docs/TERRA_COMPATIBILITY.md.
+estimate:
+  # Apply the lapse only when the usable stations that hour span this much elevation. A slope
+  # from stations ~1 F apart over Terra's 129 ft span is ~8 F/kft of noise (it sat at the
+  # +-10 F/kft clip half the time and added nothing); over 500 ft the same noise is ~2 F/kft.
+  lapse_min_span_ft: 500    # TODO source: from the noise argument above, not fitted
+  min_peers: 3              # Terra QC's rule: at least three usable other stations
+  # Months (PST) with data and validation behind them; other months return insufficient_data.
+  validated_months: [10, 11, 12, 1, 2, 3]
+
 normalize:
   min_coverage: 0.75      # spec, sub-hourly -> hourly
 
@@ -76,6 +87,10 @@ severity:                  # TODO source: severities other than offline are not 
 offsets:
   window_days: 28         # spec
   recompute_days: 7       # spec (weekly)
+  # Offsets are kept per PST hour of day (24 bins), each pulled toward its night/day median
+  # with weight n / (n + hour_shrink_k). Held-out 2023-25, weekly 28-day learning: MAE
+  # 1.734 -> 1.678 F, chill-hour net error 104 -> 97 h vs night/day (bench/experiments/offset_bins.json).
+  hour_shrink_k: 14       # TODO source: chosen, not fitted (~half the samples a 28-day bin has)
 
 repair:
   long_gap_days: 14       # spec

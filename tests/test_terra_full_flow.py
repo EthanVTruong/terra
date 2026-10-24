@@ -6,7 +6,6 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
 from terra_monitoring.demo_simulation.engine import DemoSimulation, ORCHARD, START
@@ -220,27 +219,11 @@ class FullFlowTests(unittest.TestCase):
         self.assertEqual(restored.state.full_flow_bridge.engine.session["run_id"], run_id)
 
     def test_existing_native_conversation_and_routes_are_reused_without_fallback(self):
-        native_conversation = object()
+        native_conversation = {}
 
         def with_native_conversation(**kwargs):
             app = native_app(**kwargs)
-            router = APIRouter()
-
-            @router.get("/api/tara/conversation")
-            def state():
-                return {"owner": "native"}
-
-            @router.post("/api/tara/messages")
-            @router.post("/api/tara/setup")
-            def action():
-                return {"owner": "native"}
-
-            # Native registration occurs before its reserved API fallback.
-            existing = list(app.router.routes)
-            app.router.routes.clear()
-            app.include_router(router)
-            app.router.routes.extend(existing)
-            app.state.tara_conversation = native_conversation
+            native_conversation["instance"] = app.state.tara_conversation
             return app
 
         def forbidden_fallback(*args, **kwargs):
@@ -249,7 +232,7 @@ class FullFlowTests(unittest.TestCase):
         with patch("terra_monitoring.demo_simulation.full_flow.production_app", with_native_conversation):
             app = create_app(simulation=self.engine, web_root=self.production, demo_root=self.demo,
                              conversation_factory=forbidden_fallback)
-        self.assertIs(app.state.tara_conversation, native_conversation)
+        self.assertIs(app.state.tara_conversation, native_conversation["instance"])
         def leaf_routes(routes):
             for route in routes:
                 included = getattr(route, "original_router", None)
@@ -262,9 +245,19 @@ class FullFlowTests(unittest.TestCase):
         for path in ("/api/tara/conversation", "/api/tara/messages", "/api/tara/setup"):
             self.assertEqual(sum(getattr(route, "path", None) == path for route in routes), 1)
         with TestClient(app, base_url="http://127.0.0.1:8532") as client:
-            self.assertEqual(client.get("/api/tara/conversation").json(), {"owner": "native"})
-            self.assertEqual(client.post("/api/tara/messages").json(), {"owner": "native"})
-            self.assertEqual(client.post("/api/tara/setup").json(), {"owner": "native"})
+            state = client.get("/api/tara/conversation")
+            self.assertEqual(state.status_code, 200)
+            self.assertEqual(state.json()["schema_version"], "terra-conversation-v1")
+            token = client.get("/api/sms/status").json()["control_token"]
+            headers = {"X-Terra-SMS-Control": token}
+            message = client.post("/api/tara/messages", headers=headers,
+                json={"request_id": "reuse-native-thanks", "text": "Thanks"})
+            self.assertEqual(message.status_code, 200, message.text)
+            self.assertEqual(message.json()["outcome"], "none")
+            setup = client.post("/api/tara/setup", headers=headers,
+                json={"request_id": "reuse-native-restart", "action": "restart"})
+            self.assertEqual(setup.status_code, 200, setup.text)
+            self.assertEqual(setup.json()["state"]["setup"]["stage"], "crop")
 
 
 if __name__ == "__main__":

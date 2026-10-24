@@ -11,19 +11,19 @@ import threading
 from .service import Monitor
 from .source import LiveSource
 from .store import Store, encoded
+from ..configuration import DEFAULT_STATE_DIR
 
 
-def _monitor(database):
-    store = Store(database)
-    # Both API and worker use the explicitly resolved shared runtime location.
-    os.environ["TERRA_FARM_DB"] = str(store.path)
+def _monitor(database, state_dir=None):
+    state_dir = Path(state_dir or DEFAULT_STATE_DIR).expanduser().resolve()
+    store = Store(database or os.environ.get("TERRA_FARM_DB") or state_dir / "farm.sqlite3")
     delivery = None
     try:
         from terra_monitoring.sms import SMSDispatcher
     except ImportError:
         pass
     else:
-        delivery = SMSDispatcher.from_env()
+        delivery = SMSDispatcher.from_env(state_dir=state_dir)
     return Monitor(store, source=LiveSource(), delivery=delivery)
 
 
@@ -65,6 +65,7 @@ def run_loop(monitor, interval=60, *, stop=None, max_checks=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, help="Shared absolute SQLite path; defaults to package-root .terra-local or TERRA_FARM_DB")
+    parser.add_argument("--state-dir", type=Path, help="Shared canonical runtime state directory")
     sub = parser.add_subparsers(dest="command", required=True)
     add = sub.add_parser("add-orchard")
     add.add_argument("--name", default="West Orchard")
@@ -104,7 +105,7 @@ def main():
         store = Store(args.database or Path(__file__).resolve().parents[3] / ".terra-local" / "farm-chill-ops-demo.sqlite3")
         print(encoded(run_demo(store, args.orchard_id)))
         return
-    monitor = _monitor(args.database)
+    monitor = _monitor(args.database, args.state_dir)
     if args.command == "add-orchard":
         result = monitor.create_orchard(args.name, orchard_id=args.orchard_id, lat=args.lat, lon=args.lon, elevation_ft=args.elevation_ft)
     elif args.command == "once":
@@ -121,8 +122,9 @@ def main():
         if not 1 <= args.port <= 65535:
             parser.error("port must be 1-65535")
         import uvicorn
-        from .api import create_app
-        uvicorn.run(create_app(monitor), host=args.host, port=args.port)
+        from ..runtime import create_runtime_app
+        uvicorn.run(create_runtime_app(monitor=monitor, state_dir=args.state_dir, start_worker=False),
+                    host=args.host, port=args.port)
         return
     elif args.command == "status":
         result = monitor.status(args.orchard_id)

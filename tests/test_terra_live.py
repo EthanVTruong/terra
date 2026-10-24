@@ -716,3 +716,124 @@ def test_last_attempt_is_owned_by_candidate_cohort_not_other_location_queries(tm
     assert a_cached["last_attempt_at_utc"] == a_meta["last_attempt_at_utc"]
     assert a_cached["retrieved_at_utc"] == a_meta["retrieved_at_utc"]
     assert pd.Timestamp(a_cached["checked_at_utc"]) == clock.value
+
+
+def test_expired_cached_outage_has_cooldown_without_inventing_retrieval_or_retry_time(tmp_path):
+    live, source, clock = service(tmp_path)
+    first = live.assess(SITE)
+    retrieved = first["provenance"]["live_source"]["retrieved_at_utc"]
+    clock.advance(seconds=121)
+    source.hourly_error = RuntimeError("controlled provider outage")
+    failed = live.assess(SITE)
+    attempted = failed["provenance"]["live_source"]["last_attempt_at_utc"]
+    for _ in range(3):
+        clock.advance(seconds=10)
+        retained = live.assess(SITE)["provenance"]["live_source"]
+        assert retained["status"] == "cached_after_error"
+        assert retained["retrieved_at_utc"] == retrieved and retained["last_attempt_at_utc"] == attempted
+        assert retained["cache_age_seconds"] > 121
+    assert sum(call[0] == "hourly" for call in source.calls) == 2
+    clock.advance(seconds=90)
+    live.assess(SITE)
+    assert sum(call[0] == "hourly" for call in source.calls) == 3
+    source.hourly_error = None
+    forced = live.assess({**SITE, "refresh": True})["provenance"]["live_source"]
+    assert forced["status"] == "refreshed" and forced["warning"] is None
+    assert sum(call[0] == "hourly" for call in source.calls) == 4
+
+
+def test_initial_acquisition_failure_is_cooled_down_and_explicit_refresh_can_retry(tmp_path):
+    live, source, clock = service(tmp_path)
+    source.hourly_error = RuntimeError("controlled initial outage")
+    for _ in range(3):
+        with pytest.raises(LiveQueryError) as error:
+            live.assess(SITE)
+        assert error.value.code == "provider_unavailable"
+    assert sum(call[0] == "hourly" for call in source.calls) == 1
+    source.hourly_error = None
+    assert live.assess({**SITE, "refresh": True})["provenance"]["live_source"]["status"] == "refreshed"
+    assert sum(call[0] == "hourly" for call in source.calls) == 2
+
+
+def test_failure_cooldown_does_not_mask_malformed_data_with_cached_success(tmp_path):
+    live, source, clock = service(tmp_path)
+    live.assess(SITE)
+    source.payload_override = {"Data": {"Providers": "invalid"}}
+    clock.advance(seconds=10)
+    with pytest.raises(LiveQueryError) as error:
+        live.assess({**SITE, "refresh": True})
+    assert error.value.code == "provider_invalid_response"
+    calls = list(source.calls)
+    with pytest.raises(LiveQueryError) as error:
+        live.assess(SITE)
+    assert error.value.code == "provider_invalid_response" and source.calls == calls
+    source.payload_override = MISSING
+    assert live.assess({**SITE, "refresh": True})["provenance"]["live_source"]["status"] == "refreshed"
+
+
+def test_current_cohort_cache_is_lru_bounded_and_keeps_durable_evidence(tmp_path, monkeypatch):
+    live, source, clock = service(tmp_path)
+    live.max_cache_entries = 2
+    monkeypatch.setattr(live, "_candidates", lambda query, catalog, now: [6, int(query["location_id"])])
+    def query(station):
+        return {**SITE, "location_id": str(station)}
+    live.assess(query(226))
+    live.assess(query(139))
+    live.assess(query(226))  # Reuse makes 139 the least recently used cohort.
+    live.assess(query(212))
+    assert len(live._cohorts) == 2
+    assert sum(call[0] == "hourly" for call in source.calls) == 3
+    live.assess(query(139))
+    assert len(live._cohorts) == 2 and sum(call[0] == "hourly" for call in source.calls) == 4
+    assert len(list((tmp_path / "live" / "snapshots").glob("*.json"))) >= 3
+    assert (tmp_path / "live" / "first-seen.json").exists()
+
+
+def test_previous_day_cohorts_are_evicted_without_deleting_snapshots(tmp_path):
+    live, source, clock = service(tmp_path)
+    for day in range(5):
+        live.assess(SITE)
+        assert len(live._cohorts) == 1
+        clock.advance(days=1)
+    assert len(list((tmp_path / "live" / "snapshots").glob("*.json"))) == 5
+
+
+@pytest.mark.parametrize("changes", [{"max_cache_entries": 0}, {"max_cache_entries": True},
+                                      {"failure_cooldown_seconds": -1}, {"failure_cooldown_seconds": float("inf")}])
+def test_invalid_cache_bounds_fail_before_acquisition(tmp_path, changes):
+    source = SavedRawSource(tmp_path / "raw")
+    with pytest.raises(ValueError):
+        LiveQueryService(source=source, data_dir=tmp_path / "live", **changes)
+    assert source.calls == []
+
+
+def test_catalog_outage_has_the_same_cooldown_and_explicit_refresh_recovery(tmp_path):
+    live, source, clock = service(tmp_path)
+    source.catalog_error = RuntimeError("controlled catalog outage")
+    for _ in range(3):
+        with pytest.raises(LiveQueryError) as error:
+            live.assess(SITE)
+        assert error.value.code == "provider_unavailable"
+    assert sum(call[0] == "stations" for call in source.calls) == 1
+    clock.advance(seconds=120)
+    with pytest.raises(LiveQueryError):
+        live.assess(SITE)
+    assert sum(call[0] == "stations" for call in source.calls) == 2
+    source.catalog_error = None
+    assert live.assess({**SITE, "refresh": True})["provenance"]["live_source"]["status"] == "refreshed"
+    assert sum(call[0] == "stations" for call in source.calls) == 3
+
+
+def test_catalog_auth_failure_never_falls_back_to_previously_cached_metadata(tmp_path):
+    live, source, clock = service(tmp_path)
+    live.assess(SITE)
+    source.catalog_error = CimisAuthError("private authentication failure")
+    with pytest.raises(LiveQueryError) as error:
+        live.assess({**SITE, "refresh": True})
+    assert error.value.code == "provider_auth"
+    calls = list(source.calls)
+    with pytest.raises(LiveQueryError) as error:
+        live.assess(SITE)
+    assert error.value.code == "provider_auth" and source.calls == calls
+    source.catalog_error = None
+    assert live.assess({**SITE, "refresh": True})["provenance"]["live_source"]["status"] == "refreshed"

@@ -8,59 +8,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from collections.abc import MutableMapping
 from contextlib import asynccontextmanager
 import logging
 import os
 from pathlib import Path
-import re
 import threading
 from typing import Any
-
-PACKAGE_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_STATE_DIR = PACKAGE_ROOT / ".terra-local" / "runtime"
-_KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
-
-
-def load_environment_file(path: str | Path,
-                          environment: MutableMapping[str, str] | None = None) -> Path:
-    """Load an explicitly chosen local file without shell evaluation.
-
-    Existing process values win. Parse the whole bounded file before applying
-    anything, and keep errors free of filenames, values and credential text.
-    This is a local operator option, never browser input.
-    """
-    destination = os.environ if environment is None else environment
-    try:
-        resolved = Path(path).expanduser().resolve()
-        with resolved.open("rb") as stream:
-            raw = stream.read(65537)
-        if len(raw) > 65536:
-            raise ValueError("oversized")
-        values: dict[str, str] = {}
-        for raw_line in raw.decode("utf-8-sig").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if line.startswith("export "):
-                line = line[7:].strip()
-            key, separator, value = line.partition("=")
-            key, value = key.strip(), value.strip()
-            if not separator or not _KEY.fullmatch(key) or "\x00" in value:
-                raise ValueError("invalid assignment")
-            if value.startswith(("'", '"')):
-                if len(value) < 2 or value[-1] != value[0]:
-                    raise ValueError("invalid quote")
-                value = value[1:-1]
-            if len(key) + len(value) + 1 > 32766:
-                # Windows has a separate per-environment-variable limit.
-                raise ValueError("oversized value")
-            values[key] = value
-    except (OSError, TypeError, ValueError, UnicodeError):
-        raise ValueError("The private environment file is unavailable or invalid.") from None
-    for key, value in values.items():
-        destination.setdefault(key, value)
-    return resolved
+from .configuration import DEFAULT_STATE_DIR, JournalSelectionError, load_environment_file
 
 
 def _interval(value: int) -> int:
@@ -108,8 +62,7 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
     if live_service is None:
         live_service = existing_live if existing_live is not None else LiveQueryService(data_dir=resolved / "live-source")
     if sms_dispatcher is None:
-        sms_dispatcher = existing_sms if existing_sms is not None else SMSDispatcher.from_env({
-            **os.environ, "TERRA_SMS_DB_PATH": str(resolved / "sms.sqlite3")})
+        sms_dispatcher = existing_sms if existing_sms is not None else SMSDispatcher.from_env(state_dir=resolved)
     if monitor is None:
         monitor = Monitor(Store(resolved / "farm.sqlite3"), source=LiveSource(live_service),
                           delivery=sms_dispatcher, clock=clock)
@@ -199,6 +152,8 @@ def main(argv: list[str] | None = None) -> None:
     try:
         app = create_runtime_app(state_dir=args.state_dir, start_worker=not args.no_worker,
                                  poll_seconds=args.interval, web_root=args.web_root)
+    except JournalSelectionError as exc:
+        parser.error(str(exc))
     except (OSError, TypeError, ValueError):
         parser.error("Unable to initialize the local runtime. Check its configuration and state directory.")
     import uvicorn

@@ -3,14 +3,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
-from starlette.responses import Response
 
 from .service import Monitor
-from .store import encoded
+from ..server import _json_response as response, _error
 
 
 class OrchardInput(BaseModel):
@@ -34,20 +32,15 @@ class SubscriptionInput(BaseModel):
     enabled: bool
 
 
-def response(value, status=200):
-    return Response(encoded(value), status_code=status, media_type="application/json",
-                    headers={"Cache-Control": "no-store"})
-
-
 async def _call(function, *args, **kwargs):
     try:
         return response(await run_in_threadpool(function, *args, **kwargs))
     except KeyError:
-        return response({"error": {"code": "not_found", "message": "Orchard or message not found."}}, 404)
+        return _error("not_found", "Orchard or message not found.", 404)
     except ValueError:
-        return response({"error": {"code": "invalid_request", "message": "Provide a valid orchard, preference or supported question."}}, 422)
+        return _error("invalid_request", "Provide a valid orchard, preference or supported question.", 422)
     except Exception:
-        return response({"error": {"code": "monitor_unavailable", "message": "The monitor could not complete this request."}}, 503)
+        return _error("monitor_unavailable", "The monitor could not complete this request.", 503)
 
 
 def create_router(monitor: Monitor, *, mutation_guard=None):
@@ -114,19 +107,13 @@ def create_router(monitor: Monitor, *, mutation_guard=None):
 
 
 def create_app(monitor=None, *, location_service=None, web_root: str | Path | None = None, mutation_guard=None):
+    """Compatibility factory using the canonical guarded HTTP app, with no loop."""
     if monitor is None:
         from .source import LiveSource
         monitor = Monitor(source=LiveSource())
-    app = FastAPI(title="Terra farm-chill-ops", docs_url=None, redoc_url=None)
+    from ..server import create_app as create_server
+    app = create_server(service=location_service, sms_dispatcher=monitor.delivery,
+                        farm_monitor=monitor, web_root=web_root, mutation_guard=mutation_guard)
     app.state.monitor = monitor
 
-    @app.exception_handler(RequestValidationError)
-    async def invalid(request: Request, exc: RequestValidationError):
-        return response({"error": {"code": "invalid_request", "message": "Provide supported fields with valid values."}}, 422)
-
-    app.include_router(create_router(monitor, mutation_guard=mutation_guard))
-    # Mount after the orchard routes, so the original preview and pure query API still work.
-    if location_service is not None or web_root is not None:
-        from terra_monitoring.server import create_app as location_app
-        app.mount("/", location_app(service=location_service, web_root=web_root))
     return app

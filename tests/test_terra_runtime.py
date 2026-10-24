@@ -223,8 +223,8 @@ def test_default_construction_shares_services_and_absolute_journals(tmp_path, mo
     def live_factory(**kwargs):
         seen["source"] = kwargs
         return live
-    def sms_factory(environment):
-        seen["sms_path"] = environment["TERRA_SMS_DB_PATH"]
+    def sms_factory(*, state_dir):
+        seen["sms_path"] = str(state_dir / "sms.sqlite3")
         return sms
     monkeypatch.setattr(live_module, "LiveQueryService", live_factory)
     monkeypatch.setattr(sms_module.SMSDispatcher, "from_env", sms_factory)
@@ -350,3 +350,161 @@ def test_cli_defaults_explicitly_start_worker(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "uvicorn", types.SimpleNamespace(run=lambda *args, **kwargs: None))
     runtime.main(["--state-dir", str(tmp_path)])
     assert seen["start_worker"] is True and seen["poll_seconds"] == 300
+
+
+def configure_sms(monkeypatch):
+    for key, value in {"TWILIO_ACCOUNT_SID": "AC" + "1" * 32, "TWILIO_AUTH_TOKEN": "2" * 32,
+                       "TWILIO_FROM_NUMBER": "+15555550101", "TERRA_SMS_TO_NUMBER": "+15555550102",
+                       "TERRA_SMS_ENABLED": "true"}.items():
+        monkeypatch.setenv(key, value)
+
+
+@pytest.mark.parametrize("selection", ["process", "file", "state-dir"])
+def test_runtime_and_sms_operator_share_pause_resume_journal(tmp_path, monkeypatch, capsys, selection):
+    from terra_monitoring.sms import main as sms_main
+    configure_sms(monkeypatch)
+    state = tmp_path / "state"
+    chosen = tmp_path / "explicit.sqlite3"
+    if selection == "process":
+        monkeypatch.setenv("TERRA_SMS_DB_PATH", str(chosen))
+    elif selection == "file":
+        path = tmp_path / "private.env"
+        path.write_text("TERRA_SMS_DB_PATH=" + str(chosen), encoding="utf-8")
+        monkeypatch.setenv("TERRA_SMS_ENV_FILE", str(path))
+    else:
+        chosen = state / "sms.sqlite3"
+    app = runtime.create_runtime_app(live_service=Live(), state_dir=state, web_root=tmp_path / "no-web")
+    actual = app.state.sms_dispatcher
+    assert actual.config.db_path == chosen
+    assert actual.disable()["suppressed"] is True
+    sms_main(["enable", "--state-dir", str(state)])
+    assert actual.status()["enabled"] is True and actual.status()["suppressed"] is False
+    assert "AC" + "1" * 32 not in capsys.readouterr().out
+
+
+def test_default_runtime_and_operator_use_the_same_canonical_journal(tmp_path, monkeypatch):
+    from terra_monitoring import configuration
+    from terra_monitoring.sms import SMSDispatcher
+    monkeypatch.setattr(configuration, "DEFAULT_STATE_DIR", tmp_path)
+    monkeypatch.setattr(runtime, "DEFAULT_STATE_DIR", tmp_path)
+    app = runtime.create_runtime_app(live_service=Live(), web_root=tmp_path / "no-web")
+    assert app.state.sms_dispatcher.config.db_path == SMSDispatcher.from_env({}).config.db_path == tmp_path / "sms.sqlite3"
+
+
+@pytest.mark.parametrize("has_history", [False, True])
+def test_explicit_journal_switch_cannot_abandon_legacy_runtime_history(tmp_path, monkeypatch, has_history):
+    import sqlite3
+    from terra_monitoring.configuration import JournalSelectionError
+    state = tmp_path / "old-runtime"
+    state.mkdir()
+    previous = state / "sms.sqlite3"
+    with sqlite3.connect(previous) as db:
+        db.execute("CREATE TABLE sms_delivery(event_id TEXT)")
+        if has_history:
+            db.execute("INSERT INTO sms_delivery VALUES ('existing-no-resend-evidence')")
+    selected = tmp_path / "new-location.sqlite3"
+    monkeypatch.setenv("TERRA_SMS_DB_PATH", str(selected))
+    if has_history:
+        with pytest.raises(JournalSelectionError, match="existing delivery history") as exc:
+            runtime.create_runtime_app(live_service=Live(), state_dir=state)
+        assert str(previous) not in str(exc.value) and str(selected) not in str(exc.value)
+        assert not selected.exists()
+    else:
+        assert runtime.create_runtime_app(live_service=Live(), state_dir=state).state.sms_dispatcher.config.db_path == selected
+    with sqlite3.connect(previous) as db:
+        assert db.execute("SELECT COUNT(*) FROM sms_delivery").fetchone()[0] == int(has_history)
+
+
+def test_guarded_farm_routes_share_validation_and_wrong_method_errors(components, tmp_path):
+    app = app_for(components, tmp_path)
+    with TestClient(app, base_url=ORIGIN) as client:
+        token = client.get("/api/sms/status").json()["control_token"]
+        bad = client.post("/api/orchards", json={"sms_opt_in": "yes"},
+                          headers={"X-Terra-SMS-Control": token})
+        assert bad.status_code == 422 and bad.json()["error"]["code"] == "invalid_request"
+        assert "coordinates" not in bad.json()["error"]["message"]
+        for method, path in [("GET", "/api/monitor/check"), ("DELETE", "/api/orchards"),
+                             ("POST", "/api/orchards/west"), ("DELETE", "/api/orchards/west/sms-opt-in")]:
+            result = client.request(method, path)
+            assert result.status_code == 405 and result.json()["error"]["code"] == "method_not_allowed"
+        assert client.get("/api/unknown").status_code == 404
+    assert components[0].calls == [] and components[2].calls == 0
+
+
+def test_legacy_query_server_delegates_to_runtime_without_starting_worker(monkeypatch):
+    from terra_monitoring import server
+    seen = []
+    monkeypatch.setattr(runtime, "main", lambda args: seen.append(args))
+    server.main(["--port", "8519"])
+    assert seen == [["--port", "8519", "--no-worker"]]
+
+
+def test_legacy_farm_serve_uses_canonical_runtime_without_implicit_worker(tmp_path, monkeypatch):
+    from terra_monitoring.farm_ops import __main__ as farm_cli
+    seen, monitor = {}, object()
+    monkeypatch.setattr(sys, "argv", ["farm", "--state-dir", str(tmp_path), "serve", "--port", "8519"])
+    monkeypatch.setattr(farm_cli, "_monitor", lambda database, state_dir: monitor)
+    monkeypatch.setattr(runtime, "create_runtime_app", lambda **kwargs: seen.update(kwargs) or "canonical-app")
+    monkeypatch.setitem(sys.modules, "uvicorn", types.SimpleNamespace(run=lambda app, **kw: seen.update(app=app, **kw)))
+    farm_cli.main()
+    assert seen["app"] == "canonical-app" and seen["monitor"] is monitor
+    assert seen["start_worker"] is False and seen["port"] == 8519
+
+
+@pytest.mark.parametrize("paused", [False, True])
+def test_journal_selection_preserves_saved_pause_even_without_delivery_history(tmp_path, monkeypatch, paused):
+    import sqlite3
+    from terra_monitoring.configuration import JournalSelectionError
+    state = tmp_path / "old-runtime"
+    state.mkdir()
+    with sqlite3.connect(state / "sms.sqlite3") as db:
+        db.execute("CREATE TABLE sms_settings(key TEXT PRIMARY KEY,value TEXT)")
+        db.execute("INSERT INTO sms_settings VALUES ('disabled',?)", ("true" if paused else "false",))
+    selected = tmp_path / "new.sqlite3"
+    monkeypatch.setenv("TERRA_SMS_DB_PATH", str(selected))
+    if paused:
+        with pytest.raises(JournalSelectionError, match="saved pause"):
+            runtime.create_runtime_app(live_service=Live(), state_dir=state)
+    else:
+        assert runtime.create_runtime_app(live_service=Live(), state_dir=state).state.sms_dispatcher.config.db_path == selected
+    assert not selected.exists()
+
+
+def test_unreadable_previous_journal_cannot_silently_switch_location(tmp_path, monkeypatch):
+    from terra_monitoring.configuration import JournalSelectionError
+    state = tmp_path / "old-runtime"
+    state.mkdir()
+    (state / "sms.sqlite3").write_bytes(b"invalid database")
+    monkeypatch.setenv("TERRA_SMS_DB_PATH", str(tmp_path / "new.sqlite3"))
+    with pytest.raises(JournalSelectionError, match="needs review"):
+        runtime.create_runtime_app(live_service=Live(), state_dir=state)
+
+
+def test_relative_operator_state_directory_matches_runtime_cwd_resolution(tmp_path, monkeypatch, capsys):
+    from terra_monitoring.sms import main as sms_main
+    configure_sms(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    app = runtime.create_runtime_app(live_service=Live(), state_dir="custom-state", web_root=tmp_path / "no-web")
+    actual = app.state.sms_dispatcher
+    assert actual.config.db_path == tmp_path / "custom-state" / "sms.sqlite3"
+    actual.disable()
+    sms_main(["enable", "--state-dir", "custom-state"])
+    assert actual.status()["enabled"] is True
+    capsys.readouterr()
+
+
+def test_default_journal_migration_does_not_abandon_legacy_operator_history(tmp_path, monkeypatch):
+    import sqlite3
+    from terra_monitoring import configuration
+    from terra_monitoring.configuration import JournalSelectionError
+    from terra_monitoring.sms import SMSDispatcher
+    monkeypatch.setattr(configuration, "PACKAGE_ROOT", tmp_path)
+    monkeypatch.setattr(configuration, "DEFAULT_STATE_DIR", tmp_path / ".terra-local" / "runtime")
+    legacy = tmp_path / ".terra-local" / "sms.sqlite3"
+    legacy.parent.mkdir()
+    with sqlite3.connect(legacy) as db:
+        db.execute("CREATE TABLE sms_delivery(event_id TEXT)")
+        db.execute("INSERT INTO sms_delivery VALUES ('old-no-resend-evidence')")
+    with pytest.raises(JournalSelectionError, match="existing delivery history"):
+        SMSDispatcher.from_env({})
+    assert SMSDispatcher.from_env({"TERRA_SMS_DB_PATH": str(legacy)}).config.db_path == legacy

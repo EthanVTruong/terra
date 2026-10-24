@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from .service import Monitor
+from .store import QuestionInProgress
 from ..server import _json_response as response, _error
 
 
@@ -37,6 +38,8 @@ async def _call(function, *args, **kwargs):
         return response(await run_in_threadpool(function, *args, **kwargs))
     except KeyError:
         return _error("not_found", "Orchard or message not found.", 404)
+    except QuestionInProgress:
+        return _error("question_in_progress", "This question is already in progress or needs reconciliation.", 422)
     except ValueError:
         return _error("invalid_request", "Provide a valid orchard, preference or supported question.", 422)
     except Exception:

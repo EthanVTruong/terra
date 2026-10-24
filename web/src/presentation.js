@@ -5,6 +5,11 @@ export const timestamp = (value) => {
   if (!value || !Number.isFinite(Date.parse(value))) return "Not supplied";
   return new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(value));
 };
+export function publicationTime(record) {
+  const value = record?.published_at;
+  return typeof value === "string" && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value))
+    ? value : record?.created_at;
+}
 const pacific = "America/Los_Angeles";
 const dayFormatter = new Intl.DateTimeFormat("en-US", { timeZone: pacific, year: "numeric", month: "2-digit", day: "2-digit" });
 const clockFormatter = new Intl.DateTimeFormat("en-US", { timeZone: pacific, hour: "numeric", minute: "2-digit" });

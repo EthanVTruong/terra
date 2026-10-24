@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
-import { clockTime, dayLabel, localDay, timestamp } from "./presentation";
+import { clockTime, dayLabel, localDay, publicationTime, timestamp } from "./presentation";
 import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 import { showTaraNotification } from "./notification-return";
@@ -232,7 +232,7 @@ export function useTaraBrowserAlerts(conversation, farm, { enabled = true, onOpe
     if (!orchardId || feed?.orchard_id !== orchardId) return;
     const notes = (feed.messages || []).filter((note) => note.kind === "proactive");
     if (!effectiveEnabled || baseline.current.orchardId !== orchardId || !baseline.current.enabled || baseline.current.enabledAt !== enabledAt) { baseline.current = { orchardId, seen: new Set(notes.map((note) => note.id)), enabled: effectiveEnabled, enabledAt }; setError(""); return; }
-    const additions = notes.filter((note) => !baseline.current.seen.has(note.id) && Date.parse(note.created_at) > enabledAt);
+    const additions = notes.filter((note) => !baseline.current.seen.has(note.id) && Date.parse(publicationTime(note)) > enabledAt);
     for (const note of notes) baseline.current.seen.add(note.id);
     if (!conversation.state.notifications.enabled || conversation.state.notifications.capability !== "browser_open" || typeof window.Notification !== "function" || Notification.permission !== "granted") return;
     const profile = conversation.state.orchards.find((item) => item.id === orchardId);
@@ -262,14 +262,15 @@ export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS,
       {turns.length === 0 && state.setup.stage === "crop" && state.initial_prompt ? <article className="tara-turn tara-assistant"><div className="incoming-bubble">{state.initial_prompt}</div></article> : null}
       {timeline.map((entry, index) => {
         const turn = entry.value;
-        const showDay = index === 0 || localDay(turn.created_at) !== localDay(timeline[index - 1].value.created_at);
+        const published = publicationTime(turn);
+        const showDay = index === 0 || localDay(published) !== localDay(publicationTime(timeline[index - 1].value));
         const hasDetails = turn.data?.message_id && onDetails;
         const Bubble = hasDetails ? "button" : "div";
         return <React.Fragment key={entry.key}>
-          {showDay && <div className="day-separator"><time dateTime={localDay(turn.created_at)} title={timestamp(turn.created_at)}>{dayLabel(turn.created_at)}</time></div>}
+          {showDay && <div className="day-separator"><time dateTime={localDay(published)} title={timestamp(published)}>{dayLabel(published)}</time></div>}
           {entry.type === "note" ? renderFieldNote(turn) : turn.role === "event" ? <div className={`tara-saved-event${turn.kind === "notice" ? " tara-notice-event" : ""}`}><Icon name={turn.kind === "location" ? "location" : turn.kind === "notice" ? "file" : "phone"} size={15} /><span>{turn.text}</span>{turn.kind !== "notice" ? <Icon name="check" size={14} /> : null}</div> : <article className={`tara-turn tara-${turn.role}`}>
-            <Bubble type={hasDetails ? "button" : undefined} className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"} title={hasDetails ? "View readings" : undefined} aria-label={hasDetails ? `Open answer from ${timestamp(turn.created_at)}` : undefined} aria-describedby={hasDetails ? `tara-turn-text-${turn.id}` : undefined} onClick={hasDetails ? (event) => onDetails(event, { id: turn.data.message_id, orchard_id: state.orchard_id, text: turn.text, kind: "answer", created_at: turn.created_at }) : undefined}><span id={`tara-turn-text-${turn.id}`}>{turn.text}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Tara reacted with a thumbs up">👍</span> : null}</Bubble>
-            <div className="tara-turn-meta"><time dateTime={turn.created_at} title={timestamp(turn.created_at)} aria-label={timestamp(turn.created_at)}>{clockTime(turn.created_at)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}</div>
+            <Bubble type={hasDetails ? "button" : undefined} className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"} title={hasDetails ? "View readings" : undefined} aria-label={hasDetails ? `Open answer from ${timestamp(published)}` : undefined} aria-describedby={hasDetails ? `tara-turn-text-${turn.id}` : undefined} onClick={hasDetails ? (event) => onDetails(event, { id: turn.data.message_id, orchard_id: state.orchard_id, text: turn.text, kind: "answer", created_at: turn.created_at }) : undefined}><span id={`tara-turn-text-${turn.id}`}>{turn.text}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Tara reacted with a thumbs up">👍</span> : null}</Bubble>
+            <div className="tara-turn-meta"><time dateTime={published} title={timestamp(published)} aria-label={timestamp(published)}>{clockTime(published)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}</div>
           </article>}
         </React.Fragment>;
       })}

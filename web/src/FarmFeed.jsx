@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
-import { clockTime, dayLabel, displayNoteText, localDay, timestamp } from "./presentation";
+import { clockTime, dayLabel, displayNoteText, localDay, publicationTime, timestamp } from "./presentation";
 import { deliveryLabel } from "./delivery";
 import { farmFeedPollInterval } from "./notification-return";
 
@@ -63,9 +63,10 @@ export function useFarmFeed(active, { pollInBackground = false, replayOnly = fal
 }
 
 export function FarmNote({ message, orchard, onDetails, selectedMessage, detailsLoading }) {
+  const published = publicationTime(message);
   return <article className="farm-note">
-    <button className={`incoming-bubble farm-message${selectedMessage === message.id ? " selected-note" : ""}`} onClick={(event) => onDetails(event, message)} aria-busy={detailsLoading && selectedMessage === message.id} title="View readings" aria-describedby={"farm-note-text-" + message.id} aria-label={`Open ${message.kind === "answer" ? "answer" : "field note"} from ${timestamp(message.created_at)}`}><span id={"farm-note-text-" + message.id}>{displayNoteText(message, orchard)}</span></button>
-    <div className="farm-note-meta"><time dateTime={message.created_at} title={timestamp(message.created_at)} aria-label={timestamp(message.created_at)}>{clockTime(message.created_at)}</time>{message.delivery && !["not_requested", "published"].includes(message.delivery.provider_status || message.delivery.status || "not_requested") && <span>{deliveryLabel(message.delivery)}</span>}</div>
+    <button className={`incoming-bubble farm-message${selectedMessage === message.id ? " selected-note" : ""}`} onClick={(event) => onDetails(event, message)} aria-busy={detailsLoading && selectedMessage === message.id} title="View readings" aria-describedby={"farm-note-text-" + message.id} aria-label={`Open ${message.kind === "answer" ? "answer" : "field note"} from ${timestamp(published)}`}><span id={"farm-note-text-" + message.id}>{displayNoteText(message, orchard)}</span></button>
+    <div className="farm-note-meta"><time dateTime={published} title={timestamp(published)} aria-label={timestamp(published)}>{clockTime(published)}</time>{message.delivery && !["not_requested", "published"].includes(message.delivery.provider_status || message.delivery.status || "not_requested") && <span>{deliveryLabel(message.delivery)}</span>}</div>
   </article>;
 }
 
@@ -80,12 +81,12 @@ export function FarmAvailability({ farm }) {
 
 export function FarmConversation({ farm, onDetails, selectedMessage, detailsLoading, detailsError }) {
   const monitor = farm.feed?.monitor;
-  const messages = [...(farm.feed?.messages || [])].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id.localeCompare(b.id));
+  const messages = [...(farm.feed?.messages || [])].reverse().sort((a, b) => Date.parse(publicationTime(a)) - Date.parse(publicationTime(b)));
   const mode = monitor?.orchard?.mode || farm.orchard?.mode;
   return <div className="farm-conversation">
     {mode && mode !== "current" && <div className="feed-mode">{mode === "injected" ? "Injected replay" : mode === "synthetic" ? "Synthetic data" : "Historical replay"}</div>}
     <FarmAvailability farm={farm} />
-    {farm.loading && !farm.feed ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening field notes…</p></div> : messages.length ? <div className="farm-messages" role="log" aria-label="Orchard field notes" aria-live="polite" aria-relevant="additions text">{messages.map((message, index) => <React.Fragment key={message.id}>{(!index || localDay(message.created_at) !== localDay(messages[index - 1].created_at)) && <div className="day-separator"><time dateTime={localDay(message.created_at)} title={timestamp(message.created_at)}>{dayLabel(message.created_at)}</time></div>}<FarmNote message={message} orchard={monitor?.orchard || farm.orchard} onDetails={onDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} /></React.Fragment>)}</div> : !farm.loading && <div className="empty-state"><Icon name="location" size={22} /><h2>No field notes yet</h2><p>Updates appear here when the monitor records a meaningful change.</p></div>}
+    {farm.loading && !farm.feed ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening field notes…</p></div> : messages.length ? <div className="farm-messages" role="log" aria-label="Orchard field notes" aria-live="polite" aria-relevant="additions text">{messages.map((message, index) => <React.Fragment key={message.id}>{(!index || localDay(publicationTime(message)) !== localDay(publicationTime(messages[index - 1]))) && <div className="day-separator"><time dateTime={localDay(publicationTime(message))} title={timestamp(publicationTime(message))}>{dayLabel(publicationTime(message))}</time></div>}<FarmNote message={message} orchard={monitor?.orchard || farm.orchard} onDetails={onDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} /></React.Fragment>)}</div> : !farm.loading && <div className="empty-state"><Icon name="location" size={22} /><h2>No field notes yet</h2><p>Updates appear here when the monitor records a meaningful change.</p></div>}
     {detailsError && <p className="query-error" role="alert">{detailsError}</p>}
   </div>;
 }

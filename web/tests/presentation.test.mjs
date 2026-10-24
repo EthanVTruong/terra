@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { clockTime, dayLabel, displayNoteText, evidenceTime, localDay } from "../src/presentation.js";
+import { clockTime, dayLabel, displayNoteText, evidenceTime, localDay, publicationTime } from "../src/presentation.js";
 
 test("notes group at Pacific midnight rather than UTC midnight", () => {
   assert.equal(localDay("2026-10-24T06:59:00Z"), "2026-10-23");
@@ -46,4 +46,53 @@ test("meaningful dates within the message body are preserved", () => {
   assert.equal(displayNoteText({ text }), text);
   const datedObservation = "Weather coverage as of Oct 24, 1:00 AM PST is incomplete.";
   assert.equal(displayNoteText({ text: datedObservation }), datedObservation);
+});
+
+
+test("historical readings use their persisted publication day and footer while exact source times stay intact", () => {
+  const record = Object.freeze({ created_at: "2026-03-11T11:00:00Z", published_at: "2026-10-24T16:02:00Z" });
+  assert.equal(publicationTime(record), "2026-10-24T16:02:00Z");
+  assert.equal(localDay(publicationTime(record)), "2026-10-24");
+  assert.equal(dayLabel(publicationTime(record), "2026-10-24T17:00:00Z"), "Today");
+  assert.equal(clockTime(publicationTime(record)), "9:02 AM");
+  assert.equal(evidenceTime(record.created_at, publicationTime(record)), "Mar 11 · 4:00 AM");
+  assert.equal(record.created_at, "2026-03-11T11:00:00Z");
+});
+
+test("only valid timezone-qualified publication clocks replace a legacy creation clock", () => {
+  const created_at = "2026-03-11T11:00:00Z";
+  for (const published_at of [undefined, null, 42, "", "invalid", "2026-10-24", "2026-10-24T16:02:00", "2026-10-24T16:02:00+99:00"]) {
+    assert.equal(publicationTime({ created_at, published_at }), created_at);
+  }
+  assert.equal(publicationTime({ created_at, published_at: "2026-10-24T09:02:00-07:00" }), "2026-10-24T09:02:00-07:00");
+  assert.equal(publicationTime(undefined), undefined);
+});
+
+test("notification eligibility compares saved publication with consent, retaining quiet delayed pre-consent notes", () => {
+  const enabledAt = Date.parse("2026-10-24T16:01:00Z");
+  const created_at = "2026-03-11T11:00:00Z";
+  const records = [
+    { id: "historical-new", created_at, published_at: "2026-10-24T16:02:00Z" },
+    { id: "delayed-before-consent", created_at, published_at: "2026-10-24T16:00:00Z" },
+    { id: "exact-consent", created_at, published_at: "2026-10-24T16:01:00Z" },
+    { id: "naive-publication", created_at, published_at: "2026-10-24T16:03:00" },
+    { id: "legacy-new", created_at: "2026-10-24T16:03:00Z" },
+  ];
+  const original = structuredClone(records);
+  assert.deepEqual(records.filter((record) => Date.parse(publicationTime(record)) > enabledAt).map(({ id }) => id), ["historical-new", "legacy-new"]);
+  assert.deepEqual(records, original);
+});
+
+test("a publication-ordered mixed feed keeps one Pacific day across replay notes and current conversation", () => {
+  const source = "2026-03-11T11:00:00Z";
+  const entries = [
+    { id: "welcome", created_at: source, published_at: "2026-10-24T16:00:00Z" },
+    { id: "question", created_at: "2026-10-24T16:01:00Z" },
+    { id: "coverage-limited", created_at: source, published_at: "2026-10-24T16:02:00Z" },
+    { id: "answer", created_at: "2026-10-24T16:03:00Z" },
+  ];
+  assert.deepEqual(entries.map((entry) => localDay(publicationTime(entry))), Array(4).fill("2026-10-24"));
+  assert.deepEqual(entries.map((entry) => clockTime(publicationTime(entry))), ["9:00 AM", "9:01 AM", "9:02 AM", "9:03 AM"]);
+  assert.equal(entries[0].created_at, source);
+  assert.equal(entries[2].created_at, source);
 });

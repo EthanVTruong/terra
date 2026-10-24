@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { EvidencePanel } from "./EvidencePanel";
-import { dataModeLabel, departure, stationName, temperature, timestamp } from "./presentation";
+import { dataModeLabel, departure, publicationTime, stationName, temperature, timestamp } from "./presentation";
 import { FarmAvailability, FarmNote, FarmOverview, useFarmFeed } from "./FarmFeed";
 import { TaraComposer, TaraConversation, useTaraBrowserAlerts, useTaraConversation } from "./TaraConversation";
 import { writeTaraStorage } from "./tara-state";
@@ -194,7 +194,7 @@ export function App() {
   const [contextRetry, setContextRetry] = useState(0);
   const [queryOpen, setQueryOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true);
   const [panelTab, setPanelTab] = useState("temperature");
   const [selectedEvidence, setSelectedEvidence] = useState(null);
   const [draft, setDraft] = useState({ lat: "", lon: "", elevation: "", preset: "" });
@@ -358,10 +358,10 @@ export function App() {
 
   function showEvidence(event, finding = null, comparison = null) {
     const matching = comparison && packet.station_findings.find((item) => item.station_id === comparison.station_id && Array.isArray(item.evidence) && item.evidence.some((row) => Date.parse(row?.timestamp) === Date.parse(packet.query.valid_utc)));
-    opener.current = event.currentTarget; setPanelTab("temperature"); setSelectedEvidence({ finding: finding || matching || null, comparison }); setPanelOpen(true);
-    if (mobile) setMobileJson(true);
+    opener.current = event.currentTarget; setPanelTab("temperature"); setSelectedEvidence({ finding: finding || matching || null, comparison });
+    if (mobile) setMobileJson(true); else setPanelOpen(true);
   }
-  function closeJson() { setMobileJson(false); setPanelOpen(false); requestAnimationFrame(() => (opener.current?.isConnected ? opener.current : panelTrigger.current)?.focus()); }
+  function closeJson() { setMobileJson(false); if (!mobile) setPanelOpen(false); requestAnimationFrame(() => (opener.current?.isConnected ? opener.current : panelTrigger.current)?.focus()); }
   function retry() {
     userSelection.current = true;
     const attempt = lastAttempt.current;
@@ -417,7 +417,7 @@ export function App() {
     userSelection.current = true;
     request.current.controller?.abort(); request.current.version += 1;
     setLoading(false); setPendingKind(null); setError(""); setNotice(""); setView("monitor"); setQueryOpen(false); setControlsOpen(false);
-    setPanelTab("temperature"); setPanelOpen(false); setMobileJson(false); nearBottom.current = true;
+    setPanelTab("temperature"); setMobileJson(false); nearBottom.current = true;
   }
 
   async function startTaraFromLocation() {
@@ -446,8 +446,8 @@ export function App() {
       openNotificationNote(target);
       return;
     }
-    opener.current = event?.currentTarget || panelTrigger.current; setPanelTab("temperature"); setPanelOpen(true);
-    if (mobile) setMobileJson(true);
+    opener.current = event?.currentTarget || panelTrigger.current; setPanelTab("temperature");
+    if (mobile) setMobileJson(true); else setPanelOpen(true);
     if (detailsLoading && selectedMessage === message.id) return;
     detailRequest.current.controller?.abort();
     const task = { version: detailRequest.current.version + 1, controller: new AbortController() };
@@ -474,12 +474,14 @@ export function App() {
     } catch { setNotice("A demo response was received, but its assessment could not be displayed."); }
   }, []);
 
-  const farmPackets = (farmDetails?.assessments || []).flatMap((item) => {
+  const currentFarmDetails = farmDetails?.message?.orchard_id === tara.state?.orchard_id ? farmDetails : null;
+  const matchingFarm = Boolean(tara.state?.orchard_id && farm.orchardId === tara.state.orchard_id && farm.feed?.orchard_id === tara.state.orchard_id);
+  const farmPackets = (currentFarmDetails?.assessments || []).flatMap((item) => {
     try { return [validateAssessment(item)]; } catch { return []; }
   }).sort((a, b) => Date.parse(a.query.valid_utc) - Date.parse(b.query.valid_utc));
   const panelPacket = view === "monitor" ? farmPackets.at(-1) || null : packet;
-  const panelRecord = view === "monitor" ? farmDetails || farm.feed : null;
-  const panelReady = view === "monitor" ? Boolean(farm.orchardId) : Boolean(packet);
+  const panelRecord = view === "monitor" ? currentFarmDetails || (matchingFarm ? farm.feed : null) : null;
+  const panelReady = view === "monitor" ? matchingFarm : Boolean(packet);
   const primaryLabel = view === "monitor" && !panelPacket ? "Chill" : "Temperature";
   const monitorOverview = detailsLoading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening evidence…</p></div> : panelPacket ? <details className="disclosure farm-extra"><summary><Icon name="file" /><span>Chill</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body"><FarmOverview farm={farm} /></div></details> : <FarmOverview farm={farm} />;
   const showPanel = panelReady && (mobile ? mobileJson : panelOpen);
@@ -490,13 +492,12 @@ export function App() {
   const evidenceComparison = selectedEvidence?.comparison || (!evidenceFinding && packet?.target_comparison.station_id !== null ? packet?.target_comparison : null);
   const querying = loading && pendingKind === "query";
   const previewNote = resultSource?.kind === "query" ? "Provider query · checked on demand" : resultSource?.kind === "file" ? `Local file · ${resultSource.label}` : resultSource?.description || "Saved assessment · no message delivery";
-  const matchingFarm = tara.state?.orchard_id && farm.feed?.orchard_id === tara.state.orchard_id;
   const fieldNotes = matchingFarm ? farm.feed.messages : [];
   const latestReplyId = tara.state?.turns.filter((turn) => turn.role === "assistant").at(-1)?.id || null;
   const usingPlan = connectionStatus?.plan_enabled && connectionStatus?.writer?.connected && !connectionStatus?.writer?.usage_paused && connectionStatus?.writer?.selected_model;
   return <main className={`app-window${showPanel ? " with-artifacts" : ""}${panelMounted ? " panel-mounted" : ""}`}>
     <section className="conversation" inert={mobile && mobileJson ? true : undefined} aria-hidden={mobile && mobileJson ? true : undefined}>
-      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(context?.replay_only === true || querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{context?.replay_only === true ? "Replay" : querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} onStatus={setConnectionStatus} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { setPanelOpen(true); if (mobile) setMobileJson(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
+      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(context?.replay_only === true || querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{context?.replay_only === true ? "Replay" : querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} onStatus={setConnectionStatus} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { if (mobile) setMobileJson(true); else setPanelOpen(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
       <div ref={messageScroll} className="message-scroll" aria-busy={view === "monitor" ? farm.loading : loading} onScroll={(event) => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}>
         {view === "monitor" ? <>
           {notice && <p className="request-notice" role="status">{notice}</p>}
@@ -527,6 +528,6 @@ export function App() {
         <input ref={fileInput} type="file" accept=".json,application/json" onChange={openFile} className="sr-only" tabIndex={-1} aria-label="Open local assessment JSON" />
       </footer>
     </section>
-    {panelMounted && panelReady && <EvidencePanel packet={panelPacket} record={panelRecord} contextTime={view === "monitor" ? farmDetails?.message?.created_at : undefined} overview={view === "monitor" ? monitorOverview : null} primaryLabel={primaryLabel} sourceKind={view === "monitor" ? "monitor" : resultSource?.kind} finding={view === "monitor" ? null : evidenceFinding} comparison={view === "monitor" ? null : evidenceComparison} tab={panelTab} onTab={setPanelTab} mobile={mobile} onClose={closeJson} closeRef={closeButton} jsonRef={jsonPre} open={showPanel} />}
+    {panelMounted && panelReady && <EvidencePanel packet={panelPacket} record={panelRecord} contextTime={view === "monitor" ? publicationTime(currentFarmDetails?.message) : undefined} overview={view === "monitor" ? monitorOverview : null} primaryLabel={primaryLabel} sourceKind={view === "monitor" ? "monitor" : resultSource?.kind} finding={view === "monitor" ? null : evidenceFinding} comparison={view === "monitor" ? null : evidenceComparison} tab={panelTab} onTab={setPanelTab} mobile={mobile} onClose={closeJson} closeRef={closeButton} jsonRef={jsonPre} open={showPanel} />}
   </main>;
 }

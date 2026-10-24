@@ -32,10 +32,10 @@ test("enabling browser alerts excludes a delayed pre-consent note and alerts onc
       orchard_id: profile.id, orchards: [profile], turns: [], pending_requests: [], initial_prompt: null,
       monitoring: { status: "pending" }, notifications: { enabled: false, capability: "browser_open", scope: "while_open" },
     };
-    const note = (id, text, created_at) => ({ id, text, created_at, orchard_id: profile.id, kind: "proactive" });
+    const note = (id, text, created_at, published_at) => ({ id, text, created_at, published_at, orchard_id: profile.id, kind: "proactive" });
     const initial = note("A", "Existing initial alert", "2026-10-24T16:00:00Z");
-    const delayed = note("B", "Delayed alert published while off", "2026-10-24T16:01:00Z");
-    const fresh = note("C", "New alert published after consent", "2026-10-24T16:03:00Z");
+    const delayed = note("B", "Delayed alert published while off", "2026-03-11T11:00:00Z", "2026-10-24T16:01:00Z");
+    const fresh = note("C", "New alert published after consent", "2026-03-11T11:00:00Z", "2026-10-24T16:03:00Z");
     let notes = [initial];
     const monitor = { orchard: profile, comparison_available: false, source_error: null, worker: { heartbeat_status: "fresh" } };
     await page.route("**/api/**", async (route) => {

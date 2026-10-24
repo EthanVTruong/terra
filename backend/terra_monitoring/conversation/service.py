@@ -451,6 +451,13 @@ class ConversationService:
                     observed = facts.get("observation_time") or facts.get("data_through") or source.get("occurred_at")
                     if not observed:
                         raise ValueError("The source alert has no recorded evidence time")
+                    if source["type"] in {"weather_discrepancy", "weather_discrepancy_recovered",
+                                          "weather_data_limited", "weather_data_recovered"}:
+                        # Preserve the saved station, variable and lifecycle for
+                        # the fact validator instead of discarding that evidence
+                        # in a generic explanation. The raw question stays local.
+                        explanations.append({**source, "facts": {**facts, "observation_time": observed}})
+                        continue
                     explanations.append(_event(profile, "explain_alert", "answer", source["severity"],
                         source.get("occurred_at") or observed,
                         {"explanation": _explanation(source), "observation_time": observed,

@@ -37,10 +37,17 @@ payloads expose `stations[].weather`; the full result is `assessment.weather`.
 The existing station lab puts the three controls in one collapsed disclosure.
 The grower chat uses real persistent Monitor events and the same facts for Q&A.
 The native full-flow bridge reevaluates each QA farm at its own coordinates.
-The existing connected ChatGPT plan may phrase weather-only proactive notes
-through the same writer. Code supplies exact values, units and source clocks;
-invalid/refused wording uses a grounded local fallback. Direct variable questions
-and evidence follow-ups remain factual without requiring paid inference.
+The connected ChatGPT plan can author brief weather and supported mixed weather/chill
+notes through the same writer, without selecting from candidate messages. Local
+validators preserve supplied entities, quantity roles, units, uncertainty and
+recovery meaning; code inserts exact source clocks. Invalid/refused wording uses
+a truthful grounded fallback. Referenced weather-alert follow-ups retain their
+saved station facts and can use the same writer; raw questions stay local. Direct
+variable questions remain factual without requiring paid inference.
+
+Device-location setup uses the same farm-creation factory as other setup paths,
+so live profiles remain current and replay profiles remain injected. Verified
+terrain provenance is attached before the immutable profile is first saved.
 
 ## Repeatable scenarios
 

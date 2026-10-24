@@ -122,9 +122,12 @@ for sid in held:
     }
 report["interpolation"] = rows
 mae = np.mean([r["mae_f"] for r in rows.values()])
-base = np.mean([min(r["mae_nearest_station_f"], r["mae_six_station_mean_f"]) for r in rows.values()])
-check("interpolation beats nearest-station and plain-average baselines", mae < base, mae_f=round(mae, 3),
-      best_baseline_mae_f=round(base, 3))
+near = np.mean([r["mae_nearest_station_f"] for r in rows.values()])
+six = np.mean([r["mae_six_station_mean_f"] for r in rows.values()])
+oracle = np.mean([min(r["mae_nearest_station_f"], r["mae_six_station_mean_f"]) for r in rows.values()])
+check("interpolation beats the nearest-station and the six-station-mean baselines", mae < near and mae < six,
+      mae_f=round(mae, 3), nearest_station_mae_f=round(near, 3), six_station_mean_mae_f=round(six, 3),
+      better_baseline_picked_per_site_with_hindsight_mae_f=round(oracle, 3))
 hill = rows[held[0]]
 check("lapse helps at the foothill site", hill["mae_f"] < hill["mae_lapse_off_f"],
       elevation_ft=hill["elevation_ft"], mae_f=hill["mae_f"], mae_lapse_off_f=hill["mae_lapse_off_f"])

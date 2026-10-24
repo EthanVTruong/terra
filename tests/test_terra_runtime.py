@@ -112,7 +112,7 @@ def test_factory_and_default_lifespan_do_not_poll_or_send(components, tmp_path):
         assert client.get("/api/health").status_code == 200
         assert client.get("/api/orchards").json() == {"orchards": []}
         assert client.get("/api/monitor/status").status_code == 200
-        assert client.post("/api/assess", json={"lat": 38.6, "lon": -121.8, "elevation_ft": 70.0}).json() == {"result": "read-only"}
+        assert client.post("/api/assess", headers={"X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]}, json={"lat": 38.6, "lon": -121.8, "elevation_ft": 70.0}).json() == {"result": "read-only"}
         assert app.state.runtime_worker_thread is None
     assert len(live.calls) == 1 and monitor.calls == 0 and sms.sends == []
 
@@ -129,7 +129,7 @@ def test_real_combined_route_order_and_raising_shared_guard(components, tmp_path
         token = status["control_token"]
         assert status["enabled"] is False
         allowed = {**HEADERS, "x-terra-sms-control": token}
-        assert client.post("/api/monitor/check", headers=allowed).json() == {"status": "checked"}
+        assert client.post("/api/monitor/check", headers={**allowed, "X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]}).json() == {"status": "checked"}
         assert client.post("/api/monitor/check", headers={**allowed, "Origin": "https://elsewhere.example"}).status_code == 403
         assert client.get("/api/not-a-route").status_code == 404
     assert monitor.calls == 1 and sms.sends == []
@@ -420,12 +420,12 @@ def test_guarded_farm_routes_share_validation_and_wrong_method_errors(components
     with TestClient(app, base_url=ORIGIN) as client:
         token = client.get("/api/sms/status").json()["control_token"]
         bad = client.post("/api/orchards", json={"sms_opt_in": "yes"},
-                          headers={"X-Terra-SMS-Control": token})
+                          headers={"X-Terra-SMS-Control": token, "X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]})
         assert bad.status_code == 422 and bad.json()["error"]["code"] == "invalid_request"
         assert "coordinates" not in bad.json()["error"]["message"]
         for method, path in [("GET", "/api/monitor/check"), ("DELETE", "/api/orchards"),
                              ("POST", "/api/orchards/west"), ("DELETE", "/api/orchards/west/sms-opt-in")]:
-            result = client.request(method, path)
+            result = client.request(method, path, headers={"X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]})
             assert result.status_code == 405 and result.json()["error"]["code"] == "method_not_allowed"
         assert client.get("/api/unknown").status_code == 404
     assert components[0].calls == [] and components[2].calls == 0
@@ -559,7 +559,7 @@ def test_simulation_connection_is_lazy_guarded_and_rejects_unknown_farms(simulat
         assert client.get("/api/simulation/connection").json()["connected"] is False
         assert not sessions.exists()
         token = client.get("/api/sms/status").json()["control_token"]
-        headers = {**HEADERS, "X-Terra-SMS-Control": token}
+        headers = {**HEADERS, "X-Terra-SMS-Control": token, "X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]}
         assert client.post("/api/simulation/connect", json={}).status_code == 403
         assert client.post("/api/simulation/connect", headers={**headers, "Origin": "https://other.invalid"}, json={}).status_code == 403
         assert client.post("/api/simulation/connect", headers=headers, json={"orchard_id": "unknown"}).status_code == 404
@@ -576,10 +576,12 @@ def test_connected_browser_replays_its_native_chat_and_station_changes_without_t
     before_calls = writer.calls
     with TestClient(app, base_url=ORIGIN) as connected, TestClient(app, base_url=ORIGIN) as ordinary:
         token = connected.get("/api/sms/status").json()["control_token"]
-        headers = {**HEADERS, "X-Terra-SMS-Control": token}
+        headers = {**HEADERS, "X-Terra-SMS-Control": token, "X-Terra-Source-Context": connected.get("/api/simulation/connection").json()["source_context"]}
         result = connected.post("/api/simulation/connect", headers=headers, json={"orchard_id": "my-farm"})
         assert result.status_code == 200, result.text
-        assert result.json() == {"connected": True, "data_mode": "injected", "station_url": "/stations", "orchard_id": "my-farm"}
+        assert {key: result.json()[key] for key in ("connected", "data_mode", "station_url", "orchard_id")} == {"connected": True, "data_mode": "injected", "station_url": "/stations", "orchard_id": "my-farm"}
+        assert result.json()["source_expired"] is False
+        headers["X-Terra-Source-Context"] = result.json()["source_context"]
         assert "HttpOnly" in result.headers["set-cookie"] and "SameSite=strict" in result.headers["set-cookie"]
         assert writer.calls == before_calls  # Connecting never spends inference allowance.
         assert connected.get("/api/context").json()["replay_only"] is True
@@ -593,7 +595,7 @@ def test_connected_browser_replays_its_native_chat_and_station_changes_without_t
         conversation = connected.get("/api/tara/conversation").json()
         assert conversation["orchard_id"] == "my-farm" and conversation["setup"]["crops"] == ["walnut"]
         assert connected.get(f'/api/orchards/my-farm/messages/{original_messages[0]["id"]}/details').json() == original_evidence
-        changed = connected.post("/api/demo/action", headers=HEADERS, json={"type": "preset", "name": "support_loss"})
+        changed = connected.post("/api/demo/action", headers=headers, json={"type": "preset", "name": "support_loss"})
         assert changed.status_code == 200, changed.text
         feed = connected.get("/api/orchards/my-farm/messages").json()
         assert feed["monitor"]["comparison_available"] is False
@@ -617,7 +619,7 @@ def test_simulation_connection_refuses_an_in_flight_conversation(simulation_runt
     before = writer.calls
     with TestClient(app, base_url=ORIGIN) as client:
         token = client.get("/api/sms/status").json()["control_token"]
-        result = client.post("/api/simulation/connect", headers={**HEADERS, "X-Terra-SMS-Control": token}, json={})
+        result = client.post("/api/simulation/connect", headers={**HEADERS, "X-Terra-SMS-Control": token, "X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]}, json={})
         assert result.status_code == 409
         assert client.get("/api/simulation/connection").json()["connected"] is False
     assert writer.calls == before

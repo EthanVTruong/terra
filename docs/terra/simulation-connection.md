@@ -25,3 +25,5 @@ running server and browser session. Restarting the server requires reconnecting.
 The station client must be built with `pnpm --dir web/demo build` alongside the
 normal web build. Historical readings are identified as replay, and do not claim
 current CIMIS coverage or handset delivery.
+
+Each browser document captures the opaque `source_context` from connection status before rendering and sends it as `X-Terra-Source-Context` on API requests. A tab that switches source or a server restart invalidates earlier document contexts; stale requests fail with409 and require an explicit reload. Unknown simulator cookies fail closed and can recover only through guarded connection controls. Switching waits for active requests and durable pending conversation work, including onboarding. The standalone replay server remains isolated and identifies itself with `replay_only: true`.

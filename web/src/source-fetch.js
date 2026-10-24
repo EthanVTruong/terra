@@ -4,13 +4,13 @@ export function createSourceTransport(nativeFetch, origin) {
   let initialization;
   const initialize = () => initialization ||= (async () => {
     try {
-      const status = await nativeFetch("/api/simulation/connection", { cache: "no-store" });
+      const status = await nativeFetch("/api/simulation/connection", { cache: "no-store", signal: AbortSignal.timeout(10000) });
       if (status.ok) {
         const value = await status.json();
         if (typeof value.source_context === "string" && value.source_context) return { context: value.source_context };
       } else if (status.status === 404) {
         // The standalone replay server deliberately has no live-source router.
-        const response = await nativeFetch("/api/context", { cache: "no-store" });
+        const response = await nativeFetch("/api/context", { cache: "no-store", signal: AbortSignal.timeout(10000) });
         if (response.ok && (await response.json()).replay_only === true) return { isolated: true };
       }
     } catch { /* Reads remain available; mutations need a confirmed source. */ }

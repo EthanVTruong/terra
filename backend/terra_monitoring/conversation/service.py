@@ -363,6 +363,15 @@ class ConversationService:
                          "data_through": facts.get("data_through")},
                         {"request_id": request_id, "source_event_id": source["id"]}, source.get("evidence_id")))
                 packet = message_input(profile, explanations, self.monitor.clock(), question={"intent": intent, "text": QUESTIONS[intent]})
+                # Different-year evidence must not inherit this year's date in
+                # either a single reply or mixed-date clause framing.
+                from ..farm_ops.season import PST
+                year = utc(packet["as_of"]).astimezone(PST).year
+                for event in packet["events"]:
+                    source_year = utc(event["facts"]["observation_time"]).astimezone(PST).year
+                    if source_year != year:
+                        day, clock = event["display_time"].split(",", 1)
+                        event["display_time"] = f"{day} {source_year},{clock}"
                 answer = self.store.publish(selected, packet, self.monitor.writer.write(packet), source_event_ids, self.monitor.clock(),
                                             question_id="tara-" + fingerprint(request_id)[:64])
             else:

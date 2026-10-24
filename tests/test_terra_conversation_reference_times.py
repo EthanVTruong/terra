@@ -93,3 +93,20 @@ def test_mixed_stale_alerts_keep_individual_dates_ids_and_followup_context(conve
     assert {event["display_time"] for event in writer.packets[-1]["events"]} == {_time(at(5)), _time(at(9))}
     assert "Jan 16" not in second["assistant_turn"]["text"]
     assert monitor.store.message(note["id"]) == original
+
+
+def test_previous_year_alert_cannot_sound_like_the_current_season(conversation):
+    service, monitor, _ = conversation
+    orchard = setup_farm(service)
+    profile = monitor.store.orchard(orchard)
+    source = datetime(2025, 1, 5, 16, tzinfo=timezone.utc)
+    outage = _event(profile, "monitoring_limited", "opening", "moderate", source,
+                    {"observation_time": source.isoformat()}, "prior-year-outage")
+    note = source_note(monitor, profile, [outage])
+    writer = RecordingLocalWriter()
+    monitor.writer, monitor.clock = writer, lambda: at(14)
+    reply = service.message(request_id="prior-year", text="Explain this alert", orchard_id=orchard, reply_to=note["id"])
+    assert "Jan 5 2025" in reply["assistant_turn"]["text"]
+    assert "Jan 14" not in reply["assistant_turn"]["text"]
+    assert writer.packets[0]["events"][0]["facts"]["observation_time"] == source.isoformat()
+    assert reply["assistant_turn"]["data"]["source_event_ids"] == note["event_ids"]

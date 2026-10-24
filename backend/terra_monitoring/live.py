@@ -26,6 +26,7 @@ from chillwatch.sources.cimis import CimisAuthError, CimisBadRequest, CimisRefus
 from terra_qc import qc
 from terra_qc.reference import load_reference
 from .assessment import _json, assess_location
+from .weather import VARIABLES, normalize_cimis_weather
 
 PST = timezone(timedelta(hours=-8))
 LIVE_COLUMNS = ["station_id", "timestamp", "temperature_f", "quality", "source_flag", "source",
@@ -69,6 +70,15 @@ def _canonical(rows: list[dict]) -> tuple[list[dict], int, int]:
                 conflicts += 1
                 row.update(temperature_f=None, quality="invalid", temperature_reason="conflicting_duplicate",
                            availability_reason="conflicting_duplicate", available=False)
+            # Conflicts in one variable never invalidate another measurement.
+            for field in VARIABLES:
+                keys = (field, field + "_quality", field + "_source_flag", field + "_source_unit")
+                signatures = {json.dumps(_json({k: item.get(k) for k in keys}), sort_keys=True)
+                              for item in group}
+                if len(signatures) > 1:
+                    row.update({field: None, field + "_quality": "invalid",
+                                field + "_availability_reason": "conflicting_duplicate", field + "_available": False,
+                                field + "_availability_reasons": ["conflicting_duplicate"]})
         result.append(row)
     return result, duplicates, conflicts
 
@@ -140,7 +150,7 @@ def normalize_cimis_payload(payload: dict, *, requested_station_ids, observed_at
                 quality, value_reason = "flagged", "source_qc_unknown"
             elif quality == "usable" and flag:
                 quality, value_reason = "flagged", "source_warning"
-            rows.append({"station_id": sid, "timestamp": stamp, "temperature_f": temperature,
+            rows.append({**normalize_cimis_weather(record), "station_id": sid, "timestamp": stamp, "temperature_f": temperature,
                 "quality": quality, "source_flag": flag, "source": "cimis",
                 "temperature_unit": "F" if fahrenheit or celsius else None,
                 "timestamp_verified": True, "timestamp_basis": "CIMIS fixed-PST hour-ending verified",
@@ -192,8 +202,9 @@ class LiveQueryService:
             raise ValueError("Failure cooldown must be finite and nonnegative")
         key = app_key if app_key is not None else (os.environ.get("CIMIS_APP_KEY") or os.environ.get("CIMIS_API_KEY"))
         self.configured = source is not None or bool(key)
-        self.source = source or CimisSource(app_key=key or "", api="new", hourly_items=["hly-air-tmp"],
-            cache_dir=self.data_dir / "raw" / "cimis-new-temperature-v1", timeout_s=10)
+        self.source = source or CimisSource(app_key=key or "", api="new",
+            hourly_items=["hly-air-tmp", "hly-rel-hum", "hly-wind-spd", "hly-sol-rad"],
+            cache_dir=self.data_dir / "raw" / "cimis-new-weather-v1", timeout_s=10)
         self._lock = RLock()
         self._catalog = None
         self._catalog_at = None
@@ -320,6 +331,8 @@ class LiveQueryService:
         for index, row in observations.iterrows():
             revision = _json({key: row.get(key) for key in
                 ("station_id", "timestamp", "temperature_f", "quality", "source_flag", "source_value", "source_unit", "temperature_reason")})
+            revision["weather"] = _json({key: value for key, value in row.items()
+                                        if any(key == field or key.startswith(field + "_") for field in VARIABLES)})
             digest = hashlib.sha256(json.dumps(revision, sort_keys=True, allow_nan=False).encode()).hexdigest()
             visible = self._seen.setdefault(digest, observed_at.isoformat())
             observations.at[index, "visible_at"] = _utc(visible)

@@ -122,7 +122,9 @@ class ReplayBridge:
             engine = self.engine
             now = pd.Timestamp(engine.session["clock"])
             snapshot = fingerprint({"source": engine.provenance["sha256"],
-                                    "frames": engine.session["frames"], "clock": now.isoformat()})
+                                    "weather_source": engine.weather_provenance,
+                                    "frames": engine.session["frames"], "sensors": engine.session.get("sensors", []),
+                                    "clock": now.isoformat()})
             return assess_location(**{key: profile[key] for key in ("lat", "lon", "elevation_ft")},
                 valid_utc=now, as_of=now, observations=engine._inputs(), stations=engine.stations,
                 snapshot_id="full-flow-replay:" + snapshot, data_mode="injected",
@@ -151,7 +153,7 @@ class ReplayBridge:
                 # Older native forms cannot supply crop metadata. Do not carry
                 # their historical almond/cultivar defaults into a new QA farm.
                 if supplied:
-                    raise ValueError("Crop-aware setup requires the integrated Tara profile API")
+                    raise ValueError("Crop-aware setup requires the integrated Terra profile API")
                 profile = orchard_profile(name, **options)
                 profile.update(crop=None, crops=[], variety=None,
                     target={"hours": None, "kind": "not_configured", "agronomic_requirement_verified": False,
@@ -293,6 +295,15 @@ def create_app(*, simulation=None, state_dir=None, web_root=None, demo_root=None
         except KeyError:
             raise HTTPException(status_code=404, detail="Unknown demo note") from None
 
+    @app.post("/api/demo/point")
+    def demo_point(body: dict = Body(...)):
+        if set(body) != {"lat", "lon"}:
+            raise HTTPException(status_code=422, detail="Provide lat and lon")
+        try:
+            return simulation.point(body["lat"], body["lon"])
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     @app.post("/api/demo/questions")
     def demo_question(body: dict = Body(...)):
         if set(body) - {"text", "request_id"} or "text" not in body:
@@ -319,6 +330,10 @@ def create_app(*, simulation=None, state_dir=None, web_root=None, demo_root=None
     @app.get("/demo-static/{path:path}")
     def demo_static(path: str):
         return FileResponse(_asset(demo, path))
+
+    @app.get("/terra-cube-1080.png")
+    def station_brand():
+        return FileResponse(_asset(demo, "terra-cube-1080.png"))
 
     @app.get("/terra")
     @app.get("/terra/")

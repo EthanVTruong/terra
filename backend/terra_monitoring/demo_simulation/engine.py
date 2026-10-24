@@ -25,6 +25,7 @@ from terra_monitoring.assessment import (
 from terra_monitoring.farm_ops.service import Monitor
 from terra_monitoring.farm_ops.store import Store, fingerprint, utc
 from terra_monitoring.farm_ops.writer import Writer
+from terra_monitoring.weather import VARIABLES
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "docs/terra/demo-simulation/data"
@@ -51,6 +52,15 @@ class DemoSimulation:
         if hashlib.sha256(raw).hexdigest() != self.provenance["sha256"]:
             raise ValueError("The immutable demonstration weather digest does not match")
         self._originals = json.loads(raw)
+        weather_manifest = self.data_dir / "weather-provenance.json"
+        self.weather_provenance = None
+        self._weather_by_key = {}
+        if weather_manifest.exists():
+            self.weather_provenance = json.loads(weather_manifest.read_text(encoding="utf-8"))
+            weather_raw = (self.data_dir / self.weather_provenance["file"]).read_bytes()
+            if hashlib.sha256(weather_raw).hexdigest() != self.weather_provenance["sha256"]:
+                raise ValueError("The immutable demonstration weather-variable digest does not match")
+            self._weather_by_key = {(r["timestamp"], int(r["station_id"])): r for r in json.loads(weather_raw)}
         self.reference = load_reference()
         manifest = self.reference.manifest
         training_end, calibration_end = utc(manifest["train_end_exclusive"]), utc(manifest["validation_end_exclusive"])
@@ -84,6 +94,8 @@ class DemoSimulation:
         else:
             if self.session.get("source_sha256") != self.provenance["sha256"]:
                 raise ValueError("An existing demo session uses different source weather")
+            if self.session.get("weather_source_sha256") != (self.weather_provenance or {}).get("sha256"):
+                raise ValueError("This session predates the weather-variable source; choose a fresh simulation state directory")
             self.session.setdefault("sensors", [])
             self._evaluate()
 
@@ -95,7 +107,8 @@ class DemoSimulation:
         run = uuid.uuid4().hex[:16]
         self.session = {"run_id": run, "orchard_id": "sim-" + run, "clock": START,
                         "source_sha256": self.provenance["sha256"], "revision": 0,
-                        "frames": {}, "offline": [], "sensors": [], "actions": [], "evaluations": {}}
+                        "weather_source_sha256": (self.weather_provenance or {}).get("sha256"),
+                        "frames": {}, "offline": [], "sensors": [], "actions": [], "evaluations": {}, "weather_overrides": {}}
         self.monitor.create_orchard("Demo West Orchard", orchard_id=self.session["orchard_id"],
                                     mode="injected", **ORCHARD)
         self._evaluate()
@@ -114,7 +127,8 @@ class DemoSimulation:
 
     def _frame(self):
         return self.session["frames"].setdefault(self.session["clock"],
-                                               {"temperatures": {}, "offline": list(self.session["offline"])})
+                                               {"temperatures": {}, "offline": list(self.session["offline"]),
+                                                "weather": deepcopy(self.session.get("weather_overrides", {}))})
 
     def _inputs(self):
         now = utc(self.session["clock"])
@@ -124,15 +138,32 @@ class DemoSimulation:
             if not utc(WARMUP) <= stamp <= now:
                 continue
             row = deepcopy(original)
+            extra = self._weather_by_key.get((original["timestamp"], int(original["station_id"])), {})
+            row.update({key: value for key, value in extra.items() if key not in {"station_id", "timestamp"}})
             changes = self.session["frames"].get(original["timestamp"], {})
             station = row["station_id"]
             value = changes.get("temperatures", {}).get(str(station))
+            for field, override in changes.get("weather", {}).get(str(station), {}).items():
+                unit = {"relative_humidity_pct": "%", "wind_speed_mph": "mph", "solar_radiation_w_m2": "W/m2"}[field]
+                row.update({field: override["value"], field + "_unit": unit, field + "_source_unit": unit,
+                            field + "_source_value": override["value"], field + "_source_flag": override["source_flag"],
+                            field + "_quality": "missing" if override["value"] is None else "flagged" if override["source_flag"] else "usable",
+                            field + "_availability_reason": "missing_value" if override["value"] is None else "source_warning" if override["source_flag"] else "available"})
+                reason = row[field + "_availability_reason"]
+                row[field + "_available"] = reason == "available"
+                row[field + "_availability_reasons"] = [] if reason == "available" else [reason]
+                row.setdefault("demo_weather_overrides", {})[field] = deepcopy(override)
             if value is not None:
                 row["temperature_f"] = value
                 row["demo_override"] = {"kind": "temperature", "original_f": original["temperature_f"]}
             if station in changes.get("offline", []):
                 row.update(temperature_f=None, quality="missing", availability_reason="simulated_offline")
                 row["demo_override"] = {"kind": "offline", "original_f": original["temperature_f"]}
+                for field in VARIABLES:
+                    if field in row:
+                        row.update({field: None, field + "_quality": "missing",
+                                    field + "_availability_reason": "simulated_offline", field + "_available": False,
+                                    field + "_availability_reasons": ["simulated_offline"]})
             rows.append(row)
         # A test sensor reports its set value every source hour in the replay window.
         hours = sorted({r["timestamp"] for r in rows})
@@ -189,8 +220,9 @@ class DemoSimulation:
         observations = self._inputs()
         self.stations = self._all_stations()
         now = pd.Timestamp(self.session["clock"])
-        snapshot = fingerprint({"source": self.provenance["sha256"], "frames": self.session["frames"],
-                                "sensors": self.session["sensors"], "clock": self.session["clock"]})
+        snapshot = fingerprint({"source": self.provenance["sha256"], "weather_source": self.weather_provenance,
+                                "frames": self.session["frames"], "sensors": self.session["sensors"],
+                                "clock": self.session["clock"]})
         self.packet = assess_location(**self._orchard(), valid_utc=now, as_of=now,
             observations=observations, stations=self.stations, snapshot_id="demo:" + snapshot,
             data_mode="injected", location_id=self.session["orchard_id"], reference=self.reference,
@@ -256,6 +288,8 @@ class DemoSimulation:
                 raise ValueError("Provide a demonstration action")
             kind = action.get("type")
             fields = {"temperature": {"type", "station_id", "value_f"},
+                      "weather": {"type", "station_id", "variable", "value", "source_flag"},
+                      "weather_reset": {"type", "station_id", "variable"},
                       "online": {"type", "station_id", "online"}, "advance": {"type", "hours"},
                       "preset": {"type", "name"}, "reset": {"type"}, "reset_temperatures": {"type"},
                       "sensor": {"type", "lat", "lon", "value_f"}, "sensor_value": {"type", "sensor_id", "value_f"},
@@ -301,6 +335,24 @@ class DemoSimulation:
                 self.session["offline"] = sorted(offline)
                 self._frame()["offline"] = sorted(offline)
                 self._evaluate()
+            elif kind in {"weather", "weather_reset"}:
+                station, field = self._station_id(action["station_id"]), action["variable"]
+                if field not in VARIABLES:
+                    raise ValueError("Choose humidity, average wind speed or solar radiation")
+                overrides = self.session.setdefault("weather_overrides", {}).setdefault(str(station), {})
+                if kind == "weather_reset":
+                    overrides.pop(field, None)
+                else:
+                    value, flag = action["value"], action["source_flag"]
+                    limit = {"relative_humidity_pct": 100, "wind_speed_mph": 150, "solar_radiation_w_m2": 2000}[field]
+                    if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
+                                             or not math.isfinite(value) or not 0 <= value <= limit):
+                        raise ValueError("Use a finite value in the displayed range, or null for missing")
+                    if flag not in {"", "Y", "M", "P", "I", "R", "S", "N"}:
+                        raise ValueError("Choose a supported source quality flag")
+                    overrides[field] = {"value": value, "source_flag": flag}
+                self._frame()["weather"] = deepcopy(self.session["weather_overrides"])
+                self._evaluate()
             elif kind == "advance":
                 self._advance(action["hours"])
             else:
@@ -316,7 +368,8 @@ class DemoSimulation:
                 else:
                     self.session["offline"] = [139, 212, 235] if name == "support_loss" else []
                     frame = self._frame()
-                    frame.update(temperatures={}, offline=list(self.session["offline"]))
+                    self.session["weather_overrides"] = {}
+                    frame.update(temperatures={}, offline=list(self.session["offline"]), weather={})
                     if name in {"minor", "spike"}:
                         source = self._original_by_key[(self.session["clock"], 6)]
                         frame["temperatures"]["6"] = source["temperature_f"] + (1.0 if name == "minor" else 24.0)
@@ -429,7 +482,9 @@ class DemoSimulation:
                 "value_f": source.get("temperature_f") if online else None,
                 "online": online, "override": changes.get("temperatures", {}).get(str(sid)),
                 "source_quality": original.get("quality"), "source_flag": original.get("source_flag"),
-                "flagged": sid in flagged, "assessment": self._assessment(scored_by_station.get(sid, {}), online)})
+                "flagged": sid in flagged, "assessment": self._assessment(scored_by_station.get(sid, {}), online),
+                "weather": {variable["variable"]: next((r for r in variable["stations"] if r["station_id"] == sid), None)
+                            for variable in self.packet.get("weather", {}).get("variables", [])}})
         return _json(stations)
 
     def _history_view(self):
@@ -490,7 +545,8 @@ class DemoSimulation:
                 "revision": self.session["revision"], "data_mode": "injected", "clock": {"current_utc": current,
                     "start_utc": START, "end_utc": END, "warmup_start_utc": WARMUP,
                     "label": "Historical observation hour; advances only when controlled"},
-                "source": {**self.provenance, "no_training_overlap": True, "immutable": True},
+                "source": {**self.provenance, "no_training_overlap": True, "immutable": True,
+                           "weather_variables": self.weather_provenance},
                 "stations": stations, "assessment": self.packet, "heatmap": self._heatmap(),
                 "sensors": [{**s, "elevation_ft": ORCHARD["elevation_ft"], "calibrated": False,
                              "check": self.sensor_checks.get(s["id"])} for s in self.session["sensors"]],

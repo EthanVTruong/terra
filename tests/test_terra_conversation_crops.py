@@ -16,6 +16,10 @@ from test_terra_conversation import LOCATION, conversation
     ("Gala apples and lychees", ["apple", "lychees"]),
     ("I grow lychees and apples variety Gala", ["lychees", "apple"]),
     ("I grow peaches and I grow lychees", ["peach", "lychees"]),
+    ("almonds are what im growing", ["almond"]),
+    ("Almonds are what I'm growing.", ["almond"]),
+    ("Lychees are what I am growing", ["lychees"]),
+    ("Apples and lychees are what we're growing", ["apple", "lychees"]),
 ])
 def test_explicit_crop_lists_preserve_each_member(text, crops):
     parsed = crops_from(text)
@@ -29,6 +33,8 @@ def test_explicit_crop_lists_preserve_each_member(text, crops):
     ("I grow lychees and peaches", ["lychees", "peach"]),
     ("I grow apples, lychees, and walnuts", ["apple", "lychees", "walnut"]),
     ("I grow passion fruit and lychees", ["passion fruit", "lychees"]),
+    ("almonds are what im growing", ["almond"]),
+    ("lychees and apples are what we are growing", ["lychees", "apple"]),
 ])
 def test_complete_crop_list_survives_profile_save_without_model_usage(conversation, text, crops):
     service, monitor, writer = conversation
@@ -73,6 +79,12 @@ def test_invalid_or_overlong_list_cannot_partially_save(conversation, text):
     "I grow peaches and other crops",
     "I grow peaches and lychees in Stardew Valley",
     "I grow lychees and peaches in Minecraft",
+    "Are almonds what I'm growing?",
+    "Almonds are what I'm growing?",
+    "Almonds are what I'm growing next season",
+    "Almonds are what I'm planning on growing",
+    "Almonds are what I'm growing and peaches",
+    "Almonds and nothing else are what I'm growing",
 ])
 def test_ambiguous_crop_descriptions_do_not_partially_advance_setup(conversation, text):
     service, monitor, writer = conversation

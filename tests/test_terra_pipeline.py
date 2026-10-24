@@ -137,6 +137,11 @@ def restart_monitor(pipeline):
 def test_read_only_assess_and_suspect_station_do_not_create_orchard_alert(tmp_path):
     p = assemble(tmp_path, available=True)
     for row in p.source.records:
+        # Isolate temperature QC: the expanded source contract also requests
+        # these channels. Omitting them legitimately opens data-health notices.
+        row.update(HlyRelHum={"Value": "70", "Unit": "(%)", "Qc": " "},
+                   HlyWindSpd={"Value": "4", "Unit": "(mph)", "Qc": " "},
+                   HlySolRad={"Value": "0", "Unit": "(Ly/d)", "Qc": " "})
         if row["Station"] == "6" and row["Hour"] == "0800":
             row["HlyAirTmp"]["Value"] = "90.0"
     with client_for(p) as client:

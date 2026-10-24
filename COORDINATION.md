@@ -9,9 +9,25 @@
   "intent": "Nathan-requested Station lab refinements on main: chill-map heatmap styling, plain basemap, drag/zoom inside the estimated field, map-spot estimates, adjustable uncalibrated test sensors, a movable orchard pin, and flagging a test sensor that departs from the calibrated-station estimate, delivered as a grower text through a new sensor_flag monitor event. Frozen QC reference, Nathan estimator and source weather stay unchanged.",
   "branch": "main",
   "base": "8f028a8",
-  "domains": ["terra-coordination", "terra-qc-json"],
-  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "backend/terra_monitoring/farm_ops/service.py", "backend/terra_monitoring/farm_ops/writer.py", "web/demo/**", "tests/test_terra_demo_simulation.py", "tests/test_farm_chill_ops_writer.py", "docs/terra/demo-simulation.md", "docs/terra/farm-chill-ops/message-input.schema.json"],
-  "depends_on": ["terra-demo-simulation", "farm-chill-ops"],
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/demo_simulation/**",
+    "backend/terra_monitoring/farm_ops/service.py",
+    "backend/terra_monitoring/farm_ops/writer.py",
+    "web/demo/**",
+    "tests/test_terra_demo_simulation.py",
+    "tests/test_farm_chill_ops_writer.py",
+    "docs/terra/demo-simulation.md",
+    "docs/terra/farm-chill-ops/message-input.schema.json"
+  ],
+  "depends_on": [
+    "terra-demo-simulation",
+    "farm-chill-ops"
+  ],
   "contracts": [],
   "artifacts": [],
   "handoff": {
@@ -31,15 +47,252 @@
 ```json
 {
   "kind": "task",
-  "id": "terra-product-consolidation",
+  "id": "terra-oss-release-docs",
   "owner": "et",
-  "status": "active",
-  "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner.",
-  "branch": "codex/terra-consolidate-main",
-  "base": "098ebe07f3c62af6ecd451f59952bc7d98f01f15",
+  "status": "done",
+  "intent": "User requests completion of main and open-source clone readiness. Reconcile current product/setup/readiness documentation, align package license metadata with the root MIT license, and resolve unlicensed reference-font distribution without feature or numerical changes. Root coordinates publication through the existing integration owner.",
+  "branch": "codex/terra-oss-release-docs",
+  "base": "c2e074194167657379255570e95eb47d887edf1e",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json",
+    "terra-portability"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "README.md",
+    "spec.md",
+    "pyproject.toml",
+    "docs/terra/**",
+    "web/public/fonts/**",
+    "web/src/styles.css",
+    "web/demo/public/xvf-reference.woff2",
+    "web/demo/src/styles.css",
+    "web/demo/src/App.jsx",
+    "web/demo/AGENTS.md",
+    "web/demo/design-qa.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "c2e074194167657379255570e95eb47d887edf1e",
+    "summary": "Completed bounded open-source release cleanup: current product/setup/history limits separated from historical checkpoints; package license metadata aligned to root MIT; both reference-font binaries removed with existing system fallback and unchanged layout dimensions. Native onboarding/Esri replay instructions reconciled. Root approved the font cleanup and owns final combined integration/browser verification.",
+    "evidence": [
+      "47 local Markdown links in changed docs, MIT metadata consistency, removed font assets/system fallback and git diff --check pass.",
+      "Scoped terra.py check against exact source base started; ChatGPT and conversation groups passed at handoff, remaining groups continue for the integration owner receipt.",
+      "Both packaging suites passed three static worker cases each; their build-output cases cannot pass in this unbuilt worktree (missing dist/client/index.html). No installs/builds were performed in this slice.",
+      "No numerical/backend behavior, private state, provider configuration, live process or sender preference changed. Historical font provenance/screenshots and prior checkpoint evidence remain labelled."
+    ],
+    "uncertainty": "Final combined CI, fresh-clone build/packaging and system-font browser verification belong to the coordinating owner. The historical reference font has no recorded redistribution grant; removal avoids claiming one.",
+    "next": "Frozen source eca1100 consumed once by canonical integration owner. Final exact-head gates and independent public-clone acceptance belong to the two release owners; no further source changes."
+  }
+}
+```
+
+## Independent weather lifecycle verification
+
+```json
+{
+  "kind": "task",
+  "id": "terra-multivariable-review",
+  "owner": "et",
+  "status": "done",
+  "intent": "Independently review and regress the authorized humidity, wind and solar lifecycle integration. Root owns production changes; this isolated branch owns only regression scenarios and this record.",
+  "branch": "codex/terra-multivariable-review",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "tests/test_terra_weather_lifecycle_review.py"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": null,
+    "summary": "Added independent event lifecycle and actual SQLite/Monitor publication scenarios against the production integration branch. Reviewed source provenance, independent variable eligibility, stale evidence and same-hour corrections.",
+    "evidence": ["All eleven regression scenarios pass against codex/terra-multivariable-flags backend: later-incident identity, current recovery, same-hour correction, distinct-hour persistence, gaps, source-QC separation, low daylight, stale readings, escalation and queued-opening suppression.", "Native parser-to-weather assessment conflict scenario now preserves conflicting_duplicate on humidity while independent wind remains assessable after the root repair.", "Actual simulation API actions on isolated temporary state show clean baseline, real humidity and wind discrepancy events, and unchanged retained note evidence after advancing. Nighttime solar remains low_daylight without a false missing-data event."],
+    "uncertainty": "This test-only branch intentionally does not contain production weather modules. Validation uses the integration checkout backend through PYTHONPATH; the root will repeat tests after cherry-picking.",
+    "next": "Sole integration owner cherry-picks this test slice, repeats checks in the integrated checkout and completes native interface verification."
+  }
+}
+```
+
+## Multivariable agent facts and Terra naming
+
+```json
+{
+  "kind": "task",
+  "id": "terra-multivariable-agent",
+  "owner": "et",
+  "status": "done",
+  "intent": "User-authorized humidity, wind and solar factual Q&A plus visible Terra naming, preserving immutable evidence and separate source-health states. Root owns detector, live acquisition, proactive events and simulation integration.",
+  "branch": "codex/terra-multivariable-agent",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": [
+    "terra-qc-json"
+  ],
+  "paths": [
+    "backend/terra_monitoring/conversation/**",
+    "backend/terra_monitoring/farm_ops/conversational_writer.py",
+    "web/src/**",
+    "docs/terra/**",
+    "README.md",
+    "spec.md",
+    "tests/test_terra_conversation_weather_variables.py",
+    "tests/test_terra_conversation_writer_integration.py",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": null,
+    "summary": "Grounded humidity/wind/solar factual replies, immutable note references, separate quality/availability and provisional discrepancy wording implemented. Visible assistant/product prose now Terra, preserving legacy route/storage compatibility keys. Root owns live numerical and simulation integration.",
+    "evidence": [
+      "382 conversation cases pass; focused saved-weather cases52 and new multivariable cases19 pass.",
+      "UI state suite47pass/2existing skips. git diff --check passes. No LLM/provider/SMS calls.",
+      "Required terra.py check --base origin/main --task terra-multivariable-agent started; root retains final combined integration verification."
+    ],
+    "uncertainty": "No universal crop-risk thresholds or orchard-specific RH/wind/solar estimates. Additional-variable station comparison policy remains provisional. Legacy internal tara identifiers retained for compatibility.",
+    "next": "Root cherry-pick tested isolated slice; verify against numerical contract, live ingestion, proactive events and simulation controls, then record combined check result."
+  }
+}
+```
+
+## Multivariable CIMIS monitoring
+
+```json
+{
+  "kind": "task",
+  "id": "terra-multivariable-flags",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests humidity, wind and solar checks through cleaned CIMIS observations, grounded agent responses and simulation handoff, with missing/source-quality statuses separate and visible Terra naming. Preserve frozen temperature QC and Nathan numerical algorithms. Bounded source validation only; no model training, bulk backfill or real SMS sends.",
+  "branch": "codex/terra-multivariable-flags",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": [
+    "terra-qc-json"
+  ],
+  "paths": [
+    "backend/terra_monitoring/**",
+    "config/terra/**",
+    "tests/test_terra_*.py",
+    "tests/fixtures/terra/**",
+    "web/**",
+    "docs/terra/**",
+    "spec.md",
+    "README.md",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "62cbbd58d349a9a4b112cfa8b54c6b40505550f2",
+    "summary": "Integrated independent humidity/wind/solar normalizer, provisional peer checks, variable data-health, durable selective events, grounded optional ChatGPT wording and direct Q&A, pinned real-source sim inputs and controls. Visible Terra naming preserves legacy internal keys.",
+    "evidence": [
+      "480 bounded actual CIMIS station-hours decoded with individual units/QC; 360 March temperature overlaps match original exactly at 0.0F maximum difference. Both retained snapshots produce zero provisional numerical findings; wind I warnings stay separate. docs/terra/weather-source-audit.json.",
+      "62 pure detector cases and 64 focused native lifecycle, sim, factual conversation and wording cases passed in separate runs; final combined126case receipt and required scoped harness are in progress.",
+      "Actual browser wind60mph injection produced persisted note/simulated phone and exact agent response; marking Y withheld that reading and stated source-quality warning, without modifying temperature estimate. Browser logs empty; proof .terra-local/verification/weather-agent-browser.png.",
+      "Both production and simulation Vite/Sites builds pass. No external SMS/LLM calls, shared runtime changes, reference fitting or Nathan numerical edits. docs/terra/weather-simulation-handoff.md gives exact versioned actions, source hashes, limits and owner handoff.",
+      "Final owner gate passed all12 groups against4fba932, including the actual Nathan map-point/full-flow bridge. Exact frozen source transferred to sole canonical integration owner. No independent merge or further source work."
+    ],
+    "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
+    "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-device-location",
+  "owner": "et",
+  "status": "done",
+  "intent": "Direct user requests a button-only device-location onboarding: native browser permission then automatic necessary location details and station selection. Remove coordinates, elevation, farm-name and confirmation fields from grower onboarding. Preserve manual API compatibility, scientific selection logic, separate notification/ChatGPT consent and all private runtime state.",
+  "branch": "codex/tara-device-location",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/conversation/**",
+    "tests/test_terra_conversation*.py",
+    "web/src/TaraConversation.jsx",
+    "web/src/tara-state.js",
+    "web/src/tara-conversation.css",
+    "web/tests/tara*.mjs",
+    "docs/terra/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "c2604e55571afb78dd4f243f1b7bb5ec1e4c5e34",
+    "summary": "Button-only location source is ready: one fresh native fix, server-verified ground elevation, automatic save and existing station selection. No coordinate, elevation, name, preset or confirmation form. Neutral Shared location profile label; explicit native approval supplies location consent. Existing human setup and raw messages remain unchanged; exact legacy app guidance is projected to current wording only.",
+    "evidence": [
+      "30 new device API/resolver cases and all393 conversation cases pass on8f baseline.50 pure UI cases and11 explicit browser cases passed before the narrow legacy-prompt follow-up; its helper/resumed-draft proof also passed. Final assembled UI/native checks run after integration.",
+      "Actual guarded local API plus full App, simulated public Davis GPS and REAL official USGS EPQS lookup passed:76.8804387ft, source provenance, one native call, automatic notification-step advance, zero manual fields/extra confirmation, quiet reopen and320px without errors. No OS permission dialog was clicked.",
+      "Independent source audit cleared factory/SMS-off parity, real ground-value validation, no target station substitution, completed replay before lookup and atomic setup fingerprint/request-cursor guard against stale/ABA callbacks. Lookup failure saves no profile/reservation; exact-ID approved-position retry survives reload.",
+      "No startup/GET migration, nonce/version write, account/private runtime/SMS/ChatGPT change or inference was introduced. Manual API signatures remain compatible. Existing automatic six-peer regional/QC/elevation selection and monitoring readiness remain authoritative.",
+      "Final frozen source: native-browser12/12, pure/helper51/51 and all11 configured scoped groups passed. Source consumed by the canonical integration candidate; lane stopped after handoff, private runtime untouched."
+    ],
+    "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
+    "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-submission-readme",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests a concise final-submission README for humans and agents, grounded in current product functionality and the work being built by other contributors. Review their existing records read-only without messaging them. Explain the product, reproducible preview/live/demo entry points, scientific limits and minimal contributor instructions; preserve all implementation, private state and unrelated edits.",
+  "branch": "codex/terra-readme-submission",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "README.md",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "b952d46945be0044b159f72eda578b8e2cc51034",
+    "summary": "Completed the concise final-submission README on an isolated branch: 607 words versus 1079, clear product capabilities, one-command historical preview, explicit live-weather/ChatGPT/notification setup, controlled replay demonstration, short agent instructions and a four-area code map. Product claims are grounded in current main; all implementation and private state are preserved.",
+    "evidence": [
+      "README source commit 011a99757e005f9204ff69024a0661f1a952756a; comparison base 8f028a8320661c4a59344f1e3067e8af2bb79a74.",
+      "All 14 relative links resolve. UTF-8/LF, git diff --check and actual run_terra.py --help pass. Read-only independent review found no material correction.",
+      "Required terra.py check --base origin/main --task terra-submission-readme passes coordination/filesystem and all 11 configured groups: chatgpt, conversation, demo, farm, full-flow, harness, JSON, pipeline, runtime, setup and SMS.",
+      "Reviewed current main source/runbooks plus read-only existing location-onboarding, multivariable and consolidation records. No existing chats messaged; no provider, SMS, runtime, credential or scientific changes.",
+      "Product-first README consumed in canonical candidate, retaining new device-location and weather behavior. No remaining documentation lane work."
+    ],
+    "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
+    "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-product-consolidation",
+  "owner": "et",
+  "status": "active",
+  "intent": "Integrate all approved product functionality into main: selected quiet cube-branded chat with complete messaging, saved evidence and ChatGPT-plan writing; one-button device location with real terrain elevation; Nathan draggable/interpolated Station lab; temperature plus independent humidity/wind/solar and missing-data monitoring through the same live or replay feed. Preserve private runtime and human drafts. Consolidate local work into one TechProjects/Terra folder, retain recoverable historical work, and stop completed chat loops.",
+  "branch": "codex/terra-consolidate-main",
+  "base": "db0a57e932c8a3c2dcac957eeec6d15dc0ec2a6b",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json",
+    "terra-portability"
   ],
   "paths": [
     "COORDINATION.md",
@@ -49,23 +302,40 @@
     "web/**",
     "docs/terra/**",
     "README.md",
-    ".github/workflows/terra.yml"
+    ".github/workflows/terra.yml",
+    "backend/chillwatch/demo/scenario.py",
+    "tests/test_scenario.py",
+    "terra.py",
+    "tests/test_terra_harness.py",
+    "AGENTS.md",
+    "config/terra/**",
+    "spec.md",
+    "pyproject.toml"
   ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "469612541419ad5937eca6724d9ce792d72846ee",
-    "summary": "All approved source slices are consolidated on one task branch: exact repaired Tara c6797c9, frozen simulation/publication-order source 37b417f, accepted local UI polish and sender main ancestry c95ec46. One bounded reconciliation preserves strict crop/context/date handling, exact-note notification returns, explicit consent and immutable evidence. Persisted first-publication time consistently drives chat ordering, day/clock labels, evidence display context and both sides of the notification-consent boundary. Desktop evidence defaults pinned when current farm/packet content exists and respects explicit closing; mobile sheets remain independent. The exact user-accepted Station lab balance at 71627c1 is included with its checked source history; further creative work remains separate.",
+    "revision": "a046879f5aa194a7abb6c62b53e104496f026b2c",
+    "summary": "One final candidate now contains quiet UI d390d39/visible Terra labels b8eeea7, addressed alert routing eb7eee1, device c2604e5, all-variable weather/map bridge62cbbd5, Nathan main4fba932, product-first README b952d46 and final demo proof0dba4bd. The single reconciliation preserves location-display/retry semantics together with the plus/input/send capsule and mounted ChatGPT provider; routing retains get/tara/terra and independent weather vocabulary. Final combined verification caught and repaired device setup bypassing the replay factory (db05ebd) and new weather wording using a preset selector. Weather b89198f genuinely authors validated prose for pure/supported mixed facts through one configured generator; referenced weather alerts now retain original station/variable facts at the conversation caller. Nathan db0a57e zoom/adjustable point sensors and the eca1100 open-source docs/license/font patch are now included. Root MIT license and package metadata agree; the selected layout/cube/composer use the existing system font fallback, so the earlier exact-font comparison is historical.",
     "evidence": [
-      "Affected backend validation passes all eleven conversation files plus full-flow, farm and state cases with no reported failures or skips. Main production build and packaging pass; 47 pure/helper UI cases pass. Two optional native browser cases were not configured in this run and are not counted as passes; the Tara owner separately verified its native App regressions.",
-      "Independent code review cleared combined crop routing, immutable weather references, source-specific old-alert dates, explicit selected-farm consent, publication-time fallback, legacy ordering and desktop/mobile pin isolation. Its one remaining consent-boundary mapping issue was fixed and regressed with March source clocks and October publication clocks before release freeze.",
-      "Earlier isolated browser proof verified actual crop-to-confirmed-location onboarding, declined notifications, saved crop answers, quiet reopening and zero browser errors. The temporary preview was stopped with its test state and screenshot retained. Final combined UI review remains an explicit gate.",
-      "All source branches and the unrelated uncommitted Terra prototype remain preserved. No private configuration, credential, SMS opt-in, provider request, live runtime or numerical module/reference was changed by this consolidation.",
-      "Nathan independently merged PR14 to main098ebe0 during PR15 creation. Consolidation refreshed that exact upstream once, preserving every native numerical/configuration change and adding its three authoritative coordination records. Final checks use098ebe0; earlierc95 receipts are prior-baseline evidence only."
+      "Device owner: all393 conversation cases,30 focused device cases,12 native-browser and51 pure/helper checks; full11-group scoped8f gate passed. Actual App to guarded API to official USGS lookup verified using a public Davis test position; no actual OS permission click or human setup write.",
+      "Weather owner62cbbd5: all12 required groups passed against actual main4fba932;127 focused weather cases, both builds and55 UI/packaging checks passed with2 existing optional skips. Actual map spot to shared feed to persisted wind note and grounded question passed; source warnings remain separate.480 bounded real station-hours audited;360 overlapping temperature values are identical.",
+      "Selected UI independently matched exact user screenshots at normalized density:744px frame,52px header,28px cube,14/20px type and grey bubbles. Quiet plus menu, real composer,320px containment, draft preservation and provider focus return passed. Reference and paired proof retained in docs/terra/selected-ui and web/design-qa.md.",
+      "Configured-writer regression passes both ordinary and Terra-addressed Why did I get this alert with a valid saved reference, one factual writer call, exact retry deduplication and no off-topic/raw prompt forwarding. Synthetic CLI and saved-crop alias regressions remain included.",
+      "Completeness audit covers original dirty weather context and all intended historical worker functionality. Full branch refs and original unborn prototype are preserved. Demo and weather owners saved hash-verified handoffs under the shared private directory before stopping completed lanes.",
+      "Runner09854e8:34 harness cases pass including real process EOF, genuine timeout/tree cleanup, partial progress and aggregate output bound. Per-check deadlines remain unchanged; the conversation group retains its existing60s limit. This repairs a separately reproduced Windows pipe-EOF hazard; the earlier conversation timeout cause remains unconfirmed pending the combined gate.",
+      "Combined source builds both interfaces and passes51 pure/helper UI cases plus8 packaging cases;2 existing optional native-browser cases skipped in that run. Final source retains the selected chrome and one-button location together. Existing replay journals pin their source digest and must remain archived/served with compatible source rather than silently reset for the added weather snapshot.",
+      "Device factory repair: all30 device cases plus actual device setup to injected profile to wind note to same-journal restart pass. Strictly keyed terrain provenance is attached before immutable creation; existing mode, evaluation and SMS defaults stay with the shared factory.",
+      "Weather writer repair b89198f:347 affected weather/core writer/lifecycle/conversation tests pass. Novel valid prose is accepted; invented or swapped quantities/units/entities, contrary state, unsupported causes/advice and malformed output fall back truthfully. Supported mixed events use existing core validators in the same single generation. Canonical explain_alert is supported without raw question forwarding.",
+      "Actual referenced-weather ConversationService to ConversationalWriter regression preserves original event/note/date/station/60mph/6mph/+54mph and exact retry with one configured fake generator call; all14 writer integration cases pass. No actual paid provider call was used for these source checks.",
+      "Combined browser and guarded API proof verified a real crop message, one location button, public Davis terrain lookup, saved location, separate in-chat notification choice and local saved-profile reply. This exposed the factory mismatch before merge; the final repaired-source smoke and exact-head gates remain required.",
+      "Final combined-source production and Station lab builds,51 pure/helper UI cases and8 packaging cases pass;2 existing optional browser cases skipped. All51 demo/full-flow/weather integration cases pass after the final native map merge. Native point sensors are included in both lab and grower data-snapshot fingerprints.",
+      "Actual final guarded API flow preserved injected factory mode, real public Davis terrain provenance and usable comparison; map spot query and wind60mph action returned200 and the production feed retained the station note. A transient terrain503 retained clean setup and the same-ID retry succeeded. No native permission, SMS, worker or paid generation was used.",
+      "Hosted Windowsbd gate passed11 groups but the combined412-case conversation command exceeded its legacy60s default at152 completed cases. No assertion failed; full backend andmacOS passed, and local exactbd passedall12. The focused verification repair partitions the identical12 conversation files into three bounded120s checks, with unchanged assertions, backend-matching2-thread limits and15min outer portable job budget. No product code changes."
     ],
-    "uncertainty": "Final CI and actual098ebe0-base scoped checks must cover the newly merged authoritative Nathan layer together with the complete product. Independent final UI review remains a release gate. The simulation owner retains an evidence-only follow-up; no required frozen implementation is outside this candidate. The primary owner retains the single live rollout.",
-    "next": "Complete actual098ebe0-base checks and exact-head CI, obtain final UI review, then merge and push main and hand its SHA/tree/completeness receipt to the exclusive live-runtime owner. Preserve the independent native layer and all worker source histories."
+    "uncertainty": "Final configuration-only Windows repair must pass exact-head CI and actualdb0-base scoped groups before merge. Product source and independent fresh-clone acceptance remain unchanged frombd71502; private cutover/archives still require runtime-owner quiesce.",
+    "next": "Run one combined exact-head gate cycle, publish through PR16, then coordinate private/runtime quiesce, consistent backups and canonical TechProjects/Terra migration. Remove verified inactive worktrees and rebuildable copies only after preservation; retain two to three core chats without waiting loops."
   }
 }
 ```
@@ -75,7 +345,7 @@
   "kind": "task",
   "id": "terra-full-flow-verification",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "Subsequent user-requested goal: independently test final contributor revisions as first-time, returning and skeptical data-operator users; exercise onboarding, held-out simulation through frozen QC/Nathan and monitoring, no-alert controls, proactive UI messages, truthful delivery state and grounded follow-ups. Fix concrete defects and push the reviewed integrated simulation and verification changes after the complete flow passes. Preserve current runtime, credentials and original staged prototype.",
   "branch": "codex/terra-demo-simulation",
   "base": "cb58022",
@@ -97,15 +367,19 @@
   "artifacts": [],
   "handoff": {
     "revision": "37b417fab75c49c03f5f356eabc9090c7d5b75a7",
-    "summary": "Frozen controlled replay, actual production-interface bridge, natural-language/crop/weather follow-ups, immutable old-note context and publication-order repair are included in the consolidated candidate alongside final Tara and approved UI. The functional source is committed; the source owner retains final browser evidence and task metadata separately. Source data, scientific reference, normal live process and original 8520 session were preserved.",
+    "summary": "Bounded full-flow behavior verification complete; source frozen. Three independent browser grower profiles plus delegated first-time/returning/operator audits verified actual onboarding, real QC/estimator/monitor replay, quiet controls, station exclusion, proactive coverage/recovery notes and immutable grounded follow-ups. This metadata/evidence handoff adds no implementation change. The subsequent user goal remains active until the designated consolidation owner completes the combined final main release with the selected polished UI and newer authoritative upstream layer.",
     "evidence": [
-      "Source owner passed all ten configured groups on the pre-ordering implementation, then 386 affected conversation/farm/API cases and 28 UI/build cases for the bounded persisted-publication ordering repair. Consolidation subsequently combined final Tara source and passed all affected conversation/full-flow/farm/state cases plus 47 pure/helper UI cases and the production build.",
-      "Actual controlled checks establish quiet original/coherent-warming frames, a flagged excluded station with usable orchard peers, coverage loss producing one grower note, three distinct subsequent usable hours before recovery, and old loss Details retaining two supporting stations after current support recovers to five. These are controlled behavioral checks, not natural-fault accuracy labels.",
-      "The replay uses held-out March 2026 observations, isolated journals, local factual wording and disabled external delivery. Its simulated phone card is separate from the independently verified actual trial placeholder: ignored trial-api-success proof records provider delivered, one attempt and direct handset confirmation. Live configuration belongs solely to the primary owner.",
-      "First-publication wall timestamps now order new payloads without changing created_at, source/query clocks, IDs or immutable prior payloads. Consolidation applies the same validated publication/fallback mapping to presentation and notification consent; source-specific old-alert evidence remains unchanged."
+      "All ten scoped groups passed at853336a against cb58022. After final publication ordering at37b417f, affected conversation/farm/full-flow and SMS/runtime/demo suites passed with zero skips;28 UI tests and production build passed. Both web packages passed frozen installs, builds and eight packaging cases.",
+      "Actual slider125F flagged Davis against about46.5F expected; four remaining peers kept orchard usable without an extra grower note. Support loss to two peers published one actual in-app coverage note without refresh; three distinct restored hours produced recovery. Old selected Details and follow-up retained original two-station evidence/time.",
+      "Same-hour source timestamps preserved; new actual publication timestamps order welcome before loss and default follow-up explains latest loss. Saved DOM, API and final screenshots prove37b behavior. Ordinary language/crops/readiness/weather-history/context fixes retain factual/no-call contracts.",
+      "Independent cached Mar16-22 review:840 rows,168 causal hours,72 usable/96 insufficient estimates; explicit small-change and coherent+5/+15 controls stayed quiet, isolated spike flagged. No confirmed fault labels; no universal zero false-positive claim. Source/reference hashes and boundary counterexample retained.",
+      "Read-only verification of existing integration-owner synthetic trial SMS receipt: delivered, one attempt, handset confirmed. Redacted proof separates that placeholder from historical replay notes. No new external SMS/provider/LLM/training or shared live-state mutation in replay; original8520 and8512 preserved.",
+      "No scientific module/reference diff against reviewed cb58022; worker source histories preserved. Results document exact tested revisions, screenshots, selected-UI release boundary and viewport/OS-notification limitations.",
+      "These source-owner captures verify frozen37b behavior. The user-selected polished chat and Station lab screenshots remain the visual targets for the consolidated production UI; pre-polish verification screenshots are not replacement designs. Consolidation separately retains final Tara, publication-consent mapping and authoritative Nathan098ebe0 compatibility gates.",
+      "Tracked verification files: docs/terra/full-flow-verification/results.md, docs/terra/full-flow-verification/held-out-review.md, docs/terra/full-flow-verification/evidence/final-browser-stages.json, docs/terra/full-flow-verification/evidence/final-publication-proof.json, docs/terra/full-flow-verification/evidence/placeholder-delivery-redacted.json"
     ],
-    "uncertainty": "The owner is finalizing evidence-only browser artifacts and its own completion record on the preserved simulation branch. Final combined CI/UI review, publication and primary-owner runtime verification are tracked by terra-product-consolidation and terra-full-pipeline. No required known implementation is held solely in that metadata follow-up.",
-    "next": "Finish the source-owner evidence handoff without changing frozen implementation. Consolidation completes its exact-head release gates and publishes main; the primary owner performs the single retained-state live rollout. Keep actual trial delivery and isolated simulated phone behavior clearly distinguished."
+    "uncertainty": "The final combined head must preserve Nathan's newer authoritative model/data changes and pass actual-upstream gates/exact-head CI. This standalone browser capture predates the selected polished visual slice. No new mobile-width or real OS-notification permission test was claimed here. Real trial-template phone delivery is verified separately from historical in-app coverage content. Main integration and one retained-data runtime rollout belong to their designated owners.",
+    "next": "Push this single evidence head and provide its SHA/results to the consolidation owner immediately. Do not merge worker branches or change implementation. Consolidation owner completes final selected-UI review, actual-upstream checks/CI and main; existing runtime owner performs one retained-data rollout."
   }
 }
 ```
@@ -139,7 +413,7 @@
   "kind": "task",
   "id": "terra-tara-conversation",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User explicitly requests a plan and active goal to implement Tara onboarding and actual in-app replies using the existing ChatGPT connection: brief grounded responses, attached thumbs-up acknowledgments, no reply to thanks/other no-op input, and local off-topic handling that consumes no model usage. Diagnose full behavior including relevant farm/chill/alert follow-ups, context, consent, failures and return. Implement, verify and integrate without changing scientific models or external SMS/account consent.",
   "branch": "codex/tara-conversation",
   "base": "a14e1483c4681c24cecc1c97da6a4ffb3c67eb57",
@@ -166,12 +440,13 @@
   "artifacts": [],
   "handoff": {
     "revision": "7b779c9629dbd919d2a4e45a71182511e8e7573b",
-    "summary": "ONE root-authorized bounded repair cycle completed for3 concrete P2s after the prior combined source passed CI: original per-alert evidence dates/source years and IDs; existing-farm explicit browser consent affordance with selected-farm/alive guard; preservation or local clarification of mixed known/custom crops. Application source/tests are frozen. Primary root owns PR11 merge and operational cutover; follow-on consolidation received exact repaired source.",
+    "summary": "ONE root-authorized bounded repair cycle completed for3 concrete P2s after the prior combined source passed CI: original per-alert evidence dates/source years and IDs; existing-farm explicit browser consent affordance with selected-farm/alive guard; preservation or local clarification of mixed known/custom crops. Application source/tests are frozen. Primary root owns PR11 merge and operational cutover; follow-on consolidation received exact repaired source. Accepted implementation is complete and independently verified on actual live8f028a8; subsequent device-location simplification is a separately owned next slice.",
     "evidence": [
       "141 combined conversation cases passed, including new single/mixed/chained/previous-year referenced-alert regressions and38 crop list/profile/invalid/negation/off-topic cases. Existing structural scope gate, local no-op behavior and strict fact validator remain.",
       "Actual full App plus guarded HTTP consent proof: text alone makes0 native/model calls; denial stays off, grant applies only to selected farm; second farm and separate unfinished walnut setup preserved; switching farm during permission promise makes0 setup POSTs. Both tracked native-browser regressions and worker build/state tests passed.",
       "Prior combineda6bae7d with exact sender9a7 passed all4 CI jobs (1120backend plus8subtests,zero skips),23 web cases/build and all9 scoped groups. Main sender mergea14 ancestry was recorded without changinga6 tree before this bounded repair; final checks validate actuala14 base.",
-      "Integration owner verified controlled API placeholder delivery and direct user handset receipt. This chat made no shared runtime/account/private flag/vault/journal writes, no new provider or SMS calls for repairs, and preserved the original staged prototype and frozen scientific code."
+      "Integration owner verified controlled API placeholder delivery and direct user handset receipt. This chat made no shared runtime/account/private flag/vault/journal writes, no new provider or SMS calls for repairs, and preserved the original staged prototype and frozen scientific code.",
+      "Source owner performed zero-mutation live API/Edge verification on8f028a8: c679 ancestry, three immutable old notes, connected ChatGPT plan/gpt-6-luna, fresh running worker, greeting/composer, quiet reload,320px containment and zero browser errors. Proofs remain in its .terra-local/tara-main-api-verification.json and tara-main-ui-verification.json."
     ],
     "uncertainty": "Final repaired-head scoped/UI/backend gates and owner-controlled merged runtime verification remain pending. Current authorized SMS settings and all retained records must be preserved; browser alerts work while Terra is open.",
     "next": "Publish exact repaired head/tree and final combined CI. Root01a16ac9 merges PR11 only after green gates, verifies final source tree and performs retained-data cutover. Follow-on consolidation01a16f05 preserves these fixes. No further features or independent PR/main/runtime/account writes."
@@ -351,7 +626,7 @@
     "summary": "SMS software handoff ready: fixed-recipient transport, explicit real-detector simulated demo, immutable farm-message delivery, durable attempt/retry/receipt journal and shared guarded server assembly. Ordinary queries remain pure. Integration owner owns combined farm worker/UI merge; no second worker or message queue added.",
     "evidence": [
       "145 transport/envelope tests and58 HTTP/composition tests pass. Full configured scoped check passes on the transport source against actual upstream22d4594; final assembly-hook cases separately pass. Production build and4packaging cases pass; browser disabled-send/setup/focus-return verified; preview8513 healthok and removed raw-send route404.",
-      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPÃ¢â€ â€™MockTransportÃ¢â€ â€™receiptÃ¢â€ â€™pauseÃ¢â€ â€™restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
+      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢MockTransportÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢receiptÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢pauseÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
       "Actual read-only Twilio account and owned-number APIs both HTTP200: accountactiveTrial, ownedSMSsenders0. Console shows100freeSMS, predefined templates and a trialsharedsender. Requested recipient absent from verified tester list. Recipient entered in Add a verified tester; Verify not pressed; zero OTPs, real SMS or paid actions.",
       "Existing account credentials plus opted-in recipient saved only in ignored private runtime configuration; shared CIMIS environment preserved. Redacted local readiness record available to integration owner. Original Terra staged checkout, Nathan implementation and frozen reference preserved."
     ],
@@ -437,7 +712,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_chatgpt*.py",
     "tests/test_terra_conversation*.py",
     "run_terra.py",
-    "tests/test_terra_bootstrap.py"
+    "tests/test_terra_bootstrap.py",
+    "tests/test_terra_weather*.py"
   ],
   "depends_on": [],
   "checks": [
@@ -450,7 +726,10 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-pipeline-tests",
     "terra-chatgpt-tests",
     "terra-conversation-tests",
-    "terra-setup-tests"
+    "terra-conversation-crops-tests",
+    "terra-conversation-context-tests",
+    "terra-setup-tests",
+    "terra-weather-tests"
   ]
 }
 ```
@@ -625,7 +904,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "evidence": [
       "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
       "Windows and macOS minimal-runtime jobs each passed 64 targeted cases plus 31 harness cases. Production web build and four packaging cases passed. Independent review verified 15 focused regressions and all six source-import hashes plus the frozen reference SHA.",
-      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1Ã¢â‚¬â€œ41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
+      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
       "Two grid and eight synthetic model/scenario cases passed, including all four faults with original assertions, seeds, folds and thresholds. Calendar/fixture coverage needed repair; no numerical algorithm or real-data model refit changed.",
       "GitHub confirmed merged=true at 1d5caf7, containing reviewed head 5ffec23 and prior Nathan main 229106c. The merged tree matched tested source exactly. Original Terra still has the same nine staged entries and numstat counts.",
       "Completion follow-up check passed against actual merged origin/main 1d5caf7 (31 harness + 64 targeted cases). Only .gitignore and this coordination record changed afterward; application source remains identical to tested 5ffec23."
@@ -739,7 +1018,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "id": "terra-full-pipeline",
   "owner": "et",
   "status": "active",
-  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataÃ¢â€ â€™flagÃ¢â€ â€™message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
+  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢flagÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
   "branch": "codex/terra-end-to-end",
   "base": "37948ed4f76cbbfbef7b4570d8ed06b84c6e8723",
   "domains": [
@@ -778,10 +1057,11 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
       "Ignored private proof .terra-local/runtime/trial-api-success.json records HTTP 201, provider delivered, one attempt and direct user handset confirmation for the fixed trial placeholder. The restricted Messages create/read key is configured; primary-token rotation is not a current delivery blocker. Earlier rejected attempts remain recorded and are not resent.",
       "The live owner reports SMS enabled and demo enabled with trial_template content; real farm SMS opt-ins remain off. The ChatGPT plan connection and selected gpt-6-luna model retain the approved concise coverage voice. Fresh Tara setup does not preseed an almond farm.",
       "Contributor audit reports EthanVTruong and Nathan-W123 only; original nine staged prototype entries remain preserved. The candidate adds verified question/context/date/crop/consent fixes, separate historical replay, consistent first-publication display and consent clocks, and the accepted desktop evidence pin. Raw observation/query clocks and immutable message content remain unchanged.",
-      "Authoritative Nathan PR14 subsequently merged to main098ebe0; the product candidate preserves those native model/estimate/configuration updates exactly. The frozen Terra statistical reference remains unchanged; final compatibility checks now target that newer upstream."
+      "Authoritative Nathan PR14 subsequently merged to main098ebe0; the product candidate preserves those native model/estimate/configuration updates exactly. The frozen Terra statistical reference remains unchanged; final compatibility checks now target that newer upstream.",
+      "Actual8f operational cutover is verified in ignored .terra-local/runtime/final-cutover-20261024/after.json: new worker/fresh cycle, original3messages/3events/1843evidence/85revisions/all58hourkeys retained; exact3SMSattempts/deliveries unchanged; existing identity/plan/gpt-6-luna and enabled/demo/trial_template flags retained. Re-estimation follows Nathan contract97cbe8e9 while preserving old revisions. The quiet-chrome/profile/native import follow-up requires a second bounded source rollout; no new SMS is needed."
     ],
-    "uncertainty": "Final combined candidate CI, actual-base scoped checks, independent UI review and publication are pending. The primary owner exclusively controls the live service, private vault, flags and journals. Controlled placeholder delivery does not establish custom SMS content or naturally occurring sensor-fault accuracy; historical replay remains labelled and isolated.",
-    "next": "Finish the frozen consolidated release gates, merge and push main, then have the primary owner perform one rollout retaining the existing ChatGPT connection, farm preferences, message IDs and SMS journal. Capture the actual post-rollout proof at .terra-local/runtime/final-cutover-20261024/after.json; this path is planned evidence, not an already completed check."
+    "uncertainty": "Core temperature-to-message/ChatGPT/trial-placeholder operation is verified on8f. Final selected quiet chrome, local profile alias and native CLI follow-up gates plus its preserved-state rollout remain; this goal stays active through that receipt. New variables and device-location onboarding are independently owned next-release scopes.",
+    "next": "After the follow-up exact-head gates and main publication, the primary owner repeats the bounded retained-state rollout using the same private paths, preserves the established Nathan contract and all immutable rows/SMS history, then records the actual final proof. No extra phone send or credential change is needed."
   }
 }
 ```
@@ -1167,9 +1447,46 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "pythonpath=backend",
     "tests/test_terra_conversation.py",
     "tests/test_terra_conversation_api.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-conversation-crops-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
     "tests/test_terra_conversation_crops.py",
-    "tests/test_terra_conversation_local_facts.py",
+    "tests/test_terra_conversation_device_location.py",
     "tests/test_terra_conversation_natural_language.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-conversation-context-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_conversation_local_facts.py",
     "tests/test_terra_conversation_readiness.py",
     "tests/test_terra_conversation_recovery.py",
     "tests/test_terra_conversation_reference_times.py",
@@ -1177,7 +1494,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_weather.py",
     "tests/test_terra_conversation_writer_integration.py",
     "-q"
-  ]
+  ],
+  "timeout": 120
 }
 ```
 
@@ -1251,7 +1569,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "task",
   "id": "terra-local-polish",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User explicitly authorizes merging PR10, reconciling the approved polished UI with current main for fresh clones, adopting local-first open-source operation and then beginning a visual sim polish pass. PR10 merged as adced1a after all4 exact-head checks. Preserve newer ChatGPT controls, replay-only semantics, fixed-phone readiness, existing backend/scientific behavior and all private services/state. Sim conversation/engine work is active separately; presentation refinement must preserve its owner changes.",
   "branch": "codex/terra-local-polish",
   "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
@@ -1275,10 +1593,11 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
       "Shared main fast-forwarded cleanly to adced1a; original staged prototype and current8504/8512/8517/8520 services untouched.",
       "Read current sim branch facts only: separate8520 station/grower app, active conversation verification owner; no backend or sim owner checkout mutations.",
       "Production build passed;22 UI and4 packaging checks pass. No backend, scientific, reference, dependency or private state diff against main.",
-      "Isolated18520 runtime seeded with the existing offline demo, worker/source/SMS disabled and fresh ChatGPT state. Both connection panels work without authorization/provider requests. Mobile390 and320 have exact viewport-width/no horizontal overflow; selected unavailable note preserves its old values and Escape restores its note focus."
+      "Isolated18520 runtime seeded with the existing offline demo, worker/source/SMS disabled and fresh ChatGPT state. Both connection panels work without authorization/provider requests. Mobile390 and320 have exact viewport-width/no horizontal overflow; selected unavailable note preserves its old values and Escape restores its note focus.",
+      "Selected quiet UI restoration d390d39 and visible Terra naming b8eeea7 independently verified. Completed UI owner stopped previews/probe and archived; source transferred to canonical integration owner."
     ],
-    "uncertainty": "Final combined scoped checks and exact-head CI must pass before user-authorized integration. Sim owner is still reconciling conversation behavior in its own dirty checkout; no mutation there.",
-    "next": "Publish a small UI integration PR and merge after exact-head checks; then make an isolated CSS/presentation slice for the sim using a committed owner revision."
+    "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
+    "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
   }
 }
 ```
@@ -1496,5 +1815,50 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "uncertainty": "2023-24 and 2024-25 were used to choose the offset scheme, model and gate candidates, and 2025-26 informed the gate default; a clean check needs 2026-27 or later. Models and the physics fit are local files (data/ is git-ignored), recorded here by SHA-256 only. Intervals under-cover sites unlike their peers (Delta in summer).",
     "next": "ET reviews the PR from chillwatch-data-ml-layer into main and merges normally. Decide whether to enable residual.mean24_basis daily with mean24_sigma 4.0 (more caught faults, about 4x the false drift/offset alarms). Re-validate on 2026-27 as it arrives."
   }
+}
+```
+
+## Multivariable detector implementation
+
+```json
+{
+  "kind": "task",
+  "id": "terra-multivariable-detector",
+  "owner": "et",
+  "status": "done",
+  "intent": "User-authorized additive humidity, wind and solar station discrepancy checks with independent per-variable data-health and simulation-ready versioned contract. Root owns integration; frozen temperature and Nathan code remain unchanged.",
+  "branch": "codex/terra-multivariable-detector",
+  "base": "origin/main",
+  "domains": ["terra-qc-json"],
+  "paths": ["backend/terra_monitoring/weather.py", "config/terra/weather-policy-v1.json", "tests/test_terra_weather.py", "docs/terra/weather-contract.md", "COORDINATION.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {"revision": null, "summary": "Implemented versioned independent humidity/wind/solar normalization and causal peer discrepancy checks; temperature reference and Nathan code unchanged.", "evidence": ["62 focused weather tests plus 7 immutable-reference tests PASS; tests cover source units/QC independence, finite JSON, regional/noise controls, moderate/extreme rules, gaps, stale/current clocks, duplicates and causal revisions.", "docs/terra/weather-contract.md documents exact API, policy, simulation and agent handoff, including initial provisional threshold limits."], "uncertainty": "Initial conservative peer thresholds are provisional, not naturally labelled fault validation. Root owns live/sim/conversation integration and broader acceptance.", "next": "Root cherry-picks the isolated implementation, verifies real bounded source payloads and end-to-end sim/agent incident lifecycle."}
+}
+```
+
+## Weather integration checks
+
+```json
+{
+  "kind": "check",
+  "id": "terra-weather-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_weather.py",
+    "tests/test_terra_weather_integration.py",
+    "tests/test_terra_weather_lifecycle_review.py",
+    "tests/test_terra_weather_wording.py",
+    "tests/test_terra_conversation_weather_variables.py",
+    "-q"
+  ],
+  "timeout": 120
 }
 ```

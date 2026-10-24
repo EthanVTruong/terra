@@ -1,4 +1,4 @@
-"""Local, durable Tara conversation; response selection precedes inference."""
+"""Local, durable Terra conversation; response selection precedes inference."""
 
 __all__ = ["ConversationService", "RequestInProgress"]
 

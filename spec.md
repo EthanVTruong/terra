@@ -1,29 +1,22 @@
 # Terra · Always-On Monitoring Agent
 
-The [Tara conversation contract](docs/terra/conversation-contract.md) records the
+The [Terra conversation contract](docs/terra/conversation-contract.md) records the
 accepted grower voice, concise alerts and follow-ups, optional reactions/silence
 and conversational setup requirements. Its integration status remains explicit.
 
-Status: target product spec. The current milestone connects the cleaned
-statistical station detector to Nathan's existing location estimator, emits
-strict JSON assessments and displays those facts in the web UI. On-demand live
-CIMIS location queries now use that same path through a local API. Always-on
-operation, recipient subscriptions and external delivery follow that reviewed
-integration; they are not claimed by this checkpoint.
-See [the detailed monitoring spec](docs/terra/always-on-monitoring.md) for behavior,
-acceptance checks and open decisions. The frozen reference, source provenance and verification are recorded in
-[the checkpoint](docs/terra/checkpoint.md).
-Local setup, the live HTTP contract, source bounds and failure behavior are in
-[live location queries](docs/terra/live-queries.md).
+## Current product
 
-The live checkpoint accepts a coordinate/elevation or a matching measured-station
-preset. The server fetches recent observations, supplies the actual clock and
-returns the exact JSON displayed and downloaded by the UI. Provider query time,
-retrieval time and observation time remain distinct. Unsupported coverage,
-unverified inputs and stale data withhold conclusions. Saved examples and
-controlled faults retain their explicit data modes.
+The consolidated application is a local, single-user orchard monitor with conversational crop/location setup, guarded live CIMIS queries, persistent notes and evidence, supported farm/weather follow-ups, optional browser notifications, optional ChatGPT writing and optional Twilio delivery. It uses the frozen temperature QC reference and Nathan's location estimator. Relative humidity, hourly average wind and solar have separate provisional station-peer rules; their findings do not change temperature QC or invent orchard measurements.
 
-## Purpose
+Start with [the README](README.md) and [local setup](docs/terra/setup-and-hosting.md). The default `python run_terra.py` launches a saved-example preview with providers and worker disabled. `--live` enables the five-minute monitor with the operator's own CIMIS configuration. Monitoring continues with the browser closed while the process and computer remain running. Browser notifications require an open Terra page. SMS requires a configured eligible sender/recipient and explicit orchard opt-in; ChatGPT is optional and has a factual fallback.
+
+The [farm-chill rules](docs/terra/farm-chill-ops.md) are authoritative for the implemented orchard product: estimated 32–45°F hours over November–March, incomplete hours withheld from complete-data conclusions, and historical pace requiring at least five comparable, 95%-complete reference seasons. No such archive is automatically populated on a new install. Separately reported FNRIC station totals retain their own convention and cannot replace orchard history. The configured cultivar reference is not a validated biological threshold.
+
+The [Tara workflow](docs/terra/tara-conversation.md), [weather contract](docs/terra/weather-contract.md), [runtime](docs/terra/local-runtime.md), [phone setup](docs/terra/twilio-sms.md) and [readiness record](docs/terra/readiness.md) describe the current boundaries. Saved-example, station-lab and production-interface replay are labelled historical/controlled data, with separate state and simulated phone cards. Live query, retrieval, first-seen visibility and observation clocks remain distinct; missing/stale/source-warning evidence withholds unsupported conclusions.
+
+The sections below preserve the original product target and first-integration decisions. They are historical requirements, not a claim that email, arbitrary subscriptions, hosted operation or the original reported-chill policy are implemented. Current behavior is defined by the linked executable contracts and runbooks. The frozen reference and its verification are recorded in [the checkpoint](docs/terra/checkpoint.md).
+
+## Original purpose
 
 Give growers and crop consultants useful, proactive warnings about meaningful
 chill trends and unreliable station data. A grower should understand the
@@ -31,7 +24,7 @@ situation and suggested check from the message without opening a dashboard.
 Texts are the primary intended channel; recipients explicitly choose SMS,
 email or another supported channel.
 
-## First integration milestone
+## First integration milestone (historical)
 
 ET selected these two meanings on October 23, 2026:
 
@@ -49,7 +42,7 @@ queried anywhere; usable estimates require supported peers and validated months.
 The first message is a JSON data packet. The UI renders that packet without
 recomputing thresholds or adding a language-model explanation.
 
-## Target monitoring behavior
+## Original target monitoring behavior (historical)
 
 - Run independently of browsers and dashboard sessions. Persist progress and
   pending notifications, resume after restart, prevent overlapping checks and
@@ -84,20 +77,23 @@ recomputing thresholds or adding a language-model explanation.
 - Keep current alerts separate from historical replay and catch-up. Expire or
   summarize old incidents; recheck relevance immediately before delivery.
 
-## Scope and integration
+## Current scope and integration
 
 ET owns ingestion, observed-station QC, chill evaluation and alert delivery.
-Nathan owns interpolation. Agree a versioned boundary for station IDs, units,
-timestamps, source QC, availability, provenance and model versions before
-integration. Keep interpolated values distinct from measured peer evidence.
+Nathan owns interpolation. The integrated contracts retain station IDs, units, timestamps, source QC, availability, provenance and model versions. Keep interpolated values distinct from measured peer evidence.
 
-Temperature and chill form the first complete delivery path. The wind example
-requires separate wind/gust ingestion, quality handling and variable-specific
-validation before it can be claimed as working. A zero reading alone is not a
-fault rule. Additional severity percentiles, reminders and quiet-hour routing
-need an explicit policy; this checkpoint does not retune the frozen detector.
+Temperature and chill retain their existing delivery path. Independent CIMIS
+relative humidity, hourly average wind and solar radiation now use explicit
+units, per-variable source quality and provisional peer-comparison rules. Their
+findings and data-health states remain separate from temperature QC and orchard
+estimation. Zero calm wind and nighttime solar alone are not faults. Wind gusts,
+crop-risk thresholds and field sensor-fault accuracy have not been established.
+See [the weather contract](docs/terra/weather-contract.md) and
+[simulation handoff](docs/terra/weather-simulation-handoff.md). Additional severity
+percentiles, reminders and quiet-hour routing need an explicit policy; this
+checkpoint does not retune the frozen temperature detector.
 
-## Demo and completion
+## Original demonstration acceptance (historical)
 
 The service continues checking with every dashboard closed. An opted-in test
 recipient receives a temperature alert; repeat checks and restart do not create
@@ -108,6 +104,5 @@ Label delivery as real SMS, another real opted-in channel or simulation. A new
 Twilio trial cannot be assumed to support custom Terra texts: current Twilio
 docs restrict trials to verified recipients and predefined bodies. Verify the
 actual account before promising phone delivery. A simulated demo does not
-satisfy real SMS acceptance. Hosting, sender/account readiness and Nathan's
-contract remain explicit implementation dependencies.
+satisfy real SMS acceptance. Hosted multi-user operation remains deferred. Sender/account readiness and genuine phone delivery remain installation-specific acceptance; the numerical integration and local worker are implemented.
 

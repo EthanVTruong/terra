@@ -1,0 +1,45 @@
+{
+  "schema_version": "terra-release-verification-v1",
+  "scope": "First combined release; final quiet-composer/profile-question/CLI follow-up still has separate final gates.",
+  "main": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "tree": "19cac7bb6cee9113ff8213513e063b918bf33e8c",
+  "ci_head": "1a1182f77031220603422a0145523d66074bfb1c",
+  "ci_run": 40120705168,
+  "ci_jobs": {
+    "statistical-json (windows-latest)": "success",
+    "statistical-json (macos-latest)": "success",
+    "backend": "success",
+    "web": "success"
+  },
+  "runtime_proof_captured_at": "2026-10-24T18:39:13.469828+00:00",
+  "preserved_rows": {
+    "events": 3,
+    "evidence": 1843,
+    "hours": 0,
+    "leases": 0,
+    "messages": 3,
+    "orchards": 1,
+    "revisions": 85,
+    "state": 1,
+    "writer_attempts": 3
+  },
+  "hour_estimator_contract_transitions": 1,
+  "SMS_journal_exactly_preserved": true,
+  "placeholder": {
+    "status": "delivered",
+    "data_mode": "synthetic",
+    "content_mode": "trial_template",
+    "provider_status": "delivered",
+    "attempt_count": 1
+  },
+  "plan_enabled": true,
+  "selected_model": "gpt-6-luna",
+  "read_only_browser_smoke": {
+    "health_ok": true,
+    "built_assets_match_clean_main": true,
+    "cube_interface_visible": true,
+    "saved_latest_note_opens_details": true,
+    "extra_message_or_send": false
+  },
+  "privacy": "No phone/account identifiers, credentials, private paths or provider receipt identifiers are included."
+}

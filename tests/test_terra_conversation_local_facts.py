@@ -119,3 +119,19 @@ def test_stale_comparison_across_new_year_preserves_both_actual_source_years():
     text, facts = gap_answer(summary)
     assert "through Jan 1, 2027" in text and "Latest usable data is from Dec 31, 2026" in text
     assert facts["source_date"] == "2026-12-31" and facts["comparison_date"] == "2027-01-01"
+
+
+@pytest.mark.parametrize("question", ["What are we growing here?", "What am I growing here?", "What crops are we growing here?"])
+def test_here_question_reads_the_actual_saved_walnut_profile_without_a_writer(conversation, question):
+    from test_terra_conversation import LOCATION
+
+    service, monitor, writer = conversation
+    service.message(request_id="walnut-crops", text="I grow walnuts")
+    orchard = service.action(request_id="walnut-pin", action="location", location={**LOCATION, "name": "Walnut farm"})["orchard_id"]
+    response = service.message(request_id="saved-crop-question", text=question, orchard_id=orchard)
+    answer = response["assistant_turn"]
+    assert answer["data"]["intent"] == "profile_crops"
+    assert answer["data"]["local_facts"]["crops"] == ["walnut"]
+    assert answer["text"] == "Your saved crops are walnut."
+    assert monitor.store.orchard(orchard)["crops"] == ["walnut"]
+    assert not writer.packets

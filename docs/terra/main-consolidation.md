@@ -2,7 +2,7 @@
 
 This document records the earlier PR #3 QC/JSON checkpoint. For the complete
 grower product and local launch, start with [the project README](../../README.md).
-The [Tara workflow](tara-conversation.md), [controlled demonstration](demo-simulation.md)
+The [Terra workflow](tara-conversation.md), [controlled demonstration](demo-simulation.md)
 and [production-interface replay](full-flow-verification/replay.md) document the
 subsequent conversation, monitoring and demonstration integrations.
 
@@ -87,10 +87,20 @@ mobile focus/overflow and exact downloaded JSON. External clipboard round-trip
 remains unverified; the UI reports copy success, but the inspection API returned
 an empty clipboard value.
 
-## What this verification establishes
+## What the PR #3 verification established (historical)
 
 The tests establish software behavior and controlled-fault handling. They do not
 establish natural sensor-fault accuracy or verify live provider credentials.
 The committed examples are historical saved observations with labelled
-injections. A live location API, continuous worker, subscriptions, external
-delivery and new chill products remain future scope in `spec.md`.
+injections. At that earlier checkpoint, a live location API, continuous worker,
+subscriptions, external delivery and new chill products were future scope.
+
+Subsequent integrations implemented the local live API, persistent worker,
+orchard inbox, explicit SMS opt-in/transport and estimated orchard chill. Current
+setup and supported limits are in [the README](../../README.md),
+[runtime](local-runtime.md) and [readiness](readiness.md). The original check
+counts and commit-specific commands above are preserved as historical evidence;
+use the current repository workflow and task/base checks for a new integration.
+Real provider access, eligible phone setup and a matching historical orchard
+archive remain installation requirements rather than files supplied by this
+checkpoint. Hosted multi-user operation remains deferred.

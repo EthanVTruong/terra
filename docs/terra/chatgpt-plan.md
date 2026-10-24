@@ -113,7 +113,7 @@ tokens. It suppresses the setup welcome for this isolated review, keeps explicit
 replay labels, and activates neither a live worker nor SMS. Previously saved
 preview records are preserved in their separate state directory.
 
-The [Tara conversation contract](conversation-contract.md) is preserved separately.
+The [Terra conversation contract](conversation-contract.md) is preserved separately.
 This slice ships incoming notes and plan connection. Conversational onboarding,
 reactions and silence outcomes remain separate acceptance work. The coverage-note
 slice now follows the approved short texting style; other note types still need

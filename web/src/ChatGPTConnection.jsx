@@ -14,7 +14,7 @@ function confirmedAccounts() {
   } catch { return new Set(); }
 }
 
-export default function ChatGPTConnection({ openRequest = 0, refreshRequest = null, onStatus }) {
+export default function ChatGPTConnection({ openRequest = 0, refreshRequest = null, onStatus, showTrigger = true, returnFocusRef }) {
   const [open, setOpen] = useState(false), [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState("");
   const [error, setError] = useState(""), [catalogError, setCatalogError] = useState("");
@@ -83,17 +83,18 @@ export default function ChatGPTConnection({ openRequest = 0, refreshRequest = nu
 
   function close(restoreFocus = true) {
     setOpen(false);
-    if (restoreFocus) requestAnimationFrame(() => trigger.current?.focus());
+    if (restoreFocus) requestAnimationFrame(() => (trigger.current || returnFocusRef?.current)?.focus());
   }
   useEffect(() => {
     if (!open) return;
-    firstFocus.current?.focus();
     refresh();
     const outside = (event) => { if (!container.current?.contains(event.target)) close(false); };
     const escape = (event) => { if (event.key === "Escape") { event.preventDefault(); close(); } };
     document.addEventListener("pointerdown", outside); document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
   }, [open, refresh]);
+
+  useEffect(() => { if (open && mounted) firstFocus.current?.focus(); }, [open, mounted]);
 
   const attemptId = status?.attempt?.id || "pending";
   const phase = expiredAttempt === attemptId && status?.state === "connecting" ? "expired" : connectionPhase(status);
@@ -204,8 +205,8 @@ export default function ChatGPTConnection({ openRequest = 0, refreshRequest = nu
   const canManage = Boolean(accountId) && phase !== "connecting";
   const connectLabel = "Continue with ChatGPT";
 
-  return <div className="chatgpt-controls" ref={container}>
-    <button ref={trigger} type="button" className="icon-button chatgpt-toggle" aria-label="Message writing" title="Message writing" aria-haspopup="dialog" aria-expanded={open} aria-controls="chatgpt-connection-panel" onClick={() => setOpen((value) => !value)}><UserCircle size={18} weight="regular" aria-hidden="true" /></button>
+  return <div className={`chatgpt-controls${showTrigger ? "" : " chatgpt-controls-menu"}`} ref={container}>
+    {showTrigger && <button ref={trigger} type="button" className="icon-button chatgpt-toggle" aria-label="Message writing" title="Message writing" aria-haspopup="dialog" aria-expanded={open} aria-controls="chatgpt-connection-panel" onClick={() => setOpen((value) => !value)}><UserCircle size={18} weight="regular" aria-hidden="true" /></button>}
     {mounted && <section id="chatgpt-connection-panel" className="query-panel chatgpt-panel" data-open={open} inert={!open ? true : undefined} role="dialog" aria-label="Message writing" aria-busy={Boolean(busy) || loading}>
       <div className="query-heading"><strong>Message writing</strong><button ref={firstFocus} type="button" className="icon-button" aria-label="Close message writing" onClick={() => close()}><Icon name="close" size={15} /></button></div>
       {status?.preview_only && <p className="microcopy">Connection preview. Saved field notes stay unchanged.</p>}

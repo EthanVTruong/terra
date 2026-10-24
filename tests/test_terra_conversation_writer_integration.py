@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import httpx
+import pytest
 
 from terra_monitoring.farm_ops.conversational_writer import ConversationalWriter, compact_text
 from terra_monitoring.farm_ops.writer import Writer, message_input
@@ -39,7 +40,7 @@ def test_eligible_reply_uses_one_plan_call_and_retains_exact_input():
     assert result["provider"] == "chatgpt_plan"
     assert result["text"] == "Estimated chill is 180 hours. As of Jan 14."
     assert len(generator.calls) == 1
-    assert "Tara's short replies" in generator.calls[0]["instructions"]
+    assert "Terra's short replies" in generator.calls[0]["instructions"]
     assert "factual output/placeholder rules" in generator.calls[0]["instructions"]
     assert "How much chill?" not in json.dumps(generator.calls)
     assert source == before
@@ -181,3 +182,72 @@ def test_real_runtime_routes_select_plan_writer_only_for_relevant_input(tmp_path
         assert legacy.status_code == 200
         assert len(provider.calls) == 1
         assert client.post("/api/tara/messages", json={"request_id": "unguarded", "text": "Chill?", "orchard_id": orchard}).status_code == 403
+
+
+@pytest.mark.parametrize("question", ["Why did I get this alert?", "Terra, why did I get this alert?"])
+def test_referenced_get_alert_question_uses_the_configured_fact_checked_writer_once(tmp_path, question):
+    from terra_monitoring.conversation import ConversationService
+    from terra_monitoring.farm_ops.service import Monitor
+    from terra_monitoring.farm_ops.store import Store
+
+    clock = datetime(2026, 1, 14, 16, tzinfo=timezone.utc)
+    monitor = Monitor(Store(tmp_path / "referenced-alert.sqlite3"), writer=Writer(key="", model=""), clock=lambda: clock)
+    profile = monitor.create_orchard("Saved walnut farm", orchard_id="walnut-farm", crops=["walnut"])
+    with monitor.store.connect(write=True) as db:
+        monitor.store.set_state(db, "watch:" + profile["id"], {"welcomed": True})
+    monitor._source_failure(profile["id"], clock)
+    monitor.flush(profile["id"], now=clock)
+    source = monitor.store.messages(profile["id"])[0]
+    original = copy.deepcopy(source)
+    provider = Generator("weather coverage is limited and the orchard estimate is incomplete")
+    monitor.writer = ConversationalWriter(Writer(generator=provider))
+    service = ConversationService(monitor)
+    body = {"request_id": "why-get-alert", "text": question, "orchard_id": profile["id"], "reply_to": source["id"]}
+    answer = service.message(**body)["assistant_turn"]
+    assert answer["data"]["intent"] == "explain_alert"
+    assert answer["data"]["generation"] == "chatgpt_plan"
+    assert answer["data"]["source_event_ids"] == source["event_ids"]
+    assert "weather coverage is limited" in answer["text"].lower()
+    assert len(provider.calls) == 1
+    assert body["text"] not in json.dumps(provider.calls)
+    assert monitor.store.message(source["id"]) == original
+    assert service.message(**body)["assistant_turn"] == answer
+    assert len(provider.calls) == 1
+    for index, text in enumerate(("Why did I get this alert in Minecraft?", "Why did I get this alert about qux telemetry?")):
+        service.message(request_id=f"out-of-scope-{index}", text=text, orchard_id=profile["id"], reply_to=source["id"])
+    assert len(provider.calls) == 1
+
+
+
+def test_saved_weather_alert_followup_keeps_actual_station_facts_and_plan_writer(tmp_path):
+    from terra_monitoring.conversation import ConversationService
+    from terra_monitoring.farm_ops.service import Monitor, _event
+    from terra_monitoring.farm_ops.store import Store
+
+    clock = datetime(2026, 1, 14, 16, tzinfo=timezone.utc)
+    monitor = Monitor(Store(tmp_path / "saved-weather.sqlite3"), writer=Writer(key="", model=""), clock=lambda: clock)
+    profile = monitor.create_orchard("Walnut farm", orchard_id="weather-farm", crops=["walnut"])
+    with monitor.store.connect(write=True) as db:
+        monitor.store.set_state(db, "watch:" + profile["id"], {"welcomed": True})
+    event = _event(profile, "weather_discrepancy", "opening", "strong", clock,
+        {"variable": "wind_speed_mph", "variable_label": "Wind speed", "station_id": 6, "unit": "mph",
+         "observed": 60.0, "expected": 6.0, "departure": 54.0, "observation_time": clock.isoformat()}, "saved-wind")
+    with monitor.store.connect(write=True) as db:
+        monitor.store.add_event(db, profile["id"], event, clock)
+    saved_input = message_input(profile, [event], clock)
+    source = monitor.store.publish(profile["id"], saved_input, monitor.writer.write(saved_input), [event["id"]], clock)
+    original = copy.deepcopy(source)
+    provider = Generator("at station {{station}}, {{variable}} reads {{observed}}, compared with peer reference {{expected}}; provisional departure {{departure}}, cause unconfirmed")
+    monitor.writer = ConversationalWriter(Writer(generator=provider))
+    service = ConversationService(monitor)
+    body = {"request_id": "weather-followup", "text": "Terra, why did I get this alert?",
+            "orchard_id": profile["id"], "reply_to": source["id"]}
+    reply = service.message(**body)["assistant_turn"]
+    assert reply["data"]["generation"] == "chatgpt_plan"
+    assert reply["data"]["source_event_ids"] == [event["id"]]
+    assert "60 mph" in reply["text"] and "6 mph" in reply["text"] and "+54 mph" in reply["text"]
+    assert "Jan 14" in reply["text"]
+    assert len(provider.calls) == 1 and body["text"] not in json.dumps(provider.calls)
+    assert monitor.store.message(source["id"]) == original
+    assert service.message(**body)["assistant_turn"] == reply
+    assert len(provider.calls) == 1

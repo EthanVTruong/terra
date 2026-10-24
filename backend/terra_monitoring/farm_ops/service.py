@@ -12,7 +12,8 @@ from .writer import Writer, message_input
 
 
 def orchard_profile(name="West Orchard", *, orchard_id=None, lat=38.6, lon=-121.84,
-                    elevation_ft=70.0, mode="current", crops=None, crop=None, variety=None, crop_description=None):
+                    elevation_ft=70.0, mode="current", crops=None, crop=None, variety=None, crop_description=None,
+                    location_metadata=None):
     if not isinstance(name, str) or not name.strip() or len(name) > 80 or any(ord(c) < 32 for c in name):
         raise ValueError("Provide a short orchard name")
     for value, low, high in ((lat, -90, 90), (lon, -180, 180), (elevation_ft, -1500, 20000)):
@@ -56,6 +57,20 @@ def orchard_profile(name="West Orchard", *, orchard_id=None, lat=38.6, lon=-121.
                              "source": None, "note": "No crop-specific reference has been configured."}
         if crop_description is not None:
             profile["crop_description"] = crop_description.strip()
+    if location_metadata is not None:
+        keys = {"location_source", "location_accuracy_m", "elevation_source"}
+        if not isinstance(location_metadata, dict) or set(location_metadata) != keys:
+            raise ValueError("Provide only verified device provenance")
+        accuracy = location_metadata["location_accuracy_m"]
+        source = location_metadata["elevation_source"]
+        if (location_metadata["location_source"] != "device geolocation; ground elevation from USGS EPQS"
+                or (accuracy is not None and (isinstance(accuracy, bool) or not isinstance(accuracy, (int, float))
+                    or not math.isfinite(accuracy) or accuracy < 0))
+                or not isinstance(source, dict) or source.get("provider") != "USGS EPQS" or source.get("units") != "Feet"):
+            raise ValueError("Provide verified ground elevation provenance and usable accuracy")
+        # These fields cannot override identity, geometry, mode or delivery.
+        # Attach them before the immutable profile is first saved by its factory.
+        profile.update({**location_metadata, "elevation_source": dict(source)})
     return profile
 
 
@@ -72,7 +87,9 @@ def _facts(summary):
 def _event(profile, kind, transition, severity, occurred_at, facts, key, evidence_id=None):
     identity = fingerprint({"orchard": profile["id"], "mode": profile["mode"], "kind": kind,
                             "transition": transition, "key": key})
-    category = "data_health" if kind.startswith("monitoring_") else "chill_pace" if kind.startswith("chill_pace") else kind
+    category = ("data_health" if kind.startswith(("monitoring_", "weather_data_")) else
+                "weather" if kind.startswith("weather_discrepancy") else
+                "chill_pace" if kind.startswith("chill_pace") else kind)
     episode = fingerprint({"orchard": profile["id"], "mode": profile["mode"], "category": category, "key": key})
     return {"id": identity, "episode_id": episode, "mode": profile["mode"], "category": category,
             "type": kind, "transition": transition, "severity": severity,
@@ -179,6 +196,8 @@ class Monitor:
             snapshot = summarize(rows, now, profile["geometry_key"], newest["method_version"])
             available = newest["status"] == "ok" and now - utc(newest["valid_utc"]) <= timedelta(hours=6)
             events = self._decide(profile, previous, rows, snapshot, newest, available, now, evidence_id)
+            from ..weather_events import decide as decide_weather
+            events.extend(decide_weather(profile, previous, latest, now, evidence_id, _event))
             events.extend(self._sensor_events(profile, previous, collection.get("sensor_flags", []), now, evidence_id))
             previous.update(last_check=now.isoformat(), last_observation=newest["valid_utc"],
                             method_version=newest["method_version"], latest_evidence_id=evidence_id,
@@ -356,6 +375,9 @@ class Monitor:
                 pace_open = event["type"] == "chill_pace"
                 obsolete = ((health_open and not state.get("health_incident")) or (pace_open and not state.get("pace_incident"))
                             or (event["type"] == "sensor_flag" and not self._open_sensor_episode(profile, state, event)))
+                if event["type"].startswith("weather_"):
+                    from ..weather_events import notification_current
+                    obsolete = not notification_current({**event, "orchard_id": orchard_id}, state)
                 if not obsolete:
                     keep.append(event)
             if not pending:
@@ -368,9 +390,11 @@ class Monitor:
             # One most recent event per category prevents an unsent opening+escalation double text.
             grouped = {}
             for event in keep:
-                old = grouped.get(event["type"])
+                group_key = ((event["type"], event["facts"].get("variable"), event["facts"].get("station_id"))
+                             if event["type"].startswith("weather_") else event["type"])
+                old = grouped.get(group_key)
                 if old is None or event["transition"] == "escalation" or event["occurred_at"] > old["occurred_at"]:
-                    grouped[event["type"]] = event
+                    grouped[group_key] = event
             packet = message_input(profile, list(grouped.values()), now.isoformat())
             result = self.writer.write(packet)
             if not self.store.acquire("publish:" + orchard_id, owner, max(utc(self.clock()), now) if profile["mode"] == "current" else now, seconds=90):
@@ -440,8 +464,25 @@ class Monitor:
             if existing:
                 return existing
         from ..conversation.routing import QUESTIONS, route
+        from ..conversation.local_facts import WEATHER_INTENTS, weather_answer
         from .writer import fallback
-        local_route = route(question, context="chill_total", known_subjects=[profile.get("name"), profile.get("crop"), profile.get("variety"), *profile.get("crops", [])])
+        previous_question = self.store.get("local-weather-context:" + orchard_id, {})
+        local_route = route(question, context=previous_question.get("intent", "chill_total"), known_subjects=[profile.get("name"), profile.get("crop"), profile.get("variety"), *profile.get("crops", [])])
+        if local_route in WEATHER_INTENTS:
+            referenced = bool(re.fullmatch(r"\s*(?:is (?:that|this|it) (?:normal|usual|okay)|does (?:that|this) look normal)[?.!\s]*", question, re.I))
+            evidence_id = previous_question.get("evidence_id") if referenced else None
+            answer, weather_facts = weather_answer(local_route, self, orchard_id,
+                evidence_id=evidence_id, referenced=referenced)
+            event = _event(profile, "explain_alert", "answer", "info", now, {"explanation": answer}, uuid.uuid4().hex)
+            packet = message_input(profile, [event], now.isoformat(), question={"intent": local_route, "text": question.strip()})
+            packet["saved_weather_facts"] = weather_facts
+            result = {"text": answer, "provider": "template", "outcome": "local_weather_response"}
+            message = self.store.publish(orchard_id, packet, result, [], now, question_id=request_id or uuid.uuid4().hex)
+            state = self.store.get("watch:" + orchard_id, {})
+            with self.store.connect(write=True) as db:
+                self.store.set_state(db, "local-weather-context:" + orchard_id,
+                    {"intent": local_route, "evidence_id": evidence_id or state.get("latest_evidence_id")})
+            return message
         text = question.lower()
         status = self.status(orchard_id, now=now)
         if re.search(r"gdd|gdh|forecast|next week|next two|bloom|spray|irrigat", text):
@@ -469,6 +510,8 @@ class Monitor:
         eligible = local_route in QUESTIONS or text.strip() in {"status", "total"}
         result = self.writer.write(packet) if eligible and intent != "unsupported" else {
             "text": fallback(packet), "provider": "template", "outcome": "local_response"}
+        with self.store.connect(write=True) as db:
+            self.store.set_state(db, "local-weather-context:" + orchard_id, {"intent": intent})
         return self.store.publish(orchard_id, packet, result, [], now, question_id=question_id)
 
     def set_sms_opt_in(self, orchard_id, enabled):
@@ -519,10 +562,14 @@ class Monitor:
                     summary = state.get("summary", {})
                     if not summary.get("complete") or (summary.get("hours") or 0) < event["facts"]["reference_hours"]:
                         reason = "revised_reference"
+                elif kind.startswith("weather_"):
+                    from ..weather_events import notification_current
+                    if not notification_current({**event, "orchard_id": profile["id"]}, state):
+                        reason = "superseded_weather_event"
                 elif kind == "sensor_flag" and not self._open_sensor_episode(profile, state, event):
                     reason = "superseded_sensor_flag"
         primary = events[0] if events else None
-        category = ("data_health" if primary and primary["category"] == "data_health" else
+        category = (primary["category"] if primary and primary["category"] in {"data_health", "weather"} else
                     "temperature" if primary and primary["category"] == "sensor_flag" else "chill")
         observation = state.get("last_observation")
         seasonal = [e for e in events if e["type"] in {"chill_pace", "chill_pace_recovered", "chill_reference"}]

@@ -1,4 +1,5 @@
 .chatgpt-controls{position:static;display:flex;align-items:center}
+.chatgpt-controls-menu{display:contents}
 .chatgpt-toggle[aria-expanded=true]{background:#eee;color:#555}
 .query-panel.chatgpt-panel{top:50px;bottom:auto;left:auto;right:12px;width:min(320px,calc(100% - 24px));max-height:calc(100dvh - 90px);transform-origin:top right;z-index:8}
 .chatgpt-state{margin:8px 0;font-size:12px;line-height:19px;color:#444;overflow-wrap:anywhere}

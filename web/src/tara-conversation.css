@@ -16,21 +16,13 @@
 .tara-reaction{position:relative;display:inline-flex;align-items:center;justify-content:center;float:right;clear:both;min-width:26px;min-height:22px;margin:5px -5px -5px 8px;border:1px solid #dedede;border-radius:14px;background:var(--canvas);font-size:12px;line-height:18px}
 .tara-saved-event{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 12px;color:#626c5d;font-size:12px;line-height:18px;max-width:100%;overflow-wrap:anywhere}
 .tara-setup-controls{margin:18px 12px 8px;max-width:345px;min-width:0}
-.tara-field{display:block;min-width:0;font-size:11px;line-height:17px;color:#737373}
-.tara-field input,.tara-field select{display:block;width:100%;min-width:0;margin-top:4px;padding:8px 9px;border:1px solid #dedede;border-radius:7px;background:#fafafa;color:#333;font-size:13px;line-height:18px}
-.tara-reference{margin-top:14px}
-.tara-location-form{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin-top:16px}
-.tara-coordinate-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
-.tara-coordinate-fields>label:last-child{grid-column:1/-1}
-.tara-coordinate-fields>label:last-child>input{max-width:calc(50% - 5px)}
-.tara-location-form>.query-submit{align-self:flex-start}
 .tara-confirm{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:18px;color:#555}
 .tara-confirm input{margin:3px 0 0;flex-shrink:0;accent-color:#626c5d}
 .tara-capability,.tara-status{margin:0 0 12px;color:#737373;font-size:12px;line-height:18px}
 .tara-monitoring{display:flex;align-items:center;gap:7px;margin:22px 12px 0;color:#737373;font-size:11px;line-height:17px}
 .tara-monitoring-ready{color:var(--green)}
 .tara-compose-area{min-width:0}
-.tara-composer{padding-left:13px;gap:8px}
+.tara-composer{padding-left:5px;gap:2px}
 .tara-composer:focus-within{outline:2px solid #788d70;outline-offset:3px}
 .tara-composer input{flex:1;min-width:0;width:100%;height:34px;border:0;background:transparent;outline:none;color:#333;font-size:13px;line-height:20px}
 .tara-composer input:focus-visible{outline:none}
@@ -47,6 +39,6 @@
 .tara-pending-recovery>p{margin:0 0 8px}
 .tara-pending-recovery>.tara-text-button{margin-top:7px}
 .tara-notice-event{color:#706347}
-@media(max-width:370px){.tara-setup-controls{margin-left:0;margin-right:0}.tara-context-actions{gap:8px}.tara-context-actions select{max-width:160px}.tara-coordinate-fields{grid-template-columns:minmax(0,1fr)}.tara-coordinate-fields>label:last-child>input{max-width:100%}}
-@media(pointer:coarse){.tara-field input,.tara-field select,.tara-composer input{font-size:16px}.tara-actions button,.tara-context-actions button,.tara-context-actions select{min-height:44px}.tara-confirm{min-height:44px;align-items:center}.tara-confirm input{margin:0;min-height:20px;min-width:20px}}
+@media(max-width:370px){.tara-setup-controls{margin-left:0;margin-right:0}.tara-context-actions{gap:8px}.tara-context-actions select{max-width:160px}}
+@media(pointer:coarse){.tara-composer input{font-size:16px}.tara-actions button,.tara-context-actions button,.tara-context-actions select,.tara-setup-controls>.query-submit{min-height:44px}.tara-confirm{min-height:44px;align-items:center}.tara-confirm input{margin:0;min-height:20px;min-width:20px}}
 @media(prefers-reduced-motion:reduce){.tara-conversation *,.tara-compose-area *{scroll-behavior:auto;animation:none;transition:none}}

@@ -25,12 +25,10 @@ live journals are rejected, rather than adopted or reset.
 
 1. In `/terra`, set up a farm using the actual interface available in that build.
    New QA profiles are forced to **injected** mode, retain the supplied geometry,
-   and cannot opt in to real SMS. After the Tara onboarding/profile integration
-   is present, its native conversation router attaches automatically and preserves
-   supplied crops and variety. Until then, the older coordinate form works but
-   cannot supply crop metadata; crop-aware calls fail explicitly.
-   If the production factory already attached its conversation service and
-   routes, the bridge reuses them. An explicit `conversation_factory` is a
+   and cannot opt in to real SMS. The native Terra conversation router is
+   integrated and preserves supplied crops and variety. The bridge reuses the
+   production factory's conversation service and routes. An explicit
+   `conversation_factory` is a
    fallback only and never replaces that native instance.
 2. The farm receives a real baseline assessment from the saved March observations.
    The observation clock remains historical. A usable replay comparison does
@@ -45,16 +43,17 @@ live journals are rejected, rather than adopted or reset.
    **Restore +3h** evaluates three distinct subsequent hours for every QA farm.
    The actual monitor decides whether recovery is established.
 6. Read the older loss note after recovery. Its original assessment is retained.
-   Follow-ups use the native conversation service when integrated, with no model
+   Follow-ups use the integrated native conversation service, with no model
    configured. Optional browser alerts describe open-page delivery only.
 
 External delivery remains disabled even if the host has credentials configured.
 The station lab's phone card is labelled simulation; it is not an SMS receipt.
 Current-weather context is explicitly unconfigured, so saved replay cannot be
 presented as current provider weather. No real account connection is supplied.
-The station lab retains its existing public OpenStreetMap basemap dependency in
-the browser. Those visual tile requests are separate from the offline saved
-weather, numerical assessment, monitor and message paths.
+The station lab uses optional attributed Esri Light Gray Canvas browser tiles
+(base and place-name layers). Numerical computation works without those tiles.
+Those visual tile requests are separate from the offline saved weather, numerical
+assessment, monitor and message paths.
 
 ## Isolation and replay controls
 
@@ -68,8 +67,9 @@ Reset action is refused: moving the observation clock backwards would contaminat
 that farm's causal history. Start a new process with a new state directory for a
 fresh complete walkthrough. Retain the previous directory as evidence.
 
-Production assets remain under `/assets`; station-lab assets and its font use
-`/demo-assets` and `/demo-static`, preventing filename collisions. The bridge
+Production assets remain under `/assets`; station-lab assets use `/demo-assets`
+and public files use `/demo-static`, preventing filename collisions. The released
+styles use system fonts; no reference-font binary is required. The bridge
 does not rewrite production UI source or any numerical scientific policy.
 
 Focused verification: `tests/test_terra_full_flow.py` exercises native HTTP/feed/

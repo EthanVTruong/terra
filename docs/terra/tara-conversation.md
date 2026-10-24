@@ -1,6 +1,6 @@
-# Tara in the grower workflow
+# Terra in the grower workflow
 
-Tara opens in the existing monitoring view. The implementation follows the
+Terra opens in the existing monitoring view. The implementation follows the
 [conversation contract](conversation-contract.md) and
 [implementation plan](tara-conversation-plan.md).
 
@@ -8,9 +8,11 @@ Tara opens in the existing monitoring view. The implementation follows the
 
 1. Ask what the grower is growing. Save multiple crops and supplied varieties;
    do not assume an almond variety or a chill requirement.
-2. Confirm the farm coordinates and elevation. Device location is optional and
-   requested only after a click; denied permission leaves manual entry available.
-   Known CIMIS locations are explicitly station references, not address lookup.
+2. Show one **Use my location** button. Its explicit browser permission flow
+   supplies a fresh device position; the server resolves ground elevation and
+   saves the shared growing location automatically. No coordinate, elevation,
+   farm-name, station-picker or confirmation form appears in onboarding. A denied,
+   unavailable or failed lookup leaves a concise retry path.
 3. Offer browser notifications separately. They work while Terra is open;
    declining keeps in-chat updates. This preference does not enable SMS.
 
@@ -18,6 +20,16 @@ Saved location and notification choices appear as compact events. Readiness uses
 the actual monitor/data state. A saved farm with no usable weather stays pending.
 Reopening resumes setup or the saved conversation without generating a greeting,
 another model request, or a repeat browser notification.
+
+This button-only flow supersedes the original manual-location onboarding after
+ET's October 24 correction. Location is shared once for monitoring that point,
+so growers should use it where they grow. The internal label is **Shared location**,
+not an inferred farm name. Ground elevation comes from the official
+[USGS point-elevation service](https://epqs.nationalmap.gov/v1/docs); browser
+altitude and guessed station elevations are not substituted. Provider failures
+save no location profile. Existing regional peer selection, QC and coverage
+requirements remain authoritative and can leave monitoring unavailable.
+The legacy explicit-location API remains compatible for existing callers.
 
 ## Local decisions before model use
 
@@ -32,6 +44,16 @@ and comparable historical gap arithmetic are answered locally. Unavailable total
 also stay local. A gap requires actual matching method, cutoff, adequate coverage
 and enough reference seasons; fixture values such as 180/220 are never defaults.
 Old comparisons retain their year and completed-season meaning.
+
+Humidity, wind speed and solar radiation questions use the saved assessment's
+versioned `weather` section locally, with station IDs, %, mph or W/m² and the
+observation time. These are station observations; the temperature estimator does
+not supply orchard estimates for these variables. Numerical discrepancies use
+explicitly provisional station-to-neighbor rules. Missing readings, source QC
+warnings, stale data and unavailable comparisons remain separate. A valid zero
+solar reading remains zero; low daylight withholds the solar comparison.
+Replies to old weather notes retain their immutable assessment after new
+measurements arrive. Historical humidity/wind/solar comparisons remain unavailable.
 
 Eligible fact explanations reuse Terra's selected ChatGPT plan connection and
 explicit consent. The model receives bounded facts and canonical intent, without
@@ -59,6 +81,8 @@ The local guarded API exposes GET `/api/tara/conversation`, POST `/api/tara/mess
 POST `/api/tara/setup` and POST `/api/tara/reconcile`. The existing SQLite farm store
 also persists conversation turns and requests. No new scientific model, station
 calibration, ingestion run, SMS activation, or closed-app push service is added.
+The product and assistant are named Terra. Legacy `tara` route, storage and file
+identifiers remain compatibility keys so saved conversations and clients keep working.
 
 Verification includes local routing and call counts, actual runtime/provider
 assembly, strict factual fallback, saved setup, retries/concurrency, real process

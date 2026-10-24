@@ -545,7 +545,7 @@ class SMSDispatcher:
                     "initial", "opening", "escalation", "recovery", "milestone", "combined"}:
                 return blocked("invalid_notification_kind")
             if envelope["severity"] not in {"info", "moderate", "strong"} or envelope["category"] not in {
-                    "temperature", "chill", "data_health"}:
+                    "temperature", "chill", "data_health", "weather"}:
                 return blocked("invalid_notification_category")
             orchard = envelope["orchard_id"]
             if not isinstance(orchard, str) or not SOURCE_ID.fullmatch(orchard):

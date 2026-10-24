@@ -1,6 +1,6 @@
 # Setup and hosting assessment
 
-Audited on 2026-10-24 against main `cb580227851d6194dc6a001bbe51e3b615f4dba2`, including the local ChatGPT connection. This change improves local setup; it does not turn the runtime into a hosted multi-user service.
+The initial audit on 2026-10-24 used main `cb580227851d6194dc6a001bbe51e3b615f4dba2`, including the local ChatGPT connection. The local instructions below also cover the subsequently consolidated conversation, device-location and station-weather features. The Vercel findings remain a dated hosting assessment, not a deployed service.
 
 **Selected direction:** Terra remains local-first and open source. Complete the
 local quickstart and reviewed interface; defer hosted migration. The Vercel
@@ -62,9 +62,7 @@ The audit found that the reviewed UI at port 8504 came from `codex/terra-ui-quie
 (`4464760`), while main contained the newer ChatGPT connection. The subsequent
 local-first integration combines the cube logo, leaner copy and phone-readiness
 states with the ChatGPT control, trial receipt semantics and replay-only warning.
-Use the same committed build for fresh clones and the demonstration. The
-separate simulation/conversation feature branch still has its own verification
-and integration boundary.
+Use the same committed build for fresh clones and the demonstration. Conversation, device-location setup, independent station-weather checks and both controlled replay entry points are now included in the consolidated source. Each demo retains its own isolated state and explicit historical-data boundary; use the [demo guide](demo-simulation.md) or [production-interface replay](full-flow-verification/replay.md). Exact-head release evidence remains in COORDINATION.md and CI.
 
 ## Vercel
 
@@ -103,7 +101,9 @@ A single always-on host with a persistent volume is closer to the existing full 
 
 Actual `.env*`, `.terra-local`, SQLite, environments and build/dependency directories are ignored; `.env.example` is only a tracked template. No private configuration is needed for a fresh preview.
 
-Two provenance decisions remain: root `LICENSE` is MIT while native `pyproject.toml` declares BSD-3-Clause; `web/public/fonts/README.md` identifies the exact Grok reference font without a recorded redistribution grant. Confirm component attribution and font redistribution terms, or choose an appropriately licensed replacement. This audit changes neither native metadata nor approved reference typography.
+Package metadata now agrees with the root MIT license. The two reference-font binaries were removed because the repository recorded their source but no redistribution grant. Product and station-lab typography now use their existing system-font fallback; layout sizes and spacing are retained. Historical screenshots and exact-font comparisons describe the earlier reviewed build, not a font included in the release. See [typography provenance](../../web/public/fonts/README.md).
+
+The product reference, station geometry and saved weather examples are tracked. The separate native scientific workflow has its own PostgreSQL/data/model setup; ignored training artifacts are not a prerequisite for the minimal product. A new live installation still needs its own weather configuration and a separately prepared matching history archive for seasonal pace comparisons.
 
 ## Verification boundary
 

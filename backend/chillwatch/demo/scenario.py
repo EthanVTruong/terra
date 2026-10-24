@@ -13,7 +13,7 @@ from .. import config
 from ..context import Context
 from ..pipeline import replay
 from ..store import MemoryStore
-from ..timeutil import focus_bounds
+from ..timeutil import focus_bounds, season_bounds
 from .faults import apply_scenario
 
 

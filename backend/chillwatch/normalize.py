@@ -31,6 +31,10 @@ def cimis_ts_utc(dates: Iterable[str] | pd.Series, hours: Iterable[str] | pd.Ser
     """
     d = pd.to_datetime(pd.Series(list(dates)), format="%Y-%m-%d")
     h = pd.Series(list(hours)).astype(str).str.strip().str.zfill(4)
+    if len(d) != len(h):
+        raise ValueError("CIMIS dates and hours must have the same length")
+    if not h.str.fullmatch(r"(?:0[1-9]|1[0-9]|2[0-4])00").all():
+        raise ValueError("CIMIS hours must be hour-ending values from 0100 through 2400")
     hh = h.str[:2].astype(int)
     mm = h.str[2:].astype(int)
     local = d + pd.to_timedelta(hh, unit="h") + pd.to_timedelta(mm, unit="m")

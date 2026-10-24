@@ -27,7 +27,7 @@
   "artifacts": [],
   "handoff": {
     "revision": "d03f74f0a49532a2b7898fe53734b4864e17bdc9",
-    "summary": "Merged final writer/SMS main cb58022 and committed Tara integration checkpoint da04c2c into the isolated demo branch for independent verification. Tara owner still finishes its final acceptance; refresh before push. Root only owns replay/verification repairs until that handoff. Preserved both complete task records and all auto-merged domain/check mappings during the coordination-only merge conflict.",
+    "summary": "Merged final writer/SMS main cb58022 and committed Tara checkpoint da04c2c into the isolated branch. Root owns one final reconciliation/verification cycle while preserving the Tara owner's branch and runtime. Separate workers now own natural-language routing/crop preservation, grounded local weather replies, and the stale native-route test fixture, each in separate worktrees. Root owns replay writer parity and browser journeys. No shared main/runtime/auth/SMS changes; refresh the contributor head before push and reconcile once if overlapping fixes arrive.",
     "evidence": [
       "Preserved original8520 demo state and both user-facing tabs; no reset or provider call. Runtime source remains separate from final contributor candidates until their handoff."
     ],

@@ -19,6 +19,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ..assessment import assess_location
 from ..farm_ops.service import orchard_profile
+from ..farm_ops.conversational_writer import ConversationalWriter
 from ..farm_ops.store import fingerprint, utc
 from ..farm_ops.writer import Writer
 from ..server import _json_response, create_app as production_app
@@ -236,7 +237,7 @@ def create_app(*, simulation=None, state_dir=None, web_root=None, demo_root=None
         with simulation.store.connect(write=True) as db:
             simulation.store.set_state(db, STATE_KEY, VERSION)
     bridge = ReplayBridge(simulation)
-    bridge.monitor.writer = Writer(key="", model="", voice="text")
+    bridge.monitor.writer = ConversationalWriter(Writer(key="", model="", voice="text"))
     production = Path(web_root or ROOT / "web/dist/client").resolve()
     demo = Path(demo_root or ROOT / "web/demo/dist/client").resolve()
     app = production_app(service=ReplayQuery(bridge), web_root=production,

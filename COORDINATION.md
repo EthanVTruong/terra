@@ -187,7 +187,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "task",
   "id": "terra-main-consolidation",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User explicitly authorizes verification of the combined technical layer and branch consolidation into main. Audit PR3/worker branch inclusion, run full existing backend tests plus pure statistical JSON/UI checks, resolve verified integration defects within ownership, then promote/merge exact reviewed head if all checks support it. Preserve original Terra staged checkout, Nathan algorithms/config and recovery branches; no new monitoring/SMS features or provider ingestion.",
   "branch": "codex/terra-qc-json",
   "base": "229106c251cfa41993a747cde2a40f29e53ed60f",
@@ -229,19 +229,20 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "17ed40f6b9e24a8c209f77e11ba7a748d0c6f967",
-    "summary": "All intended worker functionality is integrated. Verification repairs restore calibrated range, strict unavailable JSON and operation-date eligibility; existing Windows grid and synthetic-calendar compatibility defects are repaired. Nathan numerical algorithms/configuration and frozen QC imports/reference remain unchanged. Final exact-head CI and authorized main merge are pending.",
+    "revision": "094e4e6f953ab0ebdd451f705f229f2f462d88e8",
+    "summary": "PR #3 merged into main at 1d5caf7 after all four CI jobs passed on reviewed head 5ffec23. Shared main was fast-forwarded and matched the tested PR tree exactly. All intended backend, statistical QC, JSON and web code is consolidated. The source snapshots and original staged prototype are preserved. Follow-up changes only record completion and ignore generated Vite cache.",
     "evidence": [
-      "64 targeted estimator/adapter/reference cases and31harness checks pass; independent reviewer reran15focused regressions and all6source-import hashes/reference SHA match.",
-      "Browser/CLI: all3generated packets match;61.0F observed,37.3F expected,35.1-41.5F typical,+23.7F departure. Uninstrumented/unknown/stale/unavailable/file-error/mobile/exact-download checks pass; frontend build+4packaging cases pass.",
-      "Full original local suite158passed/2failed/2SQLskips exposed genuine Windows export and synthetic calendar/coverage defects. Post-repair grid2passed, model/scenario8passed with original fault/latency assertions, seeds, folds and thresholds unchanged; pipcheck clean.",
-      "Original winter-only diagnostic caught outage/stuck/offset but missed drift after September calendar correction. September-covered synthetic fixture resolves all4faults without tuning detector math. This is synthetic software evidence, not natural-fault accuracy.",
-      "PostgreSQL16 CI on prior combined source executed all173cases:172passed/1obsolete-scenario failure, zero SQLskips. Final173case suite must pass exact repaired head before merge.",
-      "Worker snapshot branches d10c53e and0091b78 have no unique missing intended behavior; preserve refs rather than merge superseded snapshots. Original Terra nine staged entries preserved."
+      "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
+      "Windows and macOS minimal-runtime jobs each passed 64 targeted cases plus 31 harness cases. Production web build and four packaging cases passed. Independent review verified 15 focused regressions and all six source-import hashes plus the frozen reference SHA.",
+      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1–41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
+      "Two grid and eight synthetic model/scenario cases passed, including all four faults with original assertions, seeds, folds and thresholds. Calendar/fixture coverage needed repair; no numerical algorithm or real-data model refit changed.",
+      "GitHub confirmed merged=true at 1d5caf7, containing reviewed head 5ffec23 and prior Nathan main 229106c. The merged tree matched tested source exactly. Original Terra still has the same nine staged entries and numstat counts.",
+      "Completion follow-up check passed against actual merged origin/main 1d5caf7 (31 harness + 64 targeted cases). Only .gitignore and this coordination record changed afterward; application source remains identical to tested 5ffec23."
     ],
-    "uncertainty": "Live provider credentials, natural sensor-fault accuracy, external clipboard fidelity and future live API/continuous worker/SMS remain unverified or unimplemented. Standalone Nathan estimator lacks operation-date filtering for every lapse contributor; assessment adapter applies explicit gate. Final exact-head CI still pending.",
-    "next": "Run required scoped check against actual main, push final source/docs, require all four exact-head CI jobs green, refresh reviews/base/head, guarded-merge PR3, synchronize shared main and record completion.",
-    "pull_request": "https://github.com/EthanVTruong/terra/pull/3"
+    "uncertainty": "Software and controlled-fault validation only. Natural-fault accuracy and live credentials remain unverified. Live API, continuous worker, subscriptions and SMS remain future scope. External clipboard fidelity is unverified. Standalone estimator lapse operation-date limitation remains documented; the assessment adapter enforces the gate. Worker snapshot refs remain for recovery.",
+    "next": "Use shared main for the next assigned task. Review live-query and always-on product scope separately before implementation. No remaining source integration is needed from the reviewed worker snapshots.",
+    "pull_request": "https://github.com/EthanVTruong/terra/pull/3",
+    "verification_run": "https://github.com/EthanVTruong/terra/actions/runs/40073189344"
   }
 }
 ```

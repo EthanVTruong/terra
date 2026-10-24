@@ -93,6 +93,11 @@ journals explicitly to absolute paths.
 
 ## Accepted product policies
 
+The [Tara conversation contract](conversation-contract.md) carries ET's accepted
+brevity, useful comparisons, date precision, reply/reaction/silence behavior and
+grower setup requirements into the current writer/ChatGPT/UI workflow. Its status
+section distinguishes required behavior from implemented runtime evidence.
+
 Orchard and historical chill use 32–45°F starting November 1. Reported FNRIC
 metrics remain separately labelled in Details. A behind-pace warning requires
 two consecutive completed days below the historical 20th percentile with

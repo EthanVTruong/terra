@@ -23,6 +23,18 @@
    },
    "chill_net_abs_mean_h": 99.0,
    "chill_net_abs_median_h": 69.5
+  },
+  "model_plus_matched_hourly_offset": {
+   "oct_mar": {
+    "n": 754846,
+    "mae_f": 1.8969
+   },
+   "apr_sep": {
+    "n": 751086,
+    "mae_f": 2.3957
+   },
+   "chill_net_abs_mean_h": 82.4,
+   "chill_net_abs_median_h": 56.5
   }
  },
  "cimis-v2": {
@@ -49,6 +61,18 @@
    },
    "chill_net_abs_mean_h": 94.5,
    "chill_net_abs_median_h": 60.5
+  },
+  "model_plus_matched_hourly_offset": {
+   "oct_mar": {
+    "n": 754846,
+    "mae_f": 1.8808
+   },
+   "apr_sep": {
+    "n": 751086,
+    "mae_f": 1.9378
+   },
+   "chill_net_abs_mean_h": 85.6,
+   "chill_net_abs_median_h": 55.5
   }
  }
 }

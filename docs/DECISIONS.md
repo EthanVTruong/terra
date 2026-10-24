@@ -96,8 +96,14 @@ See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below com
       `model.build_workers` at a time and subsampled as they arrive. Building them all at once ran out of memory, and so
       did three at a time, so `cimis-v2` was built one at a time (`build_workers: 1`, now the default).
     - It is active.
-    - Held-out 2023-25, known stations, hour-of-day offsets: Oct–Mar 1.987 → 1.931 °F and Apr–Sep 2.618 → 2.020 °F vs
-      `cimis-v1`; chill net error median 69.5 → 60.5 h.
+    - Held-out 2023-25, known stations, vs `cimis-v1` (`bench/experiments/compare_v1_v2.json`), with hour-of-day offsets
+      learned from 2022-23 on the matching half-year (Oct–Mar offsets for Oct–Mar hours, Apr–Sep for Apr–Sep):
+      - MAE: Oct–Mar 1.897 → 1.881 °F; Apr–Sep 2.396 → 1.938 °F.
+      - Chill-hour net error per station-season about even: mean 82 → 86 h, median 56.5 → 55.5 h.
+      - Without offsets: Oct–Mar 2.016 → 2.008 °F, Apr–Sep 2.989 → 2.218 °F.
+      - An earlier version pooled the offsets over all 12 months. That mixed v1's out-of-sample summer residuals into
+        its winter offsets and overstated v2's winter and chill gains (1.987 → 1.931 °F, median 69.5 → 60.5 h).
+      - Matched offsets beat pooled ones for both models, which fits production's rolling 28-day windows.
 - **Physics refit year-round**: shrink 0.75 with 600 ft weighting (the Oct–Mar fit chose 0.5).
   - Held-out 2023-25: 2.384 → 2.333 °F vs the spec physics.
   - The no-station path now uses p10/p90 bins fitted on the physics fit's leave-one-station-out residuals: 79.9% coverage

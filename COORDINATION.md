@@ -112,7 +112,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_runtime.py",
     "tests/test_farm_chill_ops.py",
     "tests/test_farm_chill_ops_api.py",
-    "tests/test_farm_chill_ops*.py"
+    "tests/test_farm_chill_ops*.py",
+    "tests/test_terra_chatgpt*.py"
   ],
   "depends_on": [],
   "checks": [
@@ -636,6 +637,49 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     ],
     "uncertainty": "UI verification only for actual disabled phone state; external SMS activation/delivery, physical touch, OS preference switching and external clipboard paste remain separately unverified. Native Grok window motion is unavailable from the article. Immutable example text repeats the demo name (P3 retained).",
     "next": "Root integrates the final small focus/QA commit, rebuilds/restarts unified8512 and completes latest-head CI. UI scope is frozen; no further feature work is pending."
+  }
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chatgpt-plan",
+  "owner": "et",
+  "status": "active",
+  "intent": "ET confirms Terra is open-source and local-first; wants ChatGPT plan sign-in for concise JSON-to-grower inference, with clearly labelled placeholder SMS separate from actual in-app message. Root owns additive auth/provider foundation and reviewable settings slice. Preserve math, immutable notes, original staged files and live main runtime. Cleanup owner owns existing writer/service/runtime repairs; placeholder owner owns SMS/UI transport. Writer-role question pending.",
+  "branch": "codex/terra-chatgpt-plan",
+  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/chatgpt/**",
+    "tests/test_terra_chatgpt*.py",
+    "requirements-terra.txt",
+    "requirements-terra-dev.txt",
+    "docs/terra/chatgpt-plan.md",
+    "web/src/ChatGPTConnection.jsx",
+    "web/src/chatgpt.css",
+    "web/tests/chatgpt*.mjs"
+  ],
+  "depends_on": [
+    "terra-authorship"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+    "summary": "Official OSS/local auth and inference contract verified. Only additive modules until existing owners hand off. No cached Codex/ChatGPT credentials reused.",
+    "evidence": [
+      "User confirms local demo, open source and local first. Main78e835d clean; read-only writer audit forwarded to cleanup owner.",
+      "Official sign-in, models-and-inference, preview-limitations and profiles-and-sessions docs fetched: separate direct-use consent, protected local tokens, account catalog, Responses streamtrue/storefalse/inputarray and unsupported max_output_tokens."
+    ],
+    "uncertainty": "Real user consent and account catalog required; writer-role answer pending. Placeholder API credential rotation remains a separate human step.",
+    "next": "Implement isolated auth/provider foundations and mocked tests, show concrete JSON/message/settings preview, then reconcile owner handoffs once before main/runtime edits."
   }
 }
 ```

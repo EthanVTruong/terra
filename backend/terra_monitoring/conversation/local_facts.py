@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import json
 import math
 
-from ..farm_ops.season import METHOD, MIN_COVERAGE, MIN_REFERENCES, PST
+from ..farm_ops.season import METHOD, MIN_COVERAGE, MIN_REFERENCES, PST, eligible
 from ..farm_ops.store import utc
+from terra_qc.qc import CURRENT_MAX_AGE_HOURS
 
 
 def profile_answer(intent, state):
@@ -81,3 +83,108 @@ def gap_answer(summary):
     if source != cutoff:
         text += (" Latest usable data was from " if completed else " Latest usable data is from ") + source.strftime("%b %d, %Y").replace(" 0", " ") + "."
     return text, {**values, "difference_hours": difference, "source_date": source.isoformat(), "comparison_date": cutoff.isoformat()}
+
+
+WEATHER_INTENTS = {"temperature", "freshness", "station_findings", "temperature_normal"}
+
+
+def _weather_time(value):
+    return utc(value).astimezone(PST).strftime("%b %d, %Y, %I:%M %p PST").replace(" 0", " ")
+
+
+def weather_answer(intent, monitor, orchard_id):
+    """Describe the saved assessment; never fetch, rescore or diagnose a sensor.
+
+    The monitor owns current availability, and ``eligible`` owns stored-reading
+    eligibility. Retained temperatures remain explicitly dated when the latest
+    assessment or source refresh cannot support a current answer.
+    """
+    if intent not in WEATHER_INTENTS:
+        raise ValueError("Unsupported saved-weather request")
+    status = monitor.status(orchard_id)
+    watch = monitor.store.get("watch:" + orchard_id, {})
+    assessment = {}
+    evidence_id = watch.get("latest_evidence_id")
+    if evidence_id:
+        with monitor.store.connect() as db:
+            saved = db.execute("SELECT payload FROM evidence WHERE id=?", (evidence_id,)).fetchone()
+        if saved:
+            assessment = json.loads(saved[0])
+    estimate = assessment.get("location_estimate", {})
+    stamp = watch.get("last_observation")
+    rows = monitor.store.hours(orchard_id)
+    # A retained estimate from another pin or estimator contract is not a
+    # substitute for this farm's current evidence.
+    usable = next((row for row in reversed(rows) if eligible(row)
+                   and row.get("geometry_key") == status["orchard"]["geometry_key"]
+                   and row.get("method_version") == watch.get("method_version")
+                   and utc(row["valid_utc"]) <= utc(monitor.clock())), None)
+    replay = status["orchard"]["mode"] != "current"
+    supported = bool(estimate.get("status") == "ok" and usable and usable["valid_utc"] == stamp)
+    available = supported if replay else bool(status["comparison_available"] and supported)
+    stale = not replay and bool(estimate.get("status") == "stale" or usable
+        and utc(monitor.clock()) - utc(usable["valid_utc"]) > timedelta(hours=CURRENT_MAX_AGE_HOURS))
+    source_error = status.get("source_error")
+    findings = assessment.get("station_findings", [])
+    health = assessment.get("data_health", [])
+    facts = {"data_mode": status["orchard"]["mode"], "evidence_id": evidence_id,
+             "observation_time": stamp, "last_checked": status.get("last_checked"),
+             "comparison_available": available, "source_error": source_error,
+             "stale": stale,
+             "temperature_f": usable["temperature_f"] if usable else None,
+             "temperature_time": usable["valid_utc"] if usable else None,
+             "temperature_evidence_id": usable.get("evidence_id") if usable else None,
+             "estimate_status": estimate.get("status"), "used_station_ids": estimate.get("used_station_ids", []),
+             "station_findings": [{k: finding[k] for k in ("station_id", "severity", "reason") if k in finding}
+                                  for finding in findings],
+             "data_health": [{k: item[k] for k in ("station_id", "reason", "source_quality") if k in item}
+                             for item in health]}
+    prefix = "Replay only: " if replay else ""
+    at = _weather_time(stamp) if stamp else None
+    if intent == "temperature":
+        if usable:
+            when = _weather_time(usable["valid_utc"])
+            if available and not source_error:
+                text = f"Estimated orchard temperature is {usable['temperature_f']:g}°F as of {when}."
+            else:
+                text = f"The last usable orchard estimate was {usable['temperature_f']:g}°F at {when}. "
+                text += ("The latest source refresh failed, and that estimate is stale." if source_error and stale else
+                         "The latest source refresh failed." if source_error else
+                         "That estimate is stale; current weather support is unavailable." if stale else
+                         "Current weather support is unavailable." if not replay else "Weather support is unavailable at the replay hour.")
+        else:
+            text = "An orchard temperature estimate isn't available yet."
+            if at:
+                text += f" Weather support was insufficient at {at}."
+        return prefix + text, facts
+    if intent == "freshness":
+        if not stamp:
+            text = "No weather reading has been saved for this farm yet."
+        elif replay:
+            text = f"These are saved readings from {at}, not current weather."
+        elif source_error:
+            text = f"The latest saved reading is from {at}" + (" and is stale" if stale else "") + "; the latest source refresh failed."
+        elif available:
+            text = f"The latest usable estimate is from {at}, within the monitor's current age limit."
+        elif stale:
+            text = f"The saved estimate is from {at} and is stale; no current temperature is verified."
+        else:
+            text = f"The latest saved reading is from {at}; current weather support is unavailable."
+        return prefix + text, facts
+    ids = sorted({int(finding["station_id"]) for finding in findings if "station_id" in finding})
+    if ids:
+        label = ("Station " if len(ids) == 1 else "Stations ") + ", ".join(map(str, ids))
+        text = f"{label} had a suspected temperature discrepancy" + (f" at {at}" if at else " in the saved assessment") + "; the cause is unconfirmed."
+        if not available and not replay:
+            text += " This doesn't verify current conditions."
+    elif not available:
+        text = "There isn't enough usable weather support to judge a station discrepancy."
+    elif health:
+        warned = sorted({int(item["station_id"]) for item in health if "station_id" in item})
+        text = "No statistical station discrepancy was flagged"
+        text += ("; source-quality warnings affect station " + ", ".join(map(str, warned)) if warned else "") + "."
+    else:
+        text = f"No supporting-station discrepancy was flagged as of {at}."
+    if intent == "temperature_normal":
+        text = "No calibrated normal-temperature range is saved for this farm. " + text
+    return prefix + text, facts

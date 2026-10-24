@@ -9,6 +9,9 @@ from .routing import ACK, THANKS, PROMPT, QUESTIONS, LOCAL_INTENTS, crops_from, 
 from .ownership import active, current_owner, owner_status
 
 
+_FACT_CONTEXTS = {"temperature", "freshness", "station_findings", "temperature_normal"}
+
+
 class RequestInProgress(ValueError):
     """A reserved request cannot safely be inferred again, even after restart."""
 
@@ -121,7 +124,7 @@ class ConversationService:
             for turn in reversed(self._turns(orchard_id)):
                 if turn.get("role") == "assistant":
                     intent = turn.get("data", {}).get("intent")
-                    context = intent if intent in QUESTIONS or intent in LOCAL_INTENTS else "farm"
+                    context = intent if intent in QUESTIONS or intent in LOCAL_INTENTS or intent in _FACT_CONTEXTS else "farm"
                     event_ids = turn.get("data", {}).get("source_event_ids", []) if intent in QUESTIONS else []
                     break
             # A farm supplies history's subject, not a fictitious earlier reply.
@@ -315,6 +318,10 @@ class ConversationService:
             return finish(text=PROMPT)
         if not selected:
             return finish(text="Confirm your farm location to start monitoring.", data={"action": "location_choice"})
+        if intent in _FACT_CONTEXTS:
+            from .local_facts import weather_answer
+            answer, facts = weather_answer(intent, self.monitor, selected)
+            return finish(text=answer, data={"intent": intent, "local_facts": facts})
         if intent in {"off_topic"}:
             return finish(reaction=True)
         if intent in {"needs_context", "clarify"}:
@@ -414,8 +421,19 @@ class ConversationService:
                 event=event, setup={**setup, "orchard_id": p["id"], "location": location, "stage": "notifications"}, migrate=p["id"], data={"action": "notification_choice"})
         event = self._turn(request_id + ":event", "event", "Browser notifications enabled" if notifications["enabled"] else "In-chat updates only", now,
                            kind="notification", data={**notifications, "saved": True, "scope": "while_open"})
-        status = self.state(setup["orchard_id"])["monitoring"]["status"]
-        text = "You're set. I'll flag meaningful changes here." if status == "ready" else "Your farm is saved. I'm waiting for usable weather data and the monitor."
+        monitoring = self.state(setup["orchard_id"])["monitoring"]
+        details = monitoring.get("details") or {}
+        if details.get("orchard", {}).get("mode") != "current":
+            text = "Your farm is saved. These saved replay readings aren't live monitoring."
+        elif monitoring["status"] == "ready":
+            text = "You're set. I'll flag meaningful changes here."
+        elif details.get("comparison_available"):
+            text = "Your farm is saved. Saved weather data is usable, but the monitor isn't running."
+        elif details.get("worker", {}).get("heartbeat_status") == "fresh":
+            text = "Your farm is saved. I'm waiting for usable weather data."
+        else:
+            reason = monitoring["reason"]
+            text = "Your farm is saved. " + ("I'm " + reason[0].lower() + reason[1:] if reason.startswith("Waiting ") else reason)
         return self._finish(request_id, thread, None, text=text, event=event, preference=notifications,
                             setup=({**setup, "stage": "complete", "notification_preference": notifications}
                                    if saved_setup.get("orchard_id") == thread else None))

@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from ..timeutil import season_bounds, utc
+from ..timeutil import focus_bounds, utc
 
 
 @dataclass
@@ -235,11 +235,9 @@ def _resolve_station(station: Any, stations: pd.DataFrame, spec: dict[str, Any])
 
 
 def scenario_faults(spec: dict[str, Any], stations: pd.DataFrame, season: str) -> list[dict[str, Any]]:
-    from .. import config
 
-    reg = config.region()
-    s0, _ = season_bounds(season, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
-    day0 = s0 - pd.Timedelta(hours=1)  # 00:00 PST on the season's first day
+    s0, _ = focus_bounds(season)  # scenario days count from Oct 1, the start of the focus window
+    day0 = s0 - pd.Timedelta(hours=1)  # 00:00 PST on that day
     out = []
     for f in spec["faults"]:
         f = dict(f)
@@ -262,8 +260,7 @@ def apply_scenario(yaml_path: str | Path, readings: pd.DataFrame | None = None,
     season = spec.get("season") or config.region()["demo_season"]
     if readings is None or stations is None:
         ctx = ctx or get_context()
-        reg = config.region()
-        s, e = season_bounds(season, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
+        s, e = focus_bounds(season)
         stations = ctx.region_stations()
         readings = ctx.store.readings(s, e, stations["station_id"].tolist())
     faults = scenario_faults(spec, stations, season)

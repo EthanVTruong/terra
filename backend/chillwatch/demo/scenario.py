@@ -13,7 +13,7 @@ from .. import config
 from ..context import Context
 from ..pipeline import replay
 from ..store import MemoryStore
-from ..timeutil import season_bounds
+from ..timeutil import focus_bounds
 from .faults import apply_scenario
 
 
@@ -25,8 +25,7 @@ def run_scenario(path: str | Path, ctx: Context | None = None, days: int | None 
     ctx = ctx or get_context()
     spec = yaml.safe_load(Path(path).read_text())
     season = spec.get("season") or config.region()["demo_season"]
-    reg = config.region()
-    a, b = season_bounds(season, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
+    a, b = focus_bounds(season)  # the Oct-Mar part of the season the scenario is written for
     if days:
         b = min(b, a + pd.Timedelta(days=days) - pd.Timedelta(hours=1))
     stations = ctx.region_stations()

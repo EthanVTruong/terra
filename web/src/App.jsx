@@ -51,6 +51,14 @@ function validateAssessment(value) {
   if (!COMPARISON_STATUSES.has(comparison.status) || ![comparison.observed_f, comparison.expected_f, comparison.departure_f].every(finiteOrNull)) {
     throw new Error("The target comparison has an unsupported status or value.");
   }
+  const bounds = [comparison.typical_low_f, comparison.typical_high_f];
+  const hasRangeFields = bounds.some((item) => item !== undefined);
+  if (hasRangeFields && (!bounds.every(finiteOrNull) || (bounds[0] === null) !== (bounds[1] === null))) {
+    throw new Error("The typical range needs two finite bounds or two null values.");
+  }
+  if (bounds.every(Number.isFinite) && (bounds[0] > bounds[1] || !["assessable", "stale"].includes(comparison.status) || !comparison.reference_id || comparison.expected_method !== "terra-pair-adjusted-median")) {
+    throw new Error("A typical range requires an ordered, calibrated station comparison.");
+  }
   if (comparison.station_id !== null && !Number.isInteger(comparison.station_id)) throw new Error("The local sensor identifier must be an integer or null.");
   if ((comparison.station_id === null || comparison.station_id === undefined) && [comparison.observed_f, comparison.expected_f, comparison.departure_f].some((item) => item !== null)) {
     throw new Error("A comparison without a local sensor must not contain measured values.");
@@ -73,8 +81,9 @@ function FactRows({ values }) {
   return <dl className="facts">{values.filter(([, value]) => value !== undefined && value !== null).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{String(value)}</dd></div>)}</dl>;
 }
 
-function Values({ observed, expected, difference }) {
-  return <div className="compact-finding"><div className="message-facts"><span><small>Observed</small><strong>{temperature(observed)}</strong></span><span><small>Expected</small><strong>{temperature(expected)}</strong></span></div><div className="message-departure"><span>Departure</span><strong>{departure(difference)}</strong></div></div>;
+function Values({ observed, expected, difference, typicalLow, typicalHigh }) {
+  const hasRange = [typicalLow, typicalHigh].every(Number.isFinite);
+  return <div className="compact-finding"><div className="message-facts"><span><small>Observed</small><strong>{temperature(observed)}</strong></span><span><small>Expected</small><strong>{temperature(expected)}</strong></span></div>{hasRange && <div className="message-range"><span>Typical range</span><strong>{typicalLow.toFixed(1)}–{typicalHigh.toFixed(1)}°F</strong></div>}<div className="message-departure"><span>Departure</span><strong>{departure(difference)}</strong></div></div>;
 }
 
 function Disclosure({ title, children }) {
@@ -95,7 +104,7 @@ function AssessmentFacts({ packet, onOpenJson }) {
       {hasTarget && <section className="message-group" aria-label="Measured station comparison">
         <div className="message-meta"><span>{stationName(comparison.station_id)}</span><span>Measured comparison</span></div>
         {comparison.status !== "assessable" && <p className="comparison-notice">{comparison.status === "comparison_only" ? "Comparison only · no calibrated alert policy" : `${words(comparison.status)} · ${words(comparison.reason)}`}</p>}
-        <div className="incoming-bubble"><Values observed={comparison.observed_f} expected={comparison.expected_f} difference={comparison.departure_f} /></div>
+        <div className="incoming-bubble"><Values observed={comparison.observed_f} expected={comparison.expected_f} difference={comparison.departure_f} typicalLow={comparison.typical_low_f} typicalHigh={comparison.typical_high_f} /></div>
         <p className="message-caption">{comparison.classification === "suspected_anomaly" ? "Suspected anomaly · check an independent reading." : comparison.classification === "no_alert" ? "No alert triggered by the frozen station policy." : "No sensor-fault conclusion is available."}</p>
       </section>}
       <section className={`message-group${hasTarget ? " secondary-estimate" : ""}`} aria-label="Location temperature estimate">
@@ -111,7 +120,7 @@ function AssessmentFacts({ packet, onOpenJson }) {
           const hasValues = [summary.observed_f, summary.expected_f, summary.departure_f].every(Number.isFinite);
           return <article className="station-note" key={`${finding.station_id}:${finding.start_utc || index}`}>
             <div className="station-note-heading"><strong>{stationName(finding.station_id)}</strong><span>{words(finding.reason)}</span></div>
-            <div className="incoming-bubble">{hasValues ? <Values observed={summary.observed_f} expected={summary.expected_f} difference={summary.departure_f} /> : <p className="note-text">{finding.message || "A suspected temperature departure is recorded."}</p>}</div>
+            <div className="incoming-bubble">{hasValues ? <Values observed={summary.observed_f} expected={summary.expected_f} difference={summary.departure_f} typicalLow={summary.typical_low_f} typicalHigh={summary.typical_high_f} /> : <p className="note-text">{finding.message || "A suspected temperature departure is recorded."}</p>}</div>
             <p className="message-caption">{peak ? `Evidence peak · ${timestamp(peak)}` : `Detected · ${timestamp(finding.detected_at_utc)}`}{finding.freshness === "stale" ? " · stale" : ""}</p>
           </article>;
         }) : <p className="no-findings">{hasTarget ? "No other station flags in this packet." : "No station flags in this packet."}</p>}
@@ -119,7 +128,7 @@ function AssessmentFacts({ packet, onOpenJson }) {
       <button className="attachment" onClick={onOpenJson}><Icon name="file" size={22} /><span><strong>Assessment JSON</strong><small>Exact values and evidence</small></span><Icon name="chevron" size={14} /></button>
     </div>
     <div className="details-list">
-      <Disclosure title="Details"><FactRows values={[["Reading time", timestamp(query.valid_utc)], ["As of", timestamp(query.as_of_utc)], ["Location estimate", words(estimate.status)], ["Local comparison", words(comparison.status)], ["Peer count", estimate.n_used], ["Geometry", estimate.geometry_source], ["Maximum age", Number.isFinite(query.max_age_hours) ? `${query.max_age_hours} h` : "Not set"]]} /><p className="microcopy">Location interpolation and the frozen station comparison are separate calculations.</p></Disclosure>
+      <Disclosure title="Details"><FactRows values={[["Reading time", timestamp(query.valid_utc)], ["As of", timestamp(query.as_of_utc)], ["Location estimate", words(estimate.status)], ["Local comparison", words(comparison.status)], ["Peer count", estimate.n_used], ["Geometry", estimate.geometry_source], ["Maximum age", Number.isFinite(query.max_age_hours) ? `${query.max_age_hours} h` : "Not set"]]} /><p className="microcopy">Location interpolation and the frozen station comparison are separate calculations. A typical range describes the station's calibrated historical residual band; it is not a forecast or a guaranteed confidence interval.</p></Disclosure>
       <Disclosure title="Sources and exclusions"><FactRows values={[["Used stations", estimate.used_station_ids.map(stationName).join(", ") || "None"], ["Interpolation", estimate.method_version], ["QC reference", provenance.qc_reference_id], ["Data snapshot", provenance.data_snapshot_id], ["Publication visibility", words(provenance.publication_visibility)]]} />{estimate.excluded.length > 0 && <><p className="detail-label">Excluded from the estimate</p><ul className="exclusion-list">{estimate.excluded.map((item, index) => <li key={`${item.station_id}:${index}`}><span>{stationName(item.station_id)}</span><span>{words(item.reason)}</span></li>)}</ul></>}{packet.data_health?.length > 0 && <><p className="detail-label">Source availability</p><pre className="detail-json">{JSON.stringify(packet.data_health, null, 2)}</pre></>}{packet.estimator_qc_exclusions?.length > 0 && <><p className="detail-label">Target-held-out peer exclusions</p><pre className="detail-json">{JSON.stringify(packet.estimator_qc_exclusions, null, 2)}</pre></>}</Disclosure>
     </div>
   </>;

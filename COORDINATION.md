@@ -3,6 +3,30 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-trial-assigned-sender",
+  "owner": "et",
+  "status": "active",
+  "intent": "Root-authorized focused repair for live Twilio trial error572003: include an explicitly configured assigned trial From when present, validate its format while retaining documented To/Body-only compatibility, keep custom sender mandatory and trial ValidityPeriod omitted. Preserve metadata/idempotency and provide actionable UI guidance plus accurate restricted-key/readiness documentation. No runtime, private configuration, credential, flag or send actions; root owns live verification.",
+  "branch": "codex/terra-trial-assigned-sender",
+  "base": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/sms.py", "tests/test_terra_sms.py", "web/src/delivery.js", "web/tests/delivery.test.mjs", "docs/terra/twilio-sms.md", "docs/terra/readiness.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
+    "summary": "Preparing the isolated assigned-trial-sender compatibility fix. Existing PR8 branch is preserved. Root reported exact live-provider rejection and retains account/runtime ownership.",
+    "evidence": ["Root reports a dedicated restricted Messages key, verified recipient and a prior Console delivered message. Current API attempts return403/572003 with no Message SID because the sender is not assigned to that verified recipient."],
+    "uncertainty": "No successful automatic trial API delivery has been established. The assigned From must be configured privately and tested by root; this task uses mocked transport only.",
+    "next": "Implement narrow payload/format/UI/docs changes, run targeted tests and independent review, hand root an early candidate SHA for its live diagnostic, then run scoped checks and push an unmerged PR."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "twilio-trial-placeholder",
   "owner": "et",
   "status": "done",

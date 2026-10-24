@@ -24,6 +24,7 @@ export function demoResultText(result) {
     : "Twilio reports delivered. Check your phone for the message labelled TERRA DEMO.";
   if (["provider_accepted", "queued", "accepted", "sending", "sent"].includes(status)) return `${result.content_mode === "trial_template" ? "Trial placeholder" : "Twilio"}: ${status}. Phone delivery is still unconfirmed.`;
   if (status === "uncertain") return "The send outcome is uncertain. Check Twilio’s message log before sending a new demo.";
+  if (["failed", "undelivered", "rejected"].includes(status) && String(result.error_code) === "572003") return "Twilio rejected this test (572003). Set TWILIO_FROM_NUMBER to the assigned trial sender shown for this verified recipient in Twilio Console, then prepare a new demo.";
   if (["failed", "undelivered", "rejected"].includes(status)) return `Message ${status}${result.error_code ? ` (${result.error_code})` : ""}. Check your Twilio sender and account readiness.`;
   return `SMS: ${String(status || "unavailable").replaceAll("_", " ")}${result.error_code ? ` (${result.error_code})` : ""}.`;
 }

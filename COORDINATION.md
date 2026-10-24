@@ -489,6 +489,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "pythonpath=backend",
     "tests/test_farm_chill_ops.py",
     "tests/test_farm_chill_ops_api.py",
+    "tests/test_farm_chill_ops_writer.py",
+    "tests/test_farm_chill_ops_state.py",
     "-q"
   ],
   "timeout": 120
@@ -716,19 +718,20 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     ".env.example",
     "scripts/terra-service/**"
   ],
-  "depends_on": [
-    "terra-full-pipeline"
-  ],
+  "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
-    "summary": "Isolated cleanup branch from clean current shared main. Three implementation lanes own disjoint farm, transport/runtime and native input boundary files; root owns writer, integration, full validation and merge.",
+    "revision": "fdca265",
+    "summary": "Integrated independent farm, runtime/transport and native input repairs. Parent integration owner acknowledged overlap and froze main/service. Final generated-writer reconciliation follows explicit user wording direction; no auth implementation or phone activation in this scope.",
     "evidence": [
-      "Read-only audit recorded reproducible gaps at78e835d;499production-path cases passed baseline. User authorizes source repairs and final merge/push."
+      "Native guard lane: 110 offline cases and exact-base parity over 960 estimator hours; six frozen import hashes and 22 protected QC/repair/pipeline file hashes remain unchanged.",
+      "Integrated farm/API/writer: 130 cases passed before generated-writer reconciliation. Independent farm, input and transport reviews found no remaining material issues after relative state-path and catalog cooldown corrections.",
+      "Built web production output; four packaging and three delivery-state tests passed. Isolated real HTTP/runtime process, guard/422/405, repeated question identity, old Details, pure query, restart heartbeat and persistent message identities passed with SMS disabled and private configuration removed.",
+      "Offline saved-weather demo exercised frozen QC and Nathan estimator through ok/unavailable/ok/ok/ok and published exactly welcome, limited and recovery messages, all labelled Demo replay."
     ],
-    "uncertainty": "Real Twilio account activation remains separately blocked. Full native/PostgreSQL checks will execute on CI before merge; no real messages, new model training or provider ingestion in this cleanup.",
-    "next": "Implement focused regressions/repairs in isolated working copies, integrate once, run full suite and frozen-reference checks, then merge only green exact head."
+    "uncertainty": "Full native suite and final exact-head PostgreSQL/cross-platform CI remain pending. Optional generated wording uses conservative validation, not a proof about arbitrary language. Real Twilio activation remains separate; no provider requests, account changes or texts during cleanup.",
+    "next": "Finish the one coordinated writer reconciliation, run required scoped/full checks and final-head CI, then merge/push and hand off exact migration semantics to the parent runtime owner."
   }
 }
 ```

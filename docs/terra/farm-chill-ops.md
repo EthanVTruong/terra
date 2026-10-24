@@ -83,14 +83,14 @@ packet; the HTTP writer request adds a separate candidate list.
 ## Run
 
 Install the existing `requirements-terra-dev.txt`. In PowerShell from this
-checkout, set the import path and an **absolute shared database path** once:
+checkout, set the import path and an **absolute shared state directory** once:
 
 ```powershell
 $env:PYTHONPATH = 'backend'
-$env:TERRA_FARM_DB = (Join-Path (Get-Location) '.terra-local\farm-chill-ops.sqlite3')
-python -m terra_monitoring.farm_ops add-orchard --id west --name 'West Orchard'
-python -m terra_monitoring.farm_ops once
-python -m terra_monitoring.farm_ops run --interval 300
+$terraState = (Join-Path (Get-Location) '.terra-local\runtime')
+python -m terra_monitoring.farm_ops --state-dir $terraState add-orchard --id west --name 'West Orchard'
+python -m terra_monitoring.farm_ops --state-dir $terraState once
+python -m terra_monitoring.farm_ops --state-dir $terraState run --interval 300
 ```
 
 The existing live source reads its configured CIMIS key from process environment.

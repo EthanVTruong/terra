@@ -5,12 +5,12 @@ explicit process values win. Journal selection never moves or deletes history.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
-from contextlib import closing
 import os
-from pathlib import Path
 import re
 import sqlite3
+from collections.abc import Mapping, MutableMapping
+from contextlib import closing
+from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_STATE_DIR = PACKAGE_ROOT / ".terra-local" / "runtime"

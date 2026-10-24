@@ -61,23 +61,37 @@ conversation are sent to the writer. Only relevant fields are present.
 - [Actual API feed fixture](farm-chill-ops/feed-fixture.json)
 
 Python decides detection, severity, lifecycle, grouping, thresholds and delivery
-eligibility. It also renders a small set of complete factual message candidates,
-normally one or two sentences and at most 420 characters. The optional LLM selects
-one candidate's wording; quantities, lifecycle claims and display times cannot be
-rewritten. Neighbor measurements and the full assessment remain under Details.
+eligibility. The optional writer generates concise prose for each selected event;
+it does not choose from fixed messages. A strict `text.format` JSON schema requires
+exact event keys (`event_0`, `event_1`, etc.), each containing a short clause.
+Quantities use role-bound placeholders such as `{{hours}}` for current estimated
+chill and `{{historical_median_hours}}` for the same-point historical median.
+Python substitutes the exact values, preserves event order, and adds the orchard
+name, original source times and demo marker. Final messages are at most 420
+characters. Neighbor measurements and the full assessment remain under Details.
 
-By default the same facts use deterministic templates. An optional OpenAI
-Responses writer requires both `OPENAI_API_KEY` and an explicitly selected
-`TERRA_LLM_MODEL`; no model, account, key or billing is created here. It sends
-the fixed instructions, compact facts and vetted candidates without stored
-provider conversation. A strict `text.format` JSON schema limits the response to
-`{"message": <one exact candidate>}`. Local validation independently checks exact
-membership, including with a mocked, incompatible or nonconforming provider.
-Provider failure, refusal, incomplete output, extra fields or unapproved wording
-falls back to the local template and cannot stop ingestion or lose the event.
-Timestamp numbers cannot become chill totals, and a limited-coverage event cannot
-be paraphrased into a recovery. The saved `llm_input` remains the compact factual
-packet; the HTTP writer request adds a separate candidate list.
+The model receives per-event categorical facts, placeholder values, the accepted
+English vocabulary and local quantity-role hints, rather than complete candidates;
+orchard names, free-text questions, raw weather history and source timestamps are
+excluded from that request. The saved `llm_input` remains the original compact
+factual packet. Local checks require every expected placeholder exactly once in
+its factual role, reject unbound quantities/units, and check lifecycle, estimated
+status, incomplete coverage and historical availability. A small English
+vocabulary rejects unsupported actions, biological claims, causes, invented times
+and unfamiliar wording. These are conservative semantic checks, not a proof of
+truth for arbitrary natural language; valid but unfamiliar paraphrases may fall
+back. New event explanations need an explicit supported contract before generation.
+
+Without a configured generator, the OpenAI Responses path requires both
+`OPENAI_API_KEY` and `TERRA_LLM_MODEL`. Alternatively an existing provider can be
+injected as `Writer(generator=...)`; its `generate(instructions, packet, schema)`
+returns `{"text": <JSON event clauses>}`. Both paths use the same local validation.
+An injected generator failure goes directly to the local template and never
+silently switches to API-key billing. This module does not create an account,
+model, key or plan connection. The HTTP path sets `store: false` and keeps no
+provider conversation. Provider failure, refusal, incomplete output, extra or
+duplicate fields, invalid wording and oversized output all use the unchanged
+deterministic fallback; ingestion and event publication remain available.
 [Official Structured Outputs documentation](https://developers.openai.com/api/docs/guides/structured-outputs).
 
 ## Run

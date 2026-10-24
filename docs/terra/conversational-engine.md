@@ -82,6 +82,14 @@ the simulation's separate journals, source guards and disabled external SMS.
 
 ## Verification
 
+Frozen source `2eca77d` passed 147 focused engine/context/flow/insight/writer tests,
+430 existing conversation/crop/weather/factual regressions, and 35 UI state and
+source tests. The broad task check passed its other 15 groups. Its new engine
+group originally rejected one mock reply that described historical evidence in
+the present tense; the fixture was corrected and all 147 cases passed again.
+That original command's exit status remains failed; the integration owner must
+repeat the combined gate on the corrected source. No product guard was weakened.
+
 Focused tests exercise contextual follow-ups, focused questions, unfamiliar crop
 answers, no default crop, source separation, grounding rejection, guarded HTTP
 routing through the actual runtime wrapper, durable retries, quiet reopening,

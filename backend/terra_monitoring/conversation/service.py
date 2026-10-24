@@ -229,6 +229,10 @@ class ConversationService:
             db.execute("INSERT INTO tara_requests(id,thread,signature,created,status,payload,owner) VALUES(?,?,?,?,?,NULL,?)",
                        (request_id, thread, signature, now, "pending", encoded(self.owner) if self.owner else None))
             if user_text is not None:
+                if thread == "onboarding" and not db.execute("SELECT 1 FROM tara_turns WHERE thread=?", (thread,)).fetchone():
+                    opening = self._turn(request_id + ":opening", "assistant", PROMPT, now,
+                                         data={"action": "initial_prompt"})
+                    self._put(db, thread, opening)
                 user = self._turn(request_id + ":user", "user", user_text, now, reply_to=reply_to)
                 self._put(db, thread, user)
         active(self.store.path, request_id, True)
@@ -539,7 +543,8 @@ class ConversationService:
         if previous:
             return {**previous, "state": self.state(previous["orchard_id"])}
         if action == "restart":
-            return self._finish(request_id, thread, None, setup=empty_setup())
+            return self._finish(request_id, thread, None, text=PROMPT,
+                                data={"action": "initial_prompt"}, setup=empty_setup())
         now = utc(self.monitor.clock()).isoformat()
         if action in {"location", "device_location"}:
             p = self.monitor.create_orchard(location.get("name", "My farm"), orchard_id="farm-" + fingerprint(request_id)[:20],

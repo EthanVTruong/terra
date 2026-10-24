@@ -177,8 +177,9 @@ function FarmLocation({ conversation }) {
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
     } catch { handled = true; finish(); if (alive.current) setError("Location access is unavailable. Check your browser settings, then try again."); }
   }
-  return <div className="tara-setup-controls">
-    <button type="button" className="query-submit" onClick={useDevice} disabled={conversation.locked || phase !== "idle"} aria-busy={phase !== "idle"}>{phase === "locating" ? "Finding location…" : phase === "saving" ? "Saving location…" : "Use my location"}<Icon name="location" size={14} /></button>
+  return <div className="tara-setup-controls tara-location-request">
+    <p className="sr-only" role="status">Share your farm location to continue.</p>
+    <button type="button" className="tara-location-button" onClick={useDevice} disabled={conversation.locked || phase !== "idle"} aria-busy={phase !== "idle"}><Icon name="location" size={16} /><span>{phase === "locating" ? "Finding location…" : phase === "saving" ? "Saving location…" : "Use my location"}</span></button>
     {error ? <p className="query-error" role="status">{error}</p> : null}
   </div>;
 }
@@ -239,7 +240,8 @@ export function TaraConversation({ conversation, farm, onSelectOrchard, onDetail
   const orchard = state.orchards.find((item) => item.id === state.orchard_id);
   const mode = orchard?.mode;
   const turns = state.turns;
-  const timeline = mergeTaraTimeline(turns, typeof renderFieldNote === "function" ? fieldNotes.filter((note) => note && (!note.orchard_id || note.orchard_id === state.orchard_id)) : EMPTY_PRESETS);
+  const visibleTurns = turns.filter((turn) => turn.role !== "assistant" || turn.data?.action !== "location_choice");
+  const timeline = mergeTaraTimeline(visibleTurns, typeof renderFieldNote === "function" ? fieldNotes.filter((note) => note && (!note.orchard_id || note.orchard_id === state.orchard_id)) : EMPTY_PRESETS);
   return <div className="tara-conversation">
     <div className="tara-turns" role="log" aria-label="Conversation with Terra" aria-live={loading ? "off" : "polite"} aria-relevant="additions text">
       {turns.length === 0 && state.setup.stage === "crop" && state.initial_prompt ? <article className="tara-turn tara-assistant"><div className="incoming-bubble">{state.initial_prompt}</div></article> : null}

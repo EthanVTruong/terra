@@ -217,12 +217,15 @@ def create_app(service: QueryService | None = None, web_root: str | Path | None 
         # a worker or import farm storage on the basic query/demo path.
         from .farm_ops.api import create_router
         app.include_router(create_router(farm_monitor, mutation_guard=mutation_guard or app.state.local_mutation_guard))
-        from .conversation.api import create_router as create_conversation_router
-        from .conversation.service import ConversationService
+        if getattr(farm_monitor, "store", None) is not None:
+            # Storage-backed monitors support the durable conversation. Custom
+            # embedded routers keep their existing lightweight dependency seam.
+            from .conversation.api import create_router as create_conversation_router
+            from .conversation.service import ConversationService
 
-        app.state.tara_conversation = ConversationService(farm_monitor, notification_capability="browser_open")
-        app.include_router(create_conversation_router(app.state.tara_conversation,
-                           mutation_guard=mutation_guard or app.state.local_mutation_guard))
+            app.state.tara_conversation = ConversationService(farm_monitor, notification_capability="browser_open")
+            app.include_router(create_conversation_router(app.state.tara_conversation,
+                               mutation_guard=mutation_guard or app.state.local_mutation_guard))
 
     # Reserve the API namespace ahead of static serving. An unknown API path
     # must never turn into the UI's index page or a success response.

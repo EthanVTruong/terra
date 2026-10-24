@@ -301,7 +301,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "task",
   "id": "terra-live-location-queries",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "After user-requested authorship correction, refresh corrected shared main and connect on-demand LIVE provider observations through the existing frozen QC/location-assessment JSON into the web UI. User explicitly asks full interoperable-location and flagging verification. Reuse Nathan transport/estimator unchanged; preserve strict raw units/QC/hour-ending/operating-date and causal visibility. Fetch only bounded recent context/candidate stations; no historical ingestion, model fitting/tuning, live alert dispatch, continuous schedule or deployment. Keep examples/injections distinct from real current data and review the first working live slice with ET.",
   "branch": "codex/terra-live-location-queries",
   "base": "0b1554930038d981881742d3a84b29e99dff595b",
@@ -330,16 +330,22 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "0b1554930038d981881742d3a84b29e99dff595b",
-    "summary": "Live CIMIS source, strict raw normalization, loopback HTTP boundary and web query controls implemented on corrected main. Minimal integration checks pass. Browser live/custom/measured, mobile, connection failure, cancellation, supersession and malformed-file checks pass. Draft PR4 first CI green; final per-cohort cache-provenance repair is verified locally.",
+    "revision": "cfe3d5541b0496c2d4abd4685e64de945c4602b4",
+    "summary": "Live-source/API/UI checkpoint complete and pushed as PR4. Exact source revision cfe3d55 passed all four CI jobs, including full native/PostgreSQL and portable pure runtime checks. Integration owner retains final main merge; no product-review approval is needed to consume this accepted interface.",
     "evidence": [
       "Scoped terra.py check passes against origin/main 0b155493: 31 harness and 189 pure JSON/reference/estimator/source/HTTP cases. New source/API coverage includes 125 cases, synthetic full HTTP composition, N5/extreme exclusions, malformed/future/unit/QC inputs, cache age/failure and restart visibility.",
       "Bounded actual CIMIS batch succeeded: custom 38.6,-121.84,70ft estimated 61.04305453536202F from six stations at valid 2026-10-24T07:00Z; first retrieval 07:53:42Z. A measured Winters query returned 65.2F observed /61.725F expected/no_alert. Outside coverage returns null/insufficient_data.",
       "Real hour transition also verified: at 08:01Z CIMIS reported the 08:00Z hour with missing M temperatures. UI withholds estimate and fault conclusion rather than selecting an older good hour. No natural fault truth is claimed.",
-      "Browser custom query displayed current provenance and exactly matching JSON download. Production web build and four packaging tests pass. Cold import brings in no SQLAlchemy, psycopg, scipy, sklearn or LightGBM; original algorithms/calibration unchanged."
+      "Browser custom query displayed current provenance and exactly matching JSON download. Production web build and four packaging tests pass. Cold import brings in no SQLAlchemy, psycopg, scipy, sklearn or LightGBM; original algorithms/calibration unchanged.",
+      "All four jobs passed for exact source cfe3d5541b0496c2d4abd4685e64de945c4602b4: PostgreSQL16 migration/full native suite with zero skipped tests; Windows and macOS189 pure/runtime +31 harness; production web build +4 packaging cases. Final follow-up changes only this coordination record.",
+      "Live matrix at08:15UTC reached all five calibrated presets, uncalibrated station243, arbitrary and outside coordinates with valid200 packets. Target observations stay independent/held out; unavailable current-hour M readings never create a fault conclusion. Earlier usable custom/measured cases are retained in local evidence.",
+      "Browser1280/390/320 checks passed: exact downloaded JSON equality, measured/custom association, source time separation, lost connection retention/retry, delayed cancellation, superseding a pending live result with an injected example, malformed exclusions rejected without losing the last packet, and mobile JSON focus/escape/no horizontal page overflow.",
+      "Native chillwatch algorithms/config and frozen reference unchanged; SHA256809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f. All new commits use Ethan human attribution. Original Terra staged bootstrap and unrelated worktrees preserved."
     ],
-    "uncertainty": "Local on-demand service only. Initial PR4 CI passed all four jobs including native/PostgreSQL with zero skips. The final cache repair still needs its exact-revision CI run. Natural-fault accuracy is unverified; automatic numerical fault calibration remains limited to five stations. Always-on worker, SMS and hosting are future work.",
-    "next": "Verify final cache-repair CI on draft PR4 and keep the loopback preview available. Review working live path with ET before the continuous monitoring/delivery slice."
+    "uncertainty": "Software and controlled-fault validation only; natural-fault accuracy remains unverified. Latest reported hourly placeholders may be missing while the provider publishes: the current-hour result is withheld and data_health retains M/source_missing evidence. Fault calibration remains limited to five stations. Continuous monitoring, SMS and hosting belong to the separate integration work.",
+    "next": "Integration owner merges PR4 after its checks and consumes LiveQueryService.assess/query JSON. Live-source scope has no remaining implementation work. Three isolated worker checkpoints are preserved on codex/terra-live-api b69a76a, codex/terra-live-ui 64b88b0 and codex/terra-live-tests 9685d46; their clean worktrees were removed.",
+    "pull_request": "https://github.com/EthanVTruong/terra/pull/4",
+    "verification_run": "https://github.com/EthanVTruong/terra/actions/runs/40077329673"
   }
 }
 ```

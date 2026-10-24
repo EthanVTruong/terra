@@ -795,7 +795,9 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "backend/terra_monitoring/farm_ops/demo.py",
     "tests/test_terra_chatgpt_runtime.py",
     "tests/test_terra_chatgpt_replay.py",
-    "web/package.json"
+    "web/package.json",
+    "backend/terra_monitoring/farm_ops/texting.py",
+    "web/src/FarmFeed.jsx"
   ],
   "depends_on": [
     "terra-authorship"
@@ -804,12 +806,14 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "artifacts": [],
   "handoff": {
     "revision": "6761a77d2b5510590bcd6053fb876c15997226f2",
-    "summary": "Genuine OAuth connected with planpermission and sevenvisiblemodels. Productionruntime wiring, guarded UI and stablevault integrated. ActualsavedweatherQC/Nathan/event/writer replay produced2validatedChatGPTnotes and1safe templatefallback; browserDetails verified exact input/evidence. Cleanup PR6 restart verified separately.",
+    "summary": "Core sign-in/plan inference verified. ET superseded factual-report voice with approved natural texting phrases and requested no almond demo. Bounded proactive coverage voice supports genuine generation and same-tone fallback; technical counts/clocks remain in exact Details. Root is verifying crop-neutral weather-only preview and final integration.",
     "evidence": [
       "Auth49/provider73/API16/runtime12/replay1 targeted tests pass; sixUIhelpers and productionbuild pass. Independentreview fixed stickyrefusal gap and one-shotAuthlifecycle.",
       "ActualResponses stream completed; gateway missingMIME/emptyterminal handled only by crosschecked finalassistantitems/done/deltas. Replay3requests2026reportedtokens; prioradapterdiagnosticsalsoinferenced. NoSMS.",
       "Maincleanup e4292b2 freshlycompletedworker8512 cycle; prior3noteIDs andSMSjournal/preferences preserved, attempts0/deliveries0. RootpreservesnewTara contractmaina9dcc6c; conversationalextensionsremainseparate.",
-      "ET reviewed realrenderednotes and chose Keep this concise factual tone. Tara conversation contract preserved by clean mainmerge."
+      "ET reviewed realrenderednotes and chose Keep this concise factual tone. Tara conversation contract preserved by clean mainmerge.",
+      "Direct ET correction: should sound just like me texting, skip demoalmonds. Approved Weather data is spotty/estimate incomplete and Weather data is back/estimate updating voice on October24. Previous factual-tone preference superseded.",
+      "Newcropneutralweather-onlyfullsavedweatherQC/Nathan/watch/writer replayproduced2validatedChatGPTnotes,2requests758reportedtokens. Nonecrop/variety/target; noSMS. Quietreplaybannernowdistinguishesoldreadingsfromcurrentavailability; currentmodeunavailablebannerpreserved."
     ],
     "uncertainty": "Latest-head integratedchecks/CI and finalmain merge/restartpending. Awaiting usertonefeedback. AutomaticTwilioAPI stilldisabledpendingcredentialrotation; priorConsoleplaceholder wasdeliveredandhandsetconfirmed.",
     "next": "Merge latestmaincontract, reconcileplaceholderPR, completechecks/CI and controlledruntime replacement preservingstate. Keepfutureconversationacceptance separate."
@@ -834,6 +838,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_chatgpt_api.py",
     "tests/test_terra_chatgpt_runtime.py",
     "tests/test_terra_chatgpt_replay.py",
+    "tests/test_terra_chatgpt_voice.py",
     "-q"
   ],
   "timeout": 120

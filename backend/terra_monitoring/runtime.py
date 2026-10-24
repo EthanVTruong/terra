@@ -77,8 +77,9 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
     if sms_dispatcher is None:
         sms_dispatcher = existing_sms if existing_sms is not None else SMSDispatcher.from_env(state_dir=resolved)
     if monitor is None:
+        from .farm_ops.writer import Writer
         monitor = Monitor(Store(resolved / "farm.sqlite3"), source=LiveSource(live_service),
-                          delivery=sms_dispatcher, clock=clock)
+                          delivery=sms_dispatcher, clock=clock, writer=Writer(voice="text"))
     else:
         if getattr(monitor, "source", None) is None:
             monitor.source = LiveSource(live_service)
@@ -141,7 +142,7 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
         # after the monitor worker has finished its normal shutdown.
         attach_controls(app, chatgpt_state_dir if chatgpt_state_dir is not None else resolved / "chatgpt")
         if existing_writer is None:
-            monitor.writer = Writer(generator=app.state.chatgpt_provider)
+            monitor.writer = Writer(generator=app.state.chatgpt_provider, voice="text")
     return app
 
 

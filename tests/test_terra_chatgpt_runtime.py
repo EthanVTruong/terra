@@ -70,7 +70,7 @@ class Provider:
         self.calls.append(kwargs)
         if self.fail:
             raise RuntimeError("PRIVATE provider error must not enter a saved note")
-        return {"text": json.dumps({key: "weather coverage remains limited and the orchard estimate is incomplete"
+        return {"text": json.dumps({key: "Weather data's a bit spotty right now, so the estimate's incomplete."
                                     for key in kwargs["packet"]["events"]})}
 
 
@@ -124,6 +124,7 @@ def test_enabled_factory_shares_provider_and_uses_existing_route_guard(tmp_path,
     monitor = app.state.runtime_monitor
     assert paths == [tmp_path / "chatgpt"]
     assert monitor.writer.generator is app.state.chatgpt_provider is provider
+    assert monitor.writer.voice == "text"
     assert monitor.source.service is app.state.query_service
     assert monitor.delivery is app.state.sms_dispatcher
     assert monitor.store.path == tmp_path / "farm.sqlite3"

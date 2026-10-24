@@ -1,0 +1,573 @@
+"""Opted-in, fixed-recipient Twilio SMS and an explicit simulated-flag demo.
+
+Assessment remains pure. This module has no scheduler, provider-data ingestion,
+automatic retry, public recipient input or subscription service. SQLite records
+one attempt per logical opening; an uncertain send is never blindly repeated.
+"""
+from __future__ import annotations
+
+import argparse
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import sqlite3
+from typing import Callable, Mapping
+
+import httpx
+
+EVENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}\Z")
+PHONE = re.compile(r"\+[1-9][0-9]{6,14}\Z")
+SID = re.compile(r"SM[0-9a-fA-F]{32}\Z")
+OUTBOUND_STATUSES = {"accepted", "scheduled", "queued", "sending", "sent", "delivered",
+                     "undelivered", "failed", "canceled"}
+TERMINAL_STATUSES = {"delivered", "undelivered", "failed", "canceled"}
+ENV_KEYS = {"TERRA_SMS_ENABLED", "TERRA_SMS_DEMO_ENABLED", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN",
+            "TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "API_KEY_SID", "API_KEY_SECRET",
+            "TWILIO_FROM_NUMBER", "TERRA_SMS_TO_NUMBER", "TERRA_SMS_DB_PATH", "TERRA_SMS_MAX_PER_DAY"}
+DEFAULT_DB = Path(__file__).resolve().parents[2] / ".terra-local" / "sms.sqlite3"
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _stamp(value) -> datetime:
+    if not isinstance(value, (str, datetime)):
+        raise ValueError("An aware timestamp is required")
+    result = datetime.fromisoformat(value.replace("Z", "+00:00")) if isinstance(value, str) else value
+    if result.tzinfo is None or result.utcoffset() is None:
+        raise ValueError("An aware timestamp is required")
+    return result.astimezone(timezone.utc)
+
+
+def _finite(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _mask(value: str) -> str | None:
+    return "***" + value[-4:] if PHONE.fullmatch(value) else None
+
+
+def _digest(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _read_environment(environment: Mapping[str, str]) -> tuple[dict[str, str], list[str]]:
+    """Read only an explicitly requested file; process values win over its values.
+
+    Deliberately not a shell: no expansion, interpolation, command execution or
+    implicit .env lookup. Unrelated keys can coexist but are never consumed.
+    """
+    values: dict[str, str] = {}
+    errors: list[str] = []
+    filename = environment.get("TERRA_SMS_ENV_FILE", "")
+    if filename:
+        try:
+            raw = Path(filename).read_bytes()
+            if len(raw) > 65536:
+                raise ValueError("oversized")
+            for line in raw.decode("utf-8-sig").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("export "):
+                    line = line[7:].strip()
+                key, separator, value = line.partition("=")
+                key, value = key.strip(), value.strip()
+                if not separator or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                    raise ValueError("invalid assignment")
+                if value.startswith(("'", '"')):
+                    if len(value) < 2 or value[-1] != value[0]:
+                        raise ValueError("invalid quote")
+                    value = value[1:-1]
+                if key in ENV_KEYS:
+                    values[key] = value
+        except (OSError, ValueError, UnicodeError):
+            errors.append("env_file_unavailable_or_invalid")
+            values = {}
+    values.update({key: str(value) for key, value in environment.items() if key in ENV_KEYS})
+    return values, errors
+
+
+@dataclass(frozen=True)
+class SMSConfig:
+    account_sid: str = field(default="", repr=False)
+    username: str = field(default="", repr=False)
+    secret: str = field(default="", repr=False)
+    sender: str = field(default="", repr=False)
+    recipient: str = field(default="", repr=False)
+    enabled: bool = False
+    demo_enabled: bool = False
+    db_path: Path = DEFAULT_DB
+    max_per_day: int = 10
+    errors: tuple[str, ...] = ()
+
+    @classmethod
+    def from_env(cls, environment: Mapping[str, str] | None = None) -> SMSConfig:
+        values, errors = _read_environment(os.environ if environment is None else environment)
+
+        def boolean(key: str) -> bool:
+            raw = values.get(key, "false").strip().lower()
+            if raw not in {"", "0", "false", "no", "off", "1", "true", "yes", "on"}:
+                errors.append("invalid_" + key.lower())
+            return raw in {"1", "true", "yes", "on"}
+
+        account = values.get("TWILIO_ACCOUNT_SID", "").strip()
+        token = values.get("TWILIO_AUTH_TOKEN", "").strip()
+        key = values.get("TWILIO_API_KEY_SID", values.get("API_KEY_SID", "")).strip()
+        key_secret = values.get("TWILIO_API_KEY_SECRET", values.get("API_KEY_SECRET", "")).strip()
+        sender = values.get("TWILIO_FROM_NUMBER", "").strip()
+        recipient = values.get("TERRA_SMS_TO_NUMBER", "").strip()
+        if not re.fullmatch(r"AC[0-9a-fA-F]{32}", account):
+            errors.append("invalid_or_missing_account_sid")
+        if key or key_secret:
+            if not re.fullmatch(r"SK[0-9a-fA-F]{32}", key) or not key_secret or any(c.isspace() for c in key_secret):
+                errors.append("invalid_or_missing_api_key")
+            username, secret = key, key_secret
+        else:
+            if not re.fullmatch(r"[0-9a-fA-F]{32}", token):
+                errors.append("invalid_or_missing_auth_token")
+            username, secret = account, token
+        if not PHONE.fullmatch(sender):
+            errors.append("invalid_or_missing_sender")
+        if not PHONE.fullmatch(recipient):
+            errors.append("invalid_or_missing_recipient")
+        try:
+            limit = int(values.get("TERRA_SMS_MAX_PER_DAY", "10"))
+            if not 1 <= limit <= 100:
+                raise ValueError("range")
+        except (TypeError, ValueError):
+            limit = 10
+            errors.append("invalid_daily_limit")
+        return cls(account, username, secret, sender, recipient, boolean("TERRA_SMS_ENABLED"),
+                   boolean("TERRA_SMS_DEMO_ENABLED"), Path(values.get("TERRA_SMS_DB_PATH") or DEFAULT_DB),
+                   limit, tuple(errors))
+
+
+def build_demo_assessment() -> dict:
+    """Run the real frozen detector on a fixed, explicitly synthetic spike.
+
+    A fixed historical simulated hour makes repeated previews deterministic;
+    it is never described as a present-day provider observation.
+    """
+    import pandas as pd
+    from .assessment import assess_location
+
+    hours = pd.date_range("2026-01-11T09:00:00Z", periods=8, freq="h")
+    stations = pd.DataFrame({
+        "station_id": [6, 226, 139, 212, 235],
+        "lat": [38.535694, 38.672722, 38.501258, 38.278056, 38.797944],
+        "lon": [-121.77636, -121.81172, -121.97853, -121.74111, -121.61136],
+        "elevation_ft": [60.0, 82.0, 136.0, 7.0, 24.0],
+    })
+    observations = pd.DataFrame([
+        {"station_id": station, "timestamp": hour,
+         "temperature_f": 120.0 if station == 6 and hour == hours[-1] else 40.0,
+         "quality": "usable", "source_flag": "", "source": "synthetic-demo",
+         "temperature_unit": "F", "timestamp_verified": True}
+        for hour in hours for station in stations.station_id
+    ])
+    return assess_location(lat=38.6, lon=-121.8, elevation_ft=60.0,
+        valid_utc=hours[-1], as_of=hours[-1], observations=observations, stations=stations,
+        snapshot_id="terra-sms-controlled-spike-v1", data_mode="synthetic", location_id="sms-demo")
+
+
+class SMSDispatcher:
+    """Single opted-in phone, durable attempt ledger and redacted public results."""
+
+    def __init__(self, config: SMSConfig, *, transport: httpx.BaseTransport | None = None,
+                 clock: Callable[[], datetime] = _utcnow):
+        self.config = config
+        self._transport = transport
+        self._clock = clock
+        self._recipient_hash = _digest(config.recipient)
+
+    @classmethod
+    def from_env(cls, environment: Mapping[str, str] | None = None, **kwargs) -> SMSDispatcher:
+        return cls(SMSConfig.from_env(environment), **kwargs)
+
+    @contextmanager
+    def _connection(self):
+        self.config.db_path.parent.mkdir(parents=True, exist_ok=True)
+        db = sqlite3.connect(self.config.db_path, timeout=10, isolation_level=None)
+        try:
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA busy_timeout=10000")
+            db.executescript("""
+            CREATE TABLE IF NOT EXISTS sms_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS sms_delivery (
+                delivery_key TEXT PRIMARY KEY, event_id TEXT NOT NULL, recipient_hash TEXT NOT NULL,
+                mode TEXT NOT NULL, body_hash TEXT NOT NULL, status TEXT NOT NULL,
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL, attempted_at TEXT,
+                provider_sid TEXT, provider_status TEXT, error_code TEXT
+            );
+            CREATE INDEX IF NOT EXISTS sms_event ON sms_delivery(recipient_hash, event_id);
+            CREATE TABLE IF NOT EXISTS sms_live_episode (
+                slot TEXT PRIMARY KEY, event_id TEXT NOT NULL, start_utc TEXT NOT NULL,
+                last_valid_utc TEXT NOT NULL
+            );
+            """)
+            yield db
+        finally:
+            db.close()
+
+    def _suppressed(self) -> bool:
+        if not self.config.db_path.exists():
+            return False
+        with self._connection() as db:
+            row = db.execute("SELECT value FROM sms_settings WHERE key='disabled'").fetchone()
+            return row is not None and row[0] == "true"
+
+    def status(self) -> dict:
+        errors = list(self.config.errors)
+        try:
+            suppressed = self._suppressed()
+        except (OSError, sqlite3.Error, ValueError):
+            suppressed = True
+            errors.append("delivery_store_unavailable")
+        configured = not self.config.errors
+        enabled = bool(self.config.enabled and configured and not suppressed and not errors)
+        return {"transport": "twilio", "configured": configured, "enabled": enabled,
+                "live_enabled": enabled, "demo_enabled": bool(enabled and self.config.demo_enabled),
+                "suppressed": suppressed, "recipient": _mask(self.config.recipient),
+                "sender": _mask(self.config.sender), "max_per_day": self.config.max_per_day,
+                "configuration_errors": sorted(set(errors))}
+
+    @staticmethod
+    def _result(event_id: str, status: str, *, mode: str | None = None,
+                error_code: str | None = None, duplicate: bool = False, **fields) -> dict:
+        result = {"event_id": event_id if isinstance(event_id, str) and EVENT_ID.fullmatch(event_id) else None,
+                  "status": status, "duplicate": duplicate}
+        if mode is not None:
+            result["mode"] = mode
+        if error_code is not None:
+            result["error_code"] = error_code
+        result.update(fields)
+        return result
+
+    def _row_result(self, row: sqlite3.Row, *, duplicate: bool = False) -> dict:
+        # A process may have died after claiming an attempt. Its absence of a
+        # SID cannot prove that Twilio did not accept the message.
+        status = "uncertain" if row["status"] == "sending" and not row["provider_sid"] else row["status"]
+        fields = {key: row[column] for key, column in
+                  (("provider_message_id", "provider_sid"), ("provider_status", "provider_status"),
+                   ("error_code", "error_code"), ("updated_at_utc", "updated_at")) if row[column] is not None}
+        return self._result(row["event_id"], status, mode=row["mode"], duplicate=duplicate, **fields)
+
+    def _key(self, event_id: str) -> str:
+        return _digest(self._recipient_hash + ":" + event_id)
+
+    def _existing(self, event_id: str) -> sqlite3.Row | None:
+        with self._connection() as db:
+            return db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
+
+    def _update(self, event_id: str, **fields) -> dict:
+        allowed = {"status", "provider_sid", "provider_status", "error_code"}
+        if not fields.keys() <= allowed:
+            raise ValueError("Unsupported delivery update")
+        fields["updated_at"] = _stamp(self._clock()).isoformat()
+        with self._connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
+            if row is None:
+                raise ValueError("Unknown delivery")
+            rank = {"accepted": 0, "scheduled": 0, "queued": 1, "sending": 2, "sent": 3}
+            old_rank = rank.get(row["provider_status"], -1)
+            new_rank = rank.get(fields.get("provider_status"), 4)
+            if row["status"] in TERMINAL_STATUSES or new_rank < old_rank:
+                db.commit()
+                return self._row_result(row)
+            columns = ",".join(key + "=?" for key in fields)
+            db.execute("UPDATE sms_delivery SET " + columns + " WHERE delivery_key=?",
+                       (*fields.values(), self._key(event_id)))
+            row = db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
+            db.commit()
+            return self._row_result(row)
+
+    def _reserve(self, event_id: str, mode: str, body: str) -> dict | None:
+        now = _stamp(self._clock())
+        with self._connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
+            if row is not None:
+                if row["body_hash"] != _digest(body) or row["mode"] != mode:
+                    db.commit()
+                    return self._result(event_id, "blocked", mode=mode, error_code="event_id_conflict")
+                db.commit()
+                return self._row_result(row, duplicate=True)
+            disabled = db.execute("SELECT value FROM sms_settings WHERE key='disabled'").fetchone()
+            if disabled is not None and disabled[0] == "true":
+                db.commit()
+                return self._result(event_id, "suppressed", mode=mode)
+            count = db.execute("SELECT COUNT(*) FROM sms_delivery WHERE attempted_at>=?",
+                               (now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),)).fetchone()[0]
+            if count >= self.config.max_per_day:
+                db.commit()
+                return self._result(event_id, "rate_limited", mode=mode, error_code="daily_attempt_limit")
+            db.execute("""INSERT INTO sms_delivery
+                (delivery_key,event_id,recipient_hash,mode,body_hash,status,created_at,updated_at,attempted_at)
+                VALUES (?,?,?,?,?,'sending',?,?,?)""",
+                (self._key(event_id), event_id, self._recipient_hash, mode, _digest(body),
+                 now.isoformat(), now.isoformat(), now.isoformat()))
+            db.commit()
+        return None
+
+    def _client(self) -> httpx.Client:
+        return httpx.Client(transport=self._transport, timeout=httpx.Timeout(15, connect=5),
+                            follow_redirects=False, trust_env=False,
+                            auth=httpx.BasicAuth(self.config.username, self.config.secret))
+
+    def _url(self, sid: str | None = None) -> str:
+        root = "https://api.twilio.com/2010-04-01/Accounts/" + self.config.account_sid + "/Messages"
+        return root + ("/" + sid if sid is not None else "") + ".json"
+
+    @staticmethod
+    def _provider_code(payload, fallback: str) -> str:
+        code = payload.get("code", payload.get("error_code")) if isinstance(payload, dict) else None
+        return str(code) if isinstance(code, int) and not isinstance(code, bool) and 0 < code < 1000000 else fallback
+
+    @staticmethod
+    def _message_state(payload, expected_sid: str | None = None) -> tuple[str, str] | None:
+        if not isinstance(payload, dict):
+            return None
+        sid, status = payload.get("sid"), payload.get("status")
+        if not isinstance(sid, str) or not SID.fullmatch(sid) or not isinstance(status, str) or status not in OUTBOUND_STATUSES:
+            return None
+        if expected_sid is not None and sid != expected_sid:
+            return None
+        return sid, status
+
+    def _send(self, event_id: str, mode: str, body: str) -> dict:
+        if not isinstance(event_id, str) or not EVENT_ID.fullmatch(event_id):
+            return self._result(event_id, "blocked", mode=mode, error_code="invalid_event_id")
+        state = self.status()
+        if not state["configured"] or state["configuration_errors"]:
+            return self._result(event_id, "not_configured", mode=mode, error_code="sms_configuration")
+        if state["suppressed"]:
+            return self._result(event_id, "suppressed", mode=mode)
+        if not state["enabled"] or mode == "demo" and not state["demo_enabled"]:
+            return self._result(event_id, "disabled", mode=mode)
+        try:
+            duplicate = self._reserve(event_id, mode, body)
+            if duplicate is not None:
+                return duplicate
+            if self._suppressed():
+                return self._update(event_id, status="suppressed")
+            try:
+                with self._client() as client:
+                    response = client.post(self._url(), data={"From": self.config.sender,
+                        "To": self.config.recipient, "Body": body, "ValidityPeriod": "300"})
+            except httpx.HTTPError:
+                return self._update(event_id, status="uncertain", error_code="provider_outcome_unknown")
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = None
+            if response.status_code >= 500 or response.status_code == 408:
+                return self._update(event_id, status="uncertain",
+                                    error_code=self._provider_code(payload, "provider_outcome_unknown"))
+            if not 200 <= response.status_code < 300:
+                return self._update(event_id, status="failed",
+                                    error_code=self._provider_code(payload, "provider_rejected"))
+            provider = self._message_state(payload)
+            if provider is None:
+                return self._update(event_id, status="uncertain", error_code="provider_invalid_response")
+            sid, provider_status = provider
+            outcome = provider_status if provider_status in TERMINAL_STATUSES else "provider_accepted"
+            return self._update(event_id, status=outcome, provider_sid=sid, provider_status=provider_status,
+                                error_code=self._provider_code(payload, "provider_delivery_failed")
+                                if provider_status in {"failed", "undelivered", "canceled"} else None)
+        except (OSError, sqlite3.Error, ValueError, TypeError):
+            # Do not expose exception strings: paths, response text and auth may
+            # contain private values. A possibly accepted send remains in the
+            # pre-send durable record and cannot be resent automatically.
+            return self._result(event_id, "uncertain", mode=mode, error_code="delivery_store_unavailable")
+
+    @staticmethod
+    def _body(finding: dict, evidence: dict, *, demo: bool) -> str:
+        hour = _stamp(evidence["timestamp"]).strftime("%Y-%m-%d %H:%M UTC")
+        prefix = "TERRA DEMO - simulated flag. Simulated " if demo else "TERRA - suspected temperature anomaly. "
+        return (f"{prefix}station {finding['station_id']} at {hour}: {evidence['temperature_f']:.1f} F; "
+                f"expected {evidence['expected_f']:.1f} F ({evidence['residual_f']:+.1f} F). "
+                "Check an independent reading. This is not confirmed sensor failure.")
+
+    def demo(self, event_id: str) -> dict:
+        if not isinstance(event_id, str) or not EVENT_ID.fullmatch(event_id):
+            return self._result(event_id, "blocked", mode="demo", error_code="invalid_event_id")
+        try:
+            packet = build_demo_assessment()
+            finding = next(f for f in packet["station_findings"] if f["station_id"] == 6)
+            evidence = next(e for e in finding["evidence"] if _stamp(e["timestamp"]) == _stamp(packet["query"]["valid_utc"]))
+            return {**self._send(event_id, "demo", self._body(finding, evidence, demo=True)), "assessment": packet}
+        except (ValueError, TypeError, KeyError, StopIteration, OSError):
+            return self._result(event_id, "blocked", mode="demo", error_code="demo_assessment_unavailable")
+
+    def _eligible_live(self, packet: dict) -> list[tuple[str, dict, dict]]:
+        from terra_qc.reference import REFERENCE_ID, REFERENCE_SHA256
+        if not isinstance(packet, dict) or packet.get("schema_version") != "terra-location-assessment-v1" or packet.get("data_mode") != "current":
+            return []
+        try:
+            provenance, query = packet["provenance"], packet["query"]
+            if provenance["qc_reference_id"] != REFERENCE_ID or provenance["qc_reference_sha256"] != REFERENCE_SHA256:
+                return []
+            source = provenance["live_source"]
+            if source["provider"] != "CIMIS" or source["status"] not in {"refreshed", "cached"} or source.get("failed_station_ids") or source.get("warning"):
+                return []
+            now, as_of, valid = _stamp(self._clock()), _stamp(query["as_of_utc"]), _stamp(query["valid_utc"])
+            maximum = query["max_age_hours"]
+            if not _finite(maximum) or not 0 < maximum <= 6:
+                return []
+            checked, retrieved = _stamp(source["checked_at_utc"]), _stamp(source["retrieved_at_utc"])
+            if not (valid <= as_of <= now and retrieved <= checked <= as_of):
+                return []
+            if now - valid > timedelta(hours=maximum) or now - checked > timedelta(minutes=5) or now - retrieved > timedelta(hours=maximum):
+                return []
+            if _stamp(source["data_through_utc"]) != valid:
+                return []
+            result = []
+            for finding in packet["station_findings"]:
+                if finding["freshness"] != "within_age_limit" or finding["reference_id"] != REFERENCE_ID or finding["reason"] not in {"extreme_departure", "sustained_departure"} or finding["severity"] not in {"moderate", "strong"}:
+                    continue
+                station = finding["station_id"]
+                if isinstance(station, bool) or station not in {6, 226, 139, 212, 235}:
+                    continue
+                start, detected, end = (_stamp(finding[key]) for key in ("start_utc", "detected_at_utc", "end_utc"))
+                if not start <= detected <= end == valid or _stamp(finding["visible_at_utc"]) > as_of:
+                    continue
+                evidence = next((item for item in finding["evidence"] if _stamp(item["timestamp"]) == valid), None)
+                if evidence is None or evidence.get("reference_id") != REFERENCE_ID or evidence.get("observation_available") is not True or evidence.get("source_quality") != "usable" or evidence.get("original_source_flag") != "":
+                    continue
+                if not all(_finite(evidence.get(key)) for key in ("temperature_f", "expected_f", "residual_f")):
+                    continue
+                identity = json.dumps({"station_id": station, "start": start.isoformat(),
+                    "detected": detected.isoformat(), "reference": REFERENCE_ID,
+                    "policy": finding["policy"], "transition": "opening"}, sort_keys=True, allow_nan=False)
+                result.append(("live-" + _digest(identity), finding, evidence))
+            return result
+        except (KeyError, ValueError, TypeError, AttributeError, OverflowError):
+            return []
+
+    def dispatch_assessment(self, packet: dict) -> list[dict]:
+        """Dispatch only fresh server-produced live findings, once per opening.
+
+        This is an internal trusted-service boundary, not a validator for user
+        uploads. Demo/replay packets can only reach a phone through demo().
+        """
+        result = []
+        for event_id, finding, evidence in self._eligible_live(packet):
+            try:
+                event_id = self._canonical_live_event(event_id, finding, evidence)
+                if event_id is None:
+                    continue
+                # Body identity stays with the opening even while readings
+                # continue. A persisted ID is returned before recomputing body.
+                row = self._existing(event_id)
+                if row is not None:
+                    result.append(self._row_result(row, duplicate=True))
+                else:
+                    result.append(self._send(event_id, "live", self._body(finding, evidence, demo=False)))
+            except (OSError, sqlite3.Error, ValueError, TypeError):
+                result.append(self._result(event_id, "blocked", mode="live", error_code="delivery_store_unavailable"))
+        return result
+
+    def _canonical_live_event(self, proposed_id: str, finding: dict, evidence: dict) -> str | None:
+        """Keep one opening while continuous evidence slides out of the fetch window.
+
+        Overlap or hourly adjacency establishes continuity. A gap with no
+        overlapping evidence remains a new incident; this local dispatcher does
+        not invent what happened while the service was absent.
+        """
+        start, valid = _stamp(finding["start_utc"]), _stamp(evidence["timestamp"])
+        slot = _digest(json.dumps({"recipient": self._recipient_hash, "station": finding["station_id"],
+            "reference": finding["reference_id"], "policy": finding["policy"]}, sort_keys=True, allow_nan=False))
+        with self._connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            previous = db.execute("SELECT * FROM sms_live_episode WHERE slot=?", (slot,)).fetchone()
+            if previous is not None:
+                last_valid = _stamp(previous["last_valid_utc"])
+                if valid < last_valid:
+                    db.commit()
+                    return None  # A superseded service result cannot open a catch-up SMS.
+                if start <= last_valid + timedelta(hours=1):
+                    proposed_id = previous["event_id"]
+                    start = min(start, _stamp(previous["start_utc"]))
+            db.execute("INSERT OR REPLACE INTO sms_live_episode(slot,event_id,start_utc,last_valid_utc) VALUES (?,?,?,?)",
+                       (slot, proposed_id, start.isoformat(), valid.isoformat()))
+            db.commit()
+            return proposed_id
+
+    def receipt(self, event_id: str) -> dict:
+        """Reconcile only the persisted SID; never issue another send."""
+        if not isinstance(event_id, str) or not EVENT_ID.fullmatch(event_id):
+            return self._result(event_id, "blocked", error_code="invalid_event_id")
+        try:
+            row = self._existing(event_id)
+            if row is None:
+                return self._result(event_id, "not_found")
+            result = self._row_result(row)
+            if not row["provider_sid"] or row["status"] in TERMINAL_STATUSES:
+                return result
+            if not SID.fullmatch(row["provider_sid"]):
+                return {**result, "receipt_error": "invalid_persisted_message_id"}
+            if self.config.errors:
+                return {**result, "receipt_error": "sms_configuration"}
+            try:
+                with self._client() as client:
+                    response = client.get(self._url(row["provider_sid"]))
+                payload = response.json()
+            except (httpx.HTTPError, ValueError):
+                return {**result, "receipt_error": "provider_receipt_unavailable"}
+            if not 200 <= response.status_code < 300:
+                return {**result, "receipt_error": self._provider_code(payload, "provider_receipt_unavailable")}
+            provider = self._message_state(payload, row["provider_sid"])
+            if provider is None:
+                return {**result, "receipt_error": "provider_invalid_receipt"}
+            sid, provider_status = provider
+            outcome = provider_status if provider_status in TERMINAL_STATUSES else "provider_accepted"
+            return self._update(event_id, status=outcome, provider_sid=sid, provider_status=provider_status,
+                error_code=self._provider_code(payload, "provider_delivery_failed")
+                if provider_status in {"failed", "undelivered", "canceled"} else None)
+        except (OSError, sqlite3.Error, ValueError, TypeError):
+            return self._result(event_id, "blocked", error_code="delivery_store_unavailable")
+
+    def disable(self) -> dict:
+        """Persist opt-out for this local dispatcher; already in-flight SMS cannot be recalled."""
+        try:
+            with self._connection() as db:
+                db.execute("INSERT OR REPLACE INTO sms_settings(key,value) VALUES ('disabled','true')")
+            return {"status": "disabled", **self.status()}
+        except (OSError, sqlite3.Error, ValueError):
+            return {"status": "blocked", "error_code": "delivery_store_unavailable"}
+
+    def enable(self) -> dict:
+        """Explicitly resume the opted-in local recipient without discarding history."""
+        if self.config.errors or not self.config.enabled:
+            return {"status": "blocked", "error_code": "sms_configuration", **self.status()}
+        try:
+            with self._connection() as db:
+                db.execute("INSERT OR REPLACE INTO sms_settings(key,value) VALUES ('disabled','false')")
+            return {"status": "enabled", **self.status()}
+        except (OSError, sqlite3.Error, ValueError):
+            return {"status": "blocked", "error_code": "delivery_store_unavailable"}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("command", choices=["status", "demo", "receipt", "disable", "enable"])
+    parser.add_argument("--event-id", help="Stable caller UUID; repeat it to inspect, never duplicate, one attempt")
+    args = parser.parse_args()
+    if args.command in {"demo", "receipt"} and not args.event_id:
+        parser.error("--event-id is required for demo and receipt")
+    dispatcher = SMSDispatcher.from_env()
+    result = getattr(dispatcher, args.command)(args.event_id) if args.command in {"demo", "receipt"} else getattr(dispatcher, args.command)()
+    print(json.dumps(result, ensure_ascii=False, allow_nan=False))
+
+
+if __name__ == "__main__":
+    main()

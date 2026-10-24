@@ -147,7 +147,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "229106c251cfa41993a747cde2a40f29e53ed60f",
+    "revision": "a67837b1b3c5456c510f02361cdefb7cf5ffde3e",
     "summary": "First additive QC-to-location-JSON/UI slice implemented and verified in a separate checkout. Final cleaned statistical source/reference identities match; existing Nathan code/config/pipeline preserved.",
     "evidence": [
       "53 pure estimator/adapter/reference cases plus31harness cases pass; scoped check against actual origin/main passes.",

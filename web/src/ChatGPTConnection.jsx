@@ -14,7 +14,7 @@ function confirmedAccounts() {
   } catch { return new Set(); }
 }
 
-export default function ChatGPTConnection() {
+export default function ChatGPTConnection({ openRequest = 0, refreshRequest = null, onStatus }) {
   const [open, setOpen] = useState(false), [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState("");
   const [error, setError] = useState(""), [catalogError, setCatalogError] = useState("");
@@ -26,6 +26,8 @@ export default function ChatGPTConnection() {
   const alive = useRef(false), lifecycle = useRef(null), controlToken = useRef(null);
   const statusVersion = useRef(0), catalogVersion = useRef(0), activeAccount = useRef(null), busyRef = useRef(false), popup = useRef(null);
   const pollDeadline = useRef({ id: null, deadline: 0 });
+  useEffect(() => { if (openRequest > 0) setOpen(true); }, [openRequest]);
+  useEffect(() => { onStatus?.(status); }, [onStatus, status]);
 
   const api = useCallback(async (path, { method = "GET", body, fresh = false } = {}) => {
     const signal = lifecycle.current?.signal;
@@ -64,12 +66,14 @@ export default function ChatGPTConnection() {
       throw reason;
     } finally { if (alive.current && statusVersion.current === version) setLoading(false); }
   }, [api]);
-
   useEffect(() => {
     alive.current = true; lifecycle.current = new AbortController();
     loadStatus({ fresh: true }).catch(() => {});
     return () => { alive.current = false; lifecycle.current.abort(); statusVersion.current += 1; controlToken.current = null; };
   }, [loadStatus]);
+  useEffect(() => {
+    if (refreshRequest) loadStatus({ quiet: true }).catch(() => {});
+  }, [refreshRequest, loadStatus]);
 
   const refresh = useCallback(() => {
     if (busyRef.current) return;

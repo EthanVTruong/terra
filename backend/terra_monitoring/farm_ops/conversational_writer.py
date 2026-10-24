@@ -14,7 +14,7 @@ from .writer import Writer, fallback
 
 CONVERSATIONAL_SYSTEM_PROMPT = """You write Tara's short replies to a grower about
 their saved farm, chill hours, weather support, or an alert Tara has surfaced.
-Prefer one brief, natural sentence; add a second only when it contributes a
+Prefer one brief, natural clause per supplied event; add detail only when it contributes a
 useful comparison or limitation. Answer directly, without a greeting, repeated
 thanks, a follow-up question, or a promise to keep watching. Keep the tone like a
 quick text. Use only the bounded facts and intent supplied by the application.
@@ -97,7 +97,14 @@ class ConversationalWriter:
         return getattr(self.writer, "voice", "legacy")
 
     def write(self, packet):
-        if "question" in packet and self.generator is None:
+        unavailable = bool(packet.get("events")) and all(
+            event.get("type") in {"chill_total", "history"}
+            and event.get("facts", {}).get("hours") is None
+            and event.get("facts", {}).get("historical_median_hours") is None
+            for event in packet["events"])
+        if "question" in packet and unavailable:
+            result = {"text": fallback(packet), "provider": "template", "outcome": "local_unavailable"}
+        elif "question" in packet and self.generator is None:
             result = {"text": fallback(packet), "provider": "template", "outcome": "chatgpt_not_connected"}
         elif "question" in packet:
             # A per-request adapter preserves the original provider's account,

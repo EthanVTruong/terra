@@ -1,6 +1,8 @@
 """Validate the actual fact-bound writer beneath conversational presentation."""
 import copy
 import json
+from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import httpx
 
@@ -108,3 +110,74 @@ def test_unavailable_total_does_not_invent_a_source_cutoff():
     source["events"][0]["facts"].pop("data_through")
     result = ConversationalWriter(Writer(key="", model="")).write(source)
     assert result["text"] == "Estimated chill is currently unavailable."
+
+
+def test_unavailable_total_does_not_spend_plan_usage_rewording_absence():
+    source = packet()
+    source["events"][0]["facts"]["hours"] = None
+    generator = Generator()
+    result = ConversationalWriter(Writer(generator=generator)).write(source)
+    assert result["text"] == "Estimated chill is currently unavailable."
+    assert result["outcome"] == "local_unavailable"
+    assert generator.calls == []
+
+
+def test_real_runtime_routes_select_plan_writer_only_for_relevant_input(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from terra_monitoring.chatgpt import local
+    from terra_monitoring.live import LiveQueryService
+    from terra_monitoring.runtime import create_runtime_app
+    from terra_monitoring.sms import SMSDispatcher
+
+    provider = Generator("supporting weather data cannot currently verify the orchard estimate")
+    monkeypatch.setattr(local, "AuthManager", lambda path: SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(local, "ChatGPTPlanClient", lambda auth, path: provider)
+    source = LiveQueryService(app_key="", data_dir=tmp_path / "source")
+    sms = SMSDispatcher.from_env({"TERRA_SMS_ENABLED": "false", "TERRA_SMS_DEMO_ENABLED": "false",
+                                 "TERRA_SMS_DB_PATH": str(tmp_path / "sms.sqlite3")})
+    app = create_runtime_app(state_dir=tmp_path, live_service=source, sms_dispatcher=sms,
+        chatgpt_enabled=True, clock=lambda: datetime(2026, 1, 14, 16, tzinfo=timezone.utc))
+    assert app.state.runtime_monitor.writer.generator is provider
+    with TestClient(app, base_url="http://127.0.0.1") as client:
+        control = client.get("/api/sms/status").json()["control_token"]
+        headers = {"X-Terra-SMS-Control": control}
+        assert client.get("/api/tara/conversation").json()["setup"]["stage"] == "crop"
+
+        def post(path, body):
+            response = client.post(path, json=body, headers=headers)
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        post("/api/tara/messages", {"request_id": "crop", "text": "Peaches"})
+        saved = post("/api/tara/setup", {"request_id": "location", "action": "location", "location": {
+            "lat": 38.6, "lon": -121.84, "elevation_ft": 70.0, "name": "Conversation QA farm",
+            "source": "manual", "confirmed": True}})
+        orchard = saved["state"]["orchard_id"]
+        assert saved["state"]["orchards"][0]["variety"] is None
+        post("/api/tara/setup", {"request_id": "notifications", "action": "notifications",
+            "notifications": {"enabled": False, "permission": "default"}})
+        for identity, text, outcome in (("game", "Tell me about Minecraft", "reaction"),
+                ("thanks", "Thanks for the update!", "none"), ("ack", "Got it", "reaction")):
+            result = post("/api/tara/messages", {"request_id": identity, "text": text, "orchard_id": orchard})
+            assert result["outcome"] == outcome
+        assert provider.calls == []
+        unavailable = post("/api/tara/messages", {"request_id": "no-total", "text": "How much chill?", "orchard_id": orchard})
+        assert unavailable["assistant_turn"]["text"] == "Estimated chill is currently unavailable."
+        assert provider.calls == []
+        question = {"request_id": "actual-question", "text": "Thanks, is the weather data usable?", "orchard_id": orchard}
+        answer = post("/api/tara/messages", question)
+        assert answer["outcome"] == "message"
+        assert answer["assistant_turn"]["data"]["generation"] == "chatgpt_plan"
+        assert "cannot currently verify" in answer["assistant_turn"]["text"]
+        assert len(provider.calls) == 1
+        again = post("/api/tara/messages", question)
+        assert again["assistant_turn"]["id"] == answer["assistant_turn"]["id"]
+        assert len(provider.calls) == 1
+        for _ in range(2):
+            assert client.get("/api/tara/conversation", params={"orchard_id": orchard}).status_code == 200
+        assert len(provider.calls) == 1
+        legacy = client.post(f"/api/orchards/{orchard}/questions", headers=headers,
+                             json={"question": "Compare ChatGPT and Claude", "request_id": "legacy-offtopic"})
+        assert legacy.status_code == 200
+        assert len(provider.calls) == 1
+        assert client.post("/api/tara/messages", json={"request_id": "unguarded", "text": "Chill?", "orchard_id": orchard}).status_code == 403

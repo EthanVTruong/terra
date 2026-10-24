@@ -16,7 +16,7 @@ function validFeed(value, id) {
   return value;
 }
 
-export function useFarmFeed(active) {
+export function useFarmFeed(active, { pollInBackground = false } = {}) {
   const [orchards, setOrchards] = useState([]), [orchardId, setOrchardId] = useState("");
   const [available, setAvailable] = useState(false), [feed, setFeed] = useState(null);
   const [loading, setLoading] = useState(false), [error, setError] = useState("");
@@ -48,11 +48,11 @@ export function useFarmFeed(active) {
       finally { if (!disposed && current === version && selectedIdRef.current === orchardId) setLoading(false); }
     }
     load();
-    const poll = setInterval(() => { if (document.visibilityState === "visible") load(); }, 30000);
+    const poll = setInterval(() => { if (pollInBackground || document.visibilityState === "visible") load(); }, 30000);
     const visible = () => { if (document.visibilityState === "visible") load(); };
     document.addEventListener("visibilitychange", visible);
     return () => { disposed = true; controller?.abort(); clearInterval(poll); document.removeEventListener("visibilitychange", visible); };
-  }, [active, orchardId, revision]);
+  }, [active, orchardId, revision, pollInBackground]);
   const selectOrchard = useCallback((id) => { selectedIdRef.current = id; feedRef.current = null; setFeed(null); setError(""); setOrchardId(id); }, []);
   const addOrchard = useCallback((profile) => {
     setOrchards((previous) => [...previous.filter((item) => item.id !== profile.id), profile]);
@@ -61,19 +61,32 @@ export function useFarmFeed(active) {
   return { orchards, orchardId, orchard: orchards.find((item) => item.id === orchardId), available, feed, loading, error, selectOrchard, addOrchard, refresh: () => setRevision((value) => value + 1), refreshProfiles: () => setProfilesRevision((value) => value + 1) };
 }
 
+export function FarmNote({ message, onDetails, selectedMessage, detailsLoading }) {
+  const date = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric" }).format(new Date(message.created_at));
+  return <article className="farm-note">
+    <time className="farm-note-time" dateTime={message.created_at} title={timestamp(message.created_at)}>{date}</time>
+    <button className={`incoming-bubble farm-message${selectedMessage === message.id ? " selected-note" : ""}`} onClick={(event) => onDetails(event, message)} aria-describedby={"farm-note-text-" + message.id} aria-label={`Open ${message.kind === "answer" ? "answer" : "field note"} from ${timestamp(message.created_at)}`}><span id={"farm-note-text-" + message.id}>{message.text}</span></button>
+    <div className="farm-note-meta"><span>{deliveryLabel(message.delivery)}</span><button onClick={(event) => onDetails(event, message)} aria-disabled={detailsLoading && selectedMessage === message.id}>{detailsLoading && selectedMessage === message.id ? "Opening…" : "Details"}<Icon name="chevron" size={10} /></button></div>
+  </article>;
+}
+
+export function FarmAvailability({ farm }) {
+  const monitor = farm.feed?.monitor;
+  const mode = monitor?.orchard?.mode || farm.orchard?.mode;
+  return <>
+    {farm.error && <div className="load-error" role="status"><p>{farm.error}</p><button onClick={farm.refresh}>Retry updates</button></div>}
+    {mode && mode !== "current" ? <div className="availability-status" role="status"><strong>Replay only</strong><span>These saved readings don’t describe current conditions.</span></div> : monitor && (!monitor.comparison_available || monitor.source_error) && <div className="availability-status" role="status"><strong>Weather support unavailable</strong><span>{monitor.data_through ? `Last reading · ${timestamp(monitor.data_through)}` : "Waiting for usable station readings."}</span></div>}
+  </>;
+}
+
 export function FarmConversation({ farm, onDetails, selectedMessage, detailsLoading, detailsError }) {
   const monitor = farm.feed?.monitor;
   const messages = [...(farm.feed?.messages || [])].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id.localeCompare(b.id));
   const mode = monitor?.orchard?.mode || farm.orchard?.mode;
   return <div className="farm-conversation">
     <div className="farm-thread-context"><strong>{orchardLabel(monitor?.orchard || farm.orchard)}</strong><span>{mode === "current" ? "Orchard updates" : mode ? "Injected replay · demo" : "Monitoring"}</span></div>
-    {farm.error && <div className="load-error" role="status"><p>{farm.error}</p><button onClick={farm.refresh}>Retry updates</button></div>}
-    {mode && mode !== "current" ? <div className="availability-status" role="status"><strong>Replay only</strong><span>These saved readings don’t describe current conditions.</span></div> : monitor && (!monitor.comparison_available || monitor.source_error) && <div className="availability-status" role="status"><strong>Weather support unavailable</strong><span>{monitor.data_through ? `Last reading · ${timestamp(monitor.data_through)}` : "Waiting for usable station readings."}</span></div>}
-    {farm.loading && !farm.feed ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening field notes…</p></div> : messages.length ? <div className="farm-messages" role="log" aria-label="Orchard field notes" aria-live="polite" aria-relevant="additions text">{messages.map((message) => <article className="farm-note" key={message.id}>
-      <time className="farm-note-time" dateTime={message.created_at}>{timestamp(message.created_at)}</time>
-      <button className={`incoming-bubble farm-message${selectedMessage === message.id ? " selected-note" : ""}`} onClick={(event) => onDetails(event, message)} aria-describedby={"farm-note-text-" + message.id} aria-label={`Open ${message.kind === "answer" ? "answer" : "field note"} from ${timestamp(message.created_at)}`}><span id={"farm-note-text-" + message.id}>{message.text}</span></button>
-      <div className="farm-note-meta"><span>{deliveryLabel(message.delivery)}</span><button onClick={(event) => onDetails(event, message)} aria-disabled={detailsLoading && selectedMessage === message.id}>{detailsLoading && selectedMessage === message.id ? "Opening…" : "Details"}<Icon name="chevron" size={10} /></button></div>
-    </article>)}</div> : !farm.loading && <div className="empty-state"><Icon name="location" size={22} /><h2>No field notes yet</h2><p>Updates appear here when the monitor records a meaningful change.</p></div>}
+    <FarmAvailability farm={farm} />
+    {farm.loading && !farm.feed ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening field notes…</p></div> : messages.length ? <div className="farm-messages" role="log" aria-label="Orchard field notes" aria-live="polite" aria-relevant="additions text">{messages.map((message) => <FarmNote key={message.id} message={message} onDetails={onDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} />)}</div> : !farm.loading && <div className="empty-state"><Icon name="location" size={22} /><h2>No field notes yet</h2><p>Updates appear here when the monitor records a meaningful change.</p></div>}
     {detailsError && <p className="query-error" role="alert">{detailsError}</p>}
   </div>;
 }

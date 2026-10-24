@@ -982,3 +982,39 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "timeout": 120
 }
 ```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-local-polish",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly authorizes merging PR10, reconciling the approved polished UI with current main for fresh clones, adopting local-first open-source operation and then beginning a visual sim polish pass. PR10 merged as adced1a after all4 exact-head checks. Preserve newer ChatGPT controls, replay-only semantics, fixed-phone readiness, existing backend/scientific behavior and all private services/state. Sim conversation/engine work is active separately; presentation refinement must preserve its owner changes.",
+  "branch": "codex/terra-local-polish",
+  "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "README.md",
+    "docs/terra/**",
+    "web/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "adced1ad91da099309172fdd8dddba6e3d215b1b",
+    "summary": "PR10 merged using existing repository authentication after head/base and all4 exact-head checks verified. Isolated Terra-local-polish checkout will reconcile UI4464760 once with main, retain ChatGPT and the quiet replay warning, and state the local-first direction.",
+    "evidence": [
+      "Shared main fast-forwarded cleanly to adced1a; original staged prototype and current8504/8512/8517/8520 services untouched.",
+      "Read current sim branch facts only: separate8520 station/grower app, active conversation verification owner; no backend or sim owner checkout mutations."
+    ],
+    "uncertainty": "UI merge conflicts and combined browser behavior require verification. Sim branch is actively advancing; refresh its exact revision before a separate presentation slice.",
+    "next": "Merge the approved UI branch into this isolated checkout, reconcile all current-main intent and verify build, pure checks and actual browser; integrate approved combined UI before moving to a concrete sim visual checkpoint."
+  }
+}
+```

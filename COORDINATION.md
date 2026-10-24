@@ -26,16 +26,16 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "34773a9343daac920e9039108a7296a21b23ef85",
-    "summary": "The isolated consolidation now preserves the approved UI merge and main assigned-sender integration while incorporating exact frozen demo source 853336a12e9970fb3d06e5c895e45e4f24366075. One semantic repair combines the simulation, natural questions, immutable weather context, honest replay readiness and exact-note browser return with compact mixed-timeline presentation and accessible answer buttons. All source histories and coordination task/check blocks remain intact.",
+    "revision": "daed14bdd098a89af179bcbb1b52b598bcf8fdc0",
+    "summary": "Final Tara repairs from frozen source 7b779c9629dbd919d2a4e45a71182511e8e7573b and metadata c6797c933d387470e0dff689ce6d2e66c5c6ccc7 are integrated into the isolated consolidated product while preserving root documentation, approved polish and demo 853336a behavior. One repair combines strict full crop descriptions/cultivar checks with explicit mixed-list, negation and ambiguity guards; source-specific alert times/years and existing-farm browser-consent UI remain. App and notification-return paths were unchanged in this repair.",
     "evidence": [
-      "Targeted backend validation passes across all ten conversation, natural-language, readiness, weather, demo-simulation and full-flow test files; no failures or skipped tests reported. The only warning is the installed Starlette TestClient/httpx deprecation.",
-      "All 39 UI cases and eight packaging cases pass. Both main and simulation production builds pass after frozen-lockfile installation. The existing simulation bundle emits a nonblocking 632 kB chunk-size warning.",
-      "Preserved server opt-in timing and baseline reset while adding exact original-farm/note notification clicks; replay-only polling remains 1200 ms and live polling remains 30000 ms. Evidence-backed answer targets retain explicit orchard identity and stable accessible text descriptions. One Pacific day divider remains shared across the mixed conversation timeline.",
-      "All 39 coordination records, including 13 declared check blocks and the consolidation/full-flow/Tara/local-polish/demo task records, are retained. Whitespace validation passes. No numerical modules, model reference, private configuration, shared process or retained runtime state was changed."
+      "All conversation test files plus full-flow validation pass with no backend failures or skipped cases reported. Includes both source branches' natural-language, crop, dated-reference, immutable weather-context, readiness, recovery and writer regressions. The only warning is the installed Starlette TestClient/httpx deprecation.",
+      "Main production build and four packaging cases pass. UI validation reports 40 pure/helper passes, zero failures and two explicitly optional native-browser skips because no browser-test target was configured. Prior actual native App/consent proofs on c679 are separate source-owner evidence, not claimed rerun here.",
+      "The conversation check argv now explicitly unions all ten test_terra_conversation files, and the UI script retains all existing suites plus the optional native browser file. All 39 coordination records and 13 check blocks remain; staged whitespace validation passes.",
+      "Preserved server consent timing, selected-farm/alive permission guard, replay readiness, immutable saved-assessment/history semantics, notification note targets, mixed-timeline presentation and answer aria descriptions. No private state, services, numerical modules, scientific reference, provider or SMS action was changed."
     ],
-    "uncertainty": "The Tara owner's bounded repairs for old-note dates, returning-farm notification consent and mixed known/custom crops remain separate, as does the demo owner's final metadata-only head. Root still owns final current-main reconciliation, the complete scoped check, independent review, exact-head CI, publication and runtime rollout. This checkpoint performs no external inference or phone send.",
-    "next": "Root consumes this preserved-history demo merge, integrates the exact final Tara and metadata-only demo heads, then performs final combined checks and publication. Keep the existing preview process and all source branches intact."
+    "uncertainty": "The demo owner is completing a separate bounded publication-order/legacy-fallback repair for notes sharing one source hour; this checkpoint intentionally retains pre-ordering demo source 853336a. Root still owns that final source integration, complete current-head scoped checks, independent UI review, exact-head CI, publication and retained-data rollout. Optional native browser cases remain distinct from pure UI validation.",
+    "next": "Root consumes this final Tara/source-metadata merge, then integrates the demo owner's exact ordering repair and any corresponding UI test argv addition before final combined checks and publication. Keep all source branches, root documentation and the existing preview process intact."
   }
 }
 ```
@@ -109,7 +109,7 @@
   "status": "active",
   "intent": "User explicitly requests a plan and active goal to implement Tara onboarding and actual in-app replies using the existing ChatGPT connection: brief grounded responses, attached thumbs-up acknowledgments, no reply to thanks/other no-op input, and local off-topic handling that consumes no model usage. Diagnose full behavior including relevant farm/chill/alert follow-ups, context, consent, failures and return. Implement, verify and integrate without changing scientific models or external SMS/account consent.",
   "branch": "codex/tara-conversation",
-  "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
+  "base": "a14e1483c4681c24cecc1c97da6a4ffb3c67eb57",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -132,15 +132,16 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "4c188b905af86571bd579109403e539ce1a15654",
-    "summary": "Implementation and behavior verification complete. Integration owner explicitly authorized stacking the FINAL assigned-sender head9a7a397 into Tara4c188b9, preserving current setup mainadced1a. One focused coordination-record reconciliation; no application conflict or new product behavior. Root retains PR12-first/PR11-next main integration and operational cutover.",
+    "revision": "7b779c9629dbd919d2a4e45a71182511e8e7573b",
+    "summary": "ONE root-authorized bounded repair cycle completed for3 concrete P2s after the prior combined source passed CI: original per-alert evidence dates/source years and IDs; existing-farm explicit browser consent affordance with selected-farm/alive guard; preservation or local clarification of mixed known/custom crops. Application source/tests are frozen. Primary root owns PR11 merge and operational cutover; follow-on consolidation received exact repaired source.",
     "evidence": [
-      "All9 scoped groups passed before this dependency merge;98 conversation cases,117 focused compatibility cases,21 prior web checks/build, accepted actual ChatGPT reply and immutable Details, real process-exit/HTTP/Edge recovery,320px and delayed pre-consent notification regression pass.",
-      "Exact dependency head9a7a397/tree41527041d8887786e558ceb976a1739a7392724b imported. Its owner verified19 targeted sender cases,13 prior UI cases and4 packaging cases. Integration owner verified controlled API template delivery and direct user handset receipt; custom message delivery and natural autonomous alerts remain separate.",
-      "Final combined scoped checks and exact-head4-job CI are required before root integrates. This chat has not restarted or changed shared runtime, private configuration, vault, account or SMS flags. Original staged prototype and frozen scientific code preserved."
+      "141 combined conversation cases passed, including new single/mixed/chained/previous-year referenced-alert regressions and38 crop list/profile/invalid/negation/off-topic cases. Existing structural scope gate, local no-op behavior and strict fact validator remain.",
+      "Actual full App plus guarded HTTP consent proof: text alone makes0 native/model calls; denial stays off, grant applies only to selected farm; second farm and separate unfinished walnut setup preserved; switching farm during permission promise makes0 setup POSTs. Both tracked native-browser regressions and worker build/state tests passed.",
+      "Prior combineda6bae7d with exact sender9a7 passed all4 CI jobs (1120backend plus8subtests,zero skips),23 web cases/build and all9 scoped groups. Main sender mergea14 ancestry was recorded without changinga6 tree before this bounded repair; final checks validate actuala14 base.",
+      "Integration owner verified controlled API placeholder delivery and direct user handset receipt. This chat made no shared runtime/account/private flag/vault/journal writes, no new provider or SMS calls for repairs, and preserved the original staged prototype and frozen scientific code."
     ],
-    "uncertainty": "Final combined checks/CI and owner-controlled merged runtime verification remain pending. Actual current SMS settings are root-owned and must be retained; older disabled-state assumptions are superseded. Browser alerts work while Terra is open.",
-    "next": "Publish this exact combined head/tree and final CI to integration owner. Root merges sender PR12 first, then Tara PR11 after combined green checks, verifies identical final application tree, and owns retained-data cutover. No independent PR11 merge, runtime/account writes, or further feature changes."
+    "uncertainty": "Final repaired-head scoped/UI/backend gates and owner-controlled merged runtime verification remain pending. Current authorized SMS settings and all retained records must be preserved; browser alerts work while Terra is open.",
+    "next": "Publish exact repaired head/tree and final combined CI. Root01a16ac9 merges PR11 only after green gates, verifies final source tree and performs retained-data cutover. Follow-on consolidation01a16f05 preserves these fixes. No further features or independent PR/main/runtime/account writes."
   }
 }
 ```
@@ -1131,8 +1132,13 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "pythonpath=backend",
     "tests/test_terra_conversation.py",
     "tests/test_terra_conversation_api.py",
+    "tests/test_terra_conversation_crops.py",
     "tests/test_terra_conversation_local_facts.py",
+    "tests/test_terra_conversation_natural_language.py",
+    "tests/test_terra_conversation_readiness.py",
     "tests/test_terra_conversation_recovery.py",
+    "tests/test_terra_conversation_reference_times.py",
+    "tests/test_terra_conversation_weather.py",
     "tests/test_terra_conversation_writer_integration.py",
     "-q"
   ]

@@ -1,0 +1,277 @@
+{
+  "schema_version": "terra-location-assessment-v1",
+  "data_mode": "injected",
+  "query": {
+    "location_id": "TEST-ORCHARD",
+    "lat": 38.6,
+    "lon": -121.84,
+    "elevation_ft": 70.0,
+    "valid_utc": "2026-01-11T09:00:00+00:00",
+    "as_of_utc": "2026-01-11T09:00:00+00:00",
+    "target_station_id": null,
+    "max_age_hours": 6.0
+  },
+  "location_estimate": {
+    "location_id": "TEST-ORCHARD",
+    "lat": 38.6,
+    "lon": -121.84,
+    "elevation_ft": 70.0,
+    "geometry_source": "caller-supplied",
+    "valid_utc": "2026-01-11T09:00:00+00:00",
+    "temperature": 37.04960485684412,
+    "unit": "degF",
+    "method": "idw",
+    "method_version": "chillwatch-idw/ba874ff7bab7",
+    "n_used": 4,
+    "used_station_ids": [
+      226,
+      139,
+      235,
+      212
+    ],
+    "excluded": [
+      {
+        "station_id": 6,
+        "reason": "terra_finding:extreme_departure"
+      }
+    ],
+    "lapse_station_ids": [],
+    "data_through_utc": {
+      "139": "2026-01-11T09:00:00+00:00",
+      "212": "2026-01-11T09:00:00+00:00",
+      "226": "2026-01-11T09:00:00+00:00",
+      "235": "2026-01-11T09:00:00+00:00"
+    },
+    "as_of_utc": "2026-01-11T09:00:00+00:00",
+    "status": "ok",
+    "status_reason": ""
+  },
+  "target_comparison": {
+    "station_id": null,
+    "observed_f": null,
+    "expected_f": null,
+    "departure_f": null,
+    "classification": null,
+    "level": null,
+    "reference_id": null,
+    "expected_method": null,
+    "status": "unassessable",
+    "reason": "no_independent_target_observation"
+  },
+  "station_findings": [
+    {
+      "station_id": 6,
+      "reason": "extreme_departure",
+      "severity": "strong",
+      "start_utc": "2026-01-11T08:00:00+00:00",
+      "end_utc": "2026-01-11T09:00:00+00:00",
+      "detected_at_utc": "2026-01-11T08:00:00+00:00",
+      "evidence_peak_utc": "2026-01-11T09:00:00+00:00",
+      "visible_at_utc": "2026-01-11T08:00:00+00:00",
+      "reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+      "policy": {
+        "version": "terra-temporal-v1",
+        "variable": "temperature_f",
+        "units": "F",
+        "sustained_readings": 5,
+        "extreme_readings": 1,
+        "sustained_low_residual_f": -2.174999999999996,
+        "sustained_high_residual_f": 4.174999999999997,
+        "extreme_abs_residual_f": 7.968399999999981
+      },
+      "summary": {
+        "observed_f": 61.0,
+        "expected_f": 37.3,
+        "typical_low_f": 35.125,
+        "typical_high_f": 41.474999999999994,
+        "departure_f": 23.700000000000003,
+        "peer_actual_f": 36.5,
+        "peer_change_f": -0.8500000000000014,
+        "target_change_f": -0.3999999999999986,
+        "neighbor_count": 4,
+        "duration_hours": 2,
+        "duration_readings": 2,
+        "required_readings": 5,
+        "duration_basis": "consecutive hourly readings",
+        "start": "2026-01-11T08:00:00+00:00",
+        "detected_at": "2026-01-11T08:00:00+00:00",
+        "as_of": "2026-01-11T09:00:00+00:00",
+        "reason": "extreme_departure",
+        "original_source_flag": " ",
+        "source_quality": "usable",
+        "source_flag_known": true,
+        "user_action": "Check station reading against nearby stations before relying on it"
+      },
+      "evidence": [
+        {
+          "timestamp": "2026-01-11T08:00:00+00:00",
+          "reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+          "temporal_policy_version": "terra-temporal-v1",
+          "required_readings": 5,
+          "sustained_low_f": 35.97500000000001,
+          "sustained_high_f": 42.325,
+          "sustained_low_residual_f": -2.174999999999996,
+          "sustained_high_residual_f": 4.174999999999997,
+          "extreme_abs_residual_f": 7.968399999999981,
+          "reference_method": "pair_adjusted_median",
+          "peer_evidence": [
+            {
+              "station_id": 139,
+              "observed_f": 40.3,
+              "offset_f": 0.4499999999999993,
+              "adjusted_f": 40.75,
+              "distance_km": 18.00073427057635,
+              "elevation_difference_m": -23.164800000000003,
+              "support": 56
+            },
+            {
+              "station_id": 212,
+              "observed_f": 34.7,
+              "offset_f": 3.1000000000000014,
+              "adjusted_f": 37.800000000000004,
+              "distance_km": 28.812261354320725,
+              "elevation_difference_m": 16.1544,
+              "support": 60
+            },
+            {
+              "station_id": 226,
+              "observed_f": 38.2,
+              "offset_f": -0.29999999999999716,
+              "adjusted_f": 37.900000000000006,
+              "distance_km": 15.543565398095046,
+              "elevation_difference_m": -6.7056000000000004,
+              "support": 59
+            },
+            {
+              "station_id": 235,
+              "observed_f": 36.5,
+              "offset_f": 1.8999999999999986,
+              "adjusted_f": 38.4,
+              "distance_km": 32.48958376453206,
+              "elevation_difference_m": 10.9728,
+              "support": 58
+            }
+          ],
+          "peer_exclusions": [],
+          "expected_change_f": -2.3499999999999943,
+          "observation_available": true,
+          "availability_reason": "available",
+          "cleaner_version": "terra-availability-v1",
+          "temperature_f": 61.4,
+          "neighbor_f": 37.35,
+          "neighbor_count": 4,
+          "residual_f": 23.249999999999993,
+          "temperature_change_f": 22.0,
+          "neighbor_change_f": -2.1999999999999957,
+          "expected_f": 38.150000000000006,
+          "typical_low_f": 35.97500000000001,
+          "typical_high_f": 42.325,
+          "extreme_low_f": 30.181600000000024,
+          "extreme_high_f": 46.11839999999999,
+          "range_state": "extreme",
+          "range_status": "extreme",
+          "trigger": "extreme_departure",
+          "original_source_flag": " ",
+          "source_flag_known": true,
+          "source_quality": "usable",
+          "level": "strong"
+        },
+        {
+          "timestamp": "2026-01-11T09:00:00+00:00",
+          "reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+          "temporal_policy_version": "terra-temporal-v1",
+          "required_readings": 5,
+          "sustained_low_f": 35.125,
+          "sustained_high_f": 41.474999999999994,
+          "sustained_low_residual_f": -2.174999999999996,
+          "sustained_high_residual_f": 4.174999999999997,
+          "extreme_abs_residual_f": 7.968399999999981,
+          "reference_method": "pair_adjusted_median",
+          "peer_evidence": [
+            {
+              "station_id": 139,
+              "observed_f": 38.5,
+              "offset_f": 0.6000000000000014,
+              "adjusted_f": 39.1,
+              "distance_km": 18.00073427057635,
+              "elevation_difference_m": -23.164800000000003,
+              "support": 55
+            },
+            {
+              "station_id": 212,
+              "observed_f": 34.0,
+              "offset_f": 2.3500000000000014,
+              "adjusted_f": 36.35,
+              "distance_km": 28.812261354320725,
+              "elevation_difference_m": 16.1544,
+              "support": 62
+            },
+            {
+              "station_id": 226,
+              "observed_f": 36.9,
+              "offset_f": -0.3999999999999986,
+              "adjusted_f": 36.5,
+              "distance_km": 15.543565398095046,
+              "elevation_difference_m": -6.7056000000000004,
+              "support": 62
+            },
+            {
+              "station_id": 235,
+              "observed_f": 36.1,
+              "offset_f": 2.0,
+              "adjusted_f": 38.1,
+              "distance_km": 32.48958376453206,
+              "elevation_difference_m": 10.9728,
+              "support": 59
+            }
+          ],
+          "peer_exclusions": [],
+          "expected_change_f": -0.8500000000000085,
+          "observation_available": true,
+          "availability_reason": "available",
+          "cleaner_version": "terra-availability-v1",
+          "temperature_f": 61.0,
+          "neighbor_f": 36.5,
+          "neighbor_count": 4,
+          "residual_f": 23.700000000000003,
+          "temperature_change_f": -0.3999999999999986,
+          "neighbor_change_f": -0.8500000000000014,
+          "expected_f": 37.3,
+          "typical_low_f": 35.125,
+          "typical_high_f": 41.474999999999994,
+          "extreme_low_f": 29.331600000000016,
+          "extreme_high_f": 45.26839999999998,
+          "range_state": "extreme",
+          "range_status": "extreme",
+          "trigger": "extreme_departure",
+          "original_source_flag": " ",
+          "source_flag_known": true,
+          "source_quality": "usable",
+          "level": "strong"
+        }
+      ],
+      "message": "Suspected temperature anomaly: station 6 read 61.0°F (+23.7°F departure). Expected 37.3°F; typical range 35.1–41.5°F. Peer median was 36.5°F from 4 usable peers; 2 consecutive hourly readings supported this finding. Hourly changes: station -0.4°F; peer median -0.9°F. Check station reading against nearby stations before relying on it. This is unusual behavior, not confirmed sensor failure.",
+      "freshness": "within_age_limit"
+    }
+  ],
+  "data_health": [],
+  "estimator_qc_exclusions": [
+    {
+      "station_id": 6,
+      "reason": "extreme_departure",
+      "severity": "strong",
+      "detected_at_utc": "2026-01-11T08:00:00+00:00",
+      "visible_at_utc": "2026-01-11T08:00:00+00:00",
+      "basis": "causal_station_qc"
+    }
+  ],
+  "provenance": {
+    "qc_reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+    "qc_reference_sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
+    "data_snapshot_id": "sha256:1fc1c034fbc03c6a3253c62cc313c30216f76be802112b517fecfaf84fd3d10c",
+    "estimator_method_version": "chillwatch-idw/ba874ff7bab7",
+    "publication_visibility": "snapshot_only",
+    "peer_exclusion_basis": "causal_station_qc",
+    "side_effects": "none"
+  }
+}

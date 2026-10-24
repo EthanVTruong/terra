@@ -1,0 +1,41 @@
+{
+  "status": "Final cleaned module bytes verified against the released cleanup handoff; only import namespace changed in shared code",
+  "source_files": {
+    "qc.py": {
+      "original_sha256": "6b94e17eac85fd0e8367c65e30988528af96b3cce0904c515fdb867268690789",
+      "shared_sha256": "9f9fb9a5be73514e42b6eba379d828f931b4af324e5ef868c1e43e53020015ce",
+      "change": "import namespace only"
+    },
+    "availability.py": {
+      "original_sha256": "ac451c5cd1967acdc45744c21a490b2f3854efd657424afd0774d32e50407176",
+      "shared_sha256": "ac451c5cd1967acdc45744c21a490b2f3854efd657424afd0774d32e50407176",
+      "change": "byte-identical"
+    },
+    "spatial.py": {
+      "original_sha256": "33d029845fea1b672653572952505fd0c8f0a3cd2dfe82328464d5d9765d1013",
+      "shared_sha256": "33d029845fea1b672653572952505fd0c8f0a3cd2dfe82328464d5d9765d1013",
+      "change": "byte-identical"
+    },
+    "temporal.py": {
+      "original_sha256": "348d48ca66b9c327ae7d7a38d2cc83e70e6bd69bfe7ffb9f30d58fe840e64ecb",
+      "shared_sha256": "348d48ca66b9c327ae7d7a38d2cc83e70e6bd69bfe7ffb9f30d58fe840e64ecb",
+      "change": "byte-identical"
+    },
+    "chill.py": {
+      "original_sha256": "f4071717e61b706df7d0ee987bc55720eaf69c974ac327471e37a23fc3b0fd44",
+      "shared_sha256": "f4071717e61b706df7d0ee987bc55720eaf69c974ac327471e37a23fc3b0fd44",
+      "change": "byte-identical"
+    },
+    "station_geometry.json": {
+      "original_sha256": "ae36f33e8a7eb9c0eaa7600baee59d05c4e12fbd9786f73da85ebb0d19243241",
+      "shared_sha256": "ae36f33e8a7eb9c0eaa7600baee59d05c4e12fbd9786f73da85ebb0d19243241",
+      "change": "byte-identical"
+    }
+  },
+  "reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+  "reference_sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
+  "source_dataset_id": "cimis-hourly-spatial-v4-4d152b359ac00bc3",
+  "source_dataset_sha256": "4d152b359ac00bc343137315eccbe77737d3a3324a363b5b7cae659e7f1cd741",
+  "cleanup_task": "terra-ml-cleanup",
+  "cleanup_evidence": "docs/terra/history/ml-cleanup-results.json"
+}

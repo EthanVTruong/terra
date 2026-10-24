@@ -1,0 +1,32 @@
+{
+  "version": "terra-weather-policy-v1",
+  "validation_status": "provisional_conservative_peer_discrepancy_rules",
+  "minimum_peers": 3,
+  "maximum_peer_distance_km": 75.0,
+  "sustained_readings": 3,
+  "maximum_age_hours": 6.0,
+  "variables": {
+    "relative_humidity_pct": {
+      "label": "Relative humidity",
+      "unit": "%",
+      "departure_unit": "percentage points",
+      "sustained_departure": 30.0,
+      "extreme_departure": 60.0
+    },
+    "wind_speed_mph": {
+      "label": "Wind speed",
+      "unit": "mph",
+      "departure_unit": "mph",
+      "sustained_departure": 12.0,
+      "extreme_departure": 25.0
+    },
+    "solar_radiation_w_m2": {
+      "label": "Solar radiation",
+      "unit": "W/m²",
+      "departure_unit": "W/m²",
+      "sustained_departure": 350.0,
+      "extreme_departure": 650.0,
+      "minimum_peer_daylight": 100.0
+    }
+  }
+}

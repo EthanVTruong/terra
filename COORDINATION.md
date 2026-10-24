@@ -412,6 +412,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_demo_simulation.py",
     "tests/test_terra_full_flow.py",
     "tests/test_terra_qc_*.py",
+    "tests/test_terra_weather.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
     "requirements-terra-dev.txt",
@@ -541,6 +542,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "docs/terra/**",
     "tests/test_terra_json.py",
     "tests/test_terra_qc_*.py",
+    "tests/test_terra_weather.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
     "requirements-terra-dev.txt",
@@ -597,6 +599,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "docs/terra/**",
     "tests/test_terra_json.py",
     "tests/test_terra_qc_*.py",
+    "tests/test_terra_weather.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
     "requirements-terra-dev.txt",
@@ -1494,5 +1497,25 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "uncertainty": "2023-24 and 2024-25 were used to choose the offset scheme, model and gate candidates, and 2025-26 informed the gate default; a clean check needs 2026-27 or later. Models and the physics fit are local files (data/ is git-ignored), recorded here by SHA-256 only. Intervals under-cover sites unlike their peers (Delta in summer).",
     "next": "ET reviews the PR from chillwatch-data-ml-layer into main and merges normally. Decide whether to enable residual.mean24_basis daily with mean24_sigma 4.0 (more caught faults, about 4x the false drift/offset alarms). Re-validate on 2026-27 as it arrives."
   }
+}
+```
+
+## Multivariable detector implementation
+
+```json
+{
+  "kind": "task",
+  "id": "terra-multivariable-detector",
+  "owner": "et",
+  "status": "done",
+  "intent": "User-authorized additive humidity, wind and solar station discrepancy checks with independent per-variable data-health and simulation-ready versioned contract. Root owns integration; frozen temperature and Nathan code remain unchanged.",
+  "branch": "codex/terra-multivariable-detector",
+  "base": "origin/main",
+  "domains": ["terra-qc-json"],
+  "paths": ["backend/terra_monitoring/weather.py", "config/terra/weather-policy-v1.json", "tests/test_terra_weather.py", "docs/terra/weather-contract.md", "COORDINATION.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {"revision": null, "summary": "Implemented versioned independent humidity/wind/solar normalization and causal peer discrepancy checks; temperature reference and Nathan code unchanged.", "evidence": ["62 focused weather tests plus 7 immutable-reference tests PASS; tests cover source units/QC independence, finite JSON, regional/noise controls, moderate/extreme rules, gaps, stale/current clocks, duplicates and causal revisions.", "docs/terra/weather-contract.md documents exact API, policy, simulation and agent handoff, including initial provisional threshold limits."], "uncertainty": "Initial conservative peer thresholds are provisional, not naturally labelled fault validation. Root owns live/sim/conversation integration and broader acceptance.", "next": "Root cherry-picks the isolated implementation, verifies real bounded source payloads and end-to-end sim/agent incident lifecycle."}
 }
 ```

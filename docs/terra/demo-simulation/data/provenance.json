@@ -1,0 +1,27 @@
+{
+  "file": "cimis-march-09-15-2026.json",
+  "sha256": "d84985213d73707dc54a6034256f73a8738fb21ccd64605141fd0a7ed48f2385",
+  "source": "CIMIS saved normalized hourly snapshot",
+  "source_dataset": "fresh-holdout/normalized/2026-03-09_2026-03-15.json",
+  "observations": 840,
+  "station_ids": [
+    6,
+    139,
+    212,
+    226,
+    235
+  ],
+  "start_utc": "2026-03-09T09:00:00+00:00",
+  "end_utc": "2026-03-16T08:00:00+00:00",
+  "reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+  "reference_sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
+  "training_end_exclusive": "2025-09-01T08:00:00+00:00",
+  "calibration_end_exclusive": "2025-12-01T08:00:00+00:00",
+  "holdout_status": "Chronologically after reference fitting and calibration; already inspected for this demonstration, not a new accuracy evaluation",
+  "publication_visibility": "Snapshot only; historical publication-vintage timing is unavailable",
+  "source_quality": "Original values, quality flags, raw provider fields, verified hour-ending UTC timestamps and units are preserved byte for byte",
+  "geometry_basis": "Current public CIMIS station API coordinates and station-details elevations, inspected in the read-only data audit. Historical station location epochs remain unverified.",
+  "geometry_caveat": "WGS84-compatible geographic coordinates on a spherical Earth for approximate distance screening; the source datum was not verified.",
+  "demo_overrides": "Copied working rows only; explicit per-hour temperature/offline controls never alter this file",
+  "phone_channel": "Local simulation only; copies actual persisted grower message identity and text; no provider calls"
+}

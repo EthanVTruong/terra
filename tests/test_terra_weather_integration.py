@@ -1,6 +1,7 @@
 """Actual provider and sim/monitor integration; numerical findings stay separate from QC."""
 from terra_monitoring.live import normalize_cimis_payload
 from terra_monitoring.demo_simulation.engine import DemoSimulation
+from terra_monitoring.weather import assess_weather
 
 
 def weather_record(station=6):
@@ -21,6 +22,20 @@ def test_raw_variable_quality_never_invalidates_temperature_or_wind():
     assert not result.relative_humidity_pct_available
     assert result.relative_humidity_pct_source_flag == "Y"
     assert result.wind_speed_mph_available and result.solar_radiation_w_m2_available
+
+
+def test_omitted_requested_variable_is_missing_data_not_normal_weather():
+    records = [weather_record(station) for station in [6, 139, 212, 226, 235]]
+    for row in records:
+        del row["HlyRelHum"]
+    payload = {"Data": {"Providers": [{"Records": records}]}}
+    frame, _ = normalize_cimis_payload(payload, requested_station_ids=[6,139,212,226,235], observed_at="2026-03-11T12:00:00Z")
+    stations = [{"station_id": int(row["Station"]), "lat":38.5, "lon":-121.8} for row in records]
+    result = assess_weather(frame, stations, "2026-03-11T11:00:00Z", "2026-03-11T12:00:00Z")
+    humidity = next(v for v in result["variables"] if v["variable"] == "relative_humidity_pct")
+    assert all(s["status"] == "unavailable" for s in humidity["stations"])
+    assert len([h for h in result["data_health"] if h["variable"] == "relative_humidity_pct"]) == 5
+    assert not any(f["variable"] == "relative_humidity_pct" for f in result["findings"])
 
 
 def test_real_sim_weather_change_quality_missing_and_restart(tmp_path):

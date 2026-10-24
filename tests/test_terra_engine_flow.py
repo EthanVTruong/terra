@@ -194,3 +194,26 @@ def test_actual_runtime_wrapper_and_guarded_api_use_contextual_engine(tmp_path, 
         assert client.post("/api/tara/messages", headers=headers, json=body).json()["assistant_turn"] == answer
         client.get("/api/tara/conversation", params={"orchard_id": profile["id"]})
         assert len(plan.calls) == 1
+
+
+def test_unfamiliar_bare_crop_is_saved_only_after_contextual_interpretation(flow):
+    service, _, plan, _ = flow
+    assert service.state()["setup"]["crops"] == []
+    assert not plan.calls
+    plan.answer = response("Where are you growing them? Use the location button to share the farm.",
+                           outcome="clarify", focus="location")
+    result = service.message(request_id="custom-crop", text="Mangoes")
+    assert result["state"]["setup"]["crops"] == ["mangoes"]
+    assert result["state"]["setup"]["variety"] is None
+    assert result["state"]["setup"]["stage"] == "location"
+    assert "almond" not in json.dumps(plan.calls).lower()
+    assert plan.calls[0]["packet"]["capabilities"]["unconfirmed_crop_candidate"] == ["mangoes"]
+
+
+def test_greeting_is_not_saved_as_an_unknown_crop(flow):
+    service, _, plan, _ = flow
+    plan.answer = response("What are you growing?", outcome="clarify", focus="crop")
+    result = service.message(request_id="hello", text="Hello")
+    assert result["state"]["setup"]["crops"] == []
+    assert result["state"]["setup"]["stage"] == "crop"
+    assert "unconfirmed_crop_candidate" not in plan.calls[0]["packet"]["capabilities"]

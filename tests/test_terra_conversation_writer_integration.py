@@ -123,14 +123,32 @@ def test_unavailable_total_does_not_spend_plan_usage_rewording_absence():
     assert generator.calls == []
 
 
-def test_real_runtime_routes_select_plan_writer_only_for_relevant_input(tmp_path, monkeypatch):
+def test_real_runtime_uses_contextual_plan_for_questions_and_response_decisions(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     from terra_monitoring.chatgpt import local
     from terra_monitoring.live import LiveQueryService
     from terra_monitoring.runtime import create_runtime_app
     from terra_monitoring.sms import SMSDispatcher
 
-    provider = Generator("supporting weather data is unavailable for the orchard estimate")
+    class ContextGenerator(Generator):
+        def generate(self, **request):
+            self.calls.append(request)
+            text = request["packet"]["request"]["text"]
+            if text == "Peaches":
+                value = {"outcome": "clarify", "text": "Can you share your farm location using the location button?",
+                         "fact_ids": [], "focus": "location"}
+            elif text in {"Tell me about Minecraft", "Thanks for the update!", "Got it"}:
+                value = {"outcome": "none" if text.startswith("Thanks") else "reaction",
+                         "text": None, "fact_ids": [], "focus": None}
+            elif text == "How much chill?":
+                value = {"outcome": "message", "text": "Estimated chill is currently unavailable.",
+                         "fact_ids": ["chill_total"], "focus": "chill"}
+            else:
+                value = {"outcome": "message", "text": "Supporting weather data is unavailable for the orchard estimate.",
+                         "fact_ids": ["current_temperature"], "focus": "weather"}
+            return {"status": "completed", "text": json.dumps(value)}
+
+    provider = ContextGenerator()
     monkeypatch.setattr(local, "AuthManager", lambda path: SimpleNamespace(close=lambda: None))
     monkeypatch.setattr(local, "ChatGPTPlanClient", lambda auth, path: provider)
     source = LiveQueryService(app_key="", data_dir=tmp_path / "source")
@@ -162,26 +180,28 @@ def test_real_runtime_routes_select_plan_writer_only_for_relevant_input(tmp_path
                 ("thanks", "Thanks for the update!", "none"), ("ack", "Got it", "reaction")):
             result = post("/api/tara/messages", {"request_id": identity, "text": text, "orchard_id": orchard})
             assert result["outcome"] == outcome
-        assert provider.calls == []
+        assert len(provider.calls) == 4
         unavailable = post("/api/tara/messages", {"request_id": "no-total", "text": "How much chill?", "orchard_id": orchard})
         assert unavailable["assistant_turn"]["text"] == "Estimated chill is currently unavailable."
-        assert provider.calls == []
+        assert len(provider.calls) == 5
         question = {"request_id": "actual-question", "text": "Thanks, is the weather data usable?", "orchard_id": orchard}
         answer = post("/api/tara/messages", question)
         assert answer["outcome"] == "message"
         assert answer["assistant_turn"]["data"]["generation"] == "chatgpt_plan"
         assert "unavailable for the orchard estimate" in answer["assistant_turn"]["text"]
-        assert len(provider.calls) == 1
+        assert len(provider.calls) == 6
+        assert provider.calls[-1]["packet"]["request"]["text"] == question["text"]
+        assert any(turn["text"] == "How much chill?" for turn in provider.calls[-1]["packet"]["history"])
         again = post("/api/tara/messages", question)
         assert again["assistant_turn"]["id"] == answer["assistant_turn"]["id"]
-        assert len(provider.calls) == 1
+        assert len(provider.calls) == 6
         for _ in range(2):
             assert client.get("/api/tara/conversation", params={"orchard_id": orchard}).status_code == 200
-        assert len(provider.calls) == 1
+        assert len(provider.calls) == 6
         legacy = client.post(f"/api/orchards/{orchard}/questions", headers=headers,
                              json={"question": "Compare ChatGPT and Claude", "request_id": "legacy-offtopic"})
         assert legacy.status_code == 200
-        assert len(provider.calls) == 1
+        assert len(provider.calls) == 6
         assert client.post("/api/tara/messages", json={"request_id": "unguarded", "text": "Chill?", "orchard_id": orchard}).status_code == 403
 
 

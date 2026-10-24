@@ -385,7 +385,7 @@ class ConversationService:
             return " ".join(dict.fromkeys(_explanation(event) for event in events[:3]))
         return "ChatGPT couldn't finish that reply. Your saved readings are available in Details; try the connection again."
 
-    def _engine_reply(self, *, finish, packet, selected, setup, supplied, intent, context, weather_reply, setup_update):
+    def _engine_reply(self, *, finish, packet, selected, setup, supplied, intent, context, weather_reply, setup_update, crop_candidate=None):
         from .engine import EngineUnavailable, respond
         try:
             result = respond(self.monitor.writer.generator, packet)
@@ -404,6 +404,15 @@ class ConversationService:
                 data["action"] = "location_choice"
             return finish(text=answer, data=data, setup=setup_update,
                           decision={"generation": "template", "generation_outcome": "engine_unavailable"})
+        if (not selected and setup["stage"] == "crop" and supplied is None and crop_candidate
+                and result["outcome"] in {"message", "clarify"} and result["focus"] == "location"):
+            # The model interpreted a bare, unfamiliar crop answer in context.
+            # The existing profile validator still owns what can be persisted.
+            from ..farm_ops.service import orchard_profile
+            orchard_profile(crops=crop_candidate["crops"], variety=crop_candidate.get("variety"),
+                            crop_description=crop_candidate.get("crop_description"))
+            supplied = crop_candidate
+            setup_update = {**setup, **crop_candidate, "stage": "location"}
         cited = [fact for fact in packet["facts"] if fact["id"] in result["fact_ids"]]
         event_ids = list(dict.fromkeys(identifier for fact in cited for identifier in fact.get("event_ids", [])))
         evidence_ids = list(dict.fromkeys(fact["evidence_id"] for fact in cited if fact.get("evidence_id")))
@@ -452,11 +461,21 @@ class ConversationService:
         engine_enabled = bool(getattr(self.monitor.writer, "conversation_engine", False)
                               and getattr(self.monitor.writer, "generator", None) is not None)
         setup_update = {**setup, **supplied, "stage": "location"} if supplied else None
+        crop_candidate = None
         engine_packet = None
         if engine_enabled and intent not in local_actions:
             from .context import context_packet
+            if (not selected and setup["stage"] == "crop" and supplied is None
+                    and intent not in {"thanks", "ack"}
+                    and text.strip().lower().rstrip(".!") not in {"hey", "hi", "hello", "good morning", "good afternoon"}):
+                try:
+                    crop_candidate = crops_from("I grow " + text.strip())
+                except ValueError:
+                    crop_candidate = None
             engine_packet = context_packet(self, text=text.strip(), selected=selected, context=context,
                                            reply_to=reply_to, setup_override=setup_update)
+            if crop_candidate:
+                engine_packet["capabilities"]["unconfirmed_crop_candidate"] = crop_candidate["crops"]
         previous, user = self._reserve(request_id, selected or "onboarding", body, text.strip(), reply_to)
         if previous:
             return {**previous, "state": self.state(previous["orchard_id"])}
@@ -482,7 +501,8 @@ class ConversationService:
             return finish(text="Let's correct the farm profile. Start a new setup to save different crops or a location.", data={"action": "restart_setup"})
         if engine_packet is not None:
             return self._engine_reply(finish=finish, packet=engine_packet, selected=selected, setup=setup,
-                supplied=supplied, intent=intent, context=context, weather_reply=weather_reply, setup_update=setup_update)
+                supplied=supplied, intent=intent, context=context, weather_reply=weather_reply,
+                setup_update=setup_update, crop_candidate=crop_candidate)
         if intent == "thanks":
             return finish()
         if intent == "ack":

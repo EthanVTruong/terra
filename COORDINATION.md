@@ -12,7 +12,7 @@
   "branch": "codex/terra-conversational-engine",
   "base": "06c560596e7341d3ab0ca5c24787c35b63a47bba",
   "domains": ["terra-coordination", "terra-qc-json"],
-  "paths": ["COORDINATION.md", "backend/terra_monitoring/conversation/**", "backend/terra_monitoring/farm_ops/insight_writer.py", "backend/terra_monitoring/runtime.py", "tests/test_terra_conversation_engine.py", "tests/test_terra_engine_context.py", "tests/test_terra_engine_flow.py", "tests/test_terra_insight_writer.py", "tests/test_terra_chatgpt_runtime.py", "tests/test_terra_conversation_writer_integration.py", "docs/terra/chatgpt-plan.md", "docs/terra/conversation-contract.md", "docs/terra/conversational-engine.md"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/conversation/**", "backend/terra_monitoring/farm_ops/insight_writer.py", "backend/terra_monitoring/runtime.py", "tests/test_terra_conversation_engine.py", "tests/test_terra_engine_context.py", "tests/test_terra_engine_flow.py", "tests/test_terra_insight_writer.py", "tests/test_terra_chatgpt_runtime.py", "tests/test_terra_conversation_writer_integration.py", "docs/terra/chatgpt-plan.md", "docs/terra/conversation-contract.md", "docs/terra/conversational-engine.md", "docs/terra/tara-conversation.md"],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
@@ -992,6 +992,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_chatgpt*.py",
     "tests/test_terra_conversation*.py",
     "tests/test_terra_conversation_factual_writer.py",
+    "tests/test_terra_engine*.py",
+    "tests/test_terra_insight_writer.py",
     "run_terra.py",
     "tests/test_terra_bootstrap.py",
     "tests/test_terra_weather*.py",
@@ -1010,6 +1012,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-conversation-tests",
     "terra-conversation-crops-tests",
     "terra-conversation-context-tests",
+    "terra-conversational-engine-tests",
     "terra-setup-tests",
     "terra-weather-tests",
     "terra-full-flow-recovery-tests"
@@ -1733,6 +1736,15 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_api.py",
     "-q"
   ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-conversational-engine-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_conversation_engine.py", "tests/test_terra_engine_context.py", "tests/test_terra_engine_flow.py", "tests/test_terra_insight_writer.py", "tests/test_terra_conversation_writer_integration.py", "-q"],
   "timeout": 120
 }
 ```

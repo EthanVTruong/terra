@@ -215,12 +215,14 @@ def test_lapse_ignores_stations_beyond_max_km():
     assert (out["method"] == "idw").all() and (out["lapse_station_ids"].map(len) == 0).all()
 
 
-def test_intervals_only_when_enabled_and_calibrated(monkeypatch):
+def test_intervals_only_when_enabled_and_calibrated(monkeypatch, tmp_path):
     import json
     import os
 
     from chillwatch import config
 
+    # own data dir, so a run without tests/conftest.py (--noconftest) never touches data/models
+    monkeypatch.setenv("CHILLWATCH_DATA_DIR", str(tmp_path / "data"))
     assert _at_davis()[["p10", "p90"]].isna().all().all()  # off by default
     v_off = method_version()
     monkeypatch.setitem(config.thresholds()["estimate"], "intervals", True)

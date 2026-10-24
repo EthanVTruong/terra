@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import copy
+from urllib.parse import parse_qs
 
 from fastapi.testclient import TestClient
+import httpx
 import pytest
 
 from terra_monitoring.server import create_app
@@ -71,6 +73,48 @@ def authorize(client):
     response = client.get("/api/sms/status")
     assert response.status_code == 200
     return {"X-Terra-SMS-Control": response.json()["control_token"], "Origin": LOCAL}
+
+
+def test_demo_http_composes_real_detector_durable_dispatch_and_receipt(tmp_path):
+    from terra_monitoring.sms import SMSDispatcher
+    calls = []
+    sid = "SM" + "1" * 32
+
+    def provider(request):
+        calls.append(request)
+        if request.method == "POST":
+            form = parse_qs(request.content.decode())
+            assert form["To"] == ["+15555550100"]
+            assert "TERRA DEMO - simulated flag" in form["Body"][0]
+            assert "120.0 F" in form["Body"][0] and "40.5 F" in form["Body"][0]
+            assert form["ValidityPeriod"] == ["300"]
+            return httpx.Response(201, json={"sid": sid, "status": "queued"})
+        return httpx.Response(200, json={"sid": sid, "status": "delivered"})
+
+    settings = {"TWILIO_ACCOUNT_SID": "AC" + "0" * 32,
+                "TWILIO_AUTH_TOKEN": "2" * 32, "TWILIO_FROM_NUMBER": "+15555550101",
+                "TERRA_SMS_TO_NUMBER": "+15555550100", "TERRA_SMS_ENABLED": "true",
+                "TERRA_SMS_DEMO_ENABLED": "true", "TERRA_SMS_DB_PATH": str(tmp_path / "sms.sqlite3")}
+    dispatcher = SMSDispatcher.from_env(settings, transport=httpx.MockTransport(provider))
+    app = create_app(service=FakeQuery(), sms_dispatcher=dispatcher, web_root=tmp_path)
+    with TestClient(app, base_url=LOCAL) as client:
+        headers = authorize(client)
+        sent = client.post("/api/sms/demo", json={"event_id": "http-demo"}, headers=headers)
+        assert sent.status_code == 200
+        body = sent.json()
+        assert body["status"] == "provider_accepted" and body["provider_status"] == "queued"
+        assert body["assessment"]["data_mode"] == "synthetic"
+        assert body["assessment"]["station_findings"][0]["reason"] == "extreme_departure"
+        assert "+15555550100" not in sent.text and settings["TWILIO_AUTH_TOKEN"] not in sent.text
+        duplicate = client.post("/api/sms/demo", json={"event_id": "http-demo"}, headers=headers).json()
+        assert duplicate["duplicate"] is True and len(calls) == 1
+        receipt = client.get("/api/sms/receipt/http-demo", headers=headers).json()
+        assert receipt["status"] == "delivered" and len(calls) == 2
+        assert client.post("/api/sms/disable", headers=headers).json()["suppressed"] is True
+    restarted = SMSDispatcher.from_env(settings, transport=httpx.MockTransport(provider))
+    assert restarted.status()["suppressed"] is True
+    assert restarted.receipt("http-demo")["status"] == "delivered"
+    assert len(calls) == 2
 
 
 def test_status_exposes_only_masked_dispatcher_configuration_and_ephemeral_token(setup):

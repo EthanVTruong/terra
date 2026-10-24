@@ -1,5 +1,29 @@
 # Terra integration coordination
 
+```json
+{
+  "kind": "task",
+  "id": "terra-twilio-sms",
+  "owner": "et",
+  "status": "active",
+  "intent": "User requests comprehensive Twilio setup and actual phone delivery when Terra flags a reading, with simulated flags for the demo. Add an explicitly enabled fixed-recipient transport, controlled detector demo, durable duplicate suppression and delivery evidence. Configure the account using computer control where permitted; keep authentication and regulated/paid submissions with the user. Preserve frozen QC, Nathan algorithms and current on-demand query semantics.",
+  "branch": "codex/terra-twilio-sms",
+  "base": "cfe3d5541b0496c2d4abd4685e64de945c4602b4",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/**", "tests/test_terra_sms.py", "tests/test_terra_sms_server.py", "docs/terra/**", "web/**", ".env.example", ".github/workflows/terra.yml", "README.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "cfe3d5541b0496c2d4abd4685e64de945c4602b4",
+    "summary": "Twilio transport and explicit detector demo implemented in isolated task worktrees. User supplied opted-in recipient privately. Account now signed into a new trial; native readiness setup continues after shared-browser modal coordination. Ordinary location queries remain pure; farm outbox owns production message selection.",
+    "evidence": ["Original Terra staged checkout preserved; origin refreshed before work. 68 transport tests and 56 SMS HTTP/composition cases pass. Production build and four packaging checks pass; actual browser unconfigured setup/disabled-send state and focus verified.", "Real-detector synthetic spike produces station6 extreme_departure,120F observed/40.475F expected. Full HTTP-to-dispatch-to-receipt composition tested with MockTransport only; restart/pause/dedupe preserved. No real provider SMS call."],
+    "uncertainty": "Account is a new trial; existing credentials and approved sender still require configuration. No real message sent. Current trials restrict custom message bodies; sender approval or paid upgrade may be required. No spending approval received. Root integration owner handles combined worker/UI merge.",
+    "next": "Finish shared farm-event envelope/rejection-only retry contract and final checks, complete all available account readiness actions without paid changes, then hand exact commit/remaining provider requirements to integration owner."
+  }
+}
+```
+
 This record covers ET's additive statistical QC/JSON work. Existing `backend/chillwatch`,
 configuration, ingestion, repair and model code remain Nathan-owned; they are not
 replaced by this checkpoint. Source facts live in the modules. This is a shared
@@ -61,6 +85,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "spec.md",
     "tests/test_terra_live.py",
     "tests/test_terra_server.py",
+    "tests/test_terra_sms.py",
+    "tests/test_terra_sms_server.py",
     "tests/fixtures/terra_live/**",
     ".env.example"
   ],
@@ -128,6 +154,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_estimate.py",
     "tests/test_terra_live.py",
     "tests/test_terra_server.py",
+    "tests/test_terra_sms.py",
+    "tests/test_terra_sms_server.py",
     "-q"
   ],
   "timeout": 120

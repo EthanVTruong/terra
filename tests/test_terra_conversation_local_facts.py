@@ -99,3 +99,23 @@ def test_gap_uses_leap_adjusted_comparison_hours_not_display_total():
                "coverage": 1.0, "comparison_coverage": 1.0, "reference_count": 5}
     text, facts = gap_answer(summary)
     assert "40 estimated chill hours" in text and facts["difference_hours"] == 40
+
+
+def test_completed_season_gap_retains_actual_year_and_past_season_status():
+    summary = {"method": METHOD, "comparison_hours": 180, "historical_median_hours": 220,
+               "cutoff": "2026-04-01T08:00:00+00:00", "data_through": "2026-04-01T08:00:00+00:00", "complete": True,
+               "coverage": 1.0, "comparison_coverage": 1.0, "reference_count": 5,
+               "active_season": False, "status": "offseason", "season_start": "2025-11-01"}
+    text, facts = gap_answer(summary)
+    assert "completed season through Mar 31, 2026" in text and "was about 40 hours behind" in text
+    assert facts["active_season"] is False and facts["status"] == "offseason" and facts["season_start"] == "2025-11-01"
+
+
+def test_stale_comparison_across_new_year_preserves_both_actual_source_years():
+    summary = {"method": METHOD, "comparison_hours": 180, "historical_median_hours": 220,
+               "cutoff": "2027-01-02T08:00:00+00:00", "data_through": "2026-12-31T20:00:00+00:00", "complete": True,
+               "coverage": 0.98, "comparison_coverage": 0.98, "reference_count": 5,
+               "active_season": True, "status": "below20", "season_start": "2026-11-01"}
+    text, facts = gap_answer(summary)
+    assert "through Jan 1, 2027" in text and "Latest usable data is from Dec 31, 2026" in text
+    assert facts["source_date"] == "2026-12-31" and facts["comparison_date"] == "2027-01-01"

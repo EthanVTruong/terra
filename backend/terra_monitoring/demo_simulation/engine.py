@@ -25,6 +25,7 @@ from terra_monitoring.assessment import (
 from terra_monitoring.farm_ops.service import Monitor
 from terra_monitoring.farm_ops.store import Store, fingerprint, utc
 from terra_monitoring.farm_ops.writer import Writer
+from terra_monitoring.interpolation import interpolate
 from terra_monitoring.interpolation import load_policy as load_interpolation_policy
 from terra_monitoring.interpolation import spread as uncertainty_spread
 from terra_monitoring.weather import VARIABLES, _physical_reason
@@ -46,7 +47,7 @@ MAX_SENSORS = 6
 class DemoSimulation:
     """One shared local session, synchronized by two browser apps and durable SQLite."""
 
-    def __init__(self, *, state_dir=None, data_dir=None, grid_size=8):
+    def __init__(self, *, state_dir=None, data_dir=None, grid_size=12):
         self._lock = RLock()
         self.data_dir = Path(data_dir or DATA).resolve()
         self.provenance = json.loads((self.data_dir / "provenance.json").read_text(encoding="utf-8"))
@@ -233,6 +234,16 @@ class DemoSimulation:
                                     "expected_f": None if current is None else sensor["value_f"] - current,
                                     "deviation_f": current}
         return checks
+
+    def _sensor_weather_expected(self, sensor):
+        """Humidity/wind/solar interpolated at a sensor from the stations' current usable readings."""
+        policy, expected = load_interpolation_policy(), {}
+        geometry = {m["id"]: m for m in self.station_metadata}
+        for variable in self.packet.get("weather", {}).get("variables", []):
+            peers = [(geometry[r["station_id"]], r["observed"]) for r in variable["stations"]
+                     if r["station_id"] in geometry and r["observed"] is not None and r.get("status") in {"assessable", "low_daylight"}]
+            expected[variable["variable"]] = interpolate(sensor, peers, policy)
+        return expected
 
     def _all_stations(self):
         sensors = [{"id": s["id"], "station_id": s["id"], "name": "Test sensor", "lat": s["lat"], "lon": s["lon"],
@@ -520,8 +531,24 @@ class DemoSimulation:
                 "source_quality": original.get("quality"), "source_flag": original.get("source_flag"),
                 "flagged": sid in flagged, "assessment": self._assessment(scored_by_station.get(sid, {}), online),
                 "weather": {variable["variable"]: next((r for r in variable["stations"] if r["station_id"] == sid), None)
-                            for variable in self.packet.get("weather", {}).get("variables", [])}})
+                            for variable in self.packet.get("weather", {}).get("variables", [])},
+                "season_chill": self._season_chill(sid)})
         return _json(stations)
+
+    def _season_chill(self, sid):
+        """Real season-to-date chill hours before the replay, when the pinned CIMIS season file exists."""
+        path = self.data_dir / "season-chill-2025-26.json"
+        if not hasattr(self, "_season_file"):
+            self._season_file = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+        station = (self._season_file or {}).get("stations", {}).get(str(sid))
+        if station is None:
+            return None
+        total, daily = 0, []
+        for day, hours in sorted(station["daily_chill_hours"].items()):
+            total += hours
+            daily.append({"date": day, "chill_hours": total})
+        return {"before_replay": station["chill_hours"], "usable_hours": station["usable_hours"],
+                "season_start": self._season_file["season_start"], "daily": daily}
 
     def _history_view(self):
         current = self.session["clock"]
@@ -587,7 +614,8 @@ class DemoSimulation:
                 "sensors": [{**s, "elevation_ft": ORCHARD["elevation_ft"], "calibrated": False,
                              "check": self.sensor_checks.get(s["id"]),
                              "weather_checks": {variable["variable"]: next((r for r in variable["stations"] if r["station_id"] == s["id"]), None)
-                                                for variable in self.packet.get("weather", {}).get("variables", [])}}
+                                                for variable in self.packet.get("weather", {}).get("variables", [])},
+                             "weather_expected": self._sensor_weather_expected(s)}
                             for s in self.session["sensors"]],
                 "orchard": self.store.orchard(orchard_id), "monitor": monitor,
                 "messages": messages, "notifications": notifications, "events": events, "history": history,

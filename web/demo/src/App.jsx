@@ -505,7 +505,7 @@ function WeatherMap({
           length: 32
         }, (_, i) => <i key={i} style={{
           background: `rgb(${heatColor(i / 31, 0, 1).join(',')})`
-        }} />)}</div><p><span>{lo}°</span><span>{Math.round((lo + hi) / 2)}°</span><span>{hi}°</span></p></div><div className="map-attribution">Powered by <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a> · Esri, HERE, Garmin, © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors</div></div>;
+        }} />)}</div><p><span>{lo}°</span><span>{Math.round((lo + hi) / 2)}°</span><span>{hi}°</span></p></div><div className="map-attribution" title="Powered by Esri · Esri, HERE, Garmin, © OpenStreetMap contributors">© <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></div></div>;
 }
 function Comparison({
   state,
@@ -562,10 +562,13 @@ function VariableControl({ station, field, label, unit, max, busy, act }) {
 function SensorWeatherControl({ sensor, field, label, unit, max, busy, act }) {
   const set = sensor.weather?.[field],
     reading = sensor.weather_checks?.[field],
-    [value, setValue] = useState(set == null ? '' : String(set));
-  useEffect(() => { setValue(set == null ? '' : String(set)); }, [sensor.id, set]);
+    // Unset readings start at the value interpolated from nearby stations.
+    expected = sensor.weather_expected?.[field],
+    start = set ?? (expected == null ? null : Math.round(expected * 10) / 10),
+    [value, setValue] = useState(start == null ? '' : String(start));
+  useEffect(() => { setValue(start == null ? '' : String(start)); }, [sensor.id, start]);
   const valid = value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= max;
-  const status = set == null ? 'Not reported' : reading?.classification === 'suspected_discrepancy' ? 'Flagged · far from nearby stations'
+  const status = set == null ? `Not reported${expected != null ? ` · Nearby stations ${number(expected)} ${unit}` : ''}` : reading?.classification === 'suspected_discrepancy' ? 'Flagged · far from nearby stations'
     : reading?.status === 'assessable' ? reading.level === 'moderate' ? 'Departure · awaiting sustained readings' : 'Within comparison policy'
     : reading?.status === 'low_daylight' ? 'Solar comparisons resume in daylight' : (reading?.reason || 'Unavailable').replaceAll('_', ' ');
   return <form onSubmit={event => { event.preventDefault(); if (valid) act({type: 'sensor_weather', sensor_id: sensor.id, variable: field, value: Number(value)}); }}>
@@ -577,6 +580,18 @@ function SensorWeatherControl({ sensor, field, label, unit, max, busy, act }) {
     </div>
     <p className={`small-note${reading?.classification === 'suspected_discrepancy' && set != null ? ' is-flagged-text' : ''}`} role="status">{status}{set != null && reading?.expected != null ? ` · Peers ${number(reading.expected)} ${unit}` : ''}</p>
   </form>;
+}
+// One station's replay hours, oldest first, with chill hours (32–45°F) accumulated on top of the
+// real season-to-date total before the replay when that CIMIS history is available.
+function stationHistory(state, stationId) {
+  let total = state.stations.find(s => s.id === stationId)?.season_chill?.before_replay ?? 0;
+  return (state.history || []).filter(r => r.station_id === stationId).sort((a, b) => a.timestamp.localeCompare(b.timestamp)).map(r => {
+    if (r.online && Number.isFinite(r.value_f) && r.value_f >= 32 && r.value_f <= 45) total += 1;
+    return {...r, chill_hours: total, hour: clock(r.timestamp)};
+  });
+}
+function HistoryChart({ title, rows, lines, unit, onClose }) {
+  return <section className="weather-panel" aria-label={title}><button className="weather-back" onClick={onClose}><ArrowRight size={12} className="flip" />{title}</button><div className="history-chart"><ResponsiveContainer width="100%" height={170}><LineChart data={rows} margin={{top: 8, right: 6, bottom: 0, left: -18}}><CartesianGrid stroke="#ecede8" vertical={false} /><XAxis dataKey="hour" tick={{fontSize: 9, fill: '#8a9086'}} interval="preserveStartEnd" minTickGap={24} /><YAxis tick={{fontSize: 9, fill: '#8a9086'}} domain={['auto', 'auto']} allowDecimals={false} /><Tooltip formatter={(value, name) => [Number.isFinite(value) ? `${Math.round(value * 10) / 10}${unit}` : '—', name]} labelStyle={{fontSize: 11}} contentStyle={{fontSize: 11}} />{lines.map(([key, name, color]) => <Line key={key} type="monotone" dataKey={key} name={name} stroke={color} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />)}</LineChart></ResponsiveContainer><div className="history-legend">{lines.map(([key, name, color]) => <span key={key}><i style={{background: color}} />{name}</span>)}</div></div></section>;
 }
 // Takes the station list's place in the panel while open, so the controls need no scrolling.
 function WeatherControls({station,busy,act,onClose}) {
@@ -596,19 +611,26 @@ function StationControl({
     [draft, setDraft] = useState(String(s.value_f ?? 50)),
     timer = useRef(null),
     panel = useRef(null),
-    [weatherOpen, setWeatherOpen] = useState(false),
+    // 'list' shows station reporting; 'weather', 'temp' and 'chill' take its place.
+    [view, setView] = useState('list'),
     latestStation = useRef(s);
   latestStation.current = s;
-  const pending = s.online && String(draft).trim() !== '' && Number(draft) !== s.value_f;
+  const pending = s.online && String(draft).trim() !== '' && Number(draft) !== s.value_f,
+    rows = stationHistory(state, s.id),
+    chill = rows.length ? rows.at(-1).chill_hours : 0,
+    season = s.season_chill,
+    // Season view: Nov 1 to the replay day by day, then the replay hours.
+    chillRows = season ? [...season.daily.map(d => ({hour: d.date.slice(5), chill_hours: d.chill_hours})), ...rows] : rows,
+    close = () => setView('list');
   useEffect(() => {
-    if (!weatherOpen) return;
+    if (view === 'list') return;
     // A click anywhere outside the panel returns it to the station list.
     const away = e => {
-      if (panel.current && !panel.current.contains(e.target)) setWeatherOpen(false);
+      if (panel.current && !panel.current.contains(e.target)) setView('list');
     };
     document.addEventListener('pointerdown', away);
     return () => document.removeEventListener('pointerdown', away);
-  }, [weatherOpen]);
+  }, [view]);
   useEffect(() => {
     setDraft(String(s.value_f ?? s.original_f ?? 50));
   }, [s.id, s.value_f, s.original_f, state.run_id]);
@@ -636,14 +658,14 @@ function StationControl({
       }), 350);
     }
   }
-  return <aside className="station-controls" ref={panel} aria-label="Selected station controls"><div className="selected-station-heading"><h2>{s.name}</h2>{pending ? <span className="station-state">Checking…</span> : <StationLabel station={s} />}</div>{!weatherOpen && <><div className="temperature-control"><label htmlFor="temperature-value">Temperature <span>°F</span></label><div className="temperature-value"><input id="temperature-value" aria-label={`${s.name} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onBlur={() => { if (!String(draft).trim()) setDraft(String(s.value_f ?? s.original_f)); }} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${s.name} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onChange={e => change(e.target.value)} /><div className="slider-context"><span>Recorded {degrees(s.original_f)}</span><button disabled={s.override === null || s.override === undefined || busy} onClick={() => {
+  return <aside className="station-controls" ref={panel} aria-label="Selected station controls"><div className="selected-station-heading"><h2>{s.name}</h2>{pending ? <span className="station-state">Checking…</span> : <StationLabel station={s} />}</div>{view !== 'weather' && <><div className="reading-row"><div className="reading-cell"><label htmlFor="temperature-value">Temperature °F</label><div className="temperature-value"><input id="temperature-value" aria-label={`${s.name} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onBlur={() => { if (!String(draft).trim()) setDraft(String(s.value_f ?? s.original_f)); }} onChange={e => change(e.target.value)} /><span>°</span></div></div><button className="reading-cell is-link" onClick={() => setView(view === 'temp' ? 'list' : 'temp')} aria-pressed={view === 'temp'} title="Show expected and recorded temperature over time"><span>Expected</span><strong>{pending ? '—' : degrees(s.assessment.expected_f)}</strong></button><div className="reading-cell"><span>Difference</span><strong>{pending ? '—' : signed(s.assessment.residual_f)}</strong></div></div><input className="temperature-slider" aria-label={`Adjust ${s.name} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onChange={e => change(e.target.value)} />{s.override !== null && s.override !== undefined && <div className="slider-context"><span /><button disabled={busy} onClick={() => {
           clearTimeout(timer.current);
           act({
             type: 'temperature',
             station_id: s.id,
             value_f: s.original_f
           });
-        }}><ArrowClockwise size={12} />Restore</button></div></div><div className="station-comparison"><div><span>Expected</span><strong>{pending ? '—' : degrees(s.assessment.expected_f)}</strong></div><div><span>Difference</span><strong>{pending ? '—' : signed(s.assessment.residual_f)}</strong></div></div><div className="reading-state" aria-live="polite">{!s.online ? 'Reading withheld from the simulation.' : pending ? 'Evaluating this reading…' : flagged(s) ? layer === 'filtered' ? 'Flagged · excluded from temperature field.' : 'Terra flagged this difference from expected.' : !s.assessment.available ? 'Comparison unavailable.' : s.assessment.level === 'moderate' ? `Unusual difference · awaiting ${s.assessment.required_readings} consecutive readings` : 'Within the current comparison.'}</div></>}{weatherOpen ? <WeatherControls station={s} busy={busy} act={act} onClose={() => setWeatherOpen(false)} /> : <><button className="weather-open" onClick={() => setWeatherOpen(true)}><span>Humidity, wind & solar</span><CaretRight size={12} /></button><div className="station-list-heading">Station reporting</div><div className="station-list">{state.stations.map(row => <div className={`station-row${row.id === selected ? ' active' : ''}`} key={row.id}><button className="station-select" onClick={() => {
+        }}><ArrowClockwise size={12} />Restore {degrees(s.original_f)}</button></div>}<button className="metric-tile" onClick={() => setView(view === 'chill' ? 'list' : 'chill')} aria-pressed={view === 'chill'}><span>Chill hours <small>· {season ? 'since Nov 1' : 'this replay'}</small></span><strong>{chill} h</strong><CaretRight size={12} /></button><div className="reading-state" aria-live="polite">{!s.online ? 'Reading withheld from the simulation.' : pending ? 'Evaluating this reading…' : flagged(s) ? layer === 'filtered' ? 'Flagged · excluded from temperature field.' : 'Terra flagged this difference from expected.' : !s.assessment.available ? 'Comparison unavailable.' : s.assessment.level === 'moderate' ? `Unusual difference · awaiting ${s.assessment.required_readings} consecutive readings` : 'Within the current comparison.'}</div></>}{view === 'weather' ? <WeatherControls station={s} busy={busy} act={act} onClose={close} /> : view === 'temp' ? <HistoryChart title="Expected and recorded temperature" rows={rows} lines={[['value_f', 'Recorded', '#2f3b2b'], ['expected_f', 'Expected', '#3b528b']]} unit="°" onClose={close} /> : view === 'chill' ? <HistoryChart title={season ? 'Chill hours (32–45°F) since Nov 1' : 'Chill hours (32–45°F) this replay'} rows={chillRows} lines={[['chill_hours', 'Chill hours', '#21918c']]} unit=" h" onClose={close} /> : <><button className="weather-open" onClick={() => setView('weather')}><span>Humidity, wind & solar</span><CaretRight size={12} /></button><div className="station-list-heading">Station reporting</div><div className="station-list">{state.stations.map(row => <div className={`station-row${row.id === selected ? ' active' : ''}`} key={row.id}><button className="station-select" onClick={() => {
           setSelected(row.id);
         }}><span className={`row-dot${!row.online ? ' off' : flagged(row) ? ' warn' : ''}`} /><span>{row.name}</span><span>{row.online ? degrees(row.value_f) : '—'}</span></button><button className="reporting-toggle" aria-label={`${row.online ? 'Take' : 'Bring'} ${row.name} ${row.online ? 'offline' : 'online'}`} aria-pressed={row.online} disabled={busy} onClick={() => {
           clearTimeout(timer.current);
@@ -770,7 +792,7 @@ function StationApp({
   function removeSpot(id) {
     setSpots(current => current.filter(s => s.id !== id));
   }
-  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><ReturnToLiveChat /><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} spots={spots} readings={readings} onAddSpot={addSpot} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div>{selectedSpot || selectedSensor ? <SpotControl key={selected} state={state} target={selectedSpot || selectedSensor} sensor={Boolean(selectedSensor)} reading={selectedSpot && readings[selectedSpot.id]} layer={layer} act={act} busy={busy} onPlaced={(spotId, sensorId) => {
+  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><ReturnToLiveChat /><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} spots={spots} readings={readings} onAddSpot={addSpot} /><div className="map-bottom"><div className="segmented compact" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')} title="Every station's reading">Raw</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')} title="Stations Terra flagged are left out">Terra filtered</button></div><span className="evaluation-state" role="status">{busy && <><CircleNotch className="spin" size={12} />Evaluating…</>}</span></div></div>{selectedSpot || selectedSensor ? <SpotControl key={selected} state={state} target={selectedSpot || selectedSensor} sensor={Boolean(selectedSensor)} reading={selectedSpot && readings[selectedSpot.id]} layer={layer} act={act} busy={busy} onPlaced={(spotId, sensorId) => {
           removeSpot(spotId);
           setSelected(sensorId);
         }} onRemoved={() => {
@@ -779,17 +801,14 @@ function StationApp({
         }} onMovedOrchard={() => {
           if (selectedSpot) removeSpot(selectedSpot.id);
           setSelected(null);
-        }} /> : <StationControl state={state} selected={stationId} setSelected={setSelected} act={act} busy={busy} layer={layer} />}</div><footer className="lab-footer"><div className="scenario-controls"><span>Try</span>{[['normal', 'Original'], ['minor', 'Small change'], ['spike', 'Station spike'], [health.incident_active ? 'recover' : 'support_loss', health.incident_active ? 'Restore +3h' : 'Support loss']].map(([name, label]) => <button key={name} disabled={busy || name === 'recover' && state.controls.remaining_hours < 3} onClick={() => act({
-            type: 'preset',
-            name
-          })}>{label}</button>)}<button disabled={busy || !edited} onClick={() => act({
+        }} /> : <StationControl state={state} selected={stationId} setSelected={setSelected} act={act} busy={busy} layer={layer} />}</div><footer className="lab-footer"><div className="scenario-controls"><button disabled={busy || !edited} onClick={() => act({
             type: 'reset_temperatures'
-          })}><ArrowClockwise size={12} />Reset temperatures</button></div><div className="time-controls"><span>{clock(state.clock.current_utc, true)}</span><button className="quiet-button" disabled={busy || state.controls.remaining_hours < 1} onClick={() => act({
+          })}><ArrowClockwise size={12} />Reset temperatures</button></div><div className="time-controls"><span>{clock(state.clock.current_utc, true)} · {clock(state.clock.current_utc)} PST</span><button className="quiet-button" disabled={busy || state.controls.remaining_hours < 1} onClick={() => act({
             type: 'advance',
             hours: 1
           })}>+1 hour <ArrowRight size={13} /></button><button className="icon-button" disabled={busy} title="Reset entire demo" aria-label="Reset entire demo" onClick={() => act({
             type: 'reset'
-          })}><ArrowClockwise size={15} /></button></div></footer></main><div className="below-app"><span>Historical replay · modified readings are isolated</span><span>Phone notifications are simulated</span></div>{phone.notice && <Notification notification={phone.notice} onClose={() => phone.setNotice(null)} />}</>;
+          })}><ArrowClockwise size={15} /></button></div></footer></main>{phone.notice && <Notification notification={phone.notice} onClose={() => phone.setNotice(null)} />}</>;
 }
 function useNoteDetails(id, runId) {
   const [details, setDetails] = useState(null),

@@ -3,6 +3,45 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-device-location",
+  "owner": "et",
+  "status": "active",
+  "intent": "Direct user requests a button-only device-location onboarding: native browser permission then automatic necessary location details and station selection. Remove coordinates, elevation, farm-name and confirmation fields from grower onboarding. Preserve manual API compatibility, scientific selection logic, separate notification/ChatGPT consent and all private runtime state.",
+  "branch": "codex/tara-device-location",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/conversation/**",
+    "tests/test_terra_conversation*.py",
+    "web/src/TaraConversation.jsx",
+    "web/src/tara-state.js",
+    "web/src/tara-conversation.css",
+    "web/tests/tara*.mjs",
+    "docs/terra/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+    "summary": "Claimed narrow location simplification in isolated copy; current service remains under primary runtime owner. Browser-approved coordinates will resolve actual ground elevation server-side, use default internal farm label, and retain existing automatic station selection.",
+    "evidence": [
+      "Direct user explicitly requests no coordinate or farm-name entry; this supersedes earlier manual-form onboarding direction.",
+      "Existing onboarding requires altitude/name/confirmation; browser altitude may be absent, so ground elevation needs a bounded public provider lookup."
+    ],
+    "uncertainty": "Ground-elevation lookup availability and final API/native permission/error/idempotency behavior need verification. Native permission responses are simulated during browser checks.",
+    "next": "Implement device_location action and button-only UI in isolated copies, verify actual elevation lookup and complete flow, then hand tested PR to exclusive runtime owner for coordinated merge/rollout."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-product-consolidation",
   "owner": "et",
   "status": "active",

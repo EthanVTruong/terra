@@ -58,7 +58,11 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     ".gitignore",
     "web/**",
     ".github/workflows/terra.yml",
-    "spec.md"
+    "spec.md",
+    "tests/test_terra_live.py",
+    "tests/test_terra_server.py",
+    "tests/fixtures/terra_live/**",
+    ".env.example"
   ],
   "depends_on": [],
   "checks": [
@@ -122,6 +126,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_json.py",
     "tests/test_terra_qc_reference.py",
     "tests/test_estimate.py",
+    "tests/test_terra_live.py",
+    "tests/test_terra_server.py",
     "-q"
   ],
   "timeout": 120
@@ -234,7 +240,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "evidence": [
       "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
       "Windows and macOS minimal-runtime jobs each passed 64 targeted cases plus 31 harness cases. Production web build and four packaging cases passed. Independent review verified 15 focused regressions and all six source-import hashes plus the frozen reference SHA.",
-      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1–41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
+      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1\u201341.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
       "Two grid and eight synthetic model/scenario cases passed, including all four faults with original assertions, seeds, folds and thresholds. Calendar/fixture coverage needed repair; no numerical algorithm or real-data model refit changed.",
       "GitHub confirmed merged=true at 1d5caf7, containing reviewed head 5ffec23 and prior Nathan main 229106c. The merged tree matched tested source exactly. Original Terra still has the same nine staged entries and numstat counts.",
       "Completion follow-up check passed against actual merged origin/main 1d5caf7 (31 harness + 64 targeted cases). Only .gitignore and this coordination record changed afterward; application source remains identical to tested 5ffec23."
@@ -283,6 +289,55 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     ],
     "uncertainty": "Old PR/CI links still reference original commits and contributor displays may be cached. Signed descendants lose their old verification badges when metadata changes. Other clones must resync or re-clone rather than merge old history.",
     "next": "Use rewritten main. Apply the published mapping for historical SHA references; preserve uncommitted work when resyncing other clones. Live-query implementation remains owned by its separate chat."
+  }
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-live-location-queries",
+  "owner": "et",
+  "status": "active",
+  "intent": "After user-requested authorship correction, refresh corrected shared main and connect on-demand LIVE provider observations through the existing frozen QC/location-assessment JSON into the web UI. User explicitly asks full interoperable-location and flagging verification. Reuse Nathan transport/estimator unchanged; preserve strict raw units/QC/hour-ending/operating-date and causal visibility. Fetch only bounded recent context/candidate stations; no historical ingestion, model fitting/tuning, live alert dispatch, continuous schedule or deployment. Keep examples/injections distinct from real current data and review the first working live slice with ET.",
+  "branch": "codex/terra-live-location-queries",
+  "base": "0b1554930038d981881742d3a84b29e99dff595b",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra_live.py",
+    "tests/test_terra_server.py",
+    "tests/fixtures/terra_live/**",
+    "requirements-terra.txt",
+    "requirements-terra-dev.txt",
+    ".env.example",
+    "docs/terra/**",
+    "spec.md",
+    "README.md",
+    "web/**",
+    ".github/workflows/terra.yml"
+  ],
+  "depends_on": [
+    "terra-authorship"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "0b1554930038d981881742d3a84b29e99dff595b",
+    "summary": "Live CIMIS source, strict raw normalization, loopback HTTP boundary and web query controls implemented on corrected main. Minimal integration checks pass. Completing browser failure/mobile verification and GitHub CI before review.",
+    "evidence": [
+      "Scoped terra.py check passes against origin/main 0b155493: 31 harness and 187 pure JSON/reference/estimator/source/HTTP cases. New source/API coverage includes 123 cases, synthetic full HTTP composition, N5/extreme exclusions, malformed/future/unit/QC inputs, cache age/failure and restart visibility.",
+      "Bounded actual CIMIS batch succeeded: custom 38.6,-121.84,70ft estimated 61.04305453536202F from six stations at valid 2026-10-24T07:00Z; first retrieval 07:53:42Z. A measured Winters query returned 65.2F observed /61.725F expected/no_alert. Outside coverage returns null/insufficient_data.",
+      "Real hour transition also verified: at 08:01Z CIMIS reported the 08:00Z hour with missing M temperatures. UI withholds estimate and fault conclusion rather than selecting an older good hour. No natural fault truth is claimed.",
+      "Browser custom query displayed current provenance and exactly matching JSON download. Production web build and four packaging tests pass. Cold import brings in no SQLAlchemy, psycopg, scipy, sklearn or LightGBM; original algorithms/calibration unchanged."
+    ],
+    "uncertainty": "Local on-demand service only. Full native/PostgreSQL and portable CI still to run on this branch. Natural-fault accuracy is unverified; automatic numerical fault calibration remains limited to five stations. Always-on worker, SMS and hosting are future work.",
+    "next": "Finish mobile/failure/race browser checks, publish draft PR and inspect full native/PostgreSQL plus portable CI. Review working live path with ET before the continuous monitoring/delivery slice."
   }
 }
 ```

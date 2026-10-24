@@ -20,6 +20,8 @@ on:
       - terra.py
       - COORDINATION.md
       - spec.md
+      - README.md
+      - .env.example
       - .github/workflows/terra.yml
   workflow_dispatch:
 
@@ -55,7 +57,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install -e '.[dev]'
+      - run: python -m pip install -r requirements-terra-dev.txt -e '.[dev]'
       - run: python -m pip check
       - run: python -m alembic upgrade head
       - name: Complete backend suite including PostgreSQL
@@ -96,14 +98,15 @@ jobs:
           import subprocess
           import sys
           subprocess.run([sys.executable, '-B', 'terra.py', 'check',
-                          '--base', os.environ['TERRA_BASE'], '--task', 'terra-main-consolidation'], check=True)
+                          '--base', os.environ['TERRA_BASE'], '--task', 'terra-live-location-queries'], check=True)
           if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
               # A manual run may have no diff; still exercise the pure runtime.
               subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests',
                               '-p', 'test_terra_harness.py', '-q'], check=True)
               subprocess.run([sys.executable, '-m', 'pytest', '--noconftest', '-o',
                               'pythonpath=backend', 'tests/test_terra_json.py',
-                              'tests/test_terra_qc_reference.py', 'tests/test_estimate.py', '-q'], check=True)
+                              'tests/test_terra_qc_reference.py', 'tests/test_estimate.py',
+                              'tests/test_terra_live.py', 'tests/test_terra_server.py', '-q'], check=True)
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 5

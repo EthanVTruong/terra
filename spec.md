@@ -2,12 +2,22 @@
 
 Status: target product spec. The current milestone connects the cleaned
 statistical station detector to Nathan's existing location estimator, emits
-strict JSON assessments and displays those facts in the web UI. Always-on
+strict JSON assessments and displays those facts in the web UI. On-demand live
+CIMIS location queries now use that same path through a local API. Always-on
 operation, recipient subscriptions and external delivery follow that reviewed
 integration; they are not claimed by this checkpoint.
 See [the detailed monitoring spec](docs/terra/always-on-monitoring.md) for behavior,
 acceptance checks and open decisions. The frozen reference, source provenance and verification are recorded in
 [the checkpoint](docs/terra/checkpoint.md).
+Local setup, the live HTTP contract, source bounds and failure behavior are in
+[live location queries](docs/terra/live-queries.md).
+
+The live checkpoint accepts a coordinate/elevation or a matching measured-station
+preset. The server fetches recent observations, supplies the actual clock and
+returns the exact JSON displayed and downloaded by the UI. Provider query time,
+retrieval time and observation time remain distinct. Unsupported coverage,
+unverified inputs and stale data withhold conclusions. Saved examples and
+controlled faults retain their explicit data modes.
 
 ## Purpose
 

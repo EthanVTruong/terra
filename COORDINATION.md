@@ -5,7 +5,7 @@
   "kind": "task",
   "id": "terra-trial-assigned-sender",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "Root-authorized focused repair for live Twilio trial error572003: include an explicitly configured assigned trial From when present, validate its format while retaining documented To/Body-only compatibility, keep custom sender mandatory and trial ValidityPeriod omitted. Preserve metadata/idempotency and provide actionable UI guidance plus accurate restricted-key/readiness documentation. No runtime, private configuration, credential, flag or send actions; root owns live verification.",
   "branch": "codex/terra-trial-assigned-sender",
   "base": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
@@ -15,11 +15,11 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
-    "summary": "Preparing the isolated assigned-trial-sender compatibility fix. Existing PR8 branch is preserved. Root reported exact live-provider rejection and retains account/runtime ownership.",
-    "evidence": ["Root reports a dedicated restricted Messages key, verified recipient and a prior Console delivered message. Current API attempts return403/572003 with no Message SID because the sender is not assigned to that verified recipient."],
-    "uncertainty": "No successful automatic trial API delivery has been established. The assigned From must be configured privately and tested by root; this task uses mocked transport only.",
-    "next": "Implement narrow payload/format/UI/docs changes, run targeted tests and independent review, hand root an early candidate SHA for its live diagnostic, then run scoped checks and push an unmerged PR."
+    "revision": "089cb6fd14f26a1debacfa4ce645fad486f161cf",
+    "summary": "Assigned-sender compatibility fix, actionable572003copy and restricted-key/readiness docs complete. Root live-tested the frozen candidate successfully and the user confirmed receipt. Existing PR8 branch preserved; this chat made no runtime/account/credential/flag/send actions. Root owns final CI review, merge and main restart.",
+    "evidence": ["Nineteen targeted sender/trial cases,13 UI cases,4 packaging cases and fresh production build pass; independent review found no concrete P1/P2 issues. Candidate089cb6f passed all7 configured scoped groups pluscoordination/filesystem againstmaincb58022.", "Root-owned controlled UI test traversed frozenQC on simulated120Fversus40.475Fexpected, used a restricted Messages key and assigned trialFrom, receivedHTTP201 then providerdelivered/attempt1. Direct user receipt confirmed and redacted project proof independently read. No phone/providerSID/key values entered source.", "Two earlier572003/noSID failures remain recorded; changing sender never resends an existing failed event. An explicit new event is needed. Optional validtrialFromincludedwhenprovided; omissionretainsTo/Body-onlycompatibility; TerraFrommandatory andtrialValidityPeriodomitted.", "Fresh candidate webbuild and exactcheckout/SHA were handed to root before its live diagnostic. Subsequent changes are metadata/docs only; application code stays frozen."],
+    "uncertainty": "Final branch CI/merge/main restart remain with root. Controlled template delivery and handset receipt are verified; custom Terra text and naturally occurring autonomous orchard alerts are not established by this test. Old primary-token trace cleanup remains separate from valid restricted-key authentication.",
+    "next": "Publish the checked assigned-sender branch as an unmerged reviewable PR and send root exacthead/tree/checks. Root reviews final CI and owns merge/main restart. No independent runtime, credential, flag or send changes; preserve frozen application source and retained attempt history."
   }
 }
 ```

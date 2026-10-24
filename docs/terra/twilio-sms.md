@@ -64,9 +64,15 @@ that support omission. The assigned trial number is not a purchased sender.
 It retains the same orchard opt-in, alert selection, duplicate suppression,
 attempt cap and receipt journal. It does not text every raw station outlier.
 No webhook, public tunnel, new worker or paid upgrade is required for this mode.
-One predefined Console message was delivered and handset-confirmed; successful
-automatic API delivery remains unverified until the assigned-sender repair is
-tested with a provider receipt and phone confirmation.
+On October 24, 2026, candidate `089cb6fd14f26a1debacfa4ce645fad486f161cf`
+passed the controlled UI test: the frozen detector flagged simulated weather,
+the assigned-sender API request returned HTTP 201, its receipt became
+`delivered` with one attempt, and the user confirmed receiving the placeholder.
+The two earlier `572003` failures had no Message SID and remained recorded;
+correcting setup did not automatically resend them. This proves the controlled
+demo's API path, separate from the earlier Console sample. Final CI, merge and
+the root-owned main restart remain; it does not establish custom Terra content
+or a naturally occurring orchard alert.
 
 Terra still rejects expired events immediately before submission. The trial
 request omits unsupported `ValidityPeriod`, so it cannot bound Twilio's queue

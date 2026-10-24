@@ -179,7 +179,7 @@ def _schema(identifiers):
 
 
 def _negative(clause):
-    return bool(re.search(r"\b(?:cannot|can't|couldn't|does not|doesn't|don't|do not|isn't|aren't|not|unknown|unconfirmed|insufficient|without)\b", clause))
+    return bool(re.search(r"\b(?:cannot|can't|couldn't|does not|doesn't|don't|do not|isn't|aren't|hasn't|haven't|didn't|not|never|unknown|unconfirmed|insufficient|without)\b", clause))
 
 
 def _unsupported(text):
@@ -205,6 +205,80 @@ def _unsupported(text):
     return False
 
 
+def _preference_states(text):
+    """Extract only explicit browser/SMS preference states, including negation."""
+    pattern = (r"\b(?P<subject>(?:browser\s+)?(?:alerts?|notifications?)|sms(?:\s+(?:alerts?|texts?))?|texts?)\b"
+               r"(?P<link>[^.;!?]{0,35}?)\b(?P<state>enabled|disabled|on|off)\b")
+    for match in re.finditer(pattern, text.lower().replace("’", "'")):
+        subject = match["subject"]
+        target = "browser" if "browser" in subject else "sms" if re.search(r"\b(?:sms|texts?)\b", subject) else "notifications"
+        enabled = match["state"] in {"on", "enabled"}
+        if re.search(r"\b(?:not|isn't|aren't|wasn't|weren't|hasn't|haven't|never)\b", match["link"]):
+            enabled = not enabled
+        yield target, enabled
+
+
+def _state_claims(text, prepared, ids):
+    """A read-only model cannot invent completed actions or transport receipts."""
+    cited = [fact for fact in prepared["facts"] if fact["id"] in ids]
+    saved_states = list(_preference_states("; ".join(fact["text"] for fact in cited)))
+    for target, enabled in _preference_states(text):
+        applicable = [state for source, state in saved_states
+                      if source == target or target == "notifications" or source == "notifications"]
+        if not applicable or any(state != enabled for state in applicable):
+            return True
+    receipt_states = {fact.get("status") for fact in cited
+                      if fact.get("kind") in {"transport_receipt", "delivery_receipt"}}
+    for clause in re.split(r"[.!?;]|\bbut\b|\bhowever\b", text.lower().replace("’", "'")):
+        if _negative(clause):
+            continue
+        # These are completed-action assertions, rather than the legitimate
+        # saved-state wording "browser alerts are off".
+        if re.search(r"\b(?:has|have|had)\s+(?:(?:now|just|successfully|already)\s+)?been\s+(?:enabled|disabled|changed|updated|saved|scheduled|sent|started|stopped|set)\b", clause):
+            return True
+        if re.search(r"\b(?:now|just|successfully|already)\s+(?:enabled|disabled|changed|updated|saved|scheduled|sent|started|stopped|set)\b", clause):
+            return True
+        if re.search(r"\b(?:was|were)\s+(?:enabled|disabled|changed|updated|saved|scheduled|started|stopped|set)\b", clause):
+            return True
+        delivery = re.search(r"\b(?:sms|texts?|messages?|notifications?|alerts?)\b.{0,35}\b(delivered|sent|queued|dispatched|scheduled)\b", clause)
+        if delivery is None:
+            delivery = re.fullmatch(r"\s*(delivered|sent|queued|dispatched|scheduled)\s*", clause)
+        if delivery:
+            state = delivery.group(1)
+            # An explicit transport receipt is required even when some other
+            # fact says a notification preference is enabled.
+            if state not in receipt_states:
+                return True
+    return False
+
+
+def _historical(fact):
+    return (fact.get("scope") in {"reference", "saved_note"}
+            or fact.get("current_verified") is False
+            or bool(re.search(r"\b(?:last usable|stale|saved assessment|replay)\b", fact["text"], re.I)))
+
+
+def _temporal_claims(text, prepared, ids, bindings):
+    """Do not promote a referenced or stale value into a present measurement."""
+    cited = {fact["id"]: fact for fact in prepared["facts"] if fact["id"] in ids}
+    weather = {identity: fact for identity, fact in cited.items()
+               if re.search(r"temperature|estimate|weather|reading|humidity|wind|solar", identity + " " + fact["text"], re.I)}
+    for clause in re.split(r"[.!?;]|\bbut\b|\bhowever\b", text.lower().replace("’", "'")):
+        if _negative(clause):
+            continue
+        explicit = re.search(r"\b(?:right now|currently|today|live(?:\s+(?:conditions|readings?))?|current\s+(?:orchard\s+)?(?:temperature|estimate|weather|readings?|conditions))\b", clause)
+        present = re.search(r"\b(?:temperature|estimate|reading|humidity|wind|solar)\b.{0,24}\b(?:is|are|reads?|stands?)\b", clause)
+        qualified = re.search(r"\b(?:saved|recorded|last usable|historical|replay|as of)\b", clause)
+        token_owners = {bindings["{{" + token + "}}"][0] for token in _TOKEN.findall(clause)
+                        if "{{" + token + "}}" in bindings}
+        sources = [cited[identity] for identity in token_owners if identity in cited]
+        historical_value = any(_historical(fact) for fact in sources)
+        reference_only = bool(weather) and all(_historical(fact) for fact in weather.values())
+        if (historical_value or reference_only) and (explicit or present and not qualified):
+            return True
+    return False
+
+
 def _contradicts(text, prepared, ids):
     """Catch explicit reversals of supplied availability and monitoring state."""
     low = text.lower().replace("’", "'")
@@ -213,7 +287,7 @@ def _contradicts(text, prepared, ids):
     for clause in re.split(r"[.!?;]|\bbut\b|\bhowever\b", low):
         if _negative(clause):
             continue
-        if limited and re.search(r"\b(?:coverage|estimate|weather support|readings?|data)\s+(?:is|are|looks?|seems?|remains?)\s+(?:fully\s+)?(?:reliable|complete|available|normal|healthy|current)\b", clause):
+        if limited and re.search(r"\b(?:coverage|temperature|estimate|weather support|readings?|data)\s+(?:is|are|looks?|seems?|remains?)\s+(?:fully\s+)?(?:reliable|complete|available|normal|healthy|current)\b", clause):
             return True
         if prepared["monitoring"].get("status") != "ready" and re.search(
                 r"\b(?:i am|i'm|we are|we're|terra is)\s+(?:actively\s+)?(?:watching|monitoring)\b|\bmonitor(?:ing)?\s+is\s+(?:active|running)\b", clause):
@@ -255,11 +329,18 @@ def _render(raw, prepared, bindings):
             raise ValueError("Uncited quantity")
     source_words = set(re.findall(r"[a-z]+", " ".join(
         fact["text"] for fact in prepared["facts"] if fact["id"] in ids).lower()))
-    numbers = set(re.findall(r"[a-z]+", residue.lower())) & _NUMBER_WORDS
+    # "Which one?" refers to an ambiguous subject, not a measured quantity.
+    # Keep this exception local to a clarification; "one degree" still fails.
+    number_text = re.sub(r"\bwhich one\b", "", residue.lower()) if outcome == "clarify" else residue.lower()
+    numbers = set(re.findall(r"[a-z]+", number_text)) & _NUMBER_WORDS
     if not numbers <= source_words:
         raise ValueError("Invented quantity")
     if _unsupported(residue):
         raise ValueError("Unsupported assertion")
+    if _state_claims(residue, prepared, ids):
+        raise ValueError("Unsupported state or delivery claim")
+    if _temporal_claims(text, prepared, ids, bindings):
+        raise ValueError("Historical value claimed as current")
     if _contradicts(residue, prepared, ids):
         raise ValueError("Contradicted application state")
     if prepared["capabilities"].get("communication") == "proactive_alert":

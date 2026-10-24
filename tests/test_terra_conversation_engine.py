@@ -168,6 +168,95 @@ def test_replay_facts_cannot_be_promoted_to_live_conditions():
     assert respond(Generator(answer(text="During this replay, coverage limits the updated estimate.")), source)["outcome"] == "message"
 
 
+@pytest.mark.parametrize("text", [
+    "Your browser alerts are now enabled.",
+    "Browser alerts are enabled.",
+    "Browser alerts aren't off.",
+    "Browser alerts have been disabled.",
+    "The farm location has been updated.",
+    "The farm location was updated.",
+    "Your crops were successfully saved.",
+    "SMS delivered.",
+    "The SMS was sent.",
+    "Your message is queued.",
+    "Delivered.",
+])
+def test_passive_action_preference_and_delivery_fabrications_are_rejected(text):
+    source = packet()
+    source["facts"] = [{"id": "profile_notifications", "text": "Browser alerts are off; in-chat updates stay available."}]
+    output = answer(text=text, fact_ids=["profile_notifications"], focus="notifications")
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+
+
+@pytest.mark.parametrize("text", ["Browser alerts are off; in-chat updates stay available.",
+                                  "Browser alerts are disabled in the saved preferences.",
+                                  "I haven't changed your alerts.", "I can't confirm the SMS was delivered."])
+def test_grounded_saved_preference_and_honest_nonaction_wording_are_retained(text):
+    source = packet()
+    source["facts"] = [{"id": "profile_notifications", "text": "Browser alerts are off; in-chat updates stay available."}]
+    assert respond(Generator(answer(text=text, fact_ids=["profile_notifications"], focus="notifications")), source)["text"] == text
+
+
+def test_a_natural_which_one_clarification_is_not_an_invented_measurement():
+    source = packet()
+    output = answer(outcome="clarify", text="Which one do you mean?", fact_ids=[], focus="weather")
+    assert respond(Generator(output), source)["text"] == "Which one do you mean?"
+    output["text"] = "Which one is one degree?"
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+
+
+def test_delivery_requires_a_cited_authoritative_transport_receipt():
+    source = packet()
+    source["facts"] = [{"id": "sms_receipt", "kind": "transport_receipt", "status": "delivered",
+                        "text": "The SMS provider confirmed delivery of the saved notification."}]
+    output = answer(text="The SMS was delivered.", fact_ids=["sms_receipt"], focus="notifications")
+    assert respond(Generator(output), source)["text"] == "The SMS was delivered."
+    source["facts"][0]["status"] = "queued"
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+
+
+@pytest.mark.parametrize("scope,text", [
+    ("reference", "The orchard temperature is {{f0_n0}}°F right now."),
+    ("reference", "The orchard temperature is {{f0_n0}}°F."),
+    ("saved_note", "The current orchard temperature is {{f0_n0}}°F."),
+])
+def test_reference_values_cannot_be_claimed_as_current_even_for_a_live_farm(scope, text):
+    source = packet()
+    source["facts"] = [{"id": "reference_temperature", "scope": scope,
+                        "text": "Saved assessment: the orchard temperature estimate was 40°F."}]
+    output = answer(text=text, fact_ids=["reference_temperature"], focus="temperature")
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+    output["text"] = "The saved assessment's orchard estimate was {{f0_n0}}°F."
+    assert "was 40°F" in respond(Generator(output), source)["text"]
+
+
+def test_citing_a_current_unrelated_fact_cannot_make_a_reference_token_current():
+    source = packet()
+    source["facts"] = [{"id": "reference_temperature", "scope": "reference", "text": "Saved estimate was 40°F."},
+                       {"id": "current_humidity", "scope": "current", "text": "Current station humidity was 65%."}]
+    output = answer(text="The orchard temperature is {{f0_n0}}°F right now.",
+                    fact_ids=["reference_temperature", "current_humidity"], focus="temperature")
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+
+
+@pytest.mark.parametrize("text", ["The orchard temperature is {{f0_n0}}°F.",
+                                  "The temperature is normal.", "Current temperature is available."])
+def test_stale_last_usable_temperature_cannot_be_claimed_as_current(text):
+    source = packet()
+    source["facts"] = [{"id": "current_temperature", "scope": "current", "current_verified": False,
+                        "text": "The last usable estimate was 40°F; it is stale and current weather support is unavailable."}]
+    output = answer(text=text, fact_ids=["current_temperature"], focus="temperature")
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(output), source)
+    output["text"] = "The last usable estimate was {{f0_n0}}°F; it doesn't establish current temperature."
+    assert "was 40°F" in respond(Generator(output), source)["text"]
+
+
 @pytest.mark.parametrize("bad", [
     {"status": "incomplete", "text": "partial"},
     {"status": "completed", "refusal": True, "text": "{}"},

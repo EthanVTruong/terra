@@ -130,7 +130,7 @@ def test_reference_context_uses_saved_note_and_preserves_it(flow):
     note = monitor.flush(orchard, now=HOUR)
     original = deepcopy(note)
     monitor.writer = EngineWriter(plan)
-    plan.answer = lambda packet: response("That note is about limited weather support, so the estimate is incomplete.",
+    plan.answer = lambda packet: response("At the time of that note, limited weather support made the estimate incomplete.",
         fact_ids=[cite(packet, "weather coverage")], focus="alert")
     result = service.message(request_id="explain-saved", text="What does that imply?", orchard_id=orchard, reply_to=note["id"])
     assert result["assistant_turn"]["data"]["generation"] == "chatgpt_plan"

@@ -20,6 +20,10 @@ class OrchardInput(BaseModel):
     lon: float = Field(default=-121.84, ge=-180, le=180)
     elevation_ft: float = Field(default=70.0, ge=-1500, le=20000)
     sms_opt_in: bool = False
+    crops: list[str] | None = Field(default=None, min_length=1, max_length=12)
+    crop: str | None = Field(default=None, min_length=1, max_length=80)
+    variety: str | None = Field(default=None, min_length=1, max_length=80)
+    crop_description: str | None = Field(default=None, min_length=1, max_length=240)
 
 
 class QuestionInput(BaseModel):

@@ -10,7 +10,7 @@ The [shared contract](pipeline-contract.md) defines accepted product policies.
 | Grower UI | Accepted incoming interface, persisted orchard feed, guarded setup/consent, exact evidence and delivery labels integrated from `4ff79ce` plus `dc9a113` focus repair; desktop/390px/320px unified browser checks, production build, four packaging and three semantic UI tests pass | Final combined CI |
 | Farm monitor and event store | Farm `73bee6b` and runtime `ea78c7d` integrated. 64 farm/API and 34 lifecycle cases pass. Actual installed service restarted with two identical note IDs, fresh worker and zero SMS attempts | Final combined CI |
 | Message → SMS | 203 transport/HTTP cases and nine cross-layer acceptance cases pass. Mocked provider receipts reconcile with the UI closed, survive restart, retain backoff and avoid blind resend | Real sender/account readiness and phone receipt |
-| Twilio account | Existing active trial credentials are privately configured. Read-only account probes succeeded; owned senders: zero. Requested tester still requires verification; trial template restriction prevents arbitrary Terra text | Tester verification, approved custom-message sender/capability, charge authorization if needed, token rotation, then a real delivery test |
+| Twilio account | Candidate `089cb6f` controlled UI demo used the dedicated restricted Messages key and assigned trial `From`: HTTP 201, provider `delivered`, one attempt, and direct user handset confirmation. Two prior HTTP 403/`572003` failures without a SID stayed recorded. Restricted single-message read passed; listing access remained denied | Final sender-fix CI, merge and root-owned main restart. The trial sample does not contain Terra's actual finding; custom Terra text remains outside this verified template path |
 | GitHub contributors | Published histories and contributor API contain only Ethan and Nathan; supported background rebuild requested | Sidebar refresh is controlled by GitHub |
 
 Required combined acceptance:
@@ -41,7 +41,10 @@ real SMS readiness.
 
 ## Evidence boundaries
 
-The merged local suites contain **499 Python cases**: 189 baseline/live/HTTP,
+The following paragraphs record the initial integration. The current controlled
+trial API and handset proof is recorded in the Twilio row above and the runbook.
+
+The initial integration suites contained **499 Python cases**: 189 baseline/live/HTTP,
 203 SMS/HTTP, 64 farm/API, 34 runtime and nine cross-layer acceptance cases.
 The cross-layer tests use actual saved/raw weather adapters, frozen QC, Nathan's
 estimator, persisted farm state and transport journals with controlled weather
@@ -63,7 +66,9 @@ mobile focus containment/opener return and the disabled phone state.
 The intended recipient and existing credentials remain only in ignored private
 configuration. One browser accessibility observation included the existing Auth
 Token in a private tool trace. It was not placed in tracked files or Git history;
-rotation is required before activation, and both SMS enable flags remain false.
+private rotation remains separate credential cleanup. Current API testing uses
+a valid dedicated restricted Messages create/read key, so primary-token rotation
+is not an authentication gate for that test.
 The secret-exclusion scan found no actual configured credential/contact values
 in tracked files or newly added history. Original staged bootstrap entries remain
 unchanged.

@@ -3,12 +3,36 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-trial-assigned-sender",
+  "owner": "et",
+  "status": "done",
+  "intent": "Root-authorized focused repair for live Twilio trial error572003: include an explicitly configured assigned trial From when present, validate its format while retaining documented To/Body-only compatibility, keep custom sender mandatory and trial ValidityPeriod omitted. Preserve metadata/idempotency and provide actionable UI guidance plus accurate restricted-key/readiness documentation. No runtime, private configuration, credential, flag or send actions; root owns live verification.",
+  "branch": "codex/terra-trial-assigned-sender",
+  "base": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/sms.py", "tests/test_terra_sms.py", "web/src/delivery.js", "web/tests/delivery.test.mjs", "docs/terra/twilio-sms.md", "docs/terra/readiness.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "089cb6fd14f26a1debacfa4ce645fad486f161cf",
+    "summary": "Assigned-sender compatibility fix, actionable572003copy and restricted-key/readiness docs complete. Root live-tested the frozen candidate successfully and the user confirmed receipt. Existing PR8 branch preserved; this chat made no runtime/account/credential/flag/send actions. Root owns final CI review, merge and main restart.",
+    "evidence": ["Nineteen targeted sender/trial cases,13 UI cases,4 packaging cases and fresh production build pass; independent review found no concrete P1/P2 issues. Candidate089cb6f passed all7 configured scoped groups pluscoordination/filesystem againstmaincb58022.", "Root-owned controlled UI test traversed frozenQC on simulated120Fversus40.475Fexpected, used a restricted Messages key and assigned trialFrom, receivedHTTP201 then providerdelivered/attempt1. Direct user receipt confirmed and redacted project proof independently read. No phone/providerSID/key values entered source.", "Two earlier572003/noSID failures remain recorded; changing sender never resends an existing failed event. An explicit new event is needed. Optional validtrialFromincludedwhenprovided; omissionretainsTo/Body-onlycompatibility; TerraFrommandatory andtrialValidityPeriodomitted.", "Fresh candidate webbuild and exactcheckout/SHA were handed to root before its live diagnostic. Subsequent changes are metadata/docs only; application code stays frozen."],
+    "uncertainty": "Final branch CI/merge/main restart remain with root. Controlled template delivery and handset receipt are verified; custom Terra text and naturally occurring autonomous orchard alerts are not established by this test. Old primary-token trace cleanup remains separate from valid restricted-key authentication.",
+    "next": "Publish the checked assigned-sender branch as an unmerged reviewable PR and send root exacthead/tree/checks. Root reviews final CI and owns merge/main restart. No independent runtime, credential, flag or send changes; preserve frozen application source and retained attempt history."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-tara-conversation",
   "owner": "et",
   "status": "active",
   "intent": "User explicitly requests a plan and active goal to implement Tara onboarding and actual in-app replies using the existing ChatGPT connection: brief grounded responses, attached thumbs-up acknowledgments, no reply to thanks/other no-op input, and local off-topic handling that consumes no model usage. Diagnose full behavior including relevant farm/chill/alert follow-ups, context, consent, failures and return. Implement, verify and integrate without changing scientific models or external SMS/account consent.",
   "branch": "codex/tara-conversation",
-  "base": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
+  "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -21,21 +45,25 @@
     "web/**",
     "docs/terra/**",
     "scripts/terra-service/**",
-    "spec.md"
+    "spec.md",
+    "tests/test_terra_sms.py"
   ],
-  "depends_on": [],
+  "depends_on": [
+    "terra-trial-assigned-sender",
+    "terra-setup-audit"
+  ],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "f8f6a61",
-    "summary": "Conversation backend, UI and runtime adapter integrated in isolated root copy with current main ChatGPT/SMS commits. Crop/location/optional browser preference, real composer, attached reactions, silence and positive local scope gate implemented. Current production runtime has not yet been updated.",
+    "revision": "4c188b905af86571bd579109403e539ce1a15654",
+    "summary": "Implementation and behavior verification complete. Integration owner explicitly authorized stacking the FINAL assigned-sender head9a7a397 into Tara4c188b9, preserving current setup mainadced1a. One focused coordination-record reconciliation; no application conflict or new product behavior. Root retains PR12-first/PR11-next main integration and operational cutover.",
     "evidence": [
-      "Combined conversation tests pass on Windows, including actual spawned-process owner exit and strict no-duplicate recovery.20 web state/delivery/connection tests and production build pass.",
-      "Actual Terra plan weather-support reply passed factual validation in the integrated app. Edge verified onboarding/manual permission fallback, quiet outcomes/reopen, immutable Details lookup and320px layout. Missing totals now use the local unavailable response with zero generator calls; strict validator unchanged.",
-      "Actual combined Edge/HTTP recovery proof: real Windows owner active then exited, zero original request POSTs, one explicit acknowledgment/new uncertainty notice and one fresh question/reply. No account/provider requests, browser errors or320px overflow. Current main merged with both coordination task records retained; provider/auth/SMS contracts and original staged prototype preserved. Local gap arithmetic retains actual cutoff/source year and completed-season meaning."
+      "All9 scoped groups passed before this dependency merge;98 conversation cases,117 focused compatibility cases,21 prior web checks/build, accepted actual ChatGPT reply and immutable Details, real process-exit/HTTP/Edge recovery,320px and delayed pre-consent notification regression pass.",
+      "Exact dependency head9a7a397/tree41527041d8887786e558ceb976a1739a7392724b imported. Its owner verified19 targeted sender cases,13 prior UI cases and4 packaging cases. Integration owner verified controlled API template delivery and direct user handset receipt; custom message delivery and natural autonomous alerts remain separate.",
+      "Final combined scoped checks and exact-head4-job CI are required before root integrates. This chat has not restarted or changed shared runtime, private configuration, vault, account or SMS flags. Original staged prototype and frozen scientific code preserved."
     ],
-    "uncertainty": "Exact-head full CI and retained-data main runtime rollout remain pending. Browser notification scope is while Terra is open; no closed-app push or external SMS activation.",
-    "next": "Finish actual browser and plan verification, scoped checks, PR/full CI, then merge and restart existing runtime with its journals/credentials and disabled SMS flags."
+    "uncertainty": "Final combined checks/CI and owner-controlled merged runtime verification remain pending. Actual current SMS settings are root-owned and must be retained; older disabled-state assumptions are superseded. Browser alerts work while Terra is open.",
+    "next": "Publish this exact combined head/tree and final CI to integration owner. Root merges sender PR12 first, then Tara PR11 after combined green checks, verifies identical final application tree, and owns retained-data cutover. No independent PR11 merge, runtime/account writes, or further feature changes."
   }
 }
 ```

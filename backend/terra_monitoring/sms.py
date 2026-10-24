@@ -129,7 +129,7 @@ class SMSConfig:
             if not re.fullmatch(r"[0-9a-fA-F]{32}", token):
                 errors.append("invalid_or_missing_auth_token")
             username, secret = account, token
-        if content_mode == "terra" and not PHONE.fullmatch(sender):
+        if (content_mode == "terra" or sender) and not PHONE.fullmatch(sender):
             errors.append("invalid_or_missing_sender")
         if not PHONE.fullmatch(recipient):
             errors.append("invalid_or_missing_recipient")
@@ -272,7 +272,7 @@ class SMSDispatcher:
         return {"transport": "twilio", "configured": configured, "enabled": enabled,
                 "live_enabled": enabled, "demo_enabled": bool(enabled and self.config.demo_enabled),
                 "suppressed": suppressed, "recipient": _mask(self.config.recipient),
-                "sender": _mask(self.config.sender) if self.config.content_mode == "terra" else None,
+                "sender": _mask(self.config.sender),
                 "max_per_day": self.config.max_per_day,
                 "content_mode": self.config.content_mode if self.config.content_mode in {"terra", "trial_template"} else None,
                 "template_name": self.config.template_name,
@@ -444,11 +444,13 @@ class SMSDispatcher:
                             return self._update(event_id, status="expired", error_code="event_expired")
                         validity_period = min(validity_period, remaining)
                     payload = {"To": self.config.recipient, "Body": wire_body}
+                    if self.config.sender:
+                        payload["From"] = self.config.sender
                     if self.config.content_mode == "terra":
-                        payload.update(From=self.config.sender, ValidityPeriod=str(validity_period))
-                    # Trials accept predefined bodies only. Their API does not
-                    # support From or ValidityPeriod; local expiry still gates
-                    # submission, but cannot bound Twilio's later queue time.
+                        payload["ValidityPeriod"] = str(validity_period)
+                    # Some trial recipients require their assigned From. Keep
+                    # it optional for the documented To/Body-only path. Trial
+                    # requests omit ValidityPeriod; local expiry gates submission.
                     response = client.post(self._url(), data=payload)
             except httpx.HTTPError:
                 return self._update(event_id, status="uncertain", error_code="provider_outcome_unknown")

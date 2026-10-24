@@ -19,9 +19,12 @@ boundary; see [always-on monitoring](always-on-monitoring.md).
 
 1. Sign in at [Twilio Console](https://console.twilio.com/). Complete email/phone
    verification yourself. Select the account you want to use for Terra.
-2. Use an SMS-capable Twilio sender that is approved for your destination.
+2. For custom Terra text, use an SMS-capable Twilio sender approved for your destination.
    US toll-free senders require approved toll-free verification; US local
    application messaging requires its applicable A2P 10DLC registration.
+   A trial placeholder instead uses the trial number assigned to the verified
+   recipient in Console when the account requires it; this is not an owned
+   number purchase.
 3. Check account restrictions before sending custom Terra text. Current
    [trial documentation](https://www.twilio.com/docs/usage/trials) limits trial
    messaging to verified recipients and predefined content. A template or virtual
@@ -46,13 +49,30 @@ finding and evidence remain in Terra. The interface labels its receipt
 **Trial placeholder**, so delivery of that sample never implies delivery of the
 grower message shown in the inbox.
 
-This mode requires a verified trial recipient and valid private credentials; it
-does not require an owned `TWILIO_FROM_NUMBER`. The request contains only `To`
-and the template identifier in `Body`, as documented by the
+This mode requires a verified trial recipient and valid private credentials.
+The published minimum request contains `To` and the template identifier in
+`Body`, as documented by the
 [trial Messaging API](https://www.twilio.com/docs/usage/trials/try-out-sms#send-an-sms).
+The live account rejected that minimum request with HTTP 403/error `572003`
+and no Message SID because the sender was not assigned to the verified
+recipient. For this compatibility case, set `TWILIO_FROM_NUMBER` privately to
+the assigned trial number shown for that recipient in **Console → Try out SMS**.
+Terra includes `From` only when explicitly configured and requires a valid
+E.164 number when present. It retains the `To`/`Body`-only request for accounts
+that support omission. The assigned trial number is not a purchased sender.
+
 It retains the same orchard opt-in, alert selection, duplicate suppression,
 attempt cap and receipt journal. It does not text every raw station outlier.
 No webhook, public tunnel, new worker or paid upgrade is required for this mode.
+On October 24, 2026, candidate `089cb6fd14f26a1debacfa4ce645fad486f161cf`
+passed the controlled UI test: the frozen detector flagged simulated weather,
+the assigned-sender API request returned HTTP 201, its receipt became
+`delivered` with one attempt, and the user confirmed receiving the placeholder.
+The two earlier `572003` failures had no Message SID and remained recorded;
+correcting setup did not automatically resend them. This proves the controlled
+demo's API path, separate from the earlier Console sample. Final CI, merge and
+the root-owned main restart remain; it does not establish custom Terra content
+or a naturally occurring orchard alert.
 
 Terra still rejects expired events immediately before submission. The trial
 request omits unsupported `ValidityPeriod`, so it cannot bound Twilio's queue
@@ -89,6 +109,10 @@ TERRA_SMS_MAX_PER_DAY=10
 
 Alternatively replace `TWILIO_AUTH_TOKEN` with `TWILIO_API_KEY_SID=SK...` and
 `TWILIO_API_KEY_SECRET=...`. Never set `VITE_*` variables for credentials.
+The current trial test uses a dedicated restricted key limited to Messages
+create/read; listing access remains denied. The old primary Auth
+Token still needs private rotation after appearing in a tool trace. That
+separate cleanup does not block authentication with the valid restricted key.
 The sender and recipient use E.164 format: `+` followed by country code and number.
 The default daily cap is ten attempts, including failed/uncertain attempts.
 
@@ -120,7 +144,8 @@ origin. Ordinary location queries still work through the development proxy.
 2. Click **Send simulated flag to my phone**, or **Send trial placeholder to my
    phone** in trial-template mode. The server generates eight hours
    of synthetic station readings with a final 120°F Davis spike, evaluates the
-   real frozen detector, and sends its finding. It accepts no browser-supplied
+   real frozen detector, and sends the Terra demo or trial sample for the selected
+   mode. It accepts no browser-supplied
    phone, body, observation or arbitrary assessment.
 3. Check your phone for the labelled Terra demo or the configured Twilio trial
    sample. A trial placeholder receipt does not mean the actual finding was sent.

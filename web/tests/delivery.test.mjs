@@ -38,3 +38,20 @@ test("trial acceptance, uncertainty and local publication never claim a delivere
   assert.equal(deliveryLabel({ status: "published", content_mode: "trial_template" }), "Local inbox");
   assert.match(demoResultText({ status: "delivered" }), /labelled TERRA DEMO/);
 });
+
+test("trial sender error identifies the assigned sender without recommending an upgrade", () => {
+  for (const error_code of [572003, "572003"]) {
+    const text = demoResultText({ status: "failed", error_code, content_mode: "trial_template", message: "private provider response" });
+    assert.match(text, /TWILIO_FROM_NUMBER/);
+    assert.match(text, /assigned trial sender.*verified recipient.*Twilio Console/);
+    assert.match(text, /prepare a new demo/);
+    assert.doesNotMatch(text, /upgrade|purchase|private provider response/);
+  }
+});
+
+test("receipt refresh failures take precedence over trial sender guidance", () => {
+  const text = demoResultText({ status: "failed", error_code: "572003", receipt_error: "provider_receipt_unavailable" });
+  assert.match(text, /Delivery status could not be refreshed/);
+  assert.match(text, /Checking again will not resend/);
+  assert.doesNotMatch(text, /TWILIO_FROM_NUMBER|prepare a new demo/);
+});

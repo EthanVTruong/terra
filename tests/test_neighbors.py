@@ -97,3 +97,21 @@ def test_field_excludes_invalid_and_out_of_range(syn_stations):
     col = f.W[:, f.pos[6]]
     assert col[0] == 40 and np.isnan(col[1]) and np.isnan(col[2])
     assert f.raw[2, f.pos[6]] == 41
+
+
+def test_fast_leave_one_out_lapse_matches_reference():
+    from chillwatch.qc.neighbors import theil_sen_lapse_excluding_each
+
+    rng = np.random.default_rng(3)
+    S, H = 15, 200
+    z = rng.uniform(0, 3000, S)
+    z[2] = z[5]  # a tie: that pair has no slope
+    W = 50 + rng.normal(0, 3, (H, S)) + rng.uniform(-5, 5, (H, 1)) * z / 1000
+    W[rng.random((H, S)) < 0.3] = np.nan
+    fast = theil_sen_lapse_excluding_each(W, z, chunk=64)
+    for j in range(S):
+        W2 = W.copy()
+        W2[:, j] = np.nan
+        ref = theil_sen_lapse(W2, z)
+        np.testing.assert_array_equal(np.isnan(fast[:, j]), np.isnan(ref))
+        np.testing.assert_allclose(fast[:, j][~np.isnan(ref)], ref[~np.isnan(ref)], rtol=0, atol=1e-12)

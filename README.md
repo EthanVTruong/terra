@@ -51,6 +51,12 @@ West Orchard pin is a labelled demonstration location. Create a profile explicit
 and retain the state directory across restarts. Local inbox publication, provider
 acceptance and phone delivery remain separate states.
 
+The optional [ChatGPT plan connection](docs/terra/chatgpt-plan.md) writes notes
+from trusted event JSON using your eligible plan. Open **Message writing**, sign
+in and choose an available model. Coverage updates use a brief texting voice;
+measurements and technical recovery counts stay in Details. Failed or unavailable
+generation uses a factual template, and published notes are never rewritten.
+
 ## Phone alerts with Twilio
 
 The optional [Twilio integration](docs/terra/twilio-sms.md) delivers selected,

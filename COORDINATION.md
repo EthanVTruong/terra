@@ -73,17 +73,36 @@
   "intent": "User requested holding custom SMS/webhook work and, if supported, sending predefined trial templates as placeholders when discrepancies select a meaningful alert. Add an explicitly configured template mode to the existing dispatcher with honest persisted receipts/UI labels. Preserve event selection, opt-in, ledger, retry, frozen QC and Nathan models. No paid account changes; automatic sends stay disabled until private credential readiness is resolved.",
   "branch": "codex/twilio-trial-placeholder",
   "base": "a9dcc6c06b872890cf86adda22b207251fb50b5e",
-  "domains": ["terra-coordination", "terra-qc-json"],
-  "paths": ["COORDINATION.md", "backend/terra_monitoring/sms.py", "backend/terra_monitoring/farm_ops/service.py", "tests/test_terra_sms.py", "tests/test_farm_chill_ops.py", "web/src/delivery.js", "web/src/SmsControls.jsx", "web/tests/delivery.test.mjs", "docs/terra/twilio-sms.md", ".env.example"],
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/sms.py",
+    "backend/terra_monitoring/farm_ops/service.py",
+    "tests/test_terra_sms.py",
+    "tests/test_farm_chill_ops.py",
+    "web/src/delivery.js",
+    "web/src/SmsControls.jsx",
+    "web/tests/delivery.test.mjs",
+    "docs/terra/twilio-sms.md",
+    ".env.example"
+  ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
     "revision": "0c28839c626087c099702345064c59b62f4f1e82",
     "summary": "Placeholder branch reconciled with cleanup PR6 and accepted conversation documentation, pushed and opened as reviewable PR8. One focused source repair preserves shared parser/runtime journal selection/schema-once behavior and trial metadata; service differs only by four receipt fields. Both prior branches/history are preserved. Root retains final merge and activation.",
-    "evidence": ["Final terra.py check against latest documentation maina9dcc6c passed terra-farm-tests,terra-harness,terra-json-tests,terra-pipeline-tests,terra-runtime-tests,terra-sms-tests plus coordination/filesystem. Earlier cleanup-basee4292b2 check also passed; overlap explicitly coordinated with root/cleanup owners.", "Five UI semantics and four packaging cases pass. Frontend/dependency tree is identical to the production build already verified on the original source. Independent review found no concrete P1/P2 regressions; both cleanup and trial test sets retained.", "PR8 diff is limited to10 placeholder-related files. No writer/runtime/configuration module change againstmain; service change is exactly content_mode/template_name/transport/data_mode passthrough. Priorhead d0b44a9 is preserved at codex/twilio-trial-placeholder-pre-cleanup.", "Trial payload exactly To plus fixed Body=sms_internal_alerts; persisted source/provider/content/data-mode correlation keeps actual orchard text immutable inapp. No real SMS, runtime, private credential or enabled-flag changes during integration preparation. Prior Console handset proof remains separate."],
+    "evidence": [
+      "Final terra.py check against latest documentation maina9dcc6c passed terra-farm-tests,terra-harness,terra-json-tests,terra-pipeline-tests,terra-runtime-tests,terra-sms-tests plus coordination/filesystem. Earlier cleanup-basee4292b2 check also passed; overlap explicitly coordinated with root/cleanup owners.",
+      "Five UI semantics and four packaging cases pass. Frontend/dependency tree is identical to the production build already verified on the original source. Independent review found no concrete P1/P2 regressions; both cleanup and trial test sets retained.",
+      "PR8 diff is limited to10 placeholder-related files. No writer/runtime/configuration module change againstmain; service change is exactly content_mode/template_name/transport/data_mode passthrough. Priorhead d0b44a9 is preserved at codex/twilio-trial-placeholder-pre-cleanup.",
+      "Trial payload exactly To plus fixed Body=sms_internal_alerts; persisted source/provider/content/data-mode correlation keeps actual orchard text immutable inapp. No real SMS, runtime, private credential or enabled-flag changes during integration preparation. Prior Console handset proof remains separate."
+    ],
     "uncertainty": "PR8 remains unmerged and exact-head CI must be checked by the integration owner. Automatic trial API delivery remains unverified/disabled pending private credential rotation and an explicit delivery test. Trial omits provider queue ValidityPeriod; local submission freshness is still enforced.",
-    "next": "Root reviews https://github.com/EthanVTruong/terra/pull/8 and its exact-head checks, owns merge and any later private activation. Do not independently change main/runtime/credentials/flags or send texts. Keep actual in-app message and placeholder phone receipt distinct."
+    "next": "PR8mergedat9c3d64c afterall4exactheadCIjobs40113058734success. Rootownscombinedauth/runtime integration. AutomaticAPIremainsdisabledpendingcredentialrotation; priorConsoleplaceholderhandsetreceiptisseparate."
   }
 }
 ```
@@ -249,7 +268,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_runtime.py",
     "tests/test_farm_chill_ops.py",
     "tests/test_farm_chill_ops_api.py",
-    "tests/test_farm_chill_ops*.py"
+    "tests/test_farm_chill_ops*.py",
+    "tests/test_terra_chatgpt*.py"
   ],
   "depends_on": [],
   "checks": [
@@ -258,7 +278,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-sms-tests",
     "terra-farm-tests",
     "terra-runtime-tests",
-    "terra-pipeline-tests"
+    "terra-pipeline-tests",
+    "terra-chatgpt-tests"
   ]
 }
 ```
@@ -359,7 +380,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "web/**",
     ".github/workflows/terra.yml",
     "spec.md",
-    ".gitattributes"
+    ".gitattributes",
+    "tests/test_terra_chatgpt*.py"
   ],
   "depends_on": [],
   "contracts": [],
@@ -829,7 +851,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "task",
   "id": "terra-backend-cleanup",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User explicitly authorizes fixing audited backend issues, removing unused code, preserving QC math and Nathan pipeline, running full operational checks and merging/pushing GitHub. Correct state/config journal consistency, fact-safe optional writer, recovery catch-up, cache retention/backoff, question idempotency, indexed Details lookup, HTTP errors and bounded native decoder/eligibility guards. Retire only proven unused raw-station SMS adapter; preserve supported training/repair functions, frozen reference and all data.",
   "branch": "codex/backend-cleanup",
   "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
@@ -860,7 +882,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "cd34d60f1bf0873111df205e2f866606d429df3b",
+    "revision": "e4292b21594d20b3983a62447e2f4632aac0f3bd",
     "summary": "All audited source repairs integrated and independently reviewed. Native guards preserve valid numerical outputs; farm state, indexed Details, durable questions, runtime journals, bounded source caches/backoff and HTTP semantics repaired. Unused raw-station SMS dispatch removed. Final writer genuinely generates bounded event prose with field-bound quantities/source times and conservative validation; injectable plan generator shares validation without silent API-key fallback.",
     "evidence": [
       "PASS final python -B terra.py check --base origin/main --task terra-backend-cleanup against actual 78e835d: all seven configured check groups, records and filesystem. Parent integration owner explicitly coordinated overlapping scope and froze main/service.",
@@ -871,7 +893,89 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
       "Independent bounded generated-writer review rejected all8 reported quantity/status/temporal/incomplete-generation probes while accepting distinct generated wording. New-source lint and git diff --check pass."
     ],
     "uncertainty": "Actual Twilio activation/delivery remains separate; no account changes or texts were made. Generated prose uses conservative English/role checks, not a proof of arbitrary language. Journal path changes fail closed on retained attempts/deliveries/pause; existing files are never moved/dropped. PostgreSQL and portable final-head CI remain integration gates.",
-    "next": "Open PR, require every final-head CI job green, merge/push tested source, and hand exact PR/SHA plus migration rules to parent runtime owner before shared-main/service replacement. Parent follow-on coordination may close this cached task after verified merge."
+    "next": "Merged PR6, all4CIjobs green with792backendtests+8subtests zero skips. Verified8512controlledrestart: newworker41896, freshcompletedcycle16:30:52Z, prior3noteIDs retained, SMSdisabled/attempts0/journal/preferences/pause unchanged. Root owns subsequentauth/placeholderintegration."
   }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chatgpt-plan",
+  "owner": "et",
+  "status": "active",
+  "intent": "Implement user-approved local-first open-source ChatGPT plan connection and concise fact-checked grower wording. Root integrates auth/provider/UI/runtime and isolated replay verification; preserve deterministic QC/Nathan math, immutable notes and original staged files. Cleanup and placeholder owners retain their scopes.",
+  "branch": "codex/terra-chatgpt-plan",
+  "base": "9c3d64cb036faeb080eccfe3fd773907a43a0ae3",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/chatgpt/**",
+    "tests/test_terra_chatgpt*.py",
+    "requirements-terra.txt",
+    "requirements-terra-dev.txt",
+    "docs/terra/chatgpt-plan.md",
+    "web/src/ChatGPTConnection.jsx",
+    "web/src/chatgpt.css",
+    "web/tests/chatgpt*.mjs",
+    "web/src/chatgpt-state.js",
+    "web/src/App.jsx",
+    "backend/terra_monitoring/runtime.py",
+    "backend/terra_monitoring/farm_ops/writer.py",
+    "backend/terra_monitoring/farm_ops/demo.py",
+    "tests/test_terra_chatgpt_runtime.py",
+    "tests/test_terra_chatgpt_replay.py",
+    "web/package.json",
+    "backend/terra_monitoring/farm_ops/texting.py",
+    "web/src/FarmFeed.jsx",
+    "README.md"
+  ],
+  "depends_on": [
+    "terra-authorship"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "6761a77d2b5510590bcd6053fb876c15997226f2",
+    "summary": "Core sign-in/plan inference verified. ET superseded factual-report voice with approved natural texting phrases and requested no almond demo. Bounded proactive coverage voice supports genuine generation and same-tone fallback; technical counts/clocks remain in exact Details. Root is verifying crop-neutral weather-only preview and final integration.",
+    "evidence": [
+      "Auth49/provider73/API16/runtime12/replay1 targeted tests pass; sixUIhelpers and productionbuild pass. Independentreview fixed stickyrefusal gap and one-shotAuthlifecycle.",
+      "ActualResponses stream completed; gateway missingMIME/emptyterminal handled only by crosschecked finalassistantitems/done/deltas. Replay3requests2026reportedtokens; prioradapterdiagnosticsalsoinferenced. NoSMS.",
+      "Maincleanup e4292b2 freshlycompletedworker8512 cycle; prior3noteIDs andSMSjournal/preferences preserved, attempts0/deliveries0. RootpreservesnewTara contractmaina9dcc6c; conversationalextensionsremainseparate.",
+      "ET reviewed realrenderednotes and chose Keep this concise factual tone. Tara conversation contract preserved by clean mainmerge.",
+      "Direct ET correction: should sound just like me texting, skip demoalmonds. Approved Weather data is spotty/estimate incomplete and Weather data is back/estimate updating voice on October24. Previous factual-tone preference superseded.",
+      "Newcropneutralweather-onlyfullsavedweatherQC/Nathan/watch/writer replayproduced2validatedChatGPTnotes,2requests758reportedtokens. Nonecrop/variety/target; noSMS. Quietreplaybannernowdistinguishesoldreadingsfromcurrentavailability; currentmodeunavailablebannerpreserved.",
+      "GitHubcontributorsAPI200nowlists onlyEthanVTruong andNathan-W123; publishedmainshortlog has64Ethan/39Nathancommits, noassistantauthors. Originalnine stagedentriesunchanged."
+    ],
+    "uncertainty": "CombinedlatestheadCI/mainmerge/restartpending. Naturalcoveragevoiceapprovedandactualweatheronlypreviewverified. Othernotevoice/conversationalextensionsremainseparate; automaticTwilioAPIstilldisabledpendingrotation.",
+    "next": "Merge latestmaincontract, reconcileplaceholderPR, completechecks/CI and controlledruntime replacement preservingstate. Keepfutureconversationacceptance separate."
+  }
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-chatgpt-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_chatgpt_auth.py",
+    "tests/test_terra_chatgpt_provider.py",
+    "tests/test_terra_chatgpt_api.py",
+    "tests/test_terra_chatgpt_runtime.py",
+    "tests/test_terra_chatgpt_replay.py",
+    "tests/test_terra_chatgpt_voice.py",
+    "-q"
+  ],
+  "timeout": 120
 }
 ```

@@ -241,6 +241,9 @@ def run_bench(n_faults: int = 100, seed: int = 42, ctx: Context | None = None, s
     seasons = seasons or list(reg.get("holdout_seasons", []))
     stations = ctx.region_stations()
     synthetic = bool((stations.get("county") == "synthetic").any()) if "county" in stations else False
+    sources = sorted(set(stations["source"].astype(str))) if "source" in stations else ["unknown"]
+    network = {"cimis": "CIMIS", "asos": "NOAA ASOS (IEM archive), not CIMIS"}.get(sources[0], sources[0]) \
+        if len(sources) == 1 else "+".join(sources)
     per = [n_faults // len(seasons) + (1 if i < n_faults % len(seasons) else 0) for i in range(len(seasons))]
     all_matches, all_chill, all_gap = [], [], []
     fa_parts = []
@@ -298,7 +301,7 @@ def run_bench(n_faults: int = 100, seed: int = 42, ctx: Context | None = None, s
         }
     result = {
         "generated_at": datetime.now().astimezone().isoformat(),
-        "data": "SYNTHETIC (not real CIMIS data; do not present as results)" if synthetic else "CIMIS",
+        "data": "SYNTHETIC (not real data; do not present as results)" if synthetic else network,
         "model_version": ctx.model.version,
         "seasons": seasons,
         "n_faults": len(labels_all),

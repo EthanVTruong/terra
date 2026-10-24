@@ -1,4 +1,4 @@
-"""A deliberately bounded local router. Raw conversation never enters inference."""
+"""Local action admission and offline fallback; connected dialogue uses engine.py."""
 from __future__ import annotations
 
 import re

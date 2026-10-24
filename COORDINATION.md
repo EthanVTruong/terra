@@ -1,5 +1,31 @@
 # Terra integration coordination
 
+## Contextual ChatGPT conversation and concise insight engine
+
+```json
+{
+  "kind": "task",
+  "id": "terra-conversational-engine",
+  "owner": "et",
+  "status": "done",
+  "intent": "Direct user request: make the selected ChatGPT plan the actual conversational engine before the next push, understanding follow-ups, asking focused clarifications and explaining Python-computed facts in concise useful alerts. Python retains numerical/event/action authority. User explicitly authorizes coordination with the sole main integrator, which holds publication for this slice.",
+  "branch": "codex/terra-conversational-engine",
+  "base": "06c560596e7341d3ab0ca5c24787c35b63a47bba",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/conversation/**", "backend/terra_monitoring/farm_ops/insight_writer.py", "backend/terra_monitoring/runtime.py", "tests/test_terra_conversation_engine.py", "tests/test_terra_engine_context.py", "tests/test_terra_engine_flow.py", "tests/test_terra_insight_writer.py", "tests/test_terra_chatgpt_runtime.py", "tests/test_terra_conversation_writer_integration.py", "docs/terra/chatgpt-plan.md", "docs/terra/conversation-contract.md", "docs/terra/conversational-engine.md", "docs/terra/tara-conversation.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "2eca77dcefe7faa9e538a74236f317d5866de55f",
+    "summary": "Frozen contextual conversation and concise proactive-insight implementation. The real default ChatGPT runtime uses bounded same-farm history/current text/authoritative Python facts; model chooses answer, focused clarification, reaction or silence. Quantities/citations/state claims are checked; local actions, event selection and measurements remain Python-owned. Referenced evidence and earlier cited facts remain distinct from current data. Custom crop entry remains neutral; no automatic almond, cultivar, stage or agronomic target. All worker/source processes are released; sole source/ops integrator owns combined checks, genuine proof and publication.",
+    "evidence": ["Frozen base06c5605; product code1e0bcae; source2eca77d includes a test-only historical-phrasing correction.17files; no numerical/auth/providertransport/UI edits beyond runtime writer wiring.", "147 dedicated engine/context/flow/insight/writer-integration cases PASS;430 existing conversation/crop/weather/factual cases PASS;35 UI entry/source/state cases PASS. Actual guarded HTTP regression uses the real automatic InsightWriter marker, passes raw current question+recent dialogue, and proves duplicate refresh/retry makes no additional generation.", "Required terra.py check --base06c5605 --task terra-conversational-engine completed:15other configured groups PASS. New engine group initially rejected an old mock sentence presenting saved evidence as current; corrected only that fixture and reran the complete147-case group PASS. Original broad command exit1 is retained honestly; sole integrator repeats combined gate on corrected source.", "Independent review repaired runtime marker omission, passive invented action/delivery claims, historical-as-current claims, mixed alert coverage polarity, and preservation of prior cited facts. New inference fallbacks use one local-only path, never a second request or API-key billing.", "docs/terra/conversational-engine.md is the implementation/verification guide. Existing same-ID durable reservation, source guards, immutable messages and SMS boundaries retained."],
+    "uncertainty": "No genuine new-engine account request was made in this worker. Old runtime apps remain older source until sole final operator replaces them; paused runtime chat stays paused. The sole integrator now has direct human final-ops authority and the finite3/4-call proof contract. Qualitative model grounding uses instructions/citations/targeted validation, not formal semantic proof. No sourced crop-knowledge Markdown or agronomic-risk policy was added.",
+    "next": "Sole source/ops integrator consumes the frozen branch, repeats combined exact-source gates, runs bounded real selected-plan proactive-note/contextual-followup/necessary-clarification proof with no SMS, and publishes/rolls out. Archive this worktree only after source/reference preservation and confirmed consumption; all worker subprocesses are finished."
+  }
+}
+```
+
 ## ChatGPT entry UI
 
 ```json
@@ -966,6 +992,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_chatgpt*.py",
     "tests/test_terra_conversation*.py",
     "tests/test_terra_conversation_factual_writer.py",
+    "tests/test_terra_engine*.py",
+    "tests/test_terra_insight_writer.py",
     "run_terra.py",
     "tests/test_terra_bootstrap.py",
     "tests/test_terra_weather*.py",
@@ -984,6 +1012,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-conversation-tests",
     "terra-conversation-crops-tests",
     "terra-conversation-context-tests",
+    "terra-conversational-engine-tests",
     "terra-setup-tests",
     "terra-weather-tests",
     "terra-full-flow-recovery-tests"
@@ -1707,6 +1736,15 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_api.py",
     "-q"
   ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-conversational-engine-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_conversation_engine.py", "tests/test_terra_engine_context.py", "tests/test_terra_engine_flow.py", "tests/test_terra_insight_writer.py", "tests/test_terra_conversation_writer_integration.py", "-q"],
   "timeout": 120
 }
 ```

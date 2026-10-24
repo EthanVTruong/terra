@@ -70,6 +70,15 @@ class Provider:
         self.calls.append(kwargs)
         if self.fail:
             raise RuntimeError("PRIVATE provider error must not enter a saved note")
+        if "facts" in kwargs["packet"]:
+            context = kwargs["packet"]
+            alert = context.get("capabilities", {}).get("communication") == "proactive_alert"
+            result = {"outcome": "message" if alert else "clarify",
+                      "text": "Weather data's a bit spotty, so the estimate's incomplete." if alert else
+                              "Do you mean the orchard estimate or a particular station reading?",
+                      "fact_ids": [fact["id"] for fact in context["facts"]] if alert else [],
+                      "focus": "weather"}
+            return {"status": "completed", "text": json.dumps(result)}
         return {"text": json.dumps({key: "Weather data's a bit spotty right now, so the estimate's incomplete."
                                     for key in kwargs["packet"]["events"]})}
 
@@ -124,6 +133,7 @@ def test_enabled_factory_shares_provider_and_uses_existing_route_guard(tmp_path,
     monitor = app.state.runtime_monitor
     assert paths == [tmp_path / "chatgpt"]
     assert monitor.writer.generator is app.state.chatgpt_provider is provider
+    assert monitor.writer.conversation_engine is True
     assert monitor.writer.voice == "text"
     assert monitor.source.service is app.state.query_service
     assert monitor.delivery is app.state.sms_dispatcher
@@ -149,7 +159,7 @@ def test_plan_writer_publishes_validated_note_or_template_with_immutable_evidenc
     note = monitor.flush(orchard, now=NOW)
     assert len(provider.calls) == 1
     assert note["generation"] == ("template" if fail else "chatgpt_plan")
-    assert note["generation_outcome"] == ("llm_failed_or_invalid" if fail else "completed")
+    assert note["generation_outcome"] == ("insight_failed_or_invalid" if fail else "completed")
     assert "incomplete" in note["text"] and "PRIVATE" not in json.dumps(note)
     details = monitor.store.details(orchard, note["id"])
     assert details["message"] == note

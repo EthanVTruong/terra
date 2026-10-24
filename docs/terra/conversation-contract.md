@@ -8,6 +8,13 @@ This is the canonical behavior contract for integration. It does not assert
 that the running app has shipped every behavior. The executable writer and its
 validation remain authoritative for implemented behavior until reconciled.
 
+The [contextual ChatGPT engine](conversational-engine.md) implements the later
+request for model-driven follow-up understanding, necessary clarification, and
+concise interpretation of Python-computed facts. Connected conversations now
+include bounded recent same-farm dialogue. Python still owns numerical facts,
+eligibility, explicit actions, permissions and delivery. Earlier descriptions of
+canonical-intent-only inference apply to the legacy/offline path.
+
 ## Voice and attention
 
 Terra is a grower assistant: warm, direct and economical with attention.

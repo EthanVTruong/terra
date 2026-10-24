@@ -141,3 +141,31 @@ Production build and diff whitespace check pass. Actual browser checks at 1280x9
 clearance, a 6px popover gap and no horizontal overflow. Screenshots are retained
 in `.terra-local/ui-logo-spacing/`. Corrected the earlier task artifact field to
 use declared artifact IDs only; the QA path remains an evidence pointer.
+
+## Lean copy and single evidence entry — 2026-10-24
+
+User requests removing repeated As of dates from bubbles, reducing Phone Alerts
+subtext, and avoiding Details on every page. Display formatting now strips only
+the generated trailing Pacific timestamp (including the template's truncated
+Details suffix). Meaningful dates within prose, stored messages, transport text
+and exact JSON remain intact.
+
+Notes open their readings directly; the duplicate per-note Details button is
+removed. Repeated Details, source/exclusion and message/delivery disclosures are
+removed from the conversation and sidebar. The evidence pane's JSON tab remains
+the central full record, including provenance, exclusions and delivery receipts.
+Unavailable data, stale findings, replay identity and actual receipt states retain
+visible treatment. Historical chill unavailability keeps its explanatory tooltip.
+
+Phone Alerts shows connection status, the orchard preference and Refresh when
+disconnected. Configured connections reveal the simulated test and delivery
+controls. The test stays explicitly simulated; cost copy appears when sending is
+available, while queued/sent results still say delivery is unconfirmed. Existing
+configuration gates, transport actions and duplicate-send guards are unchanged.
+
+Production build, nine UI tests and four packaging tests pass. Actual unified API
+and browser checks cover note tap-to-read, mobile Escape/focus return, original
+message timestamps in JSON, historical mode/date and complete assessment provenance
+in JSON after removing the redundant disclosures. The actual disconnected Phone
+Alerts view was checked; configured branches were reviewed without enabling SMS
+or sending a message. Screenshots: `.terra-local/ui-lean-copy/`.

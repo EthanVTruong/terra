@@ -58,5 +58,6 @@ export function displayNoteText(message, orchard) {
     text = text.slice(prefix.length);
   }
   if (text.startsWith("monitoring is connected; ")) text = text.slice("monitoring is connected; ".length);
+  text = text.replace(/\s+As of [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2} (?:AM|PM) (?:PST|PDT)(?:\.|; related updates are under Details\.)$/, "");
   return text ? text[0].toUpperCase() + text.slice(1) : message.text;
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { clockTime, dayLabel, evidenceTime, localDay } from "../src/presentation.js";
+import { clockTime, dayLabel, displayNoteText, evidenceTime, localDay } from "../src/presentation.js";
 
 test("notes group at Pacific midnight rather than UTC midnight", () => {
   assert.equal(localDay("2026-10-24T06:59:00Z"), "2026-10-23");
@@ -30,4 +30,20 @@ test("missing timestamps never look like a real reading time", () => {
     assert.equal(evidenceTime(value), "Not supplied");
     assert.equal(localDay(value), "");
   }
+});
+
+test("display removes generated time suffixes while retaining the exact stored message", () => {
+  const text = "Demo orchard: Demo orchard: weather coverage is limited. As of Oct 24, 1:02 AM PST.";
+  const message = { text };
+  assert.equal(displayNoteText(message, { name: "Demo orchard" }), "Weather coverage is limited.");
+  assert.equal(message.text, text);
+  assert.equal(displayNoteText({ text: "North field: estimated chill is 120 hours. As of Nov 3, 2:00 PM PDT." }, { name: "North field" }), "Estimated chill is 120 hours.");
+  assert.equal(displayNoteText({ text: "Demo replay: North field: weather support is limited. As of Jan 11, 1:00 AM PST; related updates are under Details." }, { name: "North field" }), "Weather support is limited.");
+});
+
+test("meaningful dates within the message body are preserved", () => {
+  const text = "As of November 1, chill accumulation is 120 hours.";
+  assert.equal(displayNoteText({ text }), text);
+  const datedObservation = "Weather coverage as of Oct 24, 1:00 AM PST is incomplete.";
+  assert.equal(displayNoteText({ text: datedObservation }), datedObservation);
 });

@@ -101,19 +101,11 @@ function liveError(body, status) {
   return error;
 }
 
-function FactRows({ values }) {
-  return <dl className="facts">{values.filter(([, value]) => value !== undefined && value !== null).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{String(value)}</dd></div>)}</dl>;
-}
-
 function Values({ observed, expected, difference }) {
   return <div className="compact-finding"><div className="message-facts"><span><small>Observed</small><strong>{temperature(observed)}</strong></span><span><small>Expected</small><strong>{temperature(expected)}</strong></span></div><div className="message-departure"><span>Departure</span><strong>{departure(difference)}</strong></div></div>;
 }
 
-function Disclosure({ title, children }) {
-  return <details className="disclosure"><summary><Icon name="file" /><span>{title}</span><Icon name="chevron" size={13} /></summary><div className="disclosure-body">{children}</div></details>;
-}
-
-function AssessmentFacts({ packet, sourceKind, onOpenJson, onOpenEvidence }) {
+function AssessmentFacts({ packet, sourceKind, onOpenEvidence }) {
   const { query, location_estimate: estimate, target_comparison: comparison, provenance } = packet;
   const hasTarget = comparison.station_id !== null && comparison.station_id !== undefined;
   const unavailable = estimate.status !== "ok";
@@ -151,11 +143,6 @@ function AssessmentFacts({ packet, sourceKind, onOpenJson, onOpenEvidence }) {
           </article>;
         }) : <p className="no-findings">{hasTarget ? "No other station flags." : "No station flags."}</p>}
       </section>
-      <button className="attachment" onClick={onOpenJson}><Icon name="file" size={22} /><span><strong>Assessment JSON</strong><small>Exact values · source evidence</small></span><Icon name="chevron" size={14} /></button>
-    </div>
-    <div className="details-list">
-      <Disclosure title="Details"><FactRows values={[["Reading time", timestamp(query.valid_utc)], ["As of", timestamp(query.as_of_utc)], ["Location estimate", words(estimate.status)], ["Local comparison", words(comparison.status)], ["Peer count", estimate.n_used], ["Geometry", estimate.geometry_source], ["Maximum age", Number.isFinite(query.max_age_hours) ? `${query.max_age_hours} h` : "Not set"]]} /><p className="microcopy">Location interpolation and the frozen station comparison are separate calculations. A typical range describes the station's calibrated historical residual band; it is not a forecast or a guaranteed confidence interval.</p></Disclosure>
-      <Disclosure title="Sources and exclusions"><FactRows values={[["Used stations", estimate.used_station_ids.map(stationName).join(", ") || "None"], ["Interpolation", estimate.method_version], ["QC reference", provenance.qc_reference_id], ["Data snapshot", provenance.data_snapshot_id], ["Publication visibility", words(provenance.publication_visibility)]]} />{live && <><p className="detail-label">Current source check</p><FactRows values={[["Provider", live.provider], ["Checked", timestamp(live.checked_at_utc)], ["Retrieved", timestamp(live.retrieved_at_utc)], ["Data through", timestamp(live.data_through_utc)], ["Source state", words(live.status)], ["Cache age", Number.isFinite(live.cache_age_seconds) ? `${Math.round(live.cache_age_seconds)} seconds` : null], ["Missing stations", live.missing_station_ids?.length ? live.missing_station_ids.map(stationName).join(", ") : null], ["Failed stations", live.failed_station_ids?.length ? live.failed_station_ids.map(stationName).join(", ") : null]]} /></>}{estimate.excluded.length > 0 && <><p className="detail-label">Excluded from the estimate</p><ul className="exclusion-list">{estimate.excluded.map((item, index) => <li key={`${item.station_id}:${index}`}><span>{stationName(item.station_id)}</span><span>{words(item.reason)}</span></li>)}</ul></>}{packet.data_health?.length > 0 && <><p className="detail-label">Source availability</p><pre className="detail-json">{JSON.stringify(packet.data_health, null, 2)}</pre></>}{packet.estimator_qc_exclusions?.length > 0 && <><p className="detail-label">Target-held-out peer exclusions</p><pre className="detail-json">{JSON.stringify(packet.estimator_qc_exclusions, null, 2)}</pre></>}</Disclosure>
     </div>
   </>;
 }
@@ -342,11 +329,6 @@ export function App() {
     return () => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", escape); };
   }, [queryOpen, controlsOpen]);
 
-  function showJson(event) {
-    opener.current = event.currentTarget; setPanelTab("json"); setPanelOpen(true);
-    if (mobile) setMobileJson(true);
-    else requestAnimationFrame(() => jsonPre.current?.focus());
-  }
   function showEvidence(event, finding = null, comparison = null) {
     const matching = comparison && packet.station_findings.find((item) => item.station_id === comparison.station_id && Array.isArray(item.evidence) && item.evidence.some((row) => Date.parse(row?.timestamp) === Date.parse(packet.query.valid_utc)));
     opener.current = event.currentTarget; setPanelTab("temperature"); setSelectedEvidence({ finding: finding || matching || null, comparison }); setPanelOpen(true);
@@ -447,7 +429,7 @@ export function App() {
     setSelectedMessage(message.id); setFarmDetails(null); setDetailsLoading(true); setDetailsError("");
     try {
       const response = await fetch("/api/orchards/" + encodeURIComponent(farm.orchardId) + "/messages/" + encodeURIComponent(message.id) + "/details", { signal: task.controller.signal });
-      if (!response.ok) throw new Error("The note’s evidence is unavailable. Open Details to retry.");
+      if (!response.ok) throw new Error("The note’s readings are unavailable. Tap the note to retry.");
       const value = await response.json();
       if (value.message?.id !== message.id || value.message?.orchard_id !== farm.orchardId || !Array.isArray(value.assessments) || !Array.isArray(value.events)) throw new Error("The note’s evidence could not be read.");
       if (detailRequest.current.version === task.version && !task.controller.signal.aborted) setFarmDetails(value);
@@ -472,7 +454,7 @@ export function App() {
   const panelRecord = view === "monitor" ? farmDetails || farm.feed : null;
   const panelReady = view === "monitor" ? Boolean(farm.orchardId) : Boolean(packet);
   const primaryLabel = view === "monitor" && !panelPacket ? "Chill" : "Temperature";
-  const monitorOverview = detailsLoading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening evidence…</p></div> : panelPacket ? <details className="disclosure farm-extra"><summary><Icon name="file" /><span>Chill</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body"><FarmOverview farm={farm} details={farmDetails} /></div></details> : <FarmOverview farm={farm} details={farmDetails} />;
+  const monitorOverview = detailsLoading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening evidence…</p></div> : panelPacket ? <details className="disclosure farm-extra"><summary><Icon name="file" /><span>Chill</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body"><FarmOverview farm={farm} /></div></details> : <FarmOverview farm={farm} />;
   const showPanel = panelReady && (mobile ? mobileJson : panelOpen);
   const panelMounted = usePresence(showPanel, 220);
   const queryMounted = usePresence(queryOpen, 180);
@@ -489,7 +471,7 @@ export function App() {
         {error && <div className="load-error" role="alert"><p>{error}</p>{retryable && <button onClick={retry}><Icon name="refresh" size={14} />{lastAttempt.current?.kind === "query" ? "Retry query" : "Retry"}</button>}</div>}
         {loading && packet && <div className="request-status" role="status"><span>{querying ? "Checking location…" : "Opening assessment…"}<small>Previous result shown below.</small></span>{!queryOpen && <button onClick={cancel}>Cancel</button>}</div>}
         {notice && <p className="request-notice" role="status">{notice}</p>}
-        {packet ? <div className="assessment-arrival" key={`${packet.query.location_id}:${packet.query.valid_utc}:${resultSource?.kind}`}><AssessmentFacts packet={packet} sourceKind={resultSource?.kind} onOpenJson={showJson} onOpenEvidence={showEvidence} /></div> : loading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>{querying ? "Checking current station data…" : "Opening assessment…"}</p>{pendingKind && !queryOpen && <button className="cancel-empty" onClick={cancel}>Cancel</button>}</div> : <div className="empty-state"><Icon name="location" size={24} /><h2>Check a location</h2><p>Query current weather or open a saved assessment.</p></div>}
+        {packet ? <div className="assessment-arrival" key={`${packet.query.location_id}:${packet.query.valid_utc}:${resultSource?.kind}`}><AssessmentFacts packet={packet} sourceKind={resultSource?.kind} onOpenEvidence={showEvidence} /></div> : loading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>{querying ? "Checking current station data…" : "Opening assessment…"}</p>{pendingKind && !queryOpen && <button className="cancel-empty" onClick={cancel}>Cancel</button>}</div> : <div className="empty-state"><Icon name="location" size={24} /><h2>Check a location</h2><p>Query current weather or open a saved assessment.</p></div>}
         </>}
       </div>
       <footer className="assessment-controls">

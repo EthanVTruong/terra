@@ -6,11 +6,11 @@ const terminal = new Set(["delivered", "failed", "undelivered", "canceled", "rej
 const retrySameEvent = new Set(["not_found", "not_configured", "disabled", "suppressed", "rate_limited"]);
 const resultText = (result) => {
   const status = result.provider_status || result.status;
-  if (result.receipt_error) return `Delivery status could not be refreshed (${result.receipt_error}). Last reported state: ${String(status || "unknown").replaceAll("_", " ")}. Checking again will not resend.`;
-  if (status === "delivered") return "Twilio reports delivered. Check your phone for the message labelled TERRA DEMO.";
+  if (result.receipt_error) return `Status unavailable. Last reported: ${String(status || "unknown").replaceAll("_", " ")}. Check again; this won’t resend.`;
+  if (status === "delivered") return "Twilio reports delivered.";
   if (["provider_accepted", "queued", "accepted", "sending", "sent"].includes(status)) return `Twilio: ${status}. Phone delivery is still unconfirmed.`;
-  if (status === "uncertain") return "The send outcome is uncertain. Check Twilio’s message log before sending a new demo.";
-  if (["failed", "undelivered", "rejected"].includes(status)) return `Message ${status}${result.error_code ? ` (${result.error_code})` : ""}. Check your Twilio sender and account readiness.`;
+  if (status === "uncertain") return "Outcome unknown. Check Twilio before sending again.";
+  if (["failed", "undelivered", "rejected"].includes(status)) return `Message ${status}${result.error_code ? ` (${result.error_code})` : ""}. Check Twilio setup.`;
   return `SMS: ${String(status || "unavailable").replaceAll("_", " ")}${result.error_code ? ` (${result.error_code})` : ""}.`;
 };
 
@@ -124,17 +124,12 @@ export default function SmsControls({ onStatus, onAssessment, orchard }) {
     {panelMounted && <section id="sms-controls-panel" className="query-panel sms-panel" data-open={open} inert={!open ? true : undefined} aria-label="Phone alerts" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); close(); } }}>
       <div className="query-heading"><strong>Phone alerts</strong><button ref={closeButton} type="button" className="icon-button" onClick={close} aria-label="Close phone alerts"><Icon name="close" size={15} /></button></div>
 
-      {status?.configured ? <p className="sms-state">To {status.recipient} · {status.suppressed ? "Paused" : status.enabled ? "Enabled" : "Disabled"}</p> : <p className="sms-state">Phone alerts aren’t connected yet.</p>}
-      {orchard && <div className="sms-orchard"><label><input type="checkbox" checked={subscribed === true} disabled={busy || subscriptionBusy || subscribed === null || (!subscribed && (!status?.configured || !status?.enabled || status?.suppressed))} onChange={changeSubscription} /><span>Phone updates for {orchard.name}{orchard.demo_location ? " · demo" : ""}</span></label>{subscribed === null && <p className="microcopy">Subscription unavailable. Refresh setup to retry.</p>}</div>}
-      <p className="microcopy">The monitor sends opted-in orchard updates.</p>
-      <div className="sms-demo-label">Simulated flag · explicit test</div>
-      {status?.configured && !status?.demo_enabled && <p className="microcopy">Demo delivery is disabled in the server configuration.</p>}
-      {result && <p className="sms-result" role="status">{resultText(result)}{result.duplicate ? " This event was already recorded; no second message was sent." : ""}</p>}
+      {status?.configured ? <p className="sms-state">{status.recipient} · {status.suppressed ? "Paused" : status.enabled ? "Enabled" : "Disabled"}</p> : <p className="sms-state">{status ? "Not connected" : error ? "Unavailable" : "Checking connection…"}</p>}
+      {orchard && <div className="sms-orchard"><label><input type="checkbox" aria-label={`Phone alerts for ${orchard.name}`} checked={subscribed === true} disabled={busy || subscriptionBusy || subscribed === null || (!subscribed && (!status?.configured || !status?.enabled || status?.suppressed))} onChange={changeSubscription} /><span>{orchard.name}{orchard.demo_location && !/demo/i.test(orchard.name) ? " · demo" : ""}</span></label>{subscribed === null && <p className="microcopy">Preference unavailable. Try refreshing.</p>}</div>}
+      {result && <p className="sms-result" role="status">{resultText(result)}{result.duplicate ? " Already recorded; no repeat sent." : ""}</p>}
       {error && <p className="query-error" role="alert">{error}</p>}
-      <div className="sms-actions"><button type="button" className="query-submit" onClick={send} disabled={!ready || busy || Boolean(result && !retrySameEvent.has(result.status))}>{busy ? "Working…" : result && retrySameEvent.has(result.status) ? "Retry this demo" : "Send simulated flag to my phone"}</button><button type="button" className="query-cancel" onClick={checkReceipt} disabled={busy || !status?.configured}>Check delivery</button></div>
-      {result && terminal.has(result.provider_status || result.status) && result.status !== "uncertain" && <button type="button" className="sms-text-button" onClick={newDemo} disabled={busy}>Prepare another demo</button>}
-      <div className="sms-actions sms-secondary"><button type="button" className="sms-text-button" onClick={refreshSetup} disabled={busy || subscriptionBusy}>Refresh setup</button>{status?.enabled && !status?.suppressed && <button type="button" className="sms-text-button" onClick={stop} disabled={busy}>Pause all phone alerts</button>}</div>
-      <p className="microcopy">Twilio may charge for messages. A queued or sent result does not confirm phone delivery.</p>
+      {status?.configured && <div className="sms-test"><div className="sms-demo-label">Simulated alert</div>{!status.demo_enabled && <p className="microcopy">Test sending is disabled.</p>}<div className="sms-actions"><button type="button" className="query-submit" onClick={send} disabled={!ready || busy || Boolean(result && !retrySameEvent.has(result.status))}>{busy ? "Working…" : result && retrySameEvent.has(result.status) ? "Retry test" : "Send test alert"}</button><button type="button" className="query-cancel" onClick={checkReceipt} disabled={busy || !status?.configured}>Check delivery</button></div>{result && terminal.has(result.provider_status || result.status) && result.status !== "uncertain" && <button type="button" className="sms-text-button" onClick={newDemo} disabled={busy}>New test</button>}{ready && <p className="microcopy">Uses simulated readings. SMS charges may apply.</p>}</div>}
+      <div className="sms-actions sms-secondary"><button type="button" className="sms-text-button" onClick={refreshSetup} disabled={busy || subscriptionBusy}>Refresh</button>{status?.enabled && !status?.suppressed && <button type="button" className="sms-text-button" onClick={stop} disabled={busy}>Pause alerts</button>}</div>
     </section>}
   </div>;
 }

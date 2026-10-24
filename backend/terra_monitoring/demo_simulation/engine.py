@@ -101,6 +101,17 @@ class DemoSimulation:
         self._evaluate()
         self._save()
 
+    def _orchard(self):
+        """The grower's pin: the starting location until moved with an orchard action."""
+        return self.session.get("orchard", ORCHARD)
+
+    def _move_orchard(self, lat, lon):
+        # A moved pin is a new watched orchard, so alerts start fresh; earlier notes stay in the journal.
+        geometry = {"lat": lat, "lon": lon, "elevation_ft": ORCHARD["elevation_ft"]}
+        orchard_id = f"sim-{self.session['run_id']}-{self.session['revision'] + 1}"
+        self.monitor.create_orchard("Demo West Orchard", orchard_id=orchard_id, mode="injected", **geometry)
+        self.session.update(orchard_id=orchard_id, orchard=geometry, evaluations={})
+
     def _frame(self):
         return self.session["frames"].setdefault(self.session["clock"],
                                                {"temperatures": {}, "offline": list(self.session["offline"])})
@@ -132,6 +143,43 @@ class DemoSimulation:
                          "source": "demo_test_sensor", "demo_override": {"kind": "test_sensor"}} for hour in hours)
         return pd.DataFrame(rows)
 
+    def _sensor_limits(self):
+        # The frozen policy's widest calibrated residual bounds: an uncalibrated site gets no tighter band.
+        manifest = self.reference.manifest
+        bounds = manifest["range_calibration"]["bounds"].values()
+        return {"extreme_f": max(b["extreme_abs_residual_f"] for b in bounds),
+                "typical_low_f": min(b["typical_low_residual_f"] for b in bounds),
+                "typical_high_f": max(b["typical_high_residual_f"] for b in bounds),
+                "sustained_readings": int(manifest["temporal_policy"]["variables"]["temperature_f"]["sustained_readings"])}
+
+    def _sensor_checks(self):
+        """Compare each test sensor with Nathan's estimate from the calibrated stations, the sensor held out.
+
+        Terra's frozen decision rule applies: one reading beyond the outer limit is
+        strong; the configured run of consecutive readings beyond the typical band is moderate.
+        """
+        if not self.session["sensors"]:
+            return {}
+        limits, now = self._sensor_limits(), utc(self.session["clock"])
+        hours = [now - timedelta(hours=i) for i in reversed(range(limits["sustained_readings"]))]
+        hours = [h for h in hours if h >= utc(WARMUP)]
+        findings = self._layer_findings()[1][1]
+        checks = {}
+        for sensor in self.session["sensors"]:
+            frame = estimate_location(sensor["lat"], sensor["lon"], ORCHARD["elevation_ft"], hours, now,
+                self.cleaned[self.cleaned.operation_available], self.stations, findings,
+                location_id="demo-sensor", geometry_source="test sensor location; configured 60 ft elevation",
+                exclude_station_ids=(sensor["id"],), max_age_hours=6)
+            residuals = [sensor["value_f"] - row.temperature if row.status == "ok" else None for row in frame.itertuples()]
+            current = residuals[-1]
+            outside = [r is not None and not limits["typical_low_f"] <= r <= limits["typical_high_f"] for r in residuals]
+            level = ("none" if current is None else "strong" if abs(current) > limits["extreme_f"]
+                     else "moderate" if len(outside) == limits["sustained_readings"] and all(outside) else "none")
+            checks[sensor["id"]] = {"observed_f": sensor["value_f"], "level": level, **limits,
+                                    "expected_f": None if current is None else sensor["value_f"] - current,
+                                    "deviation_f": current}
+        return checks
+
     def _all_stations(self):
         sensors = [{"id": s["id"], "station_id": s["id"], "name": "Test sensor", "lat": s["lat"], "lon": s["lon"],
                     "elevation_ft": ORCHARD["elevation_ft"]} for s in self.session["sensors"]]
@@ -143,7 +191,7 @@ class DemoSimulation:
         now = pd.Timestamp(self.session["clock"])
         snapshot = fingerprint({"source": self.provenance["sha256"], "frames": self.session["frames"],
                                 "sensors": self.session["sensors"], "clock": self.session["clock"]})
-        self.packet = assess_location(**ORCHARD, valid_utc=now, as_of=now,
+        self.packet = assess_location(**self._orchard(), valid_utc=now, as_of=now,
             observations=observations, stations=self.stations, snapshot_id="demo:" + snapshot,
             data_mode="injected", location_id=self.session["orchard_id"], reference=self.reference,
             geometry_source="explicit demonstration orchard pin; 60 ft configured elevation")
@@ -152,7 +200,11 @@ class DemoSimulation:
         known = self.cleaned[self.cleaned.operation_available & self.cleaned.station_id.isin(self.station_ids)].copy()
         known["quality"] = known["source_quality"]
         self.scored = _score(known, self.reference)
-        self.monitor.apply(self.session["orchard_id"], {"latest": self.packet}, now=now)
+        self.sensor_checks = self._sensor_checks()
+        flags = [{"sensor_id": sid, "level": c["level"], "observed_f": c["observed_f"], "expected_f": c["expected_f"],
+                  "deviation_f": c["deviation_f"], "valid_utc": self.session["clock"]}
+                 for sid, c in self.sensor_checks.items() if c["level"] != "none"]
+        self.monitor.apply(self.session["orchard_id"], {"latest": self.packet, "sensor_flags": flags}, now=now)
         published = self.monitor.flush(self.session["orchard_id"], now=now)
         self.session["evaluations"][self.session["clock"]] = {
             "orchard_f": self.packet["location_estimate"]["temperature"],
@@ -207,7 +259,7 @@ class DemoSimulation:
                       "online": {"type", "station_id", "online"}, "advance": {"type", "hours"},
                       "preset": {"type", "name"}, "reset": {"type"}, "reset_temperatures": {"type"},
                       "sensor": {"type", "lat", "lon", "value_f"}, "sensor_value": {"type", "sensor_id", "value_f"},
-                      "sensor_remove": {"type", "sensor_id"}}
+                      "sensor_remove": {"type", "sensor_id"}, "orchard": {"type", "lat", "lon"}}
             if kind not in fields or set(action) != fields[kind]:
                 raise ValueError("Unknown action or unexpected action fields")
             if kind == "reset":
@@ -236,6 +288,9 @@ class DemoSimulation:
             elif kind == "sensor_remove":
                 sensor = self._sensor(action["sensor_id"])
                 self.session["sensors"] = [s for s in self.session["sensors"] if s is not sensor]
+                self._evaluate()
+            elif kind == "orchard":
+                self._move_orchard(*self._spot(action["lat"], action["lon"]))
                 self._evaluate()
             elif kind == "online":
                 station, online = self._station_id(action["station_id"]), action["online"]
@@ -437,8 +492,8 @@ class DemoSimulation:
                     "label": "Historical observation hour; advances only when controlled"},
                 "source": {**self.provenance, "no_training_overlap": True, "immutable": True},
                 "stations": stations, "assessment": self.packet, "heatmap": self._heatmap(),
-                "sensors": [{**s, "elevation_ft": ORCHARD["elevation_ft"], "calibrated": False}
-                            for s in self.session["sensors"]],
+                "sensors": [{**s, "elevation_ft": ORCHARD["elevation_ft"], "calibrated": False,
+                             "check": self.sensor_checks.get(s["id"])} for s in self.session["sensors"]],
                 "orchard": self.store.orchard(orchard_id), "monitor": monitor,
                 "messages": messages, "notifications": notifications, "events": events, "history": history,
                 "actions": self.session["actions"], "controls": {"presets": list(PRESETS),

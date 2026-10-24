@@ -306,7 +306,8 @@ function BaseMap({
     }} />)}</div>;
 }
 const latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI;
-const MAX_ZOOM = 4;
+// About tile level 16, the deepest level of the light-gray basemap, at desktop width.
+const MAX_ZOOM = 64;
 const domainSpan = bounds => [(bounds.east - bounds.west) / 360, mercatorY(bounds.south) - mercatorY(bounds.north)];
 // View size in Web Mercator units. Zoom 1 covers the estimated field exactly along one axis.
 function viewSpan(bounds, aspect, zoom) {
@@ -491,10 +492,13 @@ function WeatherMap({
     })}{spots.map(spot => {
       const value = spotValue(readings[spot.id], layer);
       return <button key={spot.id} className={`map-spot${selected === spot.id ? ' selected' : ''}`} style={position(spot.lat, spot.lon, b)} onClick={() => onSelect(spot.id)} aria-label={`Select map spot, ${value}`} aria-pressed={selected === spot.id}><span className="map-spot-point" /><span className="map-spot-caption"><strong>Map spot</strong>{value}</span></button>;
-    })}{(state.sensors || []).map(sensor => <button key={sensor.id} className={`map-spot is-sensor${selected === sensor.id ? ' selected' : ''}`} style={position(sensor.lat, sensor.lon, b)} onClick={() => onSelect(sensor.id)} aria-label={`Select test sensor, ${degrees(sensor.value_f)} Fahrenheit`} aria-pressed={selected === sensor.id}><span className="map-spot-point" /><span className="map-spot-caption"><strong>Test sensor</strong>{degrees(sensor.value_f)}</span></button>)}<div className="map-zoom" role="group" aria-label="Map zoom"><button onClick={() => zoomBy(1.5)} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in" title="Zoom in"><Plus size={14} /></button><button onClick={() => zoomBy(1 / 1.5)} disabled={view.zoom <= 1} aria-label="Zoom out" title="Zoom out"><Minus size={14} /></button>{(view.zoom > 1 || pan[0] !== 0 || pan[1] !== 0) && <button onClick={() => setView({
+    })}{(state.sensors || []).map(sensor => {
+      const flaggedSensor = sensor.check && sensor.check.level !== 'none';
+      return <button key={sensor.id} className={`map-spot is-sensor${flaggedSensor ? ' is-flagged' : ''}${selected === sensor.id ? ' selected' : ''}`} style={position(sensor.lat, sensor.lon, b)} onClick={() => onSelect(sensor.id)} aria-label={`Select test sensor, ${degrees(sensor.value_f)} Fahrenheit${flaggedSensor ? ', flagged' : ''}`} aria-pressed={selected === sensor.id}><span className="map-spot-point" /><span className="map-spot-caption"><strong>Test sensor</strong><span>{degrees(sensor.value_f)}{flaggedSensor && <WarningCircle size={12} />}</span></span></button>;
+    })}<div className="map-zoom" role="group" aria-label="Map zoom"><button onClick={() => zoomBy(2)} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in" title="Zoom in"><Plus size={14} /></button><button onClick={() => zoomBy(1 / 2)} disabled={view.zoom <= 1} aria-label="Zoom out" title="Zoom out"><Minus size={14} /></button>{(view.zoom > 1 || pan[0] !== 0 || pan[1] !== 0) && <button onClick={() => setView({
           zoom: 1,
           pan: [0, 0]
-        })} aria-label="Reset map view" title="Reset view"><ArrowClockwise size={13} /></button>}</div><div className="orchard-pin" style={position(state.orchard.lat, state.orchard.lon, b)}><MapPin size={22} weight="fill" /><span>Demo orchard</span></div>{!available && <div className="map-no-support"><WarningCircle size={18} /><strong>No supported temperature surface</strong><span>Not enough usable station readings</span></div>}<div className="map-legend"><strong>Temperature (°F)</strong><div>{Array.from({
+        })} aria-label="Reset map view" title="Reset view"><ArrowClockwise size={13} /></button>}</div><div className="orchard-pin" style={position(state.orchard.lat, state.orchard.lon, b)}><MapPin size={22} weight="fill" /><span>Orchard</span></div>{!available && <div className="map-no-support"><WarningCircle size={18} /><strong>No supported temperature surface</strong><span>Not enough usable station readings</span></div>}<div className="map-legend"><strong>Temperature (°F)</strong><div>{Array.from({
           length: 32
         }, (_, i) => <i key={i} style={{
           background: `rgb(${heatColor(i / 31, 0, 1).join(',')})`
@@ -598,9 +602,12 @@ function SpotControl({
   act,
   busy,
   onPlaced,
-  onRemoved
+  onRemoved,
+  onMovedOrchard
 }) {
-  const estimate = reading?.layers?.[layer],
+  const check = sensor ? target.check : null,
+    flaggedSensor = Boolean(check && check.level !== 'none'),
+    estimate = reading?.layers?.[layer],
     start = sensor ? target.value_f : estimate?.status === 'ok' ? Math.round(estimate.temperature_f * 10) / 10 : 50,
     [draft, setDraft] = useState(String(start)),
     timer = useRef(null);
@@ -632,10 +639,14 @@ function SpotControl({
       if (placed) onPlaced(target.id, placed.id);
     }, 350);
   }
-  return <aside className="station-controls" aria-label={sensor ? 'Selected test sensor controls' : 'Selected map spot controls'}><div className="selected-station-heading"><h2>{sensor ? 'Test sensor' : 'Map spot'}</h2><span className="station-state">{sensor ? 'Uncalibrated' : 'Estimate'}</span></div><p className="spot-coordinates">{target.lat.toFixed(3)}, {target.lon.toFixed(3)} · 60 ft</p><div className="temperature-control"><label htmlFor="spot-temperature">{sensor ? 'Sensor reading' : 'Set a test reading'} <span>°F</span></label><div className="temperature-value"><input id="spot-temperature" aria-label={`${sensor ? 'Test sensor' : 'Map spot'} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={busy && !sensor} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${sensor ? 'test sensor' : 'map spot'} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} onChange={e => change(e.target.value)} /></div>{!sensor && <div className="station-comparison"><div><span>Estimated here</span><strong>{spotValue(reading, layer)}</strong></div><div><span>Layer</span><strong>{layer === 'raw' ? 'Raw' : 'Filtered'}</strong></div></div>}<p className="reading-state">{sensor ? 'This reading feeds the heatmap and orchard estimate. Terra’s station checks only cover the five calibrated stations, so they can’t judge it.' : 'Changing the temperature places a test sensor here.'}</p><button className="quiet-button spot-remove" disabled={busy} onClick={() => sensor ? act({
+  return <aside className="station-controls" aria-label={sensor ? 'Selected test sensor controls' : 'Selected map spot controls'}><div className="selected-station-heading"><h2>{sensor ? 'Test sensor' : 'Map spot'}</h2><span className={`station-state${flaggedSensor ? ' is-flagged' : ''}`}>{flaggedSensor ? 'Flagged' : sensor ? 'Uncalibrated' : 'Estimate'}</span></div><p className="spot-coordinates">{target.lat.toFixed(3)}, {target.lon.toFixed(3)} · 60 ft</p><div className="temperature-control"><label htmlFor="spot-temperature">{sensor ? 'Sensor reading' : 'Set a test reading'} <span>°F</span></label><div className="temperature-value"><input id="spot-temperature" aria-label={`${sensor ? 'Test sensor' : 'Map spot'} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={busy && !sensor} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${sensor ? 'test sensor' : 'map spot'} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} onChange={e => change(e.target.value)} /></div>{sensor ? <div className="station-comparison"><div><span>Expected</span><strong>{check?.expected_f == null ? '—' : degrees(check.expected_f)}</strong></div><div><span>Difference</span><strong>{check?.deviation_f == null ? '—' : signed(check.deviation_f)}</strong></div></div> : <div className="station-comparison"><div><span>Estimated here</span><strong>{spotValue(reading, layer)}</strong></div><div><span>Layer</span><strong>{layer === 'raw' ? 'Raw' : 'Filtered'}</strong></div></div>}<p className="reading-state" aria-live="polite">{!sensor ? 'Changing the temperature places a test sensor here.' : flaggedSensor ? `Flagged · ${check.level === 'strong' ? `more than ${check.extreme_f.toFixed(1)}° from` : `${check.sustained_readings} hours outside`} what nearby stations predict. The grower gets a text.` : check?.expected_f == null ? 'No comparison: not enough nearby station readings.' : 'Within the range nearby stations predict.'}</p>{sensor && <p className="control-footnote">Expected comes from the calibrated stations with this sensor left out. The sensor also feeds the heatmap and orchard estimate.</p>}<div className="spot-actions"><button className="quiet-button" disabled={busy} onClick={() => act({
+      type: 'orchard',
+      lat: target.lat,
+      lon: target.lon
+    }).then(next => next && onMovedOrchard())}><MapPin size={13} />Set as orchard</button><button className="quiet-button" disabled={busy} onClick={() => sensor ? act({
       type: 'sensor_remove',
       sensor_id: target.id
-    }).then(onRemoved) : onRemoved()}><X size={13} />{sensor ? 'Remove test sensor' : 'Remove spot'}</button><p className="control-footnote">Select a station on the map to return to its controls.</p></aside>;
+    }).then(onRemoved) : onRemoved()}><X size={13} />{sensor ? 'Remove sensor' : 'Remove spot'}</button></div><p className="control-footnote">Select a station on the map to return to its controls.</p></aside>;
 }
 function StationApp({
   demo
@@ -645,7 +656,8 @@ function StationApp({
       act,
       busy
     } = demo,
-    [selected, setSelected] = useState(6),
+    // Nothing is selected on the map until clicked; the panel defaults to the first station.
+    [selected, setSelected] = useState(null),
     [layer, setLayer] = useState('raw'),
     [spots, setSpots] = useState([]),
     readings = useSpotReadings(spots, state.heatmap.fingerprint),
@@ -668,12 +680,15 @@ function StationApp({
   function removeSpot(id) {
     setSpots(current => current.filter(s => s.id !== id));
   }
-  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selectedSpot || selectedSensor ? selected : stationId} onSelect={setSelected} layer={layer} spots={spots} readings={readings} onAddSpot={addSpot} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div>{selectedSpot || selectedSensor ? <SpotControl key={selected} state={state} target={selectedSpot || selectedSensor} sensor={Boolean(selectedSensor)} reading={selectedSpot && readings[selectedSpot.id]} layer={layer} act={act} busy={busy} onPlaced={(spotId, sensorId) => {
+  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} spots={spots} readings={readings} onAddSpot={addSpot} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div>{selectedSpot || selectedSensor ? <SpotControl key={selected} state={state} target={selectedSpot || selectedSensor} sensor={Boolean(selectedSensor)} reading={selectedSpot && readings[selectedSpot.id]} layer={layer} act={act} busy={busy} onPlaced={(spotId, sensorId) => {
           removeSpot(spotId);
           setSelected(sensorId);
         }} onRemoved={() => {
           if (selectedSpot) removeSpot(selectedSpot.id);
-          setSelected(stationId);
+          setSelected(null);
+        }} onMovedOrchard={() => {
+          if (selectedSpot) removeSpot(selectedSpot.id);
+          setSelected(null);
         }} /> : <StationControl state={state} selected={stationId} setSelected={setSelected} act={act} busy={busy} layer={layer} />}</div><footer className="lab-footer"><div className="scenario-controls"><span>Try</span>{[['normal', 'Original'], ['minor', 'Small change'], ['spike', 'Station spike'], [health.incident_active ? 'recover' : 'support_loss', health.incident_active ? 'Restore +3h' : 'Support loss']].map(([name, label]) => <button key={name} disabled={busy || name === 'recover' && state.controls.remaining_hours < 3} onClick={() => act({
             type: 'preset',
             name

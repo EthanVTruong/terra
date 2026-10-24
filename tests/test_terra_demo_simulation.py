@@ -181,6 +181,40 @@ class DemoSimulationTests(unittest.TestCase):
             with self.subTest(action=action), self.assertRaises(ValueError):
                 self.demo.action(action)
 
+    def test_out_of_range_test_sensor_is_flagged_and_texted_once(self):
+        normal = self.demo.action({"type": "sensor", "lat": 38.56, "lon": -121.79, "value_f": 48})
+        sensor = normal["sensors"][0]
+        self.assertEqual(sensor["check"]["level"], "none")
+        self.assertEqual(normal["notifications"], [])
+        limits = self.demo._sensor_limits()
+        far = sensor["check"]["expected_f"] + limits["extreme_f"] + 5
+        flagged = self.demo.action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": far})
+        check = flagged["sensors"][0]["check"]
+        self.assertEqual(check["level"], "strong")
+        self.assertGreater(check["deviation_f"], limits["extreme_f"])
+        texts = [n for n in flagged["notifications"] if "sensor_flag" in n["event_types"]]
+        self.assertEqual(len(texts), 1)
+        self.assertIn("local sensor read", texts[0]["text"])
+        self.assertIn("predict", texts[0]["text"])
+        # The same open incident does not text again on the next hour.
+        later = self.demo.action({"type": "advance", "hours": 1})
+        self.assertEqual(len([n for n in later["notifications"] if "sensor_flag" in n["event_types"]]), 1)
+        # Back inside the range closes the incident quietly; a new excursion is a new text.
+        self.demo.action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": later["sensors"][0]["check"]["expected_f"]})
+        again = self.demo.action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": far})
+        self.assertEqual(len([n for n in again["notifications"] if "sensor_flag" in n["event_types"]]), 2)
+
+    def test_moving_the_orchard_pin_starts_a_fresh_watch_there(self):
+        before = self.demo.state()
+        moved = self.demo.action({"type": "orchard", "lat": 38.7, "lon": -121.7})
+        self.assertNotEqual(moved["orchard"]["id"], before["orchard"]["id"])
+        self.assertTrue(moved["orchard"]["id"].startswith("sim-"))
+        self.assertEqual((moved["orchard"]["lat"], moved["orchard"]["lon"]), (38.7, -121.7))
+        self.assertEqual(moved["assessment"]["query"]["lat"], 38.7)
+        self.assertEqual([m["event_types"] for m in moved["messages"]], [["welcome"]])
+        with self.assertRaises(ValueError):
+            self.demo.action({"type": "orchard", "lat": 10, "lon": -121.7})
+
     def test_spot_estimate_is_native_estimator_and_read_only(self):
         spiked = self.demo.action({"type": "preset", "name": "spike"})
         spot = self.demo.point(38.6, -121.9)

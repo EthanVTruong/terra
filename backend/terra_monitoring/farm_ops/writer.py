@@ -84,6 +84,10 @@ def _render(packet):
             text = "estimated chill pace has recovered after three valid completed-day comparisons"
         elif kind == "chill_reference":
             text = f"estimated chill has reached the configured {facts['reference_hours']:g}-hour reference"
+        elif kind == "sensor_flag":
+            direction = "above" if facts["deviation_f"] > 0 else "below"
+            text = (f"your local sensor read {facts['observed_f']:g} F, {abs(facts['deviation_f']):g} F {direction} "
+                    f"the {facts['expected_f']:g} F the nearby weather stations predict there; the cause is unconfirmed")
         elif kind in {"welcome", "chill_total", "history"}:
             hours = facts.get("hours")
             if hours is None:
@@ -165,6 +169,9 @@ _ROLE_HINTS = {
 def _generation_event(event, *, standalone=False):
     """Expose role-bound quantities and categorical facts, not names/questions/clocks."""
     facts, kind = event["facts"], event["type"]
+    if kind == "sensor_flag":
+        # Its temperatures are digits by nature; the vocabulary-bound generator has no role for them.
+        raise ValueError("Template-only event")
     if kind == "explain_alert":
         explanation = facts.get("explanation", "no matching alert was found")
         # Explanation text is Python-owned. Unknown future explanation kinds use the

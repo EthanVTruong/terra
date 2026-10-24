@@ -73,6 +73,7 @@
               "chill_pace",
               "chill_pace_recovered",
               "chill_reference",
+              "sensor_flag",
               "chill_total",
               "history",
               "station_health",

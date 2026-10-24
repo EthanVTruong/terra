@@ -179,6 +179,7 @@ class Monitor:
             snapshot = summarize(rows, now, profile["geometry_key"], newest["method_version"])
             available = newest["status"] == "ok" and now - utc(newest["valid_utc"]) <= timedelta(hours=6)
             events = self._decide(profile, previous, rows, snapshot, newest, available, now, evidence_id)
+            events.extend(self._sensor_events(profile, previous, collection.get("sensor_flags", []), now, evidence_id))
             previous.update(last_check=now.isoformat(), last_observation=newest["valid_utc"],
                             method_version=newest["method_version"], latest_evidence_id=evidence_id,
                             comparison_available=available, latest_status=newest["status"], summary=snapshot)
@@ -230,6 +231,46 @@ class Monitor:
         # A station's original anomaly stays in evidence if the orchard estimate is usable.
         events.extend(self._season_events(profile, state, rows, summary, reading, available, now, evidence_id))
         return events
+
+    @staticmethod
+    def _sensor_events(profile, state, flags, now, evidence_id):
+        """One text per sensor incident: an opening, then at most one escalation to strong.
+
+        A flag says a grower's own uncalibrated sensor reads outside the range the
+        calibrated stations predict there; the caller owns that statistical decision.
+        """
+        if not isinstance(flags, list) or len(flags) > 20:
+            raise ValueError("Sensor flags must be a bounded list")
+        events, open_incidents, current = [], dict(state.get("sensor_incidents", {})), set()
+        for flag in flags:
+            sensor = flag.get("sensor_id") if isinstance(flag, dict) else None
+            if isinstance(sensor, bool) or not isinstance(sensor, int) or flag.get("level") not in {"moderate", "strong"}:
+                raise ValueError("Sensor flags need an integer sensor_id and a moderate or strong level")
+            values = [flag.get(k) for k in ("observed_f", "expected_f", "deviation_f")]
+            if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
+                raise ValueError("Sensor flags need finite observed, expected and deviation temperatures")
+            key = str(sensor)
+            current.add(key)
+            facts = {"observed_f": round(values[0], 1), "expected_f": round(values[1], 1), "deviation_f": round(values[2], 1),
+                     "observation_time": utc(flag["valid_utc"]).isoformat()}
+            incident = open_incidents.get(key)
+            if incident is None:
+                incident = {"id": fingerprint({"orchard": profile["id"], "sensor": sensor, "time": now.isoformat()}),
+                            "level": flag["level"]}
+                open_incidents[key] = incident
+                events.append(_event(profile, "sensor_flag", "opening", flag["level"], now, facts, incident["id"], evidence_id))
+            elif incident["level"] == "moderate" and flag["level"] == "strong":
+                incident["level"] = "strong"
+                events.append(_event(profile, "sensor_flag", "escalation", "strong", now, facts, incident["id"], evidence_id))
+        # A sensor back inside the expected range closes its incident quietly.
+        state["sensor_incidents"] = {k: v for k, v in open_incidents.items() if k in current}
+        return events
+
+    @staticmethod
+    def _open_sensor_episode(profile, state, event):
+        return any(event["episode_id"] == fingerprint({"orchard": profile["id"], "mode": profile["mode"],
+                                                       "category": "sensor_flag", "key": incident["id"]})
+                   for incident in state.get("sensor_incidents", {}).values())
 
     def _season_events(self, profile, state, rows, summary, reading, available, now, evidence_id):
         events = []
@@ -313,7 +354,8 @@ class Monitor:
             for event in pending:
                 health_open = event["type"] == "monitoring_limited"
                 pace_open = event["type"] == "chill_pace"
-                obsolete = (health_open and not state.get("health_incident")) or (pace_open and not state.get("pace_incident"))
+                obsolete = ((health_open and not state.get("health_incident")) or (pace_open and not state.get("pace_incident"))
+                            or (event["type"] == "sensor_flag" and not self._open_sensor_episode(profile, state, event)))
                 if not obsolete:
                     keep.append(event)
             if not pending:
@@ -477,8 +519,11 @@ class Monitor:
                     summary = state.get("summary", {})
                     if not summary.get("complete") or (summary.get("hours") or 0) < event["facts"]["reference_hours"]:
                         reason = "revised_reference"
+                elif kind == "sensor_flag" and not self._open_sensor_episode(profile, state, event):
+                    reason = "superseded_sensor_flag"
         primary = events[0] if events else None
-        category = "data_health" if primary and primary["category"] == "data_health" else "chill"
+        category = ("data_health" if primary and primary["category"] == "data_health" else
+                    "temperature" if primary and primary["category"] == "sensor_flag" else "chill")
         observation = state.get("last_observation")
         seasonal = [e for e in events if e["type"] in {"chill_pace", "chill_pace_recovered", "chill_reference"}]
         if reason == "eligible" and seasonal:
@@ -672,4 +717,5 @@ def _explanation(event):
             "monitoring_recovered": "three consecutive valid hourly estimates confirmed weather coverage recovery",
             "chill_pace": "two completed days were below the historical 20th-percentile chill pace; this is not a crop-failure prediction",
             "chill_pace_recovered": "three valid completed-day comparisons returned out of the low-pace range",
-            "chill_reference": "the configured chill reference was reached; biological dormancy completion is not established"}.get(event["type"], "the recorded event is available under Details")
+            "chill_reference": "the configured chill reference was reached; biological dormancy completion is not established",
+            "sensor_flag": "a local sensor read outside the range the calibrated stations predict there; the cause is unconfirmed"}.get(event["type"], "the recorded event is available under Details")

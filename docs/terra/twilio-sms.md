@@ -56,7 +56,7 @@ TWILIO_FROM_NUMBER=+1...
 TERRA_SMS_TO_NUMBER=+1...
 TERRA_SMS_ENABLED=true
 TERRA_SMS_DEMO_ENABLED=true
-TERRA_SMS_DB_PATH=.terra-local/sms.sqlite3
+TERRA_SMS_DB_PATH=.terra-local/runtime/sms.sqlite3
 TERRA_SMS_MAX_PER_DAY=10
 ```
 
@@ -64,6 +64,12 @@ Alternatively replace `TWILIO_AUTH_TOKEN` with `TWILIO_API_KEY_SID=SK...` and
 `TWILIO_API_KEY_SECRET=...`. Never set `VITE_*` variables for credentials.
 The sender and recipient use E.164 format: `+` followed by country code and number.
 The default daily cap is ten attempts, including failed/uncertain attempts.
+
+Runtime and operator commands share this journal. With a custom runtime state
+directory, pass the same `--state-dir` to the SMS command or set one explicit
+absolute `TERRA_SMS_DB_PATH` for both. Keep any existing journal at its current
+path until its history and saved pause state are reconciled; see
+[backend cleanup](backend-cleanup.md#state-and-operator-implications).
 
 Start the local server from this checkout:
 

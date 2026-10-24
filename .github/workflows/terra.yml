@@ -99,7 +99,7 @@ jobs:
           import subprocess
           import sys
           subprocess.run([sys.executable, '-B', 'terra.py', 'check',
-                          '--base', os.environ['TERRA_BASE'], '--task', 'terra-full-pipeline'], check=True)
+                          '--base', os.environ['TERRA_BASE']], check=True)
           if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
               # A manual run may have no diff; still exercise the pure runtime.
               subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests',
@@ -110,6 +110,8 @@ jobs:
                               'tests/test_terra_live.py', 'tests/test_terra_server.py',
                               'tests/test_terra_sms.py', 'tests/test_terra_sms_server.py',
                               'tests/test_farm_chill_ops.py', 'tests/test_farm_chill_ops_api.py',
+                              'tests/test_farm_chill_ops_writer.py', 'tests/test_farm_chill_ops_state.py',
+                              'tests/test_backend_input_guards.py', 'tests/test_normalize.py',
                               'tests/test_terra_runtime.py', 'tests/test_terra_pipeline.py', '-q'], check=True)
   web:
     runs-on: ubuntu-latest

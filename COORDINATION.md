@@ -112,8 +112,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_runtime.py",
     "tests/test_farm_chill_ops.py",
     "tests/test_farm_chill_ops_api.py",
-    "tests/test_farm_chill_ops*.py",
-    "tests/test_terra_chatgpt*.py"
+    "tests/test_farm_chill_ops*.py"
   ],
   "depends_on": [],
   "checks": [
@@ -491,6 +490,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "pythonpath=backend",
     "tests/test_farm_chill_ops.py",
     "tests/test_farm_chill_ops_api.py",
+    "tests/test_farm_chill_ops_writer.py",
+    "tests/test_farm_chill_ops_state.py",
     "-q"
   ],
   "timeout": 120
@@ -642,6 +643,101 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
 }
 ```
 
+```json
+{
+  "kind": "domain",
+  "id": "terra-input-guards",
+  "owner": "et",
+  "purpose": "User-authorized audited boundary repairs only: strict native CIMIS decoding and operating-date eligibility. Preserve Nathan numerical formulas, training/repair algorithms and frozen Terra reference. No training, ingestion or parameter changes.",
+  "paths": [
+    "backend/chillwatch/estimate.py",
+    "backend/chillwatch/normalize.py",
+    "backend/chillwatch/sources/cimis.py",
+    "tests/test_backend_input_guards.py",
+    "tests/test_estimate.py",
+    "tests/test_normalize.py"
+  ],
+  "depends_on": [],
+  "checks": [
+    "terra-input-guard-tests"
+  ]
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-input-guard-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "-p",
+    "no:cacheprovider",
+    "tests/test_backend_input_guards.py",
+    "tests/test_estimate.py",
+    "tests/test_normalize.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-backend-cleanup",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly authorizes fixing audited backend issues, removing unused code, preserving QC math and Nathan pipeline, running full operational checks and merging/pushing GitHub. Correct state/config journal consistency, fact-safe optional writer, recovery catch-up, cache retention/backoff, question idempotency, indexed Details lookup, HTTP errors and bounded native decoder/eligibility guards. Retire only proven unused raw-station SMS adapter; preserve supported training/repair functions, frozen reference and all data.",
+  "branch": "codex/backend-cleanup",
+  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json",
+    "terra-input-guards"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "backend/chillwatch/estimate.py",
+    "backend/chillwatch/normalize.py",
+    "backend/chillwatch/sources/cimis.py",
+    "tests/test_backend_input_guards.py",
+    "tests/test_estimate.py",
+    "tests/test_normalize.py",
+    "tests/test_terra*.py",
+    "tests/test_farm_chill_ops*.py",
+    "docs/terra/**",
+    "requirements-terra*.txt",
+    ".github/workflows/terra.yml",
+    "README.md",
+    ".env.example",
+    "scripts/terra-service/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "cd34d60f1bf0873111df205e2f866606d429df3b",
+    "summary": "All audited source repairs integrated and independently reviewed. Native guards preserve valid numerical outputs; farm state, indexed Details, durable questions, runtime journals, bounded source caches/backoff and HTTP semantics repaired. Unused raw-station SMS dispatch removed. Final writer genuinely generates bounded event prose with field-bound quantities/source times and conservative validation; injectable plan generator shares validation without silent API-key fallback.",
+    "evidence": [
+      "PASS final python -B terra.py check --base origin/main --task terra-backend-cleanup against actual 78e835d: all seven configured check groups, records and filesystem. Parent integration owner explicitly coordinated overlapping scope and froze main/service.",
+      "PASS full local non-PostgreSQL backend:715 cases plus8 subtests, including synthetic native training/repair/fault scenario. Final writer/API reconciliation subsequently passed205 focused farm/state/writer/API cases; full final-head PostgreSQL/backend checks are mandatory on CI before merge.",
+      "PASS web production build,4 packaging tests and3 delivery-state tests. Isolated real HTTP/runtime process checked static/API, loopback/session guards,422/405, question identity, owned Details, pure query, restart heartbeat and retained message IDs. SMS disabled; no private configuration or provider request used.",
+      "PASS offline saved-weather QC->Nathan->persistent-event demonstration: ok/unavailable/ok/ok/ok, exactly3 labelled welcome/limited/recovery messages.",
+      "PASS exact valid-input parity over960 estimator hours,48 CIMIS rows,72 legal timestamps and valid temperature aliases. All22 protected QC/repair/pipeline file hashes and6 frozen import manifest hashes unchanged.",
+      "Independent bounded generated-writer review rejected all8 reported quantity/status/temporal/incomplete-generation probes while accepting distinct generated wording. New-source lint and git diff --check pass."
+    ],
+    "uncertainty": "Actual Twilio activation/delivery remains separate; no account changes or texts were made. Generated prose uses conservative English/role checks, not a proof of arbitrary language. Journal path changes fail closed on retained attempts/deliveries/pause; existing files are never moved/dropped. PostgreSQL and portable final-head CI remain integration gates.",
+    "next": "Open PR, require every final-head CI job green, merge/push tested source, and hand exact PR/SHA plus migration rules to parent runtime owner before shared-main/service replacement. Parent follow-on coordination may close this cached task after verified merge."
+  }
+}
+```
 
 ```json
 {
@@ -686,7 +782,6 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   }
 }
 ```
-
 
 ```json
 {

@@ -13,14 +13,16 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 import re
 import sqlite3
+from threading import Lock
 from typing import Callable, Mapping
 
 import httpx
+from .configuration import (DEFAULT_STATE_DIR, JournalSelectionError,
+                            check_sms_journal_selection, read_environment_file, sms_journal_path)
 
 EVENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}\Z")
 SOURCE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,255}\Z")
@@ -32,8 +34,7 @@ TERMINAL_STATUSES = {"delivered", "undelivered", "failed", "canceled"}
 ENV_KEYS = {"TERRA_SMS_ENABLED", "TERRA_SMS_DEMO_ENABLED", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN",
             "TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "API_KEY_SID", "API_KEY_SECRET",
             "TWILIO_FROM_NUMBER", "TERRA_SMS_TO_NUMBER", "TERRA_SMS_DB_PATH", "TERRA_SMS_MAX_PER_DAY"}
-PACKAGE_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DB = PACKAGE_ROOT / ".terra-local" / "sms.sqlite3"
+DEFAULT_DB = DEFAULT_STATE_DIR / "sms.sqlite3"
 
 
 def _utcnow() -> datetime:
@@ -47,10 +48,6 @@ def _stamp(value) -> datetime:
     if result.tzinfo is None or result.utcoffset() is None:
         raise ValueError("An aware timestamp is required")
     return result.astimezone(timezone.utc)
-
-
-def _finite(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 def _mask(value: str) -> str | None:
@@ -72,26 +69,9 @@ def _read_environment(environment: Mapping[str, str]) -> tuple[dict[str, str], l
     filename = environment.get("TERRA_SMS_ENV_FILE", "")
     if filename:
         try:
-            raw = Path(filename).read_bytes()
-            if len(raw) > 65536:
-                raise ValueError("oversized")
-            for line in raw.decode("utf-8-sig").splitlines():
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if line.startswith("export "):
-                    line = line[7:].strip()
-                key, separator, value = line.partition("=")
-                key, value = key.strip(), value.strip()
-                if not separator or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
-                    raise ValueError("invalid assignment")
-                if value.startswith(("'", '"')):
-                    if len(value) < 2 or value[-1] != value[0]:
-                        raise ValueError("invalid quote")
-                    value = value[1:-1]
-                if key in ENV_KEYS:
-                    values[key] = value
-        except (OSError, ValueError, UnicodeError):
+            _, parsed = read_environment_file(filename)
+            values = {key: value for key, value in parsed.items() if key in ENV_KEYS}
+        except ValueError:
             errors.append("env_file_unavailable_or_invalid")
             values = {}
     values.update({key: str(value) for key, value in environment.items() if key in ENV_KEYS})
@@ -112,7 +92,8 @@ class SMSConfig:
     errors: tuple[str, ...] = ()
 
     @classmethod
-    def from_env(cls, environment: Mapping[str, str] | None = None) -> SMSConfig:
+    def from_env(cls, environment: Mapping[str, str] | None = None, *,
+                 state_dir: str | Path | None = None) -> SMSConfig:
         values, errors = _read_environment(os.environ if environment is None else environment)
 
         def boolean(key: str) -> bool:
@@ -149,10 +130,7 @@ class SMSConfig:
             limit = 10
             errors.append("invalid_daily_limit")
         try:
-            db_path = Path(values.get("TERRA_SMS_DB_PATH") or DEFAULT_DB)
-            if not db_path.is_absolute():
-                db_path = PACKAGE_ROOT / db_path
-            db_path = db_path.resolve()
+            db_path = sms_journal_path(values, state_dir)
         except (OSError, ValueError):
             db_path = DEFAULT_DB
             errors.append("invalid_delivery_store_path")
@@ -198,10 +176,15 @@ class SMSDispatcher:
         self._transport = transport
         self._clock = clock
         self._recipient_hash = _digest(config.recipient)
+        self._schema_lock = Lock()
+        self._schema_ready = False
 
     @classmethod
-    def from_env(cls, environment: Mapping[str, str] | None = None, **kwargs) -> SMSDispatcher:
-        return cls(SMSConfig.from_env(environment), **kwargs)
+    def from_env(cls, environment: Mapping[str, str] | None = None, *,
+                 state_dir: str | Path | None = None, **kwargs) -> SMSDispatcher:
+        config = SMSConfig.from_env(environment, state_dir=state_dir)
+        check_sms_journal_selection(config.db_path, state_dir)
+        return cls(config, **kwargs)
 
     @contextmanager
     def _connection(self):
@@ -210,7 +193,19 @@ class SMSDispatcher:
         try:
             db.row_factory = sqlite3.Row
             db.execute("PRAGMA busy_timeout=10000")
-            db.executescript("""
+            if not self._schema_ready:
+                with self._schema_lock:
+                    if not self._schema_ready:
+                        self._initialize_schema(db)
+                        self._schema_ready = True
+            yield db
+        finally:
+            db.close()
+
+    @staticmethod
+    def _initialize_schema(db):
+        """Initialize/migrate once per dispatcher, retaining every legacy row/table."""
+        db.executescript("""
             CREATE TABLE IF NOT EXISTS sms_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sms_delivery (
                 delivery_key TEXT PRIMARY KEY, event_id TEXT NOT NULL, recipient_hash TEXT NOT NULL,
@@ -220,34 +215,27 @@ class SMSDispatcher:
                 attempt_count INTEGER NOT NULL DEFAULT 1, next_attempt_at TEXT, source_event_id TEXT
             );
             CREATE INDEX IF NOT EXISTS sms_event ON sms_delivery(recipient_hash, event_id);
-            CREATE TABLE IF NOT EXISTS sms_live_episode (
-                slot TEXT PRIMARY KEY, event_id TEXT NOT NULL, start_utc TEXT NOT NULL,
-                last_valid_utc TEXT NOT NULL
-            );
             CREATE TABLE IF NOT EXISTS sms_attempt (
                 delivery_key TEXT NOT NULL, attempt_no INTEGER NOT NULL,
                 attempted_at TEXT NOT NULL, outcome TEXT NOT NULL DEFAULT 'sending', error_code TEXT,
                 PRIMARY KEY (delivery_key, attempt_no)
             );
-            """)
-            # Existing local ledgers predate rate-limit retry support. Add the
-            # fields without discarding their no-resend evidence.
-            columns = {row[1] for row in db.execute("PRAGMA table_info(sms_delivery)")}
-            for column, declaration in (("attempt_count", "INTEGER NOT NULL DEFAULT 1"),
-                                        ("next_attempt_at", "TEXT"), ("source_event_id", "TEXT")):
-                if column not in columns:
-                    try:
-                        db.execute("ALTER TABLE sms_delivery ADD COLUMN " + column + " " + declaration)
-                    except sqlite3.OperationalError:
-                        if column not in {row[1] for row in db.execute("PRAGMA table_info(sms_delivery)")}:
-                            raise
-            db.execute("""INSERT OR IGNORE INTO sms_attempt
+        """)
+        # Existing local ledgers predate rate-limit retry support. Add fields
+        # without discarding no-resend evidence or the retired episode table.
+        columns = {row[1] for row in db.execute("PRAGMA table_info(sms_delivery)")}
+        for column, declaration in (("attempt_count", "INTEGER NOT NULL DEFAULT 1"),
+                                    ("next_attempt_at", "TEXT"), ("source_event_id", "TEXT")):
+            if column not in columns:
+                try:
+                    db.execute("ALTER TABLE sms_delivery ADD COLUMN " + column + " " + declaration)
+                except sqlite3.OperationalError:
+                    if column not in {row[1] for row in db.execute("PRAGMA table_info(sms_delivery)")}:
+                        raise
+        db.execute("""INSERT OR IGNORE INTO sms_attempt
                 (delivery_key,attempt_no,attempted_at,outcome,error_code)
                 SELECT delivery_key,attempt_count,attempted_at,status,error_code FROM sms_delivery
                 WHERE attempted_at IS NOT NULL""")
-            yield db
-        finally:
-            db.close()
 
     def _suppressed(self) -> bool:
         if not self.config.db_path.exists():
@@ -487,74 +475,7 @@ class SMSDispatcher:
         except (ValueError, TypeError, KeyError, StopIteration, OSError):
             return self._result(event_id, "blocked", mode="demo", error_code="demo_assessment_unavailable")
 
-    def _eligible_live(self, packet: dict) -> list[tuple[str, dict, dict]]:
-        from terra_qc.reference import REFERENCE_ID, REFERENCE_SHA256
-        if not isinstance(packet, dict) or packet.get("schema_version") != "terra-location-assessment-v1" or packet.get("data_mode") != "current":
-            return []
-        try:
-            provenance, query = packet["provenance"], packet["query"]
-            if provenance["qc_reference_id"] != REFERENCE_ID or provenance["qc_reference_sha256"] != REFERENCE_SHA256:
-                return []
-            source = provenance["live_source"]
-            if source["provider"] != "CIMIS" or source["status"] not in {"refreshed", "cached"} or source.get("failed_station_ids") or source.get("warning"):
-                return []
-            now, as_of, valid = _stamp(self._clock()), _stamp(query["as_of_utc"]), _stamp(query["valid_utc"])
-            maximum = query["max_age_hours"]
-            if not _finite(maximum) or not 0 < maximum <= 6:
-                return []
-            checked, retrieved = _stamp(source["checked_at_utc"]), _stamp(source["retrieved_at_utc"])
-            if not (valid <= as_of <= now and retrieved <= checked <= as_of):
-                return []
-            if now - valid > timedelta(hours=maximum) or now - checked > timedelta(minutes=5) or now - retrieved > timedelta(hours=maximum):
-                return []
-            if _stamp(source["data_through_utc"]) != valid:
-                return []
-            result = []
-            for finding in packet["station_findings"]:
-                if finding["freshness"] != "within_age_limit" or finding["reference_id"] != REFERENCE_ID or finding["reason"] not in {"extreme_departure", "sustained_departure"} or finding["severity"] not in {"moderate", "strong"}:
-                    continue
-                station = finding["station_id"]
-                if isinstance(station, bool) or station not in {6, 226, 139, 212, 235}:
-                    continue
-                start, detected, end = (_stamp(finding[key]) for key in ("start_utc", "detected_at_utc", "end_utc"))
-                if not start <= detected <= end == valid or _stamp(finding["visible_at_utc"]) > as_of:
-                    continue
-                evidence = next((item for item in finding["evidence"] if _stamp(item["timestamp"]) == valid), None)
-                if evidence is None or evidence.get("reference_id") != REFERENCE_ID or evidence.get("observation_available") is not True or evidence.get("source_quality") != "usable" or evidence.get("original_source_flag") != "":
-                    continue
-                if not all(_finite(evidence.get(key)) for key in ("temperature_f", "expected_f", "residual_f")):
-                    continue
-                identity = json.dumps({"station_id": station, "start": start.isoformat(),
-                    "detected": detected.isoformat(), "reference": REFERENCE_ID,
-                    "policy": finding["policy"], "transition": "opening"}, sort_keys=True, allow_nan=False)
-                result.append(("live-" + _digest(identity), finding, evidence))
-            return result
-        except (KeyError, ValueError, TypeError, AttributeError, OverflowError):
-            return []
 
-    def dispatch_assessment(self, packet: dict) -> list[dict]:
-        """Dispatch only fresh server-produced live findings, once per opening.
-
-        This is an internal trusted-service boundary, not a validator for user
-        uploads. Demo/replay packets can only reach a phone through demo().
-        """
-        result = []
-        for event_id, finding, evidence in self._eligible_live(packet):
-            try:
-                event_id = self._canonical_live_event(event_id, finding, evidence)
-                if event_id is None:
-                    continue
-                # Body identity stays with the opening even while readings
-                # continue. A persisted ID is returned before recomputing body.
-                row = self._existing(event_id)
-                if row is not None:
-                    result.append(self._row_result(row, duplicate=True))
-                else:
-                    expires = _stamp(packet["query"]["valid_utc"]) + timedelta(hours=packet["query"]["max_age_hours"])
-                    result.append(self._send(event_id, "live", self._body(finding, evidence, demo=False), expires_at=expires))
-            except (OSError, sqlite3.Error, ValueError, TypeError):
-                result.append(self._result(event_id, "blocked", mode="live", error_code="delivery_store_unavailable"))
-        return result
 
     def dispatch_event(self, envelope: dict) -> dict:
         """Send one immutable, eligible orchard message from a trusted backend.
@@ -634,31 +555,6 @@ class SMSDispatcher:
 
     dispatch_message = dispatch_event
 
-    def _canonical_live_event(self, proposed_id: str, finding: dict, evidence: dict) -> str | None:
-        """Keep one opening while continuous evidence slides out of the fetch window.
-
-        Overlap or hourly adjacency establishes continuity. A gap with no
-        overlapping evidence remains a new incident; this local dispatcher does
-        not invent what happened while the service was absent.
-        """
-        start, valid = _stamp(finding["start_utc"]), _stamp(evidence["timestamp"])
-        slot = _digest(json.dumps({"recipient": self._recipient_hash, "station": finding["station_id"],
-            "reference": finding["reference_id"], "policy": finding["policy"]}, sort_keys=True, allow_nan=False))
-        with self._connection() as db:
-            db.execute("BEGIN IMMEDIATE")
-            previous = db.execute("SELECT * FROM sms_live_episode WHERE slot=?", (slot,)).fetchone()
-            if previous is not None:
-                last_valid = _stamp(previous["last_valid_utc"])
-                if valid < last_valid:
-                    db.commit()
-                    return None  # A superseded service result cannot open a catch-up SMS.
-                if start <= last_valid + timedelta(hours=1):
-                    proposed_id = previous["event_id"]
-                    start = min(start, _stamp(previous["start_utc"]))
-            db.execute("INSERT OR REPLACE INTO sms_live_episode(slot,event_id,start_utc,last_valid_utc) VALUES (?,?,?,?)",
-                       (slot, proposed_id, start.isoformat(), valid.isoformat()))
-            db.commit()
-            return proposed_id
 
     def receipt(self, event_id: str) -> dict:
         """Reconcile only the persisted SID; never issue another send."""
@@ -743,14 +639,18 @@ class SMSDispatcher:
             return {"status": "blocked", "error_code": "delivery_store_unavailable"}
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=["status", "demo", "receipt", "disable", "enable"])
     parser.add_argument("--event-id", help="Stable caller UUID; repeat it to inspect, never duplicate, one attempt")
-    args = parser.parse_args()
+    parser.add_argument("--state-dir", type=Path, help="Shared runtime state directory when using a custom runtime")
+    args = parser.parse_args(argv)
     if args.command in {"demo", "receipt"} and not args.event_id:
         parser.error("--event-id is required for demo and receipt")
-    dispatcher = SMSDispatcher.from_env()
+    try:
+        dispatcher = SMSDispatcher.from_env(state_dir=args.state_dir)
+    except JournalSelectionError as exc:
+        parser.error(str(exc))
     result = getattr(dispatcher, args.command)(args.event_id) if args.command in {"demo", "receipt"} else getattr(dispatcher, args.command)()
     print(json.dumps(result, ensure_ascii=False, allow_nan=False))
 

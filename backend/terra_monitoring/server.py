@@ -1,9 +1,9 @@
 """Local HTTP boundary for current location queries and the built JSON preview."""
 from __future__ import annotations
 
-import argparse
 import json
 import secrets
+import sys
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlsplit
@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.responses import Response
+from starlette.routing import Match
 from starlette.staticfiles import StaticFiles
 
 
@@ -86,8 +87,29 @@ def _service_error(exc: Exception) -> Response:
     return _error("internal_error", "Unable to complete the location query.", 500)
 
 
+def install_error_handlers(app: FastAPI) -> None:
+    """One safe HTTP/validation policy for location, SMS and orchard routes."""
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, exc: RequestValidationError) -> Response:
+        # Validation exceptions contain raw submitted values. Never echo them.
+        if request.url.path.startswith("/api/sms/"):
+            return _error("invalid_sms_request", "Provide only the supported SMS request fields.", 422)
+        if request.url.path == "/api/assess":
+            return _error("invalid_query", "Provide valid coordinates, elevation and supported query fields.", 422)
+        return _error("invalid_request", "Provide supported fields with valid values.", 422)
+
+    @app.exception_handler(HTTPException)
+    async def http_error(request: Request, exc: HTTPException) -> Response:
+        if exc.status_code == 404:
+            return _error("not_found", "The requested resource was not found.", 404)
+        if exc.status_code == 405:
+            return _error("method_not_allowed", "This request method is not supported.", 405)
+        return _error("http_error", "The request could not be completed.", exc.status_code)
+
+
 def create_app(service: QueryService | None = None, web_root: str | Path | None = None,
-               sms_dispatcher: Any = None, farm_monitor: Any = None) -> FastAPI:
+               sms_dispatcher: Any = None, farm_monitor: Any = None,
+               mutation_guard: Any = None) -> FastAPI:
     """Create a local app with an injectable synchronous query service.
 
     Service calls run outside the event loop. The service owns provider keys,
@@ -114,21 +136,7 @@ def create_app(service: QueryService | None = None, web_root: str | Path | None 
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
-    @app.exception_handler(RequestValidationError)
-    async def invalid_request(request: Request, exc: RequestValidationError) -> Response:
-        # Pydantic errors contain raw submitted values, possibly NaN or private
-        # fields. Do not serialize that exception or echo its input.
-        if request.url.path.startswith("/api/sms/"):
-            return _error("invalid_sms_request", "Provide only the supported SMS request fields.", 422)
-        return _error("invalid_query", "Provide valid coordinates, elevation and supported query fields.", 422)
-
-    @app.exception_handler(HTTPException)
-    async def http_error(request: Request, exc: HTTPException) -> Response:
-        if exc.status_code == 404:
-            return _error("not_found", "The requested resource was not found.", 404)
-        if exc.status_code == 405:
-            return _error("method_not_allowed", "This request method is not supported.", 405)
-        return _error("http_error", "The request could not be completed.", exc.status_code)
+    install_error_handlers(app)
 
     @app.get("/api/health")
     async def health() -> Response:
@@ -208,13 +216,15 @@ def create_app(service: QueryService | None = None, web_root: str | Path | None 
         # routes before the API namespace fallback and static app; never create
         # a worker or import farm storage on the basic query/demo path.
         from .farm_ops.api import create_router
-        app.include_router(create_router(farm_monitor, mutation_guard=app.state.local_mutation_guard))
+        app.include_router(create_router(farm_monitor, mutation_guard=mutation_guard or app.state.local_mutation_guard))
 
     # Reserve the API namespace ahead of static serving. An unknown API path
     # must never turn into the UI's index page or a success response.
     @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "TRACE"])
-    async def unknown_api(path: str) -> Response:
-        if path in {"context", "assess", "health", "sms/status", "sms/demo", "sms/disable"} or path.startswith("sms/receipt/"):
+    async def unknown_api(path: str, request: Request) -> Response:
+        # Let the actual registered routes establish known-path/wrong-method
+        # semantics, including optional orchard routes. No shadow endpoint list.
+        if any(route.matches(request.scope)[0] == Match.PARTIAL for route in app.router.routes):
             return _error("method_not_allowed", "This request method is not supported.", 405)
         return _error("not_found", "The requested API endpoint was not found.", 404)
 
@@ -232,15 +242,10 @@ def create_app(service: QueryService | None = None, web_root: str | Path | None 
     return app
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", choices=["127.0.0.1", "localhost", "::1"], default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8512)
-    args = parser.parse_args()
-    if not 1 <= args.port <= 65535:
-        parser.error("port must be between 1 and 65535")
-    import uvicorn
-    uvicorn.run(create_app(), host=args.host, port=args.port)
+def main(argv: list[str] | None = None) -> None:
+    """Compatibility query server: canonical runtime, still no implicit worker."""
+    from .runtime import main as runtime_main
+    runtime_main([*(sys.argv[1:] if argv is None else argv), "--no-worker"])
 
 
 if __name__ == "__main__":

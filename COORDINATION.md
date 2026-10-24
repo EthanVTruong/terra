@@ -69,6 +69,23 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
 
 ```json
 {
+  "kind": "domain",
+  "id": "terra-portability",
+  "owner": "et",
+  "purpose": "Narrow consolidation verification repair: Windows grid-export date label and declared plotting dependency; Nathan retains the grid/interpolation/model algorithms; configured fast check validates scoped coordination, while mandatory full backend CI tests actual export with PostgreSQL and plotting installed",
+  "paths": [
+    "backend/chillwatch/repair/grid.py",
+    "pyproject.toml"
+  ],
+  "depends_on": [],
+  "checks": [
+    "terra-harness"
+  ]
+}
+```
+
+```json
+{
   "kind": "check",
   "id": "terra-harness",
   "argv": [
@@ -173,7 +190,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "base": "229106c251cfa41993a747cde2a40f29e53ed60f",
   "domains": [
     "terra-coordination",
-    "terra-qc-json"
+    "terra-qc-json",
+    "terra-portability"
   ],
   "paths": [
     "AGENTS.md",
@@ -195,7 +213,9 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "web/**",
     ".github/workflows/terra.yml",
     "spec.md",
-    ".gitattributes"
+    ".gitattributes",
+    "backend/chillwatch/repair/grid.py",
+    "pyproject.toml"
   ],
   "depends_on": [
     "terra-qc-json"
@@ -204,9 +224,10 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "artifacts": [],
   "handoff": {
     "revision": "38a7ea6e4e271275731a4e6cce1d2f5df3eeff16",
-    "summary": "Root owns final verification/integration/merge. Independent isolated workers review combined code and branch parity, run full backend verification in separate dev environment, and verify actual JSON/UI flow. No merge yet.",
+    "summary": "Root owns verification, repairs and guarded merge. Independent review confirms worker content is integrated. Restore lost calibrated range and numeric unavailable JSON, apply operation-date eligibility at adapter boundary, and repair existing Windows grid label/missing plotting dependency; Nathan calculation algorithms and frozen QC remain unchanged.",
     "evidence": [
-      "origin/main229106c alreadycontainsNathanbranchPR2; PR3drafthead38a7ea6 ismergeable. Localadapter/UIworkerbranches are separate preserved snapshots whose content will be audited, not blindlymerged."
+      "53 original pure checks and scoped harness pass; updated adapter repair passes58 cases. Browser downloads match CLI and calibrated range is visible; source missing/stale/unknown states remain explicit.",
+      "Full fresh backend environment exposed existing Windows %-d formatting and missing matplotlib packaging defects. These narrow portability repairs are assigned to the isolated backend worker; full Ubuntu/PostgreSQL CI has been added."
     ],
     "uncertainty": "PriorCI intentionally ran53puretests/31harness anddidnotprove fulloriginalbackend. LiveAPI/always-on/SMSremain documentedfuturefeatures. Actualremotehead andfreshCI mustberechecked beforemerge.",
     "next": "Complete fullbackend+UI+independent review, recordresults andminimalrepairs, run requiredcheckagainstactualorigin/main, mergewith expected-head guard andverify main."

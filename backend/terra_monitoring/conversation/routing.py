@@ -171,6 +171,39 @@ def crops_from(text):
         if (prefix and re.fullmatch(r"[A-Z][A-Za-z'-]*(?: [A-Z][A-Za-z'-]*){0,2}", prefix)
                 and not set(prefix.lower().split()) & filler):
             variety = prefix
+    intro = r"^(?:(?:i|we)(?:'m| are| am)?\s+(?:(?:mainly|mostly)\s+)?(?:grow|growing|have)\b\s*|growing\b\s*|(?:my|our)\s+)"
+    body = re.sub(intro, "", text.strip().rstrip(".!"), count=1, flags=re.I)
+    if re.search(r"[;+]|\b(?:with|plus|or)\b|\bas well as\b", body, re.I):
+        return None  # Ask again when crop names and descriptive clauses are ambiguous.
+    if re.search(r",|\band\b|[&/]", body, re.I):
+        # A known alias must not hide custom crops in the same explicit list.
+        # Keep cultivar annotations as metadata rather than an extra crop.
+        list_body = body
+        if explicit:
+            list_body, annotation = re.split(r"\b(?:variety|cultivar)\b", body, maxsplit=1, flags=re.I)
+            if re.search(r",|\band\b|[&/]", annotation, re.I):
+                return None
+            list_body = list_body.rstrip(" ,:=")
+        parts = [part.strip() for part in re.split(r",\s*(?:and\b\s*)?|\band\b|[&/]", list_body, flags=re.I)]
+        if not 1 <= len(parts) <= 12 or any(not part for part in parts):
+            raise ValueError("Provide between one and twelve actual crops")
+        crops = []
+        for part in parts:
+            part = re.sub(intro, "", part, count=1, flags=re.I)
+            if re.search(
+                    r"\b(?:no|not|never|nothing|else|don['’]?t|doesn['’]?t|can['’]?t|won['’]?t|"
+                    r"i|we|they|you|are|is|was|were|will|would|should|could|might|must|"
+                    r"grow|growing|have|had|want|planning|planting)\b|"
+                    r"\b(?:next|last|this)\s+(?:year|season)\b|\bother\s+crops?\b", part, re.I):
+                return None
+            matches = [(match.start(), value) for pattern, value in aliases.items()
+                       if (match := re.search(r"\b(?:" + pattern + r")s?\b", part, re.I))]
+            if matches:
+                crops.extend(value for _, value in sorted(matches))
+            elif re.fullmatch(r"[\w][\w '-]{0,79}", part):
+                crops.append(part.lower())
+            else:
+                return None
     if not crops:
         match = re.fullmatch(r"(?:i (?:grow|have|am growing)|we (?:grow|have)|growing)\s+([\w ,'-]{2,80})[.!]?", text.strip(), re.I)
         if not match:

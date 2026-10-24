@@ -10,7 +10,7 @@
   "branch": "codex/terra-demo-simulation",
   "base": "cb58022",
   "domains": ["terra-coordination", "terra-qc-json"],
-  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "tests/test_terra_full_flow.py", "docs/terra/full-flow-verification/**"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "tests/test_terra_full_flow.py", "docs/terra/demo-simulation.md", "docs/terra/demo-simulation/**", "docs/terra/full-flow-verification/**"],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],

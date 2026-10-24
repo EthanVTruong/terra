@@ -18,6 +18,14 @@ occurred.
 | Davis 83.8°F (+24) | Strong Davis departure; excluded, four remaining peers; no orchard note. |
 | Three stations offline | Two peers, insufficient orchard estimate; exactly one coverage note. |
 
+A separate four-case [coherent warming control](evidence/coherent-warming-controls.json)
+kept all five stations usable. Raising every current station by 5°F or 15°F
+raised the orchard estimate from 59.73°F to 64.73°F or 74.73°F respectively,
+without station findings or grower notes. Relative residuals were unchanged to
+floating-point precision. Heating Davis alone still flagged and excluded Davis.
+The detector distinguishes these tested shared weather changes from an isolated
+station departure.
+
 The natural week contained 452 provider-warning rows and 388 source-usable rows.
 There were 72 usable orchard estimates and 96 insufficient estimates, all reporting
 `fewer_than_3_usable_peers`. One natural suspected Davis episode exceeded its

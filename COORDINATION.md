@@ -876,7 +876,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation*.py",
     "run_terra.py",
     "tests/test_terra_bootstrap.py",
-    "tests/test_terra_weather*.py"
+    "tests/test_terra_weather*.py",
+    "tests/test_terra_simulation_connection.py"
   ],
   "depends_on": [],
   "checks": [

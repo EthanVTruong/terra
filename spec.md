@@ -1,6 +1,6 @@
 # Terra · Always-On Monitoring Agent
 
-The [Tara conversation contract](docs/terra/conversation-contract.md) records the
+The [Terra conversation contract](docs/terra/conversation-contract.md) records the
 accepted grower voice, concise alerts and follow-ups, optional reactions/silence
 and conversational setup requirements. Its integration status remains explicit.
 
@@ -91,11 +91,16 @@ Nathan owns interpolation. Agree a versioned boundary for station IDs, units,
 timestamps, source QC, availability, provenance and model versions before
 integration. Keep interpolated values distinct from measured peer evidence.
 
-Temperature and chill form the first complete delivery path. The wind example
-requires separate wind/gust ingestion, quality handling and variable-specific
-validation before it can be claimed as working. A zero reading alone is not a
-fault rule. Additional severity percentiles, reminders and quiet-hour routing
-need an explicit policy; this checkpoint does not retune the frozen detector.
+Temperature and chill retain their existing delivery path. Independent CIMIS
+relative humidity, hourly average wind and solar radiation now use explicit
+units, per-variable source quality and provisional peer-comparison rules. Their
+findings and data-health states remain separate from temperature QC and orchard
+estimation. Zero calm wind and nighttime solar alone are not faults. Wind gusts,
+crop-risk thresholds and field sensor-fault accuracy have not been established.
+See [the weather contract](docs/terra/weather-contract.md) and
+[simulation handoff](docs/terra/weather-simulation-handoff.md). Additional severity
+percentiles, reminders and quiet-hour routing need an explicit policy; this
+checkpoint does not retune the frozen temperature detector.
 
 ## Demo and completion
 

@@ -7,9 +7,10 @@ import re
 from ..farm_ops.store import encoded, fingerprint, utc
 from .routing import ACK, THANKS, PROMPT, QUESTIONS, LOCAL_INTENTS, crops_from, route
 from .ownership import active, current_owner, owner_status
+from .local_facts import WEATHER_INTENTS
 
 
-_FACT_CONTEXTS = {"temperature", "freshness", "station_findings", "temperature_normal", "weather_history_unavailable"}
+_FACT_CONTEXTS = WEATHER_INTENTS
 
 
 def _weather_context(data):
@@ -175,7 +176,7 @@ class ConversationService:
                     break
             # Match the latest visible proactive note when actual publication
             # metadata establishes recency. Never guess from a replay clock or
-            # let a stored question-answer duplicate replace its Tara context.
+            # let a stored question-answer duplicate replace its Terra context.
             notes = [note for note in self.store.messages(orchard_id)
                      if note.get("kind") == "proactive" and _publication_time(note) is not None]
             if notes:

@@ -480,6 +480,37 @@ function Comparison({
             borderRadius: 8
           }} /><Line dataKey="expected" type="linear" stroke="#8b9b82" strokeWidth={1.6} dot={false} isAnimationActive={false} /><Line dataKey="observed" type="linear" stroke="#292929" strokeWidth={1.7} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div></div>;
 }
+const weatherVariables = [
+  ['relative_humidity_pct', 'Humidity', '%', 100],
+  ['wind_speed_mph', 'Average wind', 'mph', 150],
+  ['solar_radiation_w_m2', 'Solar radiation', 'W/m²', 2000],
+];
+function VariableControl({ station, field, label, unit, max, busy, act }) {
+  const reading = station.weather?.[field];
+  const [value, setValue] = useState(String(reading?.observed ?? ''));
+  const [quality, setQuality] = useState(reading?.source_flag || '');
+  useEffect(() => { setValue(String(reading?.observed ?? '')); setQuality(reading?.source_flag || ''); }, [station.id, reading?.observed, reading?.source_flag]);
+  const valid = value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= max;
+  return <form onSubmit={event => { event.preventDefault(); if (valid) act({type:'weather',station_id:station.id,variable:field,value:Number(value),source_flag:quality}); }}>
+    <label htmlFor={`weather-${field}`}>{label} <span>{unit}</span></label>
+    <div style={{display:'flex',gap:6,margin:'6px 0'}}>
+      <input id={`weather-${field}`} aria-label={`${station.name} ${label}`} type="number" min="0" max={max} step="0.1" value={value} onChange={e=>setValue(e.target.value)} disabled={busy || !station.online} style={{minWidth:0,width:'45%'}} />
+      <select aria-label={`${label} source quality`} value={quality} onChange={e=>setQuality(e.target.value)} disabled={busy || !station.online} style={{minWidth:0,width:'55%'}}><option value="">Usable</option><option value="Y">Source warning</option>{quality && quality !== 'Y' && <option value={quality}>Source flag {quality}</option>}</select>
+    </div>
+    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+      <button className="quiet-button" type="submit" disabled={busy || !station.online || !valid}>Apply</button>
+      <button className="quiet-button" type="button" disabled={busy || !station.online} onClick={()=>act({type:'weather',station_id:station.id,variable:field,value:null,source_flag:''})}>Missing</button>
+      <button className="quiet-button" type="button" disabled={busy} onClick={()=>act({type:'weather_reset',station_id:station.id,variable:field})}>Recorded</button>
+    </div>
+    <p className="small-note" role="status">{reading?.classification === 'suspected_discrepancy' ? 'Station discrepancy' : reading?.status === 'assessable' ? reading?.level === 'moderate' ? 'Departure · awaiting sustained readings' : 'Within comparison policy' : reading?.status === 'low_daylight' ? 'Solar comparisons resume in daylight' : (reading?.reason || 'Unavailable').replaceAll('_',' ')}{reading?.expected != null ? ` · Peers ${number(reading.expected)} ${unit}` : ''}</p>
+  </form>;
+}
+function WeatherControls({station,busy,act}) {
+  return <details className="disclosure"><summary><span>Humidity, wind & solar</span><CaretDown size={12}/></summary><div style={{display:'grid',gap:14,padding:'10px 0'}}>
+    <p className="small-note">Controlled readings persist as hours advance. Source quality and missing readings stay separate from discrepancies.</p>
+    {weatherVariables.map(([field,label,unit,max])=><VariableControl key={`${station.id}:${field}`} station={station} field={field} label={label} unit={unit} max={max} busy={busy} act={act}/>)}
+  </div></details>;
+}
 function StationControl({
   state,
   selected,
@@ -537,7 +568,7 @@ function StationControl({
             station_id: row.id,
             online: !row.online
           });
-        }}><span /></button></div>)}</div><div className="support-summary"><span>Orchard support</span><strong>{support(state.assessment)} of {state.stations.length}</strong></div><p className="control-footnote">Temperature changes apply to this hour only.</p></aside>;
+        }}><span /></button></div>)}</div><div className="support-summary"><span>Orchard support</span><strong>{support(state.assessment)} of {state.stations.length}</strong></div><p className="control-footnote">Temperature changes apply to this hour only.</p><WeatherControls station={s} busy={busy} act={act}/></aside>;
 }
 function StationApp({
   demo

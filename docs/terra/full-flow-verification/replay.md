@@ -25,7 +25,7 @@ live journals are rejected, rather than adopted or reset.
 
 1. In `/terra`, set up a farm using the actual interface available in that build.
    New QA profiles are forced to **injected** mode, retain the supplied geometry,
-   and cannot opt in to real SMS. After the Tara onboarding/profile integration
+   and cannot opt in to real SMS. After the Terra onboarding/profile integration
    is present, its native conversation router attaches automatically and preserves
    supplied crops and variety. Until then, the older coordinate form works but
    cannot supply crop metadata; crop-aware calls fail explicitly.

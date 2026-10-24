@@ -1,4 +1,4 @@
-# Tara onboarding and conversation implementation
+# Terra onboarding and conversation implementation
 
 Status: active implementation goal, authorized by ET on October 24, 2026.
 The [accepted contract](conversation-contract.md) remains the voice and behavior
@@ -25,7 +25,7 @@ reference. Completion requires implemented, verified behavior in the app.
 - Mixed messages containing a real farm question or request must handle that
   substance. An unrelated clause must not turn the app into a general chatbot.
 - Scope is farm setup, supported monitored conditions, chill calculations, source
-  reliability and explanations of Tara's own notes. Unsupported predictions or
+  reliability and explanations of Terra's own notes. Unsupported predictions or
   farm operations receive a concise grounded limitation, not invented advice.
 
 ## Implementation sequence

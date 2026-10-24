@@ -1,6 +1,6 @@
-# Tara in the grower workflow
+# Terra in the grower workflow
 
-Tara opens in the existing monitoring view. The implementation follows the
+Terra opens in the existing monitoring view. The implementation follows the
 [conversation contract](conversation-contract.md) and
 [implementation plan](tara-conversation-plan.md).
 
@@ -45,6 +45,16 @@ also stay local. A gap requires actual matching method, cutoff, adequate coverag
 and enough reference seasons; fixture values such as 180/220 are never defaults.
 Old comparisons retain their year and completed-season meaning.
 
+Humidity, wind speed and solar radiation questions use the saved assessment's
+versioned `weather` section locally, with station IDs, %, mph or W/m² and the
+observation time. These are station observations; the temperature estimator does
+not supply orchard estimates for these variables. Numerical discrepancies use
+explicitly provisional station-to-neighbor rules. Missing readings, source QC
+warnings, stale data and unavailable comparisons remain separate. A valid zero
+solar reading remains zero; low daylight withholds the solar comparison.
+Replies to old weather notes retain their immutable assessment after new
+measurements arrive. Historical humidity/wind/solar comparisons remain unavailable.
+
 Eligible fact explanations reuse Terra's selected ChatGPT plan connection and
 explicit consent. The model receives bounded facts and canonical intent, without
 the raw conversation. Its prose must pass the existing quantity/role validator;
@@ -71,6 +81,8 @@ The local guarded API exposes GET `/api/tara/conversation`, POST `/api/tara/mess
 POST `/api/tara/setup` and POST `/api/tara/reconcile`. The existing SQLite farm store
 also persists conversation turns and requests. No new scientific model, station
 calibration, ingestion run, SMS activation, or closed-app push service is added.
+The product and assistant are named Terra. Legacy `tara` route, storage and file
+identifiers remain compatibility keys so saved conversations and clients keep working.
 
 Verification includes local routing and call counts, actual runtime/provider
 assembly, strict factual fallback, saved setup, retries/concurrency, real process

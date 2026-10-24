@@ -1,0 +1,122 @@
+{
+  "schema_version": "terra-weather-source-audit-v1",
+  "retrieved_at_utc": "2026-10-24T18:52:34.034557+00:00",
+  "sources": [
+    {
+      "label": "sim",
+      "rows": 360,
+      "raw_sha256": "6e71fd758de51c5f1cd5700f9f015d8f5bfe625dca5f85be08a5eeaf00f91575",
+      "variables": {
+        "relative_humidity_pct": {
+          "available": 360,
+          "quality": {
+            "usable": 360
+          },
+          "source_flags": {
+            "": 360
+          },
+          "source_units": {
+            "(%)": 360
+          }
+        },
+        "wind_speed_mph": {
+          "available": 353,
+          "quality": {
+            "usable": 353,
+            "flagged": 7
+          },
+          "source_flags": {
+            "": 353,
+            "I": 7
+          },
+          "source_units": {
+            "(mph)": 360
+          }
+        },
+        "solar_radiation_w_m2": {
+          "available": 360,
+          "quality": {
+            "usable": 360
+          },
+          "source_flags": {
+            "": 360
+          },
+          "source_units": {
+            "(Ly/d)": 360
+          }
+        }
+      },
+      "retrospective_finding_count": 0,
+      "retrospective_low_daylight_station_hours": {
+        "relative_humidity_pct": 0,
+        "wind_speed_mph": 0,
+        "solar_radiation_w_m2": 208
+      },
+      "data_health_reason_counts": {
+        "wind_speed_mph:source_warning": 7,
+        "wind_speed_mph:insufficient_peers": 3
+      },
+      "findings": [],
+      "temperature_overlap": {
+        "compared": 360,
+        "max_absolute_difference_f": 0.0
+      }
+    },
+    {
+      "label": "recent",
+      "rows": 120,
+      "raw_sha256": "342aeea9ccf27c4215f95794aeb0196b9a0cf5e060cb22f843b2ee8bd782864f",
+      "variables": {
+        "relative_humidity_pct": {
+          "available": 120,
+          "quality": {
+            "usable": 120
+          },
+          "source_flags": {
+            "": 120
+          },
+          "source_units": {
+            "(%)": 120
+          }
+        },
+        "wind_speed_mph": {
+          "available": 106,
+          "quality": {
+            "flagged": 14,
+            "usable": 106
+          },
+          "source_flags": {
+            "I": 14,
+            "": 106
+          },
+          "source_units": {
+            "(mph)": 120
+          }
+        },
+        "solar_radiation_w_m2": {
+          "available": 120,
+          "quality": {
+            "usable": 120
+          },
+          "source_flags": {
+            "": 120
+          },
+          "source_units": {
+            "(Ly/d)": 120
+          }
+        }
+      },
+      "retrospective_finding_count": 0,
+      "retrospective_low_daylight_station_hours": {
+        "relative_humidity_pct": 0,
+        "wind_speed_mph": 0,
+        "solar_radiation_w_m2": 75
+      },
+      "data_health_reason_counts": {
+        "wind_speed_mph:source_warning": 14
+      },
+      "findings": []
+    }
+  ],
+  "limits": "Snapshot retrospective parsing/coverage and background burden only; not original publication history or natural fault accuracy. No fitting/tuning."
+}

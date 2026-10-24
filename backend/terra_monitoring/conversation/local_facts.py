@@ -85,7 +85,91 @@ def gap_answer(summary):
     return text, {**values, "difference_hours": difference, "source_date": source.isoformat(), "comparison_date": cutoff.isoformat()}
 
 
-WEATHER_INTENTS = {"temperature", "freshness", "station_findings", "temperature_normal", "weather_history_unavailable"}
+VARIABLE_INTENTS = {"humidity": "relative_humidity_pct", "wind": "wind_speed_mph", "solar_radiation": "solar_radiation_w_m2"}
+WEATHER_INTENTS = {"temperature", "freshness", "station_findings", "temperature_normal", "weather_history_unavailable", "weather_variables", *VARIABLE_INTENTS}
+
+_VARIABLE_LABELS = {"relative_humidity_pct": ("Relative humidity", "%"), "wind_speed_mph": ("Wind speed", "mph"),
+                    "solar_radiation_w_m2": ("Solar radiation", "W/m²")}
+_HEALTH_LABELS = {"source_warning": "a source-quality warning", "source_qc_unknown": "unknown source quality",
+                  "missing_value": "a missing reading", "missing_observation": "a missing reading",
+                  "missing_target_observation": "a missing reading", "stale": "a stale reading",
+                  "insufficient_neighbors": "insufficient usable neighboring readings",
+                  "low_daylight": "insufficient daylight for a solar comparison"}
+
+
+def _variable_weather_answer(intent, weather, facts, *, source_error=False, replay=False, referenced=False):
+    """Use station observations only; never relabel them as orchard estimates.
+
+    Labels and status prose are application-owned. Source warnings are never
+    treated as numerical discrepancies, and missing observations stay absent.
+    """
+    weather = weather if isinstance(weather, dict) else {}
+    selected = [VARIABLE_INTENTS[intent]] if intent in VARIABLE_INTENTS else list(_VARIABLE_LABELS)
+    facts = {**facts, "weather_schema_version": weather.get("schema_version"),
+             "weather_policy_version": weather.get("policy_version"), "weather_variables": [],
+             "weather_findings": [], "weather_data_health": [], "current_conditions_verified": False}
+    stamp = weather.get("valid_time_utc")
+    try:
+        at = _weather_time(stamp) if stamp else None
+    except (ValueError, TypeError, OverflowError):
+        at = None
+    if weather.get("schema_version") != "terra-weather-assessment-v1" or not at:
+        labels = ", ".join(_VARIABLE_LABELS[key][0].lower() for key in selected)
+        return f"Saved {labels} measurements aren't available for this farm yet.", facts
+    phrases = []
+    variables = weather.get("variables", [])
+    findings = [item for item in weather.get("findings", []) if isinstance(item, dict)
+                and item.get("variable") in selected]
+    health = [item for item in weather.get("data_health", []) if isinstance(item, dict)
+              and item.get("variable") in selected]
+    for key in selected:
+        label, unit = _VARIABLE_LABELS[key]
+        variable = next((item for item in variables if isinstance(item, dict) and item.get("variable") == key), {})
+        stations = []
+        for row in variable.get("stations", []):
+            if (not isinstance(row, dict) or not isinstance(row.get("station_id"), int)
+                    or isinstance(row["station_id"], bool) or row["station_id"] < 1):
+                continue
+            stations.append({field: row.get(field) for field in ("station_id", "observed", "expected", "departure", "peer_count", "status", "reason", "classification")})
+        departure_unit = "percentage points" if key == "relative_humidity_pct" else unit
+        facts["weather_variables"].append({"variable": key, "unit": unit, "departure_unit": departure_unit, "stations": stations})
+        readings = []
+        for row in stations[:5]:
+            value, state, reason = row.get("observed"), row.get("status"), row.get("reason")
+            # Unusable values retain their raw evidence elsewhere; no warning
+            # value is presented here as an accepted weather observation.
+            usable = (_finite(value) and value >= 0 and (key != "relative_humidity_pct" or value <= 100)
+                      and state in {"assessable", "low_daylight"})
+            if usable:
+                detail = f"{value:g}{unit}" if unit == "%" else f"{value:g} {unit}"
+                if row.get("classification") == "suspected_discrepancy":
+                    detail += " (suspected station discrepancy)"
+                    if _finite(row.get("expected")) and _finite(row.get("departure")):
+                        expected = f"{row['expected']:g}{unit}" if unit == "%" else f"{row['expected']:g} {unit}"
+                        detail += f", peer reference {expected}, departure {row['departure']:+g} {departure_unit}"
+                elif state == "low_daylight":
+                    detail += " (solar comparison withheld in low daylight)"
+            else:
+                detail = "unavailable"
+                if reason:
+                    detail += " (" + _HEALTH_LABELS.get(reason, "a data-quality or comparison limitation") + ")"
+            readings.append(f"station {row['station_id']}: {detail}")
+        phrases.append(label + (" — " + "; ".join(readings) + "." if readings else " measurements are unavailable."))
+    fields = ("variable", "station_id", "classification", "severity", "observed", "expected", "departure", "unit", "departure_unit", "start_utc", "end_utc", "detected_at_utc")
+    facts["weather_findings"] = [{k: item[k] for k in fields if k in item} for item in findings]
+    facts["weather_data_health"] = [{k: item[k] for k in ("variable", "station_id", "valid_utc", "reason", "source_flag") if k in item} for item in health]
+    text = " ".join(phrases) + f" Readings from {at}."
+    if findings:
+        text += " These are provisional station-to-neighbor discrepancies; the cause is unconfirmed."
+    elif any(row.get("status") == "assessable" for item in facts["weather_variables"] for row in item["stations"]):
+        text += " No discrepancy was flagged by the provisional station comparison."
+    if health:
+        text += " Missing readings and source-quality issues are recorded separately from discrepancies."
+    if source_error:
+        text += " The latest source refresh failed; these saved readings don't verify current conditions."
+    elif facts.get("stale") and not replay and not referenced:
+        text += " These saved readings are stale; current conditions aren't verified."
+    return text, facts
 
 
 def _weather_time(value):
@@ -160,6 +244,8 @@ def weather_answer(intent, monitor, orchard_id, *, evidence_id=None, referenced=
     checked = assessment.get("query", {}).get("as_of_utc") if referenced else status.get("last_checked")
     findings = assessment.get("station_findings", [])
     health = assessment.get("data_health", [])
+    weather_packet = assessment.get("weather")
+    weather_packet = weather_packet if isinstance(weather_packet, dict) else {}
     facts = {"data_mode": status["orchard"]["mode"], "evidence_id": evidence_id,
              "observation_time": stamp, "last_checked": checked,
              "referenced_snapshot": referenced, "current_conditions_verified": not referenced and not replay and available,
@@ -175,6 +261,22 @@ def weather_answer(intent, monitor, orchard_id, *, evidence_id=None, referenced=
                              for item in health]}
     prefix = "Replay only: " if replay else "Saved assessment: " if referenced else ""
     at = _weather_time(stamp) if stamp else None
+    if intent in VARIABLE_INTENTS or intent == "weather_variables":
+        text, facts = _variable_weather_answer(intent, weather_packet, facts,
+            source_error=bool(source_error), replay=replay, referenced=referenced)
+        return prefix + text, facts
+    if intent == "station_findings" and weather_packet.get("schema_version") == "terra-weather-assessment-v1":
+        weather_flags = [item for item in weather_packet.get("findings", []) if isinstance(item, dict)
+                         and item.get("variable") in _VARIABLE_LABELS and isinstance(item.get("station_id"), int)]
+        if weather_flags:
+            details = [f"station {item['station_id']} ({_VARIABLE_LABELS[item['variable']][0].lower()})" for item in weather_flags]
+            details.extend(f"station {item['station_id']} (temperature)" for item in findings if isinstance(item.get("station_id"), int))
+            facts["weather_findings"] = [{k: item[k] for k in ("variable", "station_id", "severity", "detected_at_utc") if k in item} for item in weather_flags]
+            text = "Suspected discrepancies were flagged at " + ", ".join(dict.fromkeys(details)) + (f" at {at}." if at else ".")
+            text += " The additional-variable rules are provisional station comparisons; the cause is unconfirmed."
+            if not available and not replay:
+                text += " Current conditions aren't verified."
+            return prefix + text, facts
     if intent == "temperature":
         if referenced:
             text = (f"The referenced orchard estimate was {usable['temperature_f']:g}°F at {_weather_time(usable['valid_utc'])}."

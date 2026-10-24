@@ -93,7 +93,7 @@ journals explicitly to absolute paths.
 
 ## Accepted product policies
 
-The [Tara conversation contract](conversation-contract.md) carries ET's accepted
+The [Terra conversation contract](conversation-contract.md) carries ET's accepted
 brevity, useful comparisons, date precision, reply/reaction/silence behavior and
 grower setup requirements into the current writer/ChatGPT/UI workflow. Its status
 section distinguishes required behavior from implemented runtime evidence.

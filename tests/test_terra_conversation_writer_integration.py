@@ -40,7 +40,7 @@ def test_eligible_reply_uses_one_plan_call_and_retains_exact_input():
     assert result["provider"] == "chatgpt_plan"
     assert result["text"] == "Estimated chill is 180 hours. As of Jan 14."
     assert len(generator.calls) == 1
-    assert "Tara's short replies" in generator.calls[0]["instructions"]
+    assert "Terra's short replies" in generator.calls[0]["instructions"]
     assert "factual output/placeholder rules" in generator.calls[0]["instructions"]
     assert "How much chill?" not in json.dumps(generator.calls)
     assert source == before

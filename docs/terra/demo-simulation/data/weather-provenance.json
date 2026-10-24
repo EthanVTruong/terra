@@ -1,0 +1,29 @@
+{
+  "schema_version": "terra-demo-weather-source-v1",
+  "file": "weather-variables.json",
+  "sha256": "b1fdfbfd1bc375e77bde9c9978a82c6ed8e756f6238db31d9368ff19452b72b7",
+  "raw_sha256": "6e71fd758de51c5f1cd5700f9f015d8f5bfe625dca5f85be08a5eeaf00f91575",
+  "retrieved_at_utc": "2026-10-24T18:52:34.034557+00:00",
+  "station_ids": [
+    6,
+    139,
+    212,
+    226,
+    235
+  ],
+  "source": "CIMIS current API historical snapshot; fixed PST hour ending",
+  "fields": [
+    "relative_humidity_pct",
+    "wind_speed_mph",
+    "solar_radiation_w_m2"
+  ],
+  "source_dates": [
+    "2026-03-10",
+    "2026-03-12"
+  ],
+  "temperature_overlap": {
+    "compared": 360,
+    "max_absolute_difference_f": 0.0
+  },
+  "publication_visibility": "snapshot_only; original historical publication/correction visibility unknown"
+}

@@ -3,6 +3,46 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-tara-conversation",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly requests a plan and active goal to implement Tara onboarding and actual in-app replies using the existing ChatGPT connection: brief grounded responses, attached thumbs-up acknowledgments, no reply to thanks/other no-op input, and local off-topic handling that consumes no model usage. Diagnose full behavior including relevant farm/chill/alert follow-ups, context, consent, failures and return. Implement, verify and integrate without changing scientific models or external SMS/account consent.",
+  "branch": "codex/tara-conversation",
+  "base": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra_conversation*.py",
+    "tests/test_farm_chill_ops*.py",
+    "web/**",
+    "docs/terra/**",
+    "scripts/terra-service/**",
+    "spec.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "f8f6a61",
+    "summary": "Conversation backend, UI and runtime adapter integrated in isolated root copy with current main ChatGPT/SMS commits. Crop/location/optional browser preference, real composer, attached reactions, silence and positive local scope gate implemented. Current production runtime has not yet been updated.",
+    "evidence": [
+      "Combined conversation tests pass on Windows, including actual spawned-process owner exit and strict no-duplicate recovery.20 web state/delivery/connection tests and production build pass.",
+      "Actual Terra plan weather-support reply passed factual validation in the integrated app. Edge verified onboarding/manual permission fallback, quiet outcomes/reopen, immutable Details lookup and320px layout. Missing totals now use the local unavailable response with zero generator calls; strict validator unchanged.",
+      "Actual combined Edge/HTTP recovery proof: real Windows owner active then exited, zero original request POSTs, one explicit acknowledgment/new uncertainty notice and one fresh question/reply. No account/provider requests, browser errors or320px overflow. Current main merged with both coordination task records retained; provider/auth/SMS contracts and original staged prototype preserved. Local gap arithmetic retains actual cutoff/source year and completed-season meaning."
+    ],
+    "uncertainty": "Exact-head full CI and retained-data main runtime rollout remain pending. Browser notification scope is while Terra is open; no closed-app push or external SMS activation.",
+    "next": "Finish actual browser and plan verification, scoped checks, PR/full CI, then merge and restart existing runtime with its journals/credentials and disabled SMS flags."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "twilio-trial-placeholder",
   "owner": "et",
   "status": "done",
@@ -123,7 +163,7 @@
     "summary": "SMS software handoff ready: fixed-recipient transport, explicit real-detector simulated demo, immutable farm-message delivery, durable attempt/retry/receipt journal and shared guarded server assembly. Ordinary queries remain pure. Integration owner owns combined farm worker/UI merge; no second worker or message queue added.",
     "evidence": [
       "145 transport/envelope tests and58 HTTP/composition tests pass. Full configured scoped check passes on the transport source against actual upstream22d4594; final assembly-hook cases separately pass. Production build and4packaging cases pass; browser disabled-send/setup/focus-return verified; preview8513 healthok and removed raw-send route404.",
-      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPâ†’MockTransportâ†’receiptâ†’pauseâ†’restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
+      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPÃ¢â€ â€™MockTransportÃ¢â€ â€™receiptÃ¢â€ â€™pauseÃ¢â€ â€™restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
       "Actual read-only Twilio account and owned-number APIs both HTTP200: accountactiveTrial, ownedSMSsenders0. Console shows100freeSMS, predefined templates and a trialsharedsender. Requested recipient absent from verified tester list. Recipient entered in Add a verified tester; Verify not pressed; zero OTPs, real SMS or paid actions.",
       "Existing account credentials plus opted-in recipient saved only in ignored private runtime configuration; shared CIMIS environment preserved. Redacted local readiness record available to integration owner. Original Terra staged checkout, Nathan implementation and frozen reference preserved."
     ],
@@ -205,6 +245,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_farm_chill_ops_api.py",
     "tests/test_farm_chill_ops*.py",
     "tests/test_terra_chatgpt*.py",
+    "tests/test_terra_conversation*.py",
     "run_terra.py",
     "tests/test_terra_bootstrap.py"
   ],
@@ -216,6 +257,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-runtime-tests",
     "terra-pipeline-tests",
     "terra-chatgpt-tests",
+    "terra-conversation-tests",
     "terra-setup-tests"
   ]
 }
@@ -391,7 +433,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "evidence": [
       "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
       "Windows and macOS minimal-runtime jobs each passed 64 targeted cases plus 31 harness cases. Production web build and four packaging cases passed. Independent review verified 15 focused regressions and all six source-import hashes plus the frozen reference SHA.",
-      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1â€“41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
+      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1Ã¢â‚¬â€œ41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
       "Two grid and eight synthetic model/scenario cases passed, including all four faults with original assertions, seeds, folds and thresholds. Calendar/fixture coverage needed repair; no numerical algorithm or real-data model refit changed.",
       "GitHub confirmed merged=true at 1d5caf7, containing reviewed head 5ffec23 and prior Nathan main 229106c. The merged tree matched tested source exactly. Original Terra still has the same nine staged entries and numstat counts.",
       "Completion follow-up check passed against actual merged origin/main 1d5caf7 (31 harness + 64 targeted cases). Only .gitignore and this coordination record changed afterward; application source remains identical to tested 5ffec23."
@@ -505,7 +547,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "id": "terra-full-pipeline",
   "owner": "et",
   "status": "active",
-  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataâ†’flagâ†’message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
+  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataÃ¢â€ â€™flagÃ¢â€ â€™message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
   "branch": "codex/terra-end-to-end",
   "base": "37948ed4f76cbbfbef7b4570d8ed06b84c6e8723",
   "domains": [
@@ -917,6 +959,27 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
 }
 ```
 
+```json
+{
+  "kind": "check",
+  "id": "terra-conversation-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_conversation.py",
+    "tests/test_terra_conversation_api.py",
+    "tests/test_terra_conversation_local_facts.py",
+    "tests/test_terra_conversation_recovery.py",
+    "tests/test_terra_conversation_writer_integration.py",
+    "-q"
+  ]
+}
+```
 
 ```json
 {
@@ -961,7 +1024,6 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   }
 }
 ```
-
 
 ```json
 {

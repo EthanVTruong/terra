@@ -2,10 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { EvidencePanel } from "./EvidencePanel";
 import { dataModeLabel, departure, stationName, temperature, timestamp } from "./presentation";
-import { FarmConversation, FarmOverview, useFarmFeed } from "./FarmFeed";
+import { FarmAvailability, FarmNote, FarmOverview, useFarmFeed } from "./FarmFeed";
+import { TaraComposer, TaraConversation, useTaraBrowserAlerts, useTaraConversation } from "./TaraConversation";
+import { writeTaraStorage } from "./tara-state";
 import SmsControls from "./SmsControls";
 import ChatGPTConnection from "./ChatGPTConnection";
 import { usePresence } from "./usePresence";
+import "./tara-integration.css";
 
 const SCHEMA = "terra-location-assessment-v1";
 const ESTIMATE_STATUSES = new Set(["ok", "stale", "insufficient_data"]);
@@ -162,17 +165,29 @@ function AssessmentFacts({ packet, sourceKind, onOpenJson, onOpenEvidence }) {
 }
 
 export function App() {
-  const [view, setView] = useState("assessment");
+  const [view, setView] = useState("monitor");
+  const [taraFarmId, setTaraFarmId] = useState(() => {
+    try { const value = localStorage.getItem("terra.tara.activeFarm"); return value && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : ""; }
+    catch { return ""; }
+  });
+  const [connectionRequest, setConnectionRequest] = useState(0), [connectionStatus, setConnectionStatus] = useState(null);
+  const farmRef = useRef(null);
+  const chooseTaraFarm = useCallback((id) => {
+    setTaraFarmId(id);
+    try { if (id) localStorage.setItem("terra.tara.activeFarm", id); else localStorage.removeItem("terra.tara.activeFarm"); } catch { /* This tab can retain the selection in memory. */ }
+    farmRef.current?.selectOrchard(id);
+  }, []);
+  const addTaraFarm = useCallback((profile) => { farmRef.current?.addOrchard(profile); farmRef.current?.refreshProfiles(); chooseTaraFarm(profile.id); }, [chooseTaraFarm]);
+  const tara = useTaraConversation({ orchardId: taraFarmId, active: true, onFarmCreated: addTaraFarm, onSelectOrchard: chooseTaraFarm });
+  const browserAlerts = Boolean(tara.state?.notifications.enabled && tara.state.notifications.capability === "browser_open");
   const [smsStatus, setSmsStatus] = useState(null);
-  const [monitorSetup, setMonitorSetup] = useState(false);
-  const [orchardName, setOrchardName] = useState("Demo orchard");
-  const [monitoringBusy, setMonitoringBusy] = useState(false);
   const [farmDetails, setFarmDetails] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false), [detailsError, setDetailsError] = useState("");
-  const farm = useFarmFeed(view === "monitor");
-  const detailRequest = useRef({ version: 0, controller: null }), setupIdentity = useRef(null), nearBottom = useRef(true);
-  const orchardNameInput = useRef(null);
+  const farm = useFarmFeed(view === "monitor" || browserAlerts, { pollInBackground: browserAlerts });
+  farmRef.current = farm;
+  const browserAlertError = useTaraBrowserAlerts(tara, farm);
+  const detailRequest = useRef({ version: 0, controller: null }), nearBottom = useRef(true);
   const [entries, setEntries] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [packet, setPacket] = useState(null);
@@ -189,7 +204,7 @@ export function App() {
   const [contextRetry, setContextRetry] = useState(0);
   const [queryOpen, setQueryOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [panelTab, setPanelTab] = useState("temperature");
   const [selectedEvidence, setSelectedEvidence] = useState(null);
   const [draft, setDraft] = useState({ lat: "", lon: "", elevation: "", preset: "" });
@@ -199,7 +214,7 @@ export function App() {
   const fileInput = useRef(null), closeButton = useRef(null), jsonPre = useRef(null), opener = useRef(null);
   const queryTrigger = useRef(null), queryForm = useRef(null), latitudeInput = useRef(null);
   const controlsTrigger = useRef(null), controlsForm = useRef(null), panelTrigger = useRef(null), messageScroll = useRef(null);
-  const userSelection = useRef(false), draftEdited = useRef(false), lastAttempt = useRef(null);
+  const userSelection = useRef(true), draftEdited = useRef(false), lastAttempt = useRef(null);
   const request = useRef({ version: 0, controller: null });
   const indexUrl = new URL(`${import.meta.env.BASE_URL}assessments/index.json`, window.location.origin).href;
 
@@ -308,10 +323,12 @@ export function App() {
   }, [contextRetry]);
 
   useEffect(() => { if (mobileJson) closeButton.current?.focus(); }, [mobileJson]);
-  useEffect(() => { if (monitorSetup) orchardNameInput.current?.focus(); }, [monitorSetup]);
   useEffect(() => {
-    if (farm.orchards.length && !userSelection.current) setView("monitor");
-  }, [farm.orchards]);
+    if (tara.state && (tara.state.orchard_id || "") !== farm.orchardId) farm.selectOrchard(tara.state.orchard_id || "");
+  }, [tara.state?.orchard_id, farm.orchardId, farm.selectOrchard]);
+  useEffect(() => {
+    if (farm.available && tara.state && taraFarmId && !farm.orchards.some((item) => item.id === taraFarmId) && !tara.state.orchards.some((item) => item.id === taraFarmId)) chooseTaraFarm("");
+  }, [farm.available, farm.orchards, tara.state, taraFarmId, chooseTaraFarm]);
   useEffect(() => {
     detailRequest.current.controller?.abort(); detailRequest.current.version += 1;
     setFarmDetails(null); setSelectedMessage(null); setDetailsLoading(false); setDetailsError("");
@@ -322,7 +339,7 @@ export function App() {
       const container = messageScroll.current;
       container?.scrollTo({ top: container.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     });
-  }, [farm.feed?.messages, view]);
+  }, [farm.feed?.messages, tara.state?.turns, view]);
   useEffect(() => { if (queryOpen) latitudeInput.current?.focus(); }, [queryOpen]);
   useEffect(() => { if (controlsOpen) controlsForm.current?.querySelector("select")?.focus(); }, [controlsOpen]);
   useEffect(() => { setSelectedEvidence(null); messageScroll.current?.scrollTo(0, 0); }, [packet]);
@@ -380,7 +397,7 @@ export function App() {
     requestAnimationFrame(() => controlsTrigger.current?.focus());
   }
   function toggleQuery() {
-    setMonitorSetup(false); setControlsOpen(false);
+    setControlsOpen(false);
     if (!queryOpen && !draftEdited.current && packet) {
       const preset = context?.station_presets.find((station) => station.station_id === packet.query.target_station_id);
       setDraft({ lat: String(packet.query.lat), lon: String(packet.query.lon), elevation: String(packet.query.elevation_ft), preset: preset ? String(preset.station_id) : "" });
@@ -389,11 +406,9 @@ export function App() {
   }
   function closeQuery() { setQueryOpen(false); requestAnimationFrame(() => queryTrigger.current?.focus()); }
   function editField(field, value) {
-    setupIdentity.current = null;
     draftEdited.current = true; setQueryError(""); setDraft((previous) => ({ ...previous, [field]: value, preset: "" }));
   }
   function choosePreset(event) {
-    setupIdentity.current = null;
     const preset = context?.station_presets.find((station) => String(station.station_id) === event.target.value);
     draftEdited.current = true; setQueryError("");
     setDraft((previous) => preset ? { lat: String(preset.lat), lon: String(preset.lon), elevation: String(preset.elevation_ft), preset: String(preset.station_id) } : { ...previous, preset: "" });
@@ -411,31 +426,18 @@ export function App() {
     userSelection.current = true;
     request.current.controller?.abort(); request.current.version += 1;
     setLoading(false); setPendingKind(null); setError(""); setNotice(""); setView("monitor"); setQueryOpen(false); setControlsOpen(false);
-    setPanelTab("temperature"); setPanelOpen(true); setMobileJson(false); nearBottom.current = true;
+    setPanelTab("temperature"); setPanelOpen(false); setMobileJson(false); nearBottom.current = true;
   }
 
-  async function createMonitoring(event) {
-    event.preventDefault();
-    if (monitoringBusy) return;
+  async function startTaraFromLocation() {
     try {
-      const values = queryValues(draft), name = orchardName.trim();
-      if (!name || name.length > 80) throw new Error("Enter an orchard name of 1–80 characters.");
-      setMonitoringBusy(true); setQueryError("");
-      const sessionResponse = await fetch("/api/sms/status");
-      if (!sessionResponse.ok) throw new Error("Reconnect to the local Terra service to set up monitoring.");
-      const session = await sessionResponse.json();
-      if (typeof session.control_token !== "string" || !session.control_token) throw new Error("Reload the local page to authorize monitoring setup.");
-      setSmsStatus(session);
-      setupIdentity.current ||= "orchard-" + crypto.randomUUID();
-      const response = await fetch("/api/orchards", { method: "POST", headers: { "Content-Type": "application/json", "X-Terra-SMS-Control": session.control_token }, body: JSON.stringify({ name, orchard_id: setupIdentity.current, lat: values.lat, lon: values.lon, elevation_ft: values.elevation_ft }) });
-      if (!response.ok) throw new Error(response.status === 403 ? "Reload the local page, then retry monitoring setup." : "Monitoring could not be set up. Check the location and retry.");
-      const profile = await response.json();
-      if (typeof profile.id !== "string" || typeof profile.name !== "string") throw new Error("The saved location could not be read. Reload monitoring before retrying.");
-      const returnFocus = queryForm.current?.dataset.open === "true" && (document.activeElement === document.body || queryForm.current.contains(document.activeElement));
-      farm.addOrchard(profile); setFarmDetails(null); setSelectedMessage(null); openMonitor();
-      if (returnFocus) requestAnimationFrame(() => queryTrigger.current?.focus());
-    } catch (reason) { setQueryError(reason instanceof TypeError ? "The local monitoring service could not be reached. Retry setup." : reason.message); }
-    finally { setMonitoringBusy(false); }
+      const values = queryValues(draft);
+      if (!tara.state || tara.locked) throw new Error("Finish the current conversation request first.");
+      if (tara.state.setup.stage === "notifications") throw new Error("Finish choosing notifications before adding another farm.");
+      if (tara.state.setup.stage === "complete" && !(await tara.setup("restart"))) return;
+      writeTaraStorage("terra.tara.v1.location", { name: "", lat: String(values.lat), lon: String(values.lon), elevation: String(values.elevation_ft), source: draft.preset ? "preset" : "manual", confirmed: false });
+      chooseTaraFarm(""); openMonitor();
+    } catch (reason) { setQueryError(reason.message); }
   }
 
   async function openFarmDetails(event, message) {
@@ -447,10 +449,11 @@ export function App() {
     detailRequest.current = task;
     setSelectedMessage(message.id); setFarmDetails(null); setDetailsLoading(true); setDetailsError("");
     try {
-      const response = await fetch("/api/orchards/" + encodeURIComponent(farm.orchardId) + "/messages/" + encodeURIComponent(message.id) + "/details", { signal: task.controller.signal });
+      const detailFarmId = tara.state?.orchard_id || farm.orchardId;
+      const response = await fetch("/api/orchards/" + encodeURIComponent(detailFarmId) + "/messages/" + encodeURIComponent(message.id) + "/details", { signal: task.controller.signal });
       if (!response.ok) throw new Error("The note’s evidence is unavailable. Open Details to retry.");
       const value = await response.json();
-      if (value.message?.id !== message.id || value.message?.orchard_id !== farm.orchardId || !Array.isArray(value.assessments) || !Array.isArray(value.events)) throw new Error("The note’s evidence could not be read.");
+      if (value.message?.id !== message.id || value.message?.orchard_id !== detailFarmId || !Array.isArray(value.assessments) || !Array.isArray(value.events)) throw new Error("The note’s evidence could not be read.");
       if (detailRequest.current.version === task.version && !task.controller.signal.aborted) setFarmDetails(value);
     } catch (reason) { if (detailRequest.current.version === task.version && !task.controller.signal.aborted) setDetailsError(reason.message); }
     finally { if (detailRequest.current.version === task.version) setDetailsLoading(false); }
@@ -482,11 +485,20 @@ export function App() {
   const evidenceComparison = selectedEvidence?.comparison || (!evidenceFinding && packet?.target_comparison.station_id !== null ? packet?.target_comparison : null);
   const querying = loading && pendingKind === "query";
   const previewNote = resultSource?.kind === "query" ? "Provider query · checked on demand" : resultSource?.kind === "file" ? `Local file · ${resultSource.label}` : resultSource?.description || "Saved assessment · no message delivery";
+  const matchingFarm = tara.state?.orchard_id && farm.feed?.orchard_id === tara.state.orchard_id;
+  const fieldNotes = matchingFarm ? farm.feed.messages : [];
+  const latestReplyId = tara.state?.turns.filter((turn) => turn.role === "assistant").at(-1)?.id || null;
+  const usingPlan = connectionStatus?.plan_enabled && connectionStatus?.writer?.connected && !connectionStatus?.writer?.usage_paused && connectionStatus?.writer?.selected_model;
   return <main className={`app-window${showPanel ? " with-artifacts" : ""}${panelMounted ? " panel-mounted" : ""}`}>
     <section className="conversation" inert={mobile && mobileJson ? true : undefined} aria-hidden={mobile && mobileJson ? true : undefined}>
-      <header className="thread-header"><h1 className="brand-wordmark"><img src={`${import.meta.env.BASE_URL}brand/terra-wordmark-1080.png`} alt="terra" /></h1><div className="thread-actions"><span className={`presence${querying ? " is-working" : ""}`} title={querying ? "Checking current station data" : "On-demand location checks"}>{context?.chatgpt_preview ? "Connection preview" : querying ? "Checking…" : view === "monitor" ? farm.feed?.monitor.worker?.heartbeat_status === "fresh" ? "Monitoring" : farm.feed?.monitor.worker?.heartbeat_status === "stale_or_stopped" ? "Updates unavailable" : "On demand" : "Field notes"}</span><ChatGPTConnection /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { setPanelOpen(true); if (mobile) setMobileJson(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
+      <header className="thread-header"><h1 className="brand-wordmark"><img src={`${import.meta.env.BASE_URL}brand/terra-wordmark-1080.png`} alt="terra" /></h1><div className="thread-actions"><span className={`presence${querying ? " is-working" : ""}`} title={querying ? "Checking current station data" : "On-demand location checks"}>{context?.chatgpt_preview ? "Connection preview" : querying ? "Checking…" : view === "monitor" ? tara.state?.monitoring.status === "ready" ? "Monitoring" : tara.state?.setup.stage !== "complete" ? "Farm setup" : "Updates unavailable" : "Field notes"}</span><ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} onStatus={setConnectionStatus} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { setPanelOpen(true); if (mobile) setMobileJson(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
       <div ref={messageScroll} className="message-scroll" aria-busy={view === "monitor" ? farm.loading : loading} onScroll={(event) => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}>
-        {view === "monitor" ? <>{error && userSelection.current && <div className="load-error" role="alert"><p>{error}</p>{retryable && <button onClick={retry}>Retry {lastAttempt.current?.kind === "query" ? "query" : "request"}</button>}</div>}{loading && pendingKind === "query" && <div className="request-status" role="status"><span>Checking location…</span><button onClick={cancel}>Cancel</button></div>}{notice && <p className="request-notice" role="status">{notice}</p>}<FarmConversation farm={farm} onDetails={openFarmDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} detailsError={detailsError} /></> : <>
+        {view === "monitor" ? <>
+          {notice && <p className="request-notice" role="status">{notice}</p>}
+          {matchingFarm && <FarmAvailability farm={farm} />}
+          <TaraConversation conversation={tara} stationPresets={context?.station_presets || []} farm={farm} onSelectOrchard={(id) => { chooseTaraFarm(id); openMonitor(); }} onDetails={openFarmDetails} onOpenConnection={() => setConnectionRequest((value) => value + 1)} fieldNotes={fieldNotes} renderFieldNote={(message) => <FarmNote message={message} onDetails={openFarmDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} />} alertsManaged notificationError={browserAlertError} />
+          {detailsError && <p className="query-error" role="alert">{detailsError}</p>}
+        </> : <>
         {error && <div className="load-error" role="alert"><p>{error}</p>{retryable && <button onClick={retry}><Icon name="refresh" size={14} />{lastAttempt.current?.kind === "query" ? "Retry query" : "Retry"}</button>}</div>}
         {loading && packet && <div className="request-status" role="status"><span>{querying ? "Checking location…" : "Opening assessment…"}<small>Previous result shown below.</small></span>{!queryOpen && <button onClick={cancel}>Cancel</button>}</div>}
         {notice && <p className="request-notice" role="status">{notice}</p>}
@@ -494,17 +506,19 @@ export function App() {
         </>}
       </div>
       <footer className="assessment-controls">
-        {queryMounted && <form ref={queryForm} id="location-query" className="query-panel" data-open={queryOpen} inert={!queryOpen ? true : undefined} noValidate onSubmit={monitorSetup ? createMonitoring : submitQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeQuery(); } }} aria-label="Query location">
-          <div className="query-heading"><strong>{monitorSetup ? "Monitor this location" : "Check a location"}</strong><button type="button" className="icon-button" onClick={closeQuery} aria-label="Close query form"><Icon name="close" /></button></div>
+        {queryMounted && <form ref={queryForm} id="location-query" className="query-panel" data-open={queryOpen} inert={!queryOpen ? true : undefined} noValidate onSubmit={submitQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeQuery(); } }} aria-label="Query location">
+          <div className="query-heading"><strong>Check a location</strong><button type="button" className="icon-button" onClick={closeQuery} aria-label="Close query form"><Icon name="close" /></button></div>
           <label className="query-preset">Location<select value={draft.preset} onChange={choosePreset}><option value="">Custom location</option>{context?.station_presets.map((station) => <option key={station.station_id} value={station.station_id}>{station.name}</option>)}</select></label>
           <div className="coordinate-fields"><label>Latitude<input ref={latitudeInput} type="number" step="any" min="-90" max="90" inputMode="decimal" value={draft.lat} onChange={(event) => editField("lat", event.target.value)} placeholder="38.6000" required /></label><label>Longitude<input type="number" step="any" min="-180" max="180" inputMode="decimal" value={draft.lon} onChange={(event) => editField("lon", event.target.value)} placeholder="−121.8400" required /></label><label>Elevation · ft<input type="number" step="any" inputMode="decimal" value={draft.elevation} onChange={(event) => editField("elevation", event.target.value)} placeholder="70" required /></label></div>
-          {monitorSetup && <label className="orchard-name">Orchard name<input ref={orchardNameInput} value={orchardName} maxLength={80} onChange={(event) => { setOrchardName(event.target.value); setupIdentity.current = null; }} /><small>Phone alerts start off.</small></label>}
           {queryError && <p className="query-error" role="alert">{queryError}</p>}
           {contextLoading ? <p className="query-connection" role="status">Checking weather connection…</p> : contextError || !context?.configured ? <div className="query-connection"><p>{contextError || "Current weather isn’t connected yet. Saved assessments remain available."}</p><button type="button" onClick={() => setContextRetry((value) => value + 1)}>Retry connection</button></div> : <p className="query-connection">CIMIS hourly readings · checked on demand</p>}
-          <div className="query-actions">{farm.available && !monitorSetup && <button type="button" className="setup-link" onClick={() => { setMonitorSetup(true); setQueryError(""); }}>Monitor this location</button>}{querying && <button type="button" className="query-cancel" onClick={cancel}>Cancel</button>}<button className="query-submit" type="submit" disabled={monitorSetup ? monitoringBusy : querying || contextLoading || !context?.configured}>{monitorSetup ? monitoringBusy ? "Setting up…" : "Start monitoring" : querying ? "Checking…" : "Check location"}<Icon name="location" size={14} /></button></div>
+          <div className="query-actions">{farm.available && <button type="button" className="setup-link" onClick={startTaraFromLocation}>Monitor this location</button>}{querying && <button type="button" className="query-cancel" onClick={cancel}>Cancel</button>}<button className="query-submit" type="submit" disabled={querying || contextLoading || !context?.configured}>{querying ? "Checking…" : "Check location"}<Icon name="location" size={14} /></button></div>
         </form>}
-        {controlsMounted && <div ref={controlsForm} className="source-panel" data-open={controlsOpen} inert={!controlsOpen ? true : undefined} aria-label="Assessment sources"><div className="query-heading"><strong>Sources</strong><button className="icon-button" onClick={() => { setControlsOpen(false); controlsTrigger.current?.focus(); }} aria-label="Close saved assessments"><Icon name="close" size={15} /></button></div>{farm.available && <div className="monitor-source"><label>Monitoring<select value={farm.orchardId} onChange={(event) => { farm.selectOrchard(event.target.value); openMonitor(); }}><option value="" disabled>No locations yet</option>{farm.orchards.map((orchard) => <option key={orchard.id} value={orchard.id}>{orchard.name}{orchard.demo_location ? " · demo" : ""}</option>)}</select></label>{farm.orchardId && <button className="open-file" onClick={openMonitor}><Icon name="location" size={16} /><span>Open field notes</span><Icon name="chevron" size={12} /></button>}</div>}<label htmlFor="assessment-example" className="source-label">Saved assessments</label><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()}><Icon name="upload" size={16} /><span>Open assessment JSON</span><span className="file-extension">.json</span></button><p className="preview-note">{previewNote}</p></div>}
-        <div className="composer"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Choose assessment source" title="Saved assessments and local JSON"><Icon name="plus" size={19} /></button><button ref={queryTrigger} className="query-toggle" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query"><span>Check a location</span><span className="composer-send"><Icon name="send" size={15} /></span></button></div>
+        {controlsMounted && <div ref={controlsForm} className="source-panel" data-open={controlsOpen} inert={!controlsOpen ? true : undefined} aria-label="Assessment sources"><div className="query-heading"><strong>Sources</strong><button className="icon-button" onClick={() => { setControlsOpen(false); controlsTrigger.current?.focus(); }} aria-label="Close saved assessments"><Icon name="close" size={15} /></button></div>{farm.available && <div className="monitor-source"><label>Monitoring<select value={farm.orchardId} onChange={(event) => { chooseTaraFarm(event.target.value); openMonitor(); }}><option value="" disabled>No locations yet</option>{farm.orchards.map((orchard) => <option key={orchard.id} value={orchard.id}>{orchard.name}{orchard.demo_location ? " · demo" : ""}</option>)}</select></label><button className="open-file" onClick={openMonitor}><Icon name="location" size={16} /><span>Open Tara</span><Icon name="chevron" size={12} /></button></div>}<label htmlFor="assessment-example" className="source-label">Saved assessments</label><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()}><Icon name="upload" size={16} /><span>Open assessment JSON</span><span className="file-extension">.json</span></button><p className="preview-note">{previewNote}</p></div>}
+        {view === "monitor" ? <>
+          <div className="tara-compose-row"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Choose assessment source"><Icon name="plus" size={19} /></button><TaraComposer conversation={tara} replyTo={selectedMessage} onClearReply={() => setSelectedMessage(null)} /><button ref={queryTrigger} className="icon-button" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query" aria-label="Check a location"><Icon name="location" size={17} /></button></div>
+          <div className="tara-plan-status"><button className="tara-text-button" type="button" onClick={() => setConnectionRequest((value) => value + 1)}>{usingPlan ? "Using ChatGPT plan" : connectionStatus?.writer?.usage_paused ? "ChatGPT writing paused" : "Local replies · connect ChatGPT"}</button>{usingPlan && <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>}</div>
+        </> : <><div className="composer"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Choose assessment source" title="Saved assessments and local JSON"><Icon name="plus" size={19} /></button><button ref={queryTrigger} className="query-toggle" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query"><span>Check a location</span><span className="composer-send"><Icon name="send" size={15} /></span></button></div><button className="tara-text-button tara-view-return" type="button" onClick={openMonitor}>Back to Tara</button></>}
         <input ref={fileInput} type="file" accept=".json,application/json" onChange={openFile} className="sr-only" tabIndex={-1} aria-label="Open local assessment JSON" />
       </footer>
     </section>

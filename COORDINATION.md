@@ -1,5 +1,29 @@
 # Terra integration coordination
 
+```json
+{
+  "kind": "task",
+  "id": "terra-full-flow-verification",
+  "owner": "et",
+  "status": "active",
+  "intent": "Subsequent user-requested goal: independently test final contributor revisions as first-time, returning and skeptical data-operator users; exercise onboarding, held-out simulation through frozen QC/Nathan and monitoring, no-alert controls, proactive UI messages, truthful delivery state and grounded follow-ups. Fix concrete defects and push the reviewed integrated simulation and verification changes after the complete flow passes. Preserve current runtime, credentials and original staged prototype.",
+  "branch": "codex/terra-demo-simulation",
+  "base": "9c3d64c",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "docs/terra/full-flow-verification/**"],
+  "depends_on": ["terra-tara-conversation"],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "d03f74f0a49532a2b7898fe53734b4864e17bdc9",
+    "summary": "Goal active; main9c3d64c merged cleanly into the existing isolated simulation branch. Three read-only subusers inspect data operations, returning-grower dialogue and first-use UX. Other chats still own final ChatGPT and Tara conversation integration; no shared main/runtime/auth/SMS writes from this task.",
+    "evidence": ["Preserved original8520 demo state and both user-facing tabs; no reset or provider call. Runtime source remains separate from final contributor candidates until their handoff."],
+    "uncertainty": "Latest writer PR9 and conversational onboarding branch are not yet final/merged. Real automatic phone delivery remains disabled pending credential readiness; simulated notification and actual in-app message must be distinguished.",
+    "next": "Inspect final contributor state, prepare independent held-out user-flow cases, then test the completed integrated candidate in isolated runtime/state before fixes and push."
+  }
+}
+```
+
 ## Interactive orchard-support simulation
 
 ```json

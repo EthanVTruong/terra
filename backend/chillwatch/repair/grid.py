@@ -218,4 +218,8 @@ def write_grid(df: pd.DataFrame, stations: pd.DataFrame, out_dir: Path, label: s
                                                       "median": float(v["chill_hours"].median()) if len(v) else None,
                                                       "max": float(v["chill_hours"].max()) if len(v) else None}},
                                indent=2, default=str))
-    return {"csv": str(csv), "geojson": str(gj), "png": str(png), "meta": str(meta)}
+    from .grid_html import render_map_html, wrap_document
+
+    page = out_dir / f"{stem}.html"
+    page.write_text(wrap_document(render_map_html(df, stations, label)))
+    return {"csv": str(csv), "geojson": str(gj), "png": str(png), "html": str(page), "meta": str(meta)}

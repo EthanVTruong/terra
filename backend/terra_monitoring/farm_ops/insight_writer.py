@@ -115,22 +115,32 @@ def _check_meaning(packet, text):
     """Reject reversals of the core coverage state without a prose whitelist."""
     normalized = text.lower().replace("’", "'")
     kinds = {event["type"] for event in packet["events"]}
-    if kinds == {"monitoring_limited"}:
+    if {"monitoring_limited", "monitoring_recovered"} <= kinds:
+        # The deterministic mixed-time renderer preserves each source clock.
+        # A single freely phrased state must not collapse opposite transitions.
+        raise ValueError("Opposite coverage transitions need their original chronology")
+    if "monitoring_limited" in kinds:
         if (not re.search(r"\b(weather|coverage|data|support|readings)\b", normalized)
                 or not re.search(r"\b(limited|spotty|patchy|missing|incomplete|unavailable|insufficient)\b|too few|can(?:not|'t)", normalized)
-                or re.search(r"\b(?:estimate|coverage|weather data) (?:is|has) (?:complete|recovered|reliable|restored)\b", normalized)):
+                or re.search(r"\b(?:weather (?:coverage|data|support)|(?:orchard )?estimate) (?:is |has |remains )?(?:complete|recovered|reliable|restored|back|updating)\b|\b(?:complete|recovered|reliable|restored) (?:weather )?(?:coverage|data|support|orchard estimate)\b", normalized)):
             raise ValueError("Coverage limitation was reversed or omitted")
-        if (any(event["severity"] == "strong" for event in packet["events"])
-                and not re.search(r"\b(unavailable|missing)\b|can(?:not|'t) (?:reliably )?(?:update|verify|estimate)", normalized)):
+        losses = [event for event in packet["events"] if event["type"] == "monitoring_limited"]
+        if (any(event["severity"] == "strong" for event in losses)
+                and not re.search(r"\bunavailable\b|can(?:not|'t) (?:reliably )?(?:update|verify|estimate)", normalized)):
             raise ValueError("Continued unavailability was omitted")
-        if (all(event["severity"] != "strong" for event in packet["events"])
-                and re.search(r"\bweather (?:data|coverage) (?:is |remains )?(?:unavailable|absent)\b|can(?:not|'t) update (?:the |your |an? )?(?:orchard )?estimate", normalized)):
+        if (all(event["severity"] != "strong" for event in losses)
+                and re.search(r"\bweather (?:data|coverage|support) (?:is |remains )?(?:unavailable|absent)\b|can(?:not|'t) update (?:the |your |an? )?(?:orchard )?estimate", normalized)):
             raise ValueError("Partial coverage was overstated as full unavailability")
-    if kinds == {"monitoring_recovered"}:
+    if "monitoring_recovered" in kinds:
         if (not re.search(r"\b(weather|coverage|data|support|readings)\b", normalized)
                 or not re.search(r"\b(recovered|back|restored|returned|resumed|updating)\b", normalized)
                 or re.search(r"still missing|can(?:not|'t) update|coverage is unavailable", normalized)):
             raise ValueError("Coverage recovery was reversed or omitted")
+    if "chill_pace" in kinds:
+        if (not re.search(r"\bchill\b", normalized)
+                or not re.search(r"\b(below|behind|slow|slower|slowly|low|lower|lagging|lags)\b", normalized)
+                or re.search(r"\b(?:chill(?: accumulation| pace)?|pace) (?:is |has |remains )?(?:recovered|normal|above|ahead)\b", normalized)):
+            raise ValueError("The supplied low chill pace was reversed or omitted")
     if kinds & {"sensor_flag", "weather_discrepancy"}:
         if not re.search(r"\b(suspected|provisional|unconfirmed|possible|uncertain|unknown|unclear)\b|can(?:not|'t) tell|not sure|not (?:established|confirmed)", normalized):
             raise ValueError("Discrepancy uncertainty was omitted")

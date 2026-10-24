@@ -129,6 +129,51 @@ def test_missing_wind_comparison_does_not_invalidate_orchard_temperature():
     assert len(generator.calls) == 1
 
 
+@pytest.mark.parametrize("text,severity", [
+    ("Weather coverage recovered, and estimated chill remains below its usual pace.", "moderate"),
+    ("Restored weather support leaves estimated chill below its usual pace.", "moderate"),
+    ("Weather data is spotty and estimated chill remains below its usual pace.", "strong"),
+    ("Weather data is unavailable, so we cannot update the orchard estimate; estimated chill remains below its usual pace.", "moderate"),
+    ("Weather data is spotty and the orchard estimate is incomplete.", "moderate"),
+])
+def test_mixed_packets_cannot_reverse_or_omit_the_recorded_core_conditions(text, severity):
+    source = packet(severity=severity)
+    source["events"].append(packet(kind="chill_pace", facts={"hours": 120.0})["events"][0])
+    generator = Generator(completed(text, ids=["event_0", "event_1"]))
+    result = writer(generator).write(source)
+    assert result["provider"] == "template"
+    assert len(generator.calls) == 1
+
+
+def test_mixed_recovery_cannot_claim_weather_support_is_still_unavailable():
+    source = packet(kind="monitoring_recovered", severity="info")
+    source["events"].append(packet(kind="chill_pace", facts={"hours": 120.0})["events"][0])
+    generator = Generator(completed("Weather coverage is unavailable, and estimated chill remains below its usual pace.", ids=["event_0", "event_1"]))
+    result = writer(generator).write(source)
+    assert result["provider"] == "template"
+    assert len(generator.calls) == 1
+
+
+def test_mixed_coverage_loss_and_low_chill_pace_can_be_explained_naturally():
+    source = packet()
+    source["events"].append(packet(kind="chill_pace", facts={"hours": 120.0})["events"][0])
+    text = "Patchy weather coverage leaves the orchard estimate incomplete, while estimated chill remains below its usual pace."
+    generator = Generator(completed(text, ids=["event_0", "event_1"]))
+    result = writer(generator).write(source)
+    assert result["provider"] == "chatgpt_plan"
+    assert result["text"] == text
+
+
+def test_opposite_coverage_transitions_preserve_deterministic_chronology():
+    source = packet()
+    source["events"].append(packet(kind="monitoring_recovered", severity="info")["events"][0])
+    generator = Generator(completed("Weather support is back after an earlier gap.", ids=["event_0", "event_1"]))
+    result = writer(generator).write(source)
+    assert result["provider"] == "template"
+    assert "limited" in result["text"] and "recovered" in result["text"]
+    assert len(generator.calls) == 1
+
+
 @pytest.mark.parametrize("phrase,accepted", [
     ("Your local sensor shows a suspected discrepancy; the cause is unconfirmed.", True),
     ("Your local sensor is broken.", False),

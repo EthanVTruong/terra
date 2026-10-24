@@ -22,6 +22,7 @@ on:
       - spec.md
       - README.md
       - .env.example
+      - scripts/terra-service/**
       - .github/workflows/terra.yml
   workflow_dispatch:
 
@@ -77,7 +78,7 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       TERRA_BRANCH: ${{ github.head_ref || github.ref_name }}
@@ -98,7 +99,7 @@ jobs:
           import subprocess
           import sys
           subprocess.run([sys.executable, '-B', 'terra.py', 'check',
-                          '--base', os.environ['TERRA_BASE'], '--task', 'terra-twilio-sms'], check=True)
+                          '--base', os.environ['TERRA_BASE'], '--task', 'terra-full-pipeline'], check=True)
           if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
               # A manual run may have no diff; still exercise the pure runtime.
               subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests',
@@ -107,7 +108,9 @@ jobs:
                               'pythonpath=backend', 'tests/test_terra_json.py',
                               'tests/test_terra_qc_reference.py', 'tests/test_estimate.py',
                               'tests/test_terra_live.py', 'tests/test_terra_server.py',
-                              'tests/test_terra_sms.py', 'tests/test_terra_sms_server.py', '-q'], check=True)
+                              'tests/test_terra_sms.py', 'tests/test_terra_sms_server.py',
+                              'tests/test_farm_chill_ops.py', 'tests/test_farm_chill_ops_api.py',
+                              'tests/test_terra_runtime.py', 'tests/test_terra_pipeline.py', '-q'], check=True)
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 5

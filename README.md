@@ -35,9 +35,19 @@ After building the web preview, open <http://127.0.0.1:8512>. For frontend
 iteration, Vite proxies `/api` to that same local service. Follow the linked
 runbook for the build, development commands, cache/freshness behavior and tests.
 
-Queries are on demand, with a 120-second response-cache window. This is not a
-continuous monitoring worker or deployed service. Real current
-weather, retained cached data and controlled examples remain explicitly labelled.
+Queries are on demand, with a 120-second response-cache window. Use the combined
+runtime below for persistent monitoring. Real current weather, retained cached
+data and controlled examples remain explicitly labelled.
+
+## Persistent orchard inbox
+
+The [combined local runtime](docs/terra/local-runtime.md) serves the interface and
+API and runs one durable orchard monitor. It stores observations, meaningful
+condition changes and concise grower notes; optionally it dispatches eligible
+notes through Twilio and reconciles receipts with the browser closed. The default
+West Orchard pin is a labelled demonstration location. Create a profile explicitly
+and retain the state directory across restarts. Local inbox publication, provider
+acceptance and phone delivery remain separate states.
 
 ## Phone alerts with Twilio
 

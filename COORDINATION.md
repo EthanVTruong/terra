@@ -797,7 +797,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_chatgpt_replay.py",
     "web/package.json",
     "backend/terra_monitoring/farm_ops/texting.py",
-    "web/src/FarmFeed.jsx"
+    "web/src/FarmFeed.jsx",
+    "README.md"
   ],
   "depends_on": [
     "terra-authorship"
@@ -813,7 +814,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
       "Maincleanup e4292b2 freshlycompletedworker8512 cycle; prior3noteIDs andSMSjournal/preferences preserved, attempts0/deliveries0. RootpreservesnewTara contractmaina9dcc6c; conversationalextensionsremainseparate.",
       "ET reviewed realrenderednotes and chose Keep this concise factual tone. Tara conversation contract preserved by clean mainmerge.",
       "Direct ET correction: should sound just like me texting, skip demoalmonds. Approved Weather data is spotty/estimate incomplete and Weather data is back/estimate updating voice on October24. Previous factual-tone preference superseded.",
-      "Newcropneutralweather-onlyfullsavedweatherQC/Nathan/watch/writer replayproduced2validatedChatGPTnotes,2requests758reportedtokens. Nonecrop/variety/target; noSMS. Quietreplaybannernowdistinguishesoldreadingsfromcurrentavailability; currentmodeunavailablebannerpreserved."
+      "Newcropneutralweather-onlyfullsavedweatherQC/Nathan/watch/writer replayproduced2validatedChatGPTnotes,2requests758reportedtokens. Nonecrop/variety/target; noSMS. Quietreplaybannernowdistinguishesoldreadingsfromcurrentavailability; currentmodeunavailablebannerpreserved.",
+      "GitHubcontributorsAPI200nowlists onlyEthanVTruong andNathan-W123; publishedmainshortlog has64Ethan/39Nathancommits, noassistantauthors. Originalnine stagedentriesunchanged."
     ],
     "uncertainty": "Latest-head integratedchecks/CI and finalmain merge/restartpending. Awaiting usertonefeedback. AutomaticTwilioAPI stilldisabledpendingcredentialrotation; priorConsoleplaceholder wasdeliveredandhandsetconfirmed.",
     "next": "Merge latestmaincontract, reconcileplaceholderPR, completechecks/CI and controlledruntime replacement preservingstate. Keepfutureconversationacceptance separate."

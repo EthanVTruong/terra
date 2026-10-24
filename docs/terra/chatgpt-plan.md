@@ -76,9 +76,18 @@ in the connection control. Plan usage shares the user's existing allowance; it
 does not provide extra tokens or promise a separate per-dollar price.
 
 Detection, event eligibility, measurements, clocks and notification decisions stay
-in Python. The model writes concise clauses from permitted facts; Python renders
-the quantities, orchard name, source time and demo marker. Writer failures retain
-a deterministic fallback. Existing published field notes remain immutable.
+in Python. The normal runtime selects `voice="text"` for coherent proactive
+weather-coverage notes. The model writes a brief text from categorical weather and
+estimate states; names, crops, clocks, counts and technical causes are excluded
+from that model input. State-specific checks reject reversed availability,
+invented advice or quantities, and unrecognized wording. Fallbacks use the same
+approved casual voice, including a stronger message when data is fully missing.
+
+Exact event facts, source clocks and recovery counts remain in `llm_input` and
+Details. The interface labels replay mode outside the bubbles and retains message
+timestamps. Mixed-state updates, questions, noncoverage events and the explicit
+API-key writer retain the earlier time-aware factual renderer until their own
+voice contracts are expanded. Existing published field notes remain immutable.
 
 ## Current verification boundary
 
@@ -97,14 +106,22 @@ failed validation and used `template`. The three replay requests reported 2,026
 total tokens. Earlier adapter diagnostics also made inference requests; this is
 not a claim about total account usage. No SMS was requested by this replay.
 
+After ET approved a more natural texting voice, a separate weather-only replay
+with no chosen crop, variety or agronomic target produced two validated plan-written
+notes from the same real QC/estimator/watch path. Those two requests reported 758
+tokens. It suppresses the setup welcome for this isolated review, keeps explicit
+replay labels, and activates neither a live worker nor SMS. Previously saved
+preview records are preserved in their separate state directory.
+
 The [Tara conversation contract](conversation-contract.md) is preserved separately.
 This slice ships incoming notes and plan connection. Conversational onboarding,
-reactions and silence outcomes remain separate acceptance work; existing source
-times are still rendered in current message prose. A future voice change must
-keep generated and fallback notes consistent and preserve exact evidence.
+reactions and silence outcomes remain separate acceptance work. The coverage-note
+slice now follows the approved short texting style; other note types still need
+their own voice reconciliation. Future changes must keep generated and fallback
+notes consistent and preserve exact evidence.
 
 The isolated preview runs without a monitor worker or SMS transport activation.
-It shows a copied field-note snapshot and leaves the running main app untouched.
+It shows the labelled weather-only replay and leaves existing main messages intact.
 
 Official references:
 

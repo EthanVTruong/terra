@@ -14,8 +14,14 @@ import json
 import math
 from numbers import Integral, Real
 from pathlib import Path
-from statistics import median
 from typing import Any
+
+from .interpolation import POLICY_VERSION as INTERPOLATION_POLICY_VERSION
+from .interpolation import bias as station_bias
+from .interpolation import interpolate
+from .interpolation import level as interpolation_level
+from .interpolation import load_policy as load_interpolation_policy
+from .interpolation import spread as uncertainty_spread
 
 SCHEMA_VERSION = "terra-weather-assessment-v1"
 POLICY_VERSION = "terra-weather-policy-v1"
@@ -328,10 +334,40 @@ def assess_weather(observations, stations, valid_time_utc, as_of_utc, *, max_age
                     reasons=["station_not_operating", *measure["reasons"]])
             cleaned[(sid, stamp, variable)] = measure
 
-    neighbors = {sid: [other for other in sorted(geometry) if other != sid
+    # Point sensors (a grower's own uncalibrated sensors) are judged against the reference
+    # stations but are never their peers, nor part of the measured uncertainty.
+    point_ids = {sid for (sid, _), items in groups.items() if any(row.get("point_sensor") is True for _, row in items)}
+    neighbors = {sid: [other for other in sorted(geometry) if other != sid and other not in point_ids
         and _distance(station, geometry[other]) <= policy["maximum_peer_distance_km"]]
         for sid, station in sorted(geometry.items())}
-    needed = policy["sustained_readings"]
+    interp = load_interpolation_policy()
+
+    def peer_values(sid, stamp, variable):
+        return [(geometry[other], cleaned[(other, stamp, variable)]["observed"]) for other in neighbors[sid]
+                if (other, stamp, variable) in cleaned and cleaned[(other, stamp, variable)]["available"]]
+
+    # Leave-one-out errors over recent hours: each reference station's usual offset from
+    # its interpolated value is its bias; the spread of what remains sets each variable's
+    # band instead of fixed limits. The latest hours stay out of the bias so a new fault
+    # is not absorbed into it.
+    needed = interp["sustained_readings"]
+    window = {stamp for (_, stamp) in groups if valid - timedelta(hours=interp["uncertainty_history_hours"]) < stamp <= valid}
+    bias_cutoff = valid - timedelta(hours=needed)
+    spreads, biases = {}, {}
+    for variable in VARIABLES:
+        errors = defaultdict(list)
+        for stamp in sorted(window):
+            for sid in geometry:
+                measure = cleaned.get((sid, stamp, variable))
+                if sid in point_ids or not measure or not measure["available"]:
+                    continue
+                predicted = interpolate(geometry[sid], peer_values(sid, stamp, variable), interp)
+                if predicted is not None:
+                    errors[sid].append((stamp, measure["observed"] - predicted))
+        for sid, items in errors.items():
+            biases[(sid, variable)] = station_bias([e for stamp, e in items if stamp <= bias_cutoff], interp)
+        spreads[variable] = uncertainty_spread(variable, [e - biases[(sid, variable)] for sid, items in errors.items()
+                                                          for _, e in items], interp, hours=len(window))
     history = [valid - timedelta(hours=i) for i in reversed(range(needed))]
     comparisons = {}
     for stamp in history:
@@ -344,20 +380,23 @@ def assess_weather(observations, stations, valid_time_utc, as_of_utc, *, max_age
                     "status": "unavailable", "reason": measure["reason"] if measure else "missing_observation",
                     "classification": None, "level": "none"}
                 if measure and measure["available"]:
-                    peers = [(other, cleaned[(other, stamp, variable)]["observed"]) for other in neighbors[sid]
-                        if (other, stamp, variable) in cleaned and cleaned[(other, stamp, variable)]["available"]]
-                    current["peer_count"], current["used_station_ids"] = len(peers), [other for other, _ in peers]
-                    if len(peers) < policy["minimum_peers"]:
+                    peers = peer_values(sid, stamp, variable)
+                    used = [other for other in neighbors[sid]
+                            if (other, stamp, variable) in cleaned and cleaned[(other, stamp, variable)]["available"]]
+                    current["peer_count"], current["used_station_ids"] = len(peers), used
+                    expected = interpolate(geometry[sid], peers, interp) if len(peers) >= policy["minimum_peers"] else None
+                    if expected is not None:
+                        expected += biases.get((sid, variable), 0.0)
+                    if expected is None:
                         current["reason"] = "insufficient_peers"
                     else:
-                        expected = float(median(value for _, value in peers))
                         departure = current["observed"] - expected
-                        current.update(expected=expected, departure=departure)
+                        current.update(expected=expected, departure=departure, uncertainty=spreads[variable])
                         if variable == "solar_radiation_w_m2" and expected < variable_policy["minimum_peer_daylight"]:
                             current.update(status="low_daylight", reason="insufficient_daylight_context")
                         else:
-                            level = "strong" if abs(departure) >= variable_policy["extreme_departure"] else "moderate" if abs(departure) >= variable_policy["sustained_departure"] else "none"
-                            current.update(status="assessable", reason="peer_comparison", classification="no_alert", level=level)
+                            current.update(status="assessable", reason="interpolated_comparison", classification="no_alert",
+                                           level=interpolation_level(departure, spreads[variable], interp))
                 comparisons[(sid, stamp, variable)] = current
 
     variables, findings, health = [], [], []
@@ -402,13 +441,16 @@ def assess_weather(observations, stations, valid_time_utc, as_of_utc, *, max_age
                 for key in ("source_flag", "source_value", "source_unit", "quality")}})
         variables.append({"variable": variable, "label": variable_policy["label"],
             "unit": variable_policy["unit"], "departure_unit": variable_policy["departure_unit"],
-            "thresholds": {key: value for key, value in variable_policy.items()
-                if key in {"sustained_departure", "extreme_departure", "minimum_peer_daylight"}},
+            "thresholds": {"uncertainty": spreads[variable],
+                "sustained_departure": interp["band_multiplier"] * spreads[variable],
+                "extreme_departure": interp["extreme_multiplier"] * spreads[variable],
+                **({"minimum_peer_daylight": variable_policy["minimum_peer_daylight"]} if "minimum_peer_daylight" in variable_policy else {})},
             "stations": station_results})
     result = {"schema_version": SCHEMA_VERSION, "policy_version": POLICY_VERSION,
         "validation_status": policy["validation_status"], "valid_time_utc": valid.isoformat(),
         "as_of_utc": as_of.isoformat(), "maximum_age_hours": age,
-        "policy": {key: policy[key] for key in ("minimum_peers", "maximum_peer_distance_km", "sustained_readings")},
+        "policy": {**{key: policy[key] for key in ("minimum_peers", "maximum_peer_distance_km")},
+                   "sustained_readings": interp["sustained_readings"], "interpolation_policy_version": INTERPOLATION_POLICY_VERSION},
         "scope": "observed_station_weather_only", "variables": variables,
         "findings": findings, "data_health": health,
         "audit": {"input_rows": len(supplied), "station_hours": len(groups), "duplicate_rows_collapsed": duplicates,

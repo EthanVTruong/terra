@@ -1,0 +1,26 @@
+{
+  "version": "terra-interpolation-policy-v1",
+  "method": "inverse_distance_weighting_with_leave_one_out_uncertainty",
+  "power": 2.0,
+  "minimum_distance_km": 0.5,
+  "maximum_peer_distance_km": 75.0,
+  "minimum_peers": 3,
+  "uncertainty_history_hours": 24,
+  "minimum_residuals": 10,
+  "minimum_history_hours": 6,
+  "band_multiplier": 2.0,
+  "extreme_multiplier": 3.0,
+  "sustained_readings": 3,
+  "spread_prior": {
+    "temperature_f": 2.0,
+    "relative_humidity_pct": 15.0,
+    "wind_speed_mph": 6.0,
+    "solar_radiation_w_m2": 175.0
+  },
+  "spread_floor": {
+    "temperature_f": 1.0,
+    "relative_humidity_pct": 2.0,
+    "wind_speed_mph": 1.0,
+    "solar_radiation_w_m2": 25.0
+  }
+}

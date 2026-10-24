@@ -1,0 +1,19 @@
+{
+  "schema_version": "terra-verified-placeholder-delivery-v1",
+  "verified_at_utc": "2026-10-24T17:53:18.897522+00:00",
+  "proof_sha256": "3db95c58ef98b4889f3da428dc39ca4c87b175733d7688c4e166d23c15fadae4",
+  "candidate_revision": "089cb6fd14f26a1debacfa4ce645fad486f161cf",
+  "receipt": {
+    "status": "delivered",
+    "mode": "demo",
+    "transport": "twilio",
+    "data_mode": "synthetic",
+    "content_mode": "trial_template",
+    "template_name": "sms_internal_alerts",
+    "provider_status": "delivered",
+    "updated_at_utc": "2026-10-24T17:36:54.421769+00:00",
+    "attempt_count": 1
+  },
+  "handset_received_confirmed": true,
+  "scope": "Existing integration-owner synthetic detector demo sent the predefined trial placeholder; this is separate from historical replay in-app notes. Verification made no send or configuration change."
+}

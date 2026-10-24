@@ -5,7 +5,7 @@
   "kind": "task",
   "id": "terra-full-flow-verification",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "Subsequent user-requested goal: independently test final contributor revisions as first-time, returning and skeptical data-operator users; exercise onboarding, held-out simulation through frozen QC/Nathan and monitoring, no-alert controls, proactive UI messages, truthful delivery state and grounded follow-ups. Fix concrete defects and push the reviewed integrated simulation and verification changes after the complete flow passes. Preserve current runtime, credentials and original staged prototype.",
   "branch": "codex/terra-demo-simulation",
   "base": "cb58022",
@@ -24,15 +24,26 @@
   ],
   "depends_on": [],
   "contracts": [],
-  "artifacts": [],
+  "artifacts": [
+    "docs/terra/full-flow-verification/results.md",
+    "docs/terra/full-flow-verification/held-out-review.md",
+    "docs/terra/full-flow-verification/evidence/final-browser-stages.json",
+    "docs/terra/full-flow-verification/evidence/final-publication-proof.json",
+    "docs/terra/full-flow-verification/evidence/placeholder-delivery-redacted.json"
+  ],
   "handoff": {
-    "revision": "d03f74f0a49532a2b7898fe53734b4864e17bdc9",
-    "summary": "Merged final writer/SMS main cb58022 and committed Tara checkpoint da04c2c into the isolated branch. Root owns one final reconciliation/verification cycle while preserving the Tara owner's branch and runtime. Separate workers now own natural-language routing/crop preservation, grounded local weather replies, and the stale native-route test fixture, each in separate worktrees. Root owns replay writer parity and browser journeys. No shared main/runtime/auth/SMS changes; refresh the contributor head before push and reconcile once if overlapping fixes arrive.",
+    "revision": "37b417fab75c49c03f5f356eabc9090c7d5b75a7",
+    "summary": "Bounded full-flow behavior verification complete; source frozen. Three independent browser grower profiles plus delegated first-time/returning/operator audits verified actual onboarding, real QC/estimator/monitor replay, quiet controls, station exclusion, proactive coverage/recovery notes and immutable grounded follow-ups. This metadata/evidence handoff adds no implementation change. The subsequent user goal remains active until the designated consolidation owner completes the combined final main release with the selected polished UI and newer authoritative upstream layer.",
     "evidence": [
-      "Preserved original8520 demo state and both user-facing tabs; no reset or provider call. Runtime source remains separate from final contributor candidates until their handoff."
+      "All ten scoped groups passed at853336a against cb58022. After final publication ordering at37b417f, affected conversation/farm/full-flow and SMS/runtime/demo suites passed with zero skips;28 UI tests and production build passed. Both web packages passed frozen installs, builds and eight packaging cases.",
+      "Actual slider125F flagged Davis against about46.5F expected; four remaining peers kept orchard usable without an extra grower note. Support loss to two peers published one actual in-app coverage note without refresh; three distinct restored hours produced recovery. Old selected Details and follow-up retained original two-station evidence/time.",
+      "Same-hour source timestamps preserved; new actual publication timestamps order welcome before loss and default follow-up explains latest loss. Saved DOM, API and final screenshots prove37b behavior. Ordinary language/crops/readiness/weather-history/context fixes retain factual/no-call contracts.",
+      "Independent cached Mar16-22 review:840 rows,168 causal hours,72 usable/96 insufficient estimates; explicit small-change and coherent+5/+15 controls stayed quiet, isolated spike flagged. No confirmed fault labels; no universal zero false-positive claim. Source/reference hashes and boundary counterexample retained.",
+      "Read-only verification of existing integration-owner synthetic trial SMS receipt: delivered, one attempt, handset confirmed. Redacted proof separates that placeholder from historical replay notes. No new external SMS/provider/LLM/training or shared live-state mutation in replay; original8520 and8512 preserved.",
+      "No scientific module/reference diff against reviewed cb58022; worker source histories preserved. Results document exact tested revisions, screenshots, selected-UI release boundary and viewport/OS-notification limitations."
     ],
-    "uncertainty": "Final conversational onboarding integration remains in progress in its owner checkout. Real automatic phone delivery remains disabled pending credential readiness; simulated notification and actual in-app message must be distinguished. Independent unfinished-candidate dialogue audit has reproducible ordinary-question failures to retest after final handoff.",
-    "next": "Inspect final contributor state, prepare independent held-out user-flow cases, then test the completed integrated candidate in isolated runtime/state before fixes and push."
+    "uncertainty": "The final combined head must preserve Nathan's newer authoritative model/data changes and pass actual-upstream gates/exact-head CI. This standalone browser capture predates the selected polished visual slice. No new mobile-width or real OS-notification permission test was claimed here. Real trial-template phone delivery is verified separately from historical in-app coverage content. Main integration and one retained-data runtime rollout belong to their designated owners.",
+    "next": "Push this single evidence head and provide its SHA/results to the consolidation owner immediately. Do not merge worker branches or change implementation. Consolidation owner completes final selected-UI review, actual-upstream checks/CI and main; existing runtime owner performs one retained-data rollout."
   }
 }
 ```
@@ -1063,6 +1074,10 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_local_facts.py",
     "tests/test_terra_conversation_recovery.py",
     "tests/test_terra_conversation_writer_integration.py",
+    "tests/test_terra_conversation_natural_language.py",
+    "tests/test_terra_conversation_weather.py",
+    "tests/test_terra_conversation_readiness.py",
+    "tests/test_terra_conversation_timeline.py",
     "-q"
   ]
 }

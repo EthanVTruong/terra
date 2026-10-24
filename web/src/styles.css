@@ -36,6 +36,8 @@ button:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visi
 .message-facts{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 .message-facts small{display:block;font-size:12px;line-height:16px;color:#646464}
 .message-facts strong{display:block;font-size:18px;line-height:24px;font-weight:500;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.message-range{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:8px;font-size:11px;line-height:18px;color:#646464}
+.message-range strong{color:#555;font-size:12px;font-weight:400;font-variant-numeric:tabular-nums}
 .message-departure{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-top:8px;font-size:12px;line-height:20px;color:#646464}
 .message-departure strong{color:#292929;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
 .message-caption{font-size:11px;line-height:17px;color:#777;max-width:300px;margin:6px 0 0;padding-left:12px;overflow-wrap:anywhere}

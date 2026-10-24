@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { authorizationUrl, connectionPhase, connectionPollDelay, connectionStatus, modelCatalog } from "../src/chatgpt-state.js";
+import { authorizationUrl, connectionError, connectionPhase, connectionPollDelay, connectionStatus, modelCatalog } from "../src/chatgpt-state.js";
 
 const NOW = Date.parse("2026-10-24T12:00:00Z");
 const status = (change = {}) => ({ schema_version: "terra-chatgpt-connection-v1", state: "disconnected", plan_enabled: false, active_account_id: null, accounts: [], writer: { connected: false, selected_model: null, usage_paused: false }, ...change });
+
+test("provider permission errors preserve recovery instead of blaming the local session", () => {
+  const error = connectionError(403, { error: { code: "subscription_sharing_user_not_eligible", message: "This account is not eligible." } });
+  assert.equal(error.localSession, false);
+  assert.equal(error.message, "This account is not eligible.");
+  assert.equal(connectionError(403, { error: { code: "http_error" } }).localSession, true);
+  assert.equal(connectionError(429, { error: { code: "subscription_sharing_usage_limit_exceeded", message: "Review app usage." } }).message, "Review app usage.");
+});
 
 test("connection links accept only the exact HTTPS authorization origin", () => {
   assert.equal(authorizationUrl("https://auth.openai.com/oauth/authorize?state=test"), "https://auth.openai.com/oauth/authorize?state=test");

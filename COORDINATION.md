@@ -121,7 +121,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-sms-tests",
     "terra-farm-tests",
     "terra-runtime-tests",
-    "terra-pipeline-tests"
+    "terra-pipeline-tests",
+    "terra-chatgpt-tests"
   ]
 }
 ```
@@ -648,7 +649,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "id": "terra-chatgpt-plan",
   "owner": "et",
   "status": "active",
-  "intent": "ET confirms Terra is open-source and local-first; wants ChatGPT plan sign-in for concise JSON-to-grower inference, with clearly labelled placeholder SMS separate from actual in-app message. Root owns additive auth/provider foundation and reviewable settings slice. Preserve math, immutable notes, original staged files and live main runtime. Cleanup owner owns existing writer/service/runtime repairs; placeholder owner owns SMS/UI transport. Writer-role question pending.",
+  "intent": "Implement user-approved local-first open-source ChatGPT plan connection and concise fact-checked grower wording. Root integrates auth/provider/UI/runtime and isolated replay verification; preserve deterministic QC/Nathan math, immutable notes and original staged files. Cleanup and placeholder owners retain their scopes.",
   "branch": "codex/terra-chatgpt-plan",
   "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
   "domains": [
@@ -664,7 +665,9 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "docs/terra/chatgpt-plan.md",
     "web/src/ChatGPTConnection.jsx",
     "web/src/chatgpt.css",
-    "web/tests/chatgpt*.mjs"
+    "web/tests/chatgpt*.mjs",
+    "web/src/chatgpt-state.js",
+    "web/src/App.jsx"
   ],
   "depends_on": [
     "terra-authorship"
@@ -672,14 +675,36 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
-    "summary": "Official OSS/local auth and inference contract verified. Only additive modules until existing owners hand off. No cached Codex/ChatGPT credentials reused.",
+    "revision": "6761a77d2b5510590bcd6053fb876c15997226f2",
+    "summary": "User completed real OAuth consent; eligible plan connected. Catalog HTTP200 has seven visible models; increased bounded metadata catalog cap to1MiB after actual568400-byte response. Isolated connection preview8517 uses copied notes, no worker and disabledSMS. Genuine writer seam merged separately in cleanup PR6.",
     "evidence": [
-      "User confirms local demo, open source and local first. Main78e835d clean; read-only writer audit forwarded to cleanup owner.",
-      "Official sign-in, models-and-inference, preview-limitations and profiles-and-sessions docs fetched: separate direct-use consent, protected local tokens, account catalog, Responses streamtrue/storefalse/inputarray and unsupported max_output_tokens."
+      "127 auth/provider/API tests pass, including large catalog and Windows DPAPI coverage; six UI helper tests and production build pass.",
+      "Real human sign-in completed with plan_enabled true. No inference requested yet. Fixed public account/attempt IDs and expiry format; preserve sanitized provider permission recovery. Independent provider readiness review found no blocker."
     ],
-    "uncertainty": "Real user consent and account catalog required; writer-role answer pending. Placeholder API credential rotation remains a separate human step.",
-    "next": "Implement isolated auth/provider foundations and mocked tests, show concrete JSON/message/settings preview, then reconcile owner handoffs once before main/runtime edits."
+    "uncertainty": "Actual completed inference and rendered generated note pending. Placeholder automatic API remains disabled pending Twilio credential rotation.",
+    "next": "Merge cleanup main, wire provider to genuine writer and verify actual completed JSON-to-note request; then integrate placeholder PR, run latest-head checks and show reviewable note."
   }
+}
+```
+
+
+```json
+{
+  "kind": "check",
+  "id": "terra-chatgpt-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_chatgpt_auth.py",
+    "tests/test_terra_chatgpt_provider.py",
+    "tests/test_terra_chatgpt_api.py",
+    "-q"
+  ],
+  "timeout": 120
 }
 ```

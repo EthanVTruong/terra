@@ -23,7 +23,7 @@ import httpx
 MODELS_URL = "https://api.openai.com/v1/models"
 RESPONSES_URL = "https://api.openai.com/v1/responses"
 USAGE_URL = "https://chatgpt.com/settings/usage"
-MAX_CATALOG_BYTES = 256_000
+MAX_CATALOG_BYTES = 1_048_576
 MAX_MODELS = 256
 MAX_STREAM_BYTES = 256_000
 MAX_STREAM_EVENTS = 1_024

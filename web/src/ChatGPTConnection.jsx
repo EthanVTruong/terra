@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { UserCircle } from "@phosphor-icons/react";
 import { Icon } from "./Icon";
 import { usePresence } from "./usePresence";
-import { authorizationUrl, CHATGPT_USAGE_URL, connectionPhase, connectionPollDelay, connectionStatus, modelCatalog } from "./chatgpt-state";
+import { authorizationUrl, CHATGPT_USAGE_URL, connectionError, connectionPhase, connectionPollDelay, connectionStatus, modelCatalog } from "./chatgpt-state";
 import "./chatgpt.css";
 
 const CONFIRMED_ACCOUNTS = "terra-chatgpt-plan-confirmed";
@@ -42,8 +42,9 @@ export default function ChatGPTConnection() {
     });
     const value = await response.json().catch(() => null);
     if (!response.ok || value?.error) {
-      if (response.status === 401 || response.status === 403) controlToken.current = null;
-      throw new Error(response.status === 401 || response.status === 403 ? "Reload message writing to reconnect to Terra." : "Message writing couldn’t be updated. Try again.");
+      const error = connectionError(response.status, value);
+      if (error.localSession) controlToken.current = null;
+      throw error;
     }
     return value;
   }, []);
@@ -197,12 +198,13 @@ export default function ChatGPTConnection() {
   const accounts = status?.accounts || [];
   const model = catalog?.models.some((item) => item.slug === catalog.selected_model) ? catalog.selected_model : "";
   const canManage = Boolean(accountId) && phase !== "connecting";
-  const connectLabel = phase === "reauth_required" || phase === "expired" || (phase === "error" && accountId) ? "Reconnect" : "Continue with ChatGPT";
+  const connectLabel = "Continue with ChatGPT";
 
   return <div className="chatgpt-controls" ref={container}>
     <button ref={trigger} type="button" className="icon-button chatgpt-toggle" aria-label="Message writing" title="Message writing" aria-haspopup="dialog" aria-expanded={open} aria-controls="chatgpt-connection-panel" onClick={() => setOpen((value) => !value)}><UserCircle size={18} weight="regular" aria-hidden="true" /></button>
     {mounted && <section id="chatgpt-connection-panel" className="query-panel chatgpt-panel" data-open={open} inert={!open ? true : undefined} role="dialog" aria-label="Message writing" aria-busy={Boolean(busy) || loading}>
       <div className="query-heading"><strong>Message writing</strong><button ref={firstFocus} type="button" className="icon-button" aria-label="Close message writing" onClick={() => close()}><Icon name="close" size={15} /></button></div>
+      {status?.preview_only && <p className="microcopy">Connection preview. Saved field notes stay unchanged.</p>}
 
       {phase === "unavailable" ? <p className="chatgpt-state">{loading ? "Checking message writing…" : "Template notes still work."}</p>
         : phase === "connecting" ? <p className="chatgpt-state" role="status">Finish connecting in your browser.</p>

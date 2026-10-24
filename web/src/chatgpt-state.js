@@ -5,6 +5,17 @@ const optionalString = (value) => value === null || value === undefined || typeo
 
 export const CHATGPT_USAGE_URL = "https://chatgpt.com/settings/usage";
 
+export function connectionError(status, value) {
+  const code = value?.error?.code;
+  const localSession = [401, 403].includes(status) && (!code || code === "http_error" || code === "sms_unauthorized");
+  const message = localSession ? "Reload message writing to reconnect to Terra."
+    : typeof value?.error?.message === "string" ? value.error.message : "Message writing couldn’t be updated. Try again.";
+  const error = new Error(message);
+  error.code = code;
+  error.localSession = localSession;
+  return error;
+}
+
 export function connectionStatus(value) {
   if (!object(value) || value.schema_version !== "terra-chatgpt-connection-v1" || !STATES.has(value.state) || typeof value.plan_enabled !== "boolean" || !optionalString(value.active_account_id) || !Array.isArray(value.accounts) || !object(value.writer)) {
     throw new Error("Message writing is unavailable. Template notes still work.");

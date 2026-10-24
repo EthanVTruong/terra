@@ -80,6 +80,21 @@ def assert_safe(error):
     assert "hours" not in value
 
 
+def test_large_realistic_catalog_keeps_only_visible_display_fields(tmp_path):
+    # The real account catalog includes substantial model metadata. It is not
+    # note content and must fit without persisting prompts or hidden entries.
+    rows = [{**row, "instructions": "PRIVATE-CATALOG-METADATA" * 9_000}
+            for row in CATALOG]
+    assert 568_400 < len(json.dumps({"models": rows}).encode()) < provider.MAX_CATALOG_BYTES
+    instance, _, _, _ = setup_client(tmp_path, catalog=rows, select=False)
+    expected = [{"slug": row["slug"], "display_name": row["display_name"]}
+                for row in CATALOG if row["visibility"] == "list"]
+    assert instance.models() == expected
+    assert "PRIVATE-CATALOG" not in json.dumps(instance._catalog)
+    assert all("PRIVATE-CATALOG" not in path.read_text(encoding="utf-8")
+               for path in tmp_path.glob("*.json"))
+
+
 def test_request_uses_public_oauth_stream_array_without_unsupported_fields(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "PRIVATE-API-KEY")
     instance, requests, _, _ = setup_client(tmp_path)

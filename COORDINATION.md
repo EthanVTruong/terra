@@ -606,7 +606,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "task",
   "id": "terra-ui-fidelity",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User requests a further design pass matching the exact Grok Bot / Fliptexts references, approved lowercase terra wordmark, interaction design and animation polish. Preserve accepted compact conversation, three-value notes, pinned temperature context and the current live assessment contract. Isolated checkout based on the live-query commit; no backend edits, provider ingestion, training, delivery, deployment or changes to another chat's files. Root-authorized second slice: reconcile actual orchard setup/feed/evidence with the existing SMS-owner component. Preserve pure assessment requests, shared local-session guard, incoming-only notes and actual delivery receipts; no real SMS action during UI QA.",
   "branch": "codex/terra-ui-fidelity",
   "base": "7f37e2670103fc2efa83c272e1cab285e3616620",
@@ -623,19 +623,18 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "3e0596a99f877eb1c295a592eebd690a6d814082",
-    "summary": "Visual slice3e0596a passed; combined incoming farm feed/setup/evidence and owner SMS controls now implemented in a second additive UI commit. Build,4 packaging and3 delivery-state cases pass. Root owns backend startup and final unified browser gate; no real SMS action during UI QA.",
+    "revision": "4ff79ce87fa71ac64dd3e13d60e8e33e2baf06b5",
+    "summary": "Visual and combined UI slices complete, plus one focused Details/mobile-trap accessibility repair. Actual unified8512 API verified through8504 UI. Root owns final merge/build/restart/CI and external account readiness.",
     "evidence": [
-      "Actual in-app source inspection plus combined screenshot at .terra-local/ui-fidelity/comparison-final.png. Native target 744x768, approximately 424px chat /320px evidence; 44px header; source font and 14/20,8/12,16/16/16/6 bubble values.",
-      "Approved 1080px logo pair copied byte-identically to web/public/brand; wordmark SHA 48aa13f9b307fc37b9abcc0ab4b064aa358cbea7b97fef530cc7b5544fb13955; manifest/README retained.",
-      "Desktop, 390px and 320px browser checks: exact download=renderedJSON, linked tab/evidence selection, close/reopen, popover/Escape focus, mobile Shift-Tab wrap and opener restoration, current-query keyboard return, unavailable/expected-null rendering and clean final console.",
-      "Actual CIMIS custom estimate 60.1°F and Davis 60.4°F observed /60.0°F expected verified. Separate delayed 503/cancel/disconnected probes retain previous 37.0°F replay; no SMS sent.",
-      "Production build and 4 packaging cases pass. Scoped terra.py check against 7f37e26 passes in shared configured .venv; original minimal .venv lacks pytest. Algorithms/data/contracts unchanged.",
-      "web/design-qa.md passes this presentation scope; native source control behavior, physical touch, OS reduced-motion toggle and external clipboard paste remain explicitly unverified.",
-      "Combined UI uses canonical actual owner feed fixture and SmsControls2ac2beb, keeps initial phone opt-in off, protects source/subscription races and preserves matching loopback Host/Origin through the proxy. GET8512/api/orchards was404 before root runtime replacement; web/design-qa.md explicitly blocks final combined browser readiness."
+      "Exact Grok/Fliptexts source inspection and combined comparison at .terra-local/ui-fidelity/comparison-unified.png; approved1080px assets match their manifest. Native744x768 shell,44px header, source font/bubble values; proposed motion explicitly distinguished.",
+      "Protected UI setup created one Davis Demo orchard, orchard-e8cea869-3bf6-4274-a20b-a4c54c1f9225; API SMS opt-in false. No send/enable/opt-in action during QA.",
+      "Actual current welcome plus new-hour monitoring-limited note persisted; both local-inbox/not_requested. Welcome Details shows60.6F/six stations; displayed full record semantically equals the exact API details object.",
+      "Actual missing current readings and missing historical pace remain unavailable. Ordinary Check location uses pure/api/assess; no false fault or delivered conclusion.",
+      "Desktop/390px/320px evidence, focusable Details, visible-only mobile Tab trap, Escape/opener return, disabled phone controls and fresh console pass. web/design-qa.md final result passed.",
+      "Build,4 packaging tests,3 receipt-state tests and scoped configured checks pass. Original Terra nine staged bootstrap files remain untouched."
     ],
-    "uncertainty": "Static Grok shell does not expose native interaction timings; Terra 220/180ms durations are proposals using the source 350ms widget curve. Original Terra staged bootstrap untouched. Monitoring/SMS routes and delivery readiness are separate root-owned integration, with actual farm response fixture now supplied; provider acceptance must stay distinct from delivery.",
-    "next": "Root cherry-picks the visual and combined UI commits, resolves its old App/SMS presentation conflicts using this explicitly reconciled UI result, boots unified API8512, then requests the focused remaining browser checklist in web/design-qa.md."
+    "uncertainty": "UI verification only for actual disabled phone state; external SMS activation/delivery, physical touch, OS preference switching and external clipboard paste remain separately unverified. Native Grok window motion is unavailable from the article. Immutable example text repeats the demo name (P3 retained).",
+    "next": "Root integrates the final small focus/QA commit, rebuilds/restarts unified8512 and completes latest-head CI. UI scope is frozen; no further feature work is pending."
   }
 }
 ```

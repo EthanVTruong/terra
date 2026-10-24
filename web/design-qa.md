@@ -1,10 +1,14 @@
 # UI fidelity QA — 2026-10-24
 
-final result: blocked
+final result: passed
 
-The independent visual slice at 3e0596a passed. The combined monitoring/phone UI\ncompiles and its receipt-label tests pass, but its final browser gate awaits the\nroot-owned unified API on port8512 (the prior process still returns404 for orchard routes).\n\nScope of the completed visual check: current assessment UI, approved wordmark, reference styling and connected
-location /evidence /saved-assessment interactions. Monitoring inbox and SMS
-integration are separate root-owned feature work.
+The independent visual slice and the combined monitoring/phone UI pass against
+the actual unified API on8512. This covers the UI and the disabled-phone state;
+real SMS delivery remains separately gated by account setup.
+
+Scope: source fidelity, approved wordmark, assessment/query paths, actual orchard
+setup and incoming persisted notes, exact evidence, truthful delivery labels,
+keyboard/mobile behavior and the owner Phone Alerts controls.
 
 ## Compared artifacts
 
@@ -61,28 +65,34 @@ API/browser verification before a complete pipeline readiness claim.
 
 No unresolved P0/P1/P2 issue remains in this presentation scope.
 
-## Combined UI checkpoint (second additive commit)
+## Final unified UI verification
 
-Implemented against the actual owner-generated farm feed fixture and canonical
-orchard API, plus SMS-owner component2ac2beb:
-- Guarded Monitor this location setup, durable orchard source selection, incoming
-  persisted field notes and exact message/details/assessment JSON.
-- Owner-controlled explicit SMS demo/status/receipt/pause, plus guarded orchard
-  opt-in. Initial setup keeps phone alerts off. No real send was performed.
-- Provider-accepted, queued, sent, delivered and local publication remain distinct;
-  three semantic client tests pass. Four packaging cases and production build pass.
-- Abort/version guards protect rapid orchard/detail/subscription changes; failed
-  queries and cancellation remain visible while the monitoring feed is selected.
-- Vite preserves original loopback Host/Origin; the server authorization is unchanged.
+Actual API: http://127.0.0.1:8512; UI: http://127.0.0.1:8504.
+Exactly one labelled Davis demo was created through the protected setup form:
+orchard-e8cea869-3bf6-4274-a20b-a4c54c1f9225. Its SMS opt-in stayed false.
 
-Remaining blocking browser checks against the unified API:
-1. Create/select a labelled demo orchard through Monitor this location; verify
-   shared-token mutation succeeds and initial opt-in remains off.
-2. Read actual persisted notes, worker/source health, coverage/season status; open
-   exact details and confirm source flags are not promoted into orchard alerts.
-3. Recheck ordinary location queries through /api/assess and confirm no send effect.
-4. Verify disabled Phone Alerts state, focus/Escape/outside click, masked setup and
-   no real SMS action. Opt-in/provider-delivery actions require controlled transport
-   or root's separately authorized account verification.
-5. Desktop/mobile/minimum-width feed and evidence, exact record JSON, empty/failure
-   retention, quick source changes, clean fresh console and source comparison.
+| Check | Actual result /evidence |
+| --- | --- |
+| Setup +guard | POST through the original loopback Host/Origin succeeded; focus returned to the query control. No sender/config/token was placed in exported evidence. |
+| Current feed | Persisted welcome note and later real new-hour data-health note appeared. Both remain local inbox /not requested for SMS. |
+| Exact evidence | Welcome opens its frozen60.6°F estimate, six supporting stations and explicit1AM PDT evidence time. Rendered details JSON equals the exact API object without omitted/changed fields; record-equality.txt. |
+| Missing data/history | New-hour unavailable readings remain unavailable. Latest health warning is visible, prior evidence retains its own date. Chill stays unavailable outside the season; historical pace is not shown as zero. |
+| Ordinary query | Check location still uses pure /api/assess. Actual current9UTC publication gap rendered Unavailable with a current-source label. No SMS action was performed. |
+| Phone controls | Actual unconfigured/disabled account state displayed; demo and opt-in stayed disabled/unchecked. Escape restored the bell trigger. No send/enable/opt-in was attempted. |
+| Focus repair | Details remains focusable during its fetch, with a duplicate-request guard. Closed nested disclosures are excluded from the mobile trap. Shift-Tab wraps to the visible Chill and monitoring summary; Escape returns to the actual Details opener. |
+| Responsive |390×844 and320×568 feed/evidence remain usable without horizontal overflow. Background is hidden/inert under the mobile evidence dialog. |
+| Fresh console | A new tab loaded the unified app with zero captured warnings/errors, avoiding historical Vite edit-time messages. |
+| Build/checks | Production build,4 packaging cases,3 semantic delivery-state cases and scoped coordination/configured checks passed. Root separately verifies the merged complete backend/runtime and CI. |
+
+Combined source/implementation comparison:
+../.terra-local/ui-fidelity/comparison-unified.png.
+Actual desktop/mobile/evidence/phone captures use the actual-* files in that
+directory. The three fidelity/focus corrections were re-captured after repair.
+
+Remaining P3/limits: the immutable welcome repeats Demo orchard because that was
+the explicitly labelled example name; text is retained intact. Physical touch,
+OS reduced-motion switching and external clipboard paste are unverified. No
+second orchard was created merely to stress multi-location races; those guards
+were reviewed. Source/native window timings remain unknown where previously
+noted. Actual phone account activation/delivery is a separate readiness gate.
+No unresolved P0/P1/P2 issue remains in this UI scope.

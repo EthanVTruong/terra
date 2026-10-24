@@ -48,7 +48,14 @@ export function EvidencePanel({ packet, record, overview, primaryLabel = "Temper
     if (event.key === "Escape") { event.preventDefault(); onClose(); }
     if (!mobile) return;
     if (event.key !== "Tab") return;
-    const elements = [...event.currentTarget.querySelectorAll("button:not(:disabled), [tabindex='0'], summary")].filter((e) => e.getClientRects().length);
+    const elements = [...event.currentTarget.querySelectorAll("button:not(:disabled), [tabindex='0'], summary")].filter((element) => {
+      const bounds = element.getBoundingClientRect();
+      if (!bounds.width || !bounds.height || element.tabIndex < 0) return false;
+      for (let parent = element.parentElement; parent && parent !== event.currentTarget; parent = parent.parentElement) {
+        if (parent.tagName === "DETAILS" && !parent.open && parent.querySelector(":scope > summary") !== element) return false;
+      }
+      return true;
+    });
     const first = elements[0], last = elements.at(-1);
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }

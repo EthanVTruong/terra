@@ -438,6 +438,7 @@ export function App() {
   }
 
   async function openFarmDetails(event, message) {
+    if (detailsLoading && selectedMessage === message.id) return;
     opener.current = event.currentTarget; setPanelTab("temperature"); setPanelOpen(true);
     if (mobile) setMobileJson(true);
     detailRequest.current.controller?.abort();

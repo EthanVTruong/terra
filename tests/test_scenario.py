@@ -1,5 +1,6 @@
 """Demo scenario on synthetic data: all four faults detected (slow: ~3 min)."""
 
+import pandas as pd
 import pytest
 
 from chillwatch import config
@@ -7,11 +8,15 @@ from chillwatch.context import Context
 from chillwatch.demo.scenario import run_scenario
 from chillwatch.demo.synthetic import make_readings
 from chillwatch.store import MemoryStore
+from chillwatch.timeutil import season_bounds
 
 
 @pytest.mark.slow
 def test_demo_scenario_all_detected(syn_stations, syn_model):
-    r = make_readings(syn_stations, "2025-10-01 09:00", "2025-12-15 08:00", seed=2025)
+    seasons = config.region()["seasons"]
+    start, end = season_bounds("2025-26", seasons["start_mmdd"], seasons["end_mmdd"])
+    end = min(end, start + pd.Timedelta(days=75) - pd.Timedelta(hours=1))
+    r = make_readings(syn_stations, start.tz_localize(None), end.tz_localize(None), seed=2025)
     ctx = Context(MemoryStore(syn_stations, r), syn_model)
     res = run_scenario(config.config_dir() / "scenarios" / "demo_2025_26.yaml", ctx, days=75, echo=lambda s: None)
     m = {x["type"]: x for x in res["matches"]}

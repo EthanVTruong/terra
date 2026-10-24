@@ -27,16 +27,16 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "d4c2a6c489f804ca3a03c31dc308979dc61d40b7",
-    "summary": "All approved source slices are consolidated on one task branch: exact repaired Tara c6797c9, frozen simulation/publication-order source 37b417f, accepted local UI polish and sender main ancestry c95ec46. One bounded reconciliation preserves strict crop/context/date handling, exact-note notification returns, explicit consent and immutable evidence. Persisted first-publication time consistently drives chat ordering, day/clock labels, evidence display context and both sides of the notification-consent boundary. Desktop evidence defaults pinned when current farm/packet content exists and respects explicit closing; mobile sheets remain independent.",
+    "revision": "b7081cf",
+    "summary": "All approved source slices are consolidated on one task branch: exact repaired Tara c6797c9, frozen simulation/publication-order source 37b417f, accepted local UI polish and sender main ancestry c95ec46. One bounded reconciliation preserves strict crop/context/date handling, exact-note notification returns, explicit consent and immutable evidence. Persisted first-publication time consistently drives chat ordering, day/clock labels, evidence display context and both sides of the notification-consent boundary. Desktop evidence defaults pinned when current farm/packet content exists and respects explicit closing; mobile sheets remain independent. The exact user-accepted Station lab balance at 71627c1 is included with its checked source history; further creative work remains separate.",
     "evidence": [
       "Affected backend validation passes all eleven conversation files plus full-flow, farm and state cases with no reported failures or skips. Main production build and packaging pass; 47 pure/helper UI cases pass. Two optional native browser cases were not configured in this run and are not counted as passes; the Tara owner separately verified its native App regressions.",
       "Independent code review cleared combined crop routing, immutable weather references, source-specific old-alert dates, explicit selected-farm consent, publication-time fallback, legacy ordering and desktop/mobile pin isolation. Its one remaining consent-boundary mapping issue was fixed and regressed with March source clocks and October publication clocks before release freeze.",
       "Earlier isolated browser proof verified actual crop-to-confirmed-location onboarding, declined notifications, saved crop answers, quiet reopening and zero browser errors. The temporary preview was stopped with its test state and screenshot retained. Final combined UI review remains an explicit gate.",
       "All source branches and the unrelated uncommitted Terra prototype remain preserved. No private configuration, credential, SMS opt-in, provider request, live runtime or numerical module/reference was changed by this consolidation."
     ],
-    "uncertainty": "The demo owner is finalizing evidence-only metadata for the frozen ordering source. Complete current-head scoped checks, exact-head CI, final UI review, main publication and the primary owner runtime rollout remain pending.",
-    "next": "Consume final demo evidence metadata without changing frozen implementation, run actual c95ec46-base scoped gates and exact-head CI in parallel, obtain UI review, merge and push main, then hand the final SHA/tree to the exclusive live-runtime owner for preserved-state verification."
+    "uncertainty": "Exact-head CI, final current-base scoped receipts, combined UI review and main publication remain the release gates. The simulation owner retains an evidence-only follow-up on its preserved branch; all frozen implementation through 37b417f is already included and that metadata is not a critical-path dependency. The primary owner retains the final live rollout.",
+    "next": "Publish this one frozen candidate for exact-head CI while local current-base checks and final UI review finish; merge and push main only when all required gates pass. Send the completeness receipt and final SHA/tree to the exclusive live-runtime owner for one preserved-state rollout. Retain the simulation owner evidence branch for a later documentation-only handoff if it is not ready in this batch."
   }
 }
 ```
@@ -67,13 +67,16 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "d03f74f0a49532a2b7898fe53734b4864e17bdc9",
-    "summary": "Merged final writer/SMS main cb58022 and committed Tara checkpoint da04c2c into the isolated branch. Root owns one final reconciliation/verification cycle while preserving the Tara owner's branch and runtime. Separate workers now own natural-language routing/crop preservation, grounded local weather replies, and the stale native-route test fixture, each in separate worktrees. Root owns replay writer parity and browser journeys. No shared main/runtime/auth/SMS changes; refresh the contributor head before push and reconcile once if overlapping fixes arrive.",
+    "revision": "37b417fab75c49c03f5f356eabc9090c7d5b75a7",
+    "summary": "Frozen controlled replay, actual production-interface bridge, natural-language/crop/weather follow-ups, immutable old-note context and publication-order repair are included in the consolidated candidate alongside final Tara and approved UI. The functional source is committed; the source owner retains final browser evidence and task metadata separately. Source data, scientific reference, normal live process and original 8520 session were preserved.",
     "evidence": [
-      "Preserved original8520 demo state and both user-facing tabs; no reset or provider call. Runtime source remains separate from final contributor candidates until their handoff."
+      "Source owner passed all ten configured groups on the pre-ordering implementation, then 386 affected conversation/farm/API cases and 28 UI/build cases for the bounded persisted-publication ordering repair. Consolidation subsequently combined final Tara source and passed all affected conversation/full-flow/farm/state cases plus 47 pure/helper UI cases and the production build.",
+      "Actual controlled checks establish quiet original/coherent-warming frames, a flagged excluded station with usable orchard peers, coverage loss producing one grower note, three distinct subsequent usable hours before recovery, and old loss Details retaining two supporting stations after current support recovers to five. These are controlled behavioral checks, not natural-fault accuracy labels.",
+      "The replay uses held-out March 2026 observations, isolated journals, local factual wording and disabled external delivery. Its simulated phone card is separate from the independently verified actual trial placeholder: ignored trial-api-success proof records provider delivered, one attempt and direct handset confirmation. Live configuration belongs solely to the primary owner.",
+      "First-publication wall timestamps now order new payloads without changing created_at, source/query clocks, IDs or immutable prior payloads. Consolidation applies the same validated publication/fallback mapping to presentation and notification consent; source-specific old-alert evidence remains unchanged."
     ],
-    "uncertainty": "Final conversational onboarding integration remains in progress in its owner checkout. Real automatic phone delivery remains disabled pending credential readiness; simulated notification and actual in-app message must be distinguished. Independent unfinished-candidate dialogue audit has reproducible ordinary-question failures to retest after final handoff.",
-    "next": "Inspect final contributor state, prepare independent held-out user-flow cases, then test the completed integrated candidate in isolated runtime/state before fixes and push."
+    "uncertainty": "The owner is finalizing evidence-only browser artifacts and its own completion record on the preserved simulation branch. Final combined CI/UI review, publication and primary-owner runtime verification are tracked by terra-product-consolidation and terra-full-pipeline. No required known implementation is held solely in that metadata follow-up.",
+    "next": "Finish the source-owner evidence handoff without changing frozen implementation. Consolidation completes its exact-head release gates and publishes main; the primary owner performs the single retained-state live rollout. Keep actual trial delivery and isolated simulated phone behavior clearly distinguished."
   }
 }
 ```

@@ -486,3 +486,26 @@ def test_definitive_failed_transport_does_not_reenter_pending_drain(watch):
     assert len(monitor.notifications_pending()) == 1
     monitor.record_transport_receipt(key, {"source_event_id": key, "status": "failed", "error_code": "400"})
     assert monitor.notifications_pending() == []
+
+
+def test_trial_placeholder_receipt_survives_restart_without_replacing_the_finding(watch):
+    monitor, p = watch
+    apply(monitor, p)
+    message = monitor.store.messages(p["id"])[0]
+    monitor.record_transport_receipt(message["id"], {
+        "source_event_id": message["id"], "status": "provider_accepted", "provider_status": "queued",
+        "content_mode": "trial_template", "template_name": "sms_internal_alerts",
+        "transport": "twilio", "data_mode": "current",
+        "updated_at_utc": HOUR.isoformat(), "private_secret": "never retain this",
+    })
+    restarted = Monitor(Store(monitor.store.path), clock=lambda: HOUR + timedelta(seconds=10))
+    restarted.record_transport_receipt(message["id"], {
+        "source_event_id": message["id"], "status": "delivered", "provider_status": "delivered",
+        "updated_at_utc": (HOUR + timedelta(seconds=10)).isoformat(),
+    })
+    saved = restarted.delivery_status(message)
+    assert saved["status"] == "delivered" and saved["content_mode"] == "trial_template"
+    assert saved["template_name"] == "sms_internal_alerts" and "private_secret" not in saved
+    assert saved["transport"] == "twilio" and saved["data_mode"] == "current"
+    assert restarted.store.message(message["id"])["text"] == message["text"]
+    assert restarted.store.message(message["id"])["llm_input"] == message["llm_input"]

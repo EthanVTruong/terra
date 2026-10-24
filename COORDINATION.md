@@ -7,7 +7,7 @@
   "kind": "task",
   "id": "terra-bean-location-polish",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "Latest direct ET correction: restore a short location message followed by the polished Use my location button; replace the face crop with a full-head transparent Terra cutout peeking above a small rounded bean backing. Incorporate the shared UI into main through the sole integrator.",
   "branch": "codex/terra-peek-receipt",
   "base": "96c1bb1",
@@ -26,13 +26,15 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "96c1bb1",
-    "summary": "New correction isolated on a sibling task branch in the same protected worktree. Original durable greeting fix and native location action preserved. No App/menu/auth/simulation edits.",
+    "revision": "19ae2510dd871bd96843578349c4118b398a8b36",
+    "summary": "Latest ET correction implemented: native location message restored above the single polished button. Receipt uses a separate rounded bean backing and a transparent full-head Terra derivative with visible overflow/contain; no horizontal face crop. Durable greeting, native setup guards and original approved logo assets preserved. No App/menu/auth/simulation changes.",
     "evidence": [
-      "Transparent derivative generated with built-in imagegen from the approved cube, full head visible; original assets unchanged."
+      "Final production build,51UIhelper and4packaging cases pass;2existing optional browser cases skipped. Scoped records/filesystem validation and independent finite review clear.",
+      "Actual isolated8542 browser verified persisted greeting, user message, restored location message, one Use my location action and uncropped peeking character; clean675px viewport. Screenshot C:/Users/mreth/.codex/visualizations/2026/10/24/01a16f75-4321-7d63-b72c-4b0bd9fb7e82/terra-peek-receipt-final.png.",
+      "Built-in imagegen transparent derivative saved as web/public/brand/terra-peek-receipt.png; prompt/provenance in adjacent markdown.1254px RGBA alpha extrema0..255 confirmed using bundled runtime. Original assets unchanged."
     ],
-    "uncertainty": "Visual verification and exact finite source handoff pending. Main integration remains with Consolidate branches into main.",
-    "next": "Preview, build/check and deliver the finite peeking-receipt/restored-message patch; verify source acceptance into the common UI."
+    "uncertainty": "Combined main integration and live activation remain with the sole source/runtime owners; no actual location permission, terrain, account or SMS action was used for this visual verification.",
+    "next": "Deliver frozen exact commit/tree to source owner for common main UI. Preserve asset/proof through canonical move and await merged-source confirmation."
   }
 }
 ```

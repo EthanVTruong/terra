@@ -130,14 +130,20 @@ def context_packet(service, *, text, selected, context, reply_to=None, setup_ove
             source_note_id=referenced_note["id"], source_time=referenced_note.get("created_at"),
             event_ids=list(referenced_note.get("event_ids", [])))
         event_ids = list(dict.fromkeys(referenced_note.get("event_ids", [])))
-    if referenced_turn and referenced_turn.get("role") == "assistant":
+    prior_answer = next((turn for turn in reversed(turns) if turn.get("role") == "assistant"
+                         and turn.get("data", {}).get("source_facts")), None) if not reply_to else None
+    fact_turn = referenced_turn if referenced_turn and referenced_turn.get("role") == "assistant" else prior_answer
+    if fact_turn:
         # Only app-supplied, previously cited facts become reference facts.
         # A user turn is conversational context, never authoritative evidence.
-        for index, fact in enumerate(referenced_turn.get("data", {}).get("source_facts", [])[:4]):
+        source_facts = fact_turn.get("data", {}).get("source_facts", [])
+        source_facts = source_facts if isinstance(source_facts, list) else []
+        for index, fact in enumerate(source_facts[:4]):
             if not isinstance(fact, dict) or not isinstance(fact.get("text"), str):
                 continue
-            add("reference_cited_" + str(index), fact["text"], scope="reference",
-                evidence_id=fact.get("evidence_id"), event_ids=list(fact.get("event_ids", [])))
+            add(("reference_cited_" if reply_to else "prior_answer_") + str(index), fact["text"], scope="reference",
+                evidence_id=fact.get("evidence_id"), event_ids=list(fact.get("event_ids", [])),
+                source_time=fact.get("source_time") or _published(fact_turn), source_note_id=fact_turn["id"])
     if selected and (reply_to or context.get("weather_reference")):
         if len(evidence_ids) > 1:
             add("reference_ambiguity", "The referenced note contains several saved assessments. Ask which reading is meant; do not substitute the latest assessment.", scope="reference")

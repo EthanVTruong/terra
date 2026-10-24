@@ -186,3 +186,29 @@ def test_credentials_and_geometry_in_user_dialogue_are_redacted(saved):
     body = json.dumps(value)
     assert "38.5500" not in body and "-121.8000" not in body and "secretvalue" not in body and "sk-1234567890abcd" not in body
     assert "[private location]" in value["request"]["text"] and "[private credential]" in value["request"]["text"]
+
+
+def test_implicit_followup_retains_prior_authoritative_citations_separately(saved):
+    service, monitor, profile, clock = saved
+    retain(monitor, profile, clock, temperature=40)
+    first = collect(service, profile["id"], "What is the temperature?")
+    cited = by_id(first)["current_temperature"]
+    original_evidence = cited["evidence_id"]
+    with monitor.store.connect(write=True) as db:
+        previous = service._turn("engine-prior:assistant", "assistant", "The orchard estimate was 40°F.", HOUR.isoformat(),
+                                 data={"intent": "conversation", "focus": "current_temperature", "source_facts": [cited]})
+        service._put(db, profile["id"], previous)
+        # A necessary clarification may follow the earlier evidence-bearing answer.
+        clarification = service._turn("engine-question:assistant", "assistant", "Do you mean that orchard estimate?", HOUR.isoformat(),
+                                      data={"intent": "conversation", "focus": "temperature", "source_facts": []})
+        service._put(db, profile["id"], clarification)
+    clock[0] += timedelta(hours=1)
+    retain(monitor, profile, clock, temperature=55)
+    followup = collect(service, profile["id"], "Yes, what does that imply?")
+    facts = by_id(followup)
+    assert "55" in facts["current_temperature"]["text"]
+    assert "40" in facts["prior_answer_0"]["text"] and "55" not in facts["prior_answer_0"]["text"]
+    assert facts["prior_answer_0"]["scope"] == "reference"
+    assert facts["prior_answer_0"]["evidence_id"] == original_evidence
+    assert facts["prior_answer_0"]["source_note_id"] == "engine-prior:assistant"
+    assert facts["prior_answer_0"]["source_time"]

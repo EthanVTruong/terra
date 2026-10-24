@@ -78,8 +78,12 @@ def synthetic_dry_run(n_stations: int = 30, echo: Callable[[str], None] = print,
     out_dir = out_dir or config.data_dir() / "demo" / "synthetic"
     os.environ["CHILLWATCH_DATA_DIR"] = str(out_dir)
     st = make_stations(n_stations)
-    frames = [make_readings(st, f"{y}-10-01 09:00", f"{y + 1}-04-01 08:00", seed=y) for y in (2021, 2022)]
-    frames.append(make_readings(st, "2025-10-01 09:00", "2026-04-01 08:00", seed=2025))
+    seasons = config.region()["seasons"]
+    frames = []
+    for year in (2021, 2022, 2025):
+        season = f"{year}-{str(year + 1)[2:]}"
+        start, end = season_bounds(season, seasons["start_mmdd"], seasons["end_mmdd"])
+        frames.append(make_readings(st, start.tz_localize(None), end.tz_localize(None), seed=year))
     store = MemoryStore(st, pd.concat(frames, ignore_index=True))
     echo("SYNTHETIC DATA - pipeline dry run only")
     bundle = train(store, seasons=["2021-22", "2022-23"], version="synthetic", loso_folds=3,

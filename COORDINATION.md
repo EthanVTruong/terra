@@ -8,7 +8,7 @@
   "status": "active",
   "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner.",
   "branch": "codex/terra-consolidate-main",
-  "base": "c95ec46a49f928ef3d5ea0403273173997988feb",
+  "base": "098ebe07f3c62af6ecd451f59952bc7d98f01f15",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -27,16 +27,17 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "b7081cf",
+    "revision": "469612541419ad5937eca6724d9ce792d72846ee",
     "summary": "All approved source slices are consolidated on one task branch: exact repaired Tara c6797c9, frozen simulation/publication-order source 37b417f, accepted local UI polish and sender main ancestry c95ec46. One bounded reconciliation preserves strict crop/context/date handling, exact-note notification returns, explicit consent and immutable evidence. Persisted first-publication time consistently drives chat ordering, day/clock labels, evidence display context and both sides of the notification-consent boundary. Desktop evidence defaults pinned when current farm/packet content exists and respects explicit closing; mobile sheets remain independent. The exact user-accepted Station lab balance at 71627c1 is included with its checked source history; further creative work remains separate.",
     "evidence": [
       "Affected backend validation passes all eleven conversation files plus full-flow, farm and state cases with no reported failures or skips. Main production build and packaging pass; 47 pure/helper UI cases pass. Two optional native browser cases were not configured in this run and are not counted as passes; the Tara owner separately verified its native App regressions.",
       "Independent code review cleared combined crop routing, immutable weather references, source-specific old-alert dates, explicit selected-farm consent, publication-time fallback, legacy ordering and desktop/mobile pin isolation. Its one remaining consent-boundary mapping issue was fixed and regressed with March source clocks and October publication clocks before release freeze.",
       "Earlier isolated browser proof verified actual crop-to-confirmed-location onboarding, declined notifications, saved crop answers, quiet reopening and zero browser errors. The temporary preview was stopped with its test state and screenshot retained. Final combined UI review remains an explicit gate.",
-      "All source branches and the unrelated uncommitted Terra prototype remain preserved. No private configuration, credential, SMS opt-in, provider request, live runtime or numerical module/reference was changed by this consolidation."
+      "All source branches and the unrelated uncommitted Terra prototype remain preserved. No private configuration, credential, SMS opt-in, provider request, live runtime or numerical module/reference was changed by this consolidation.",
+      "Nathan independently merged PR14 to main098ebe0 during PR15 creation. Consolidation refreshed that exact upstream once, preserving every native numerical/configuration change and adding its three authoritative coordination records. Final checks use098ebe0; earlierc95 receipts are prior-baseline evidence only."
     ],
-    "uncertainty": "Exact-head CI, final current-base scoped receipts, combined UI review and main publication remain the release gates. The simulation owner retains an evidence-only follow-up on its preserved branch; all frozen implementation through 37b417f is already included and that metadata is not a critical-path dependency. The primary owner retains the final live rollout.",
-    "next": "Publish this one frozen candidate for exact-head CI while local current-base checks and final UI review finish; merge and push main only when all required gates pass. Send the completeness receipt and final SHA/tree to the exclusive live-runtime owner for one preserved-state rollout. Retain the simulation owner evidence branch for a later documentation-only handoff if it is not ready in this batch."
+    "uncertainty": "Final CI and actual098ebe0-base scoped checks must cover the newly merged authoritative Nathan layer together with the complete product. Independent final UI review remains a release gate. The simulation owner retains an evidence-only follow-up; no required frozen implementation is outside this candidate. The primary owner retains the single live rollout.",
+    "next": "Complete actual098ebe0-base checks and exact-head CI, obtain final UI review, then merge and push main and hand its SHA/tree/completeness receipt to the exclusive live-runtime owner. Preserve the independent native layer and all worker source histories."
   }
 }
 ```
@@ -748,7 +749,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
       "Core PR12 is merged through a14e148 and repaired Tara PR11 through c95ec46 after all four exact-head CI jobs, scoped checks and independent review. The consolidated source preserves both histories and the existing numerical modules/reference.",
       "Ignored private proof .terra-local/runtime/trial-api-success.json records HTTP 201, provider delivered, one attempt and direct user handset confirmation for the fixed trial placeholder. The restricted Messages create/read key is configured; primary-token rotation is not a current delivery blocker. Earlier rejected attempts remain recorded and are not resent.",
       "The live owner reports SMS enabled and demo enabled with trial_template content; real farm SMS opt-ins remain off. The ChatGPT plan connection and selected gpt-6-luna model retain the approved concise coverage voice. Fresh Tara setup does not preseed an almond farm.",
-      "Contributor audit reports EthanVTruong and Nathan-W123 only; original nine staged prototype entries remain preserved. The candidate adds verified question/context/date/crop/consent fixes, separate historical replay, consistent first-publication display and consent clocks, and the accepted desktop evidence pin. Raw observation/query clocks and immutable message content remain unchanged."
+      "Contributor audit reports EthanVTruong and Nathan-W123 only; original nine staged prototype entries remain preserved. The candidate adds verified question/context/date/crop/consent fixes, separate historical replay, consistent first-publication display and consent clocks, and the accepted desktop evidence pin. Raw observation/query clocks and immutable message content remain unchanged.",
+      "Authoritative Nathan PR14 subsequently merged to main098ebe0; the product candidate preserves those native model/estimate/configuration updates exactly. The frozen Terra statistical reference remains unchanged; final compatibility checks now target that newer upstream."
     ],
     "uncertainty": "Final combined candidate CI, actual-base scoped checks, independent UI review and publication are pending. The primary owner exclusively controls the live service, private vault, flags and journals. Controlled placeholder delivery does not establish custom SMS content or naturally occurring sensor-fault accuracy; historical replay remains labelled and isolated.",
     "next": "Finish the frozen consolidated release gates, merge and push main, then have the primary owner perform one rollout retaining the existing ChatGPT connection, farm preferences, message IDs and SMS journal. Capture the actual post-rollout proof at .terra-local/runtime/final-cutover-20261024/after.json; this path is planned evidence, not an already completed check."

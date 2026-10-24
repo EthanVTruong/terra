@@ -3,6 +3,30 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-tara-conversation",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly requests a plan and active goal to implement Tara onboarding and actual in-app replies using the existing ChatGPT connection: brief grounded responses, attached thumbs-up acknowledgments, no reply to thanks/other no-op input, and local off-topic handling that consumes no model usage. Diagnose full behavior including relevant farm/chill/alert follow-ups, context, consent, failures and return. Implement, verify and integrate without changing scientific models or external SMS/account consent.",
+  "branch": "codex/tara-conversation",
+  "base": "a9dcc6c06b872890cf86adda22b207251fb50b5e",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/**", "tests/test_terra_conversation*.py", "tests/test_farm_chill_ops*.py", "web/**", "docs/terra/**", "scripts/terra-service/**", "spec.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "a9dcc6c06b872890cf86adda22b207251fb50b5e",
+    "summary": "Goal active. Three isolated working copies prepared for root integration, conversation backend and UI. Existing ChatGPT connection is still a separate branch/preview; preserve its own credentials and live runtime ownership.",
+    "evidence": ["Accepted conversation contract merged in PR7; current source inspected at a9dcc6c. User now explicitly authorizes implementation and off-topic/no-usage behavior."],
+    "uncertainty": "Actual ChatGPT account/consent/model readiness must be checked through Terra's own controls, not this Codex account. Browser notifications must describe their real delivery capabilities. Existing demo/UI/ChatGPT branches must be reconciled before integration.",
+    "next": "Implement the linked plan with local intent gating before any model call, persistent conversation/onboarding state, actual reply UI and full behavior/call-count verification."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-conversation-contract",
   "owner": "et",
   "status": "done",

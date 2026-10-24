@@ -10,7 +10,7 @@
   "branch": "codex/terra-demo-simulation",
   "base": "cb58022",
   "domains": ["terra-coordination", "terra-qc-json"],
-  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "tests/test_terra_full_flow.py", "docs/terra/demo-simulation.md", "docs/terra/demo-simulation/**", "docs/terra/full-flow-verification/**"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "tests/test_terra_full_flow.py", "docs/terra/demo-simulation.md", "docs/terra/demo-simulation/**", "docs/terra/full-flow-verification/**", ".github/workflows/terra.yml"],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
@@ -31,6 +31,15 @@
   "kind": "check",
   "id": "terra-demo-tests",
   "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_demo_simulation.py", "-q"],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-full-flow-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_full_flow.py", "-q"],
   "timeout": 120
 }
 ```
@@ -248,6 +257,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "docs/terra/**",
     "tests/test_terra_json.py",
     "tests/test_terra_demo_simulation.py",
+    "tests/test_terra_full_flow.py",
     "tests/test_terra_qc_*.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
@@ -275,6 +285,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "checks": [
     "terra-json-tests",
     "terra-demo-tests",
+    "terra-full-flow-tests",
     "terra-sms-tests",
     "terra-farm-tests",
     "terra-runtime-tests",

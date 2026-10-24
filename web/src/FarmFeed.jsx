@@ -1,0 +1,91 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Icon } from "./Icon";
+import { timestamp } from "./presentation";
+import { deliveryLabel } from "./delivery";
+
+const isObject = (value) => value && typeof value === "object" && !Array.isArray(value);
+const words = (value) => String(value || "Unavailable").replaceAll("_", " ");
+export const orchardLabel = (orchard) => orchard?.demo_location ? `${orchard.name} · demo` : orchard?.name || "Monitoring";
+function validFeed(value, id) {
+  if (!isObject(value) || value.schema_version !== "terra-farm-feed-v1" || value.orchard_id !== id || !Array.isArray(value.messages) || !isObject(value.monitor)) throw new Error("Monitoring updates could not be read. Previous notes are retained.");
+  const ids = new Set();
+  for (const message of value.messages) {
+    if (!isObject(message) || typeof message.id !== "string" || message.orchard_id !== id || ids.has(message.id) || typeof message.text !== "string" || !Number.isFinite(Date.parse(message.created_at)) || !["proactive", "answer"].includes(message.kind)) throw new Error("A monitoring note could not be read. Previous notes are retained.");
+    ids.add(message.id);
+  }
+  return value;
+}
+
+export function useFarmFeed(active) {
+  const [orchards, setOrchards] = useState([]), [orchardId, setOrchardId] = useState("");
+  const [available, setAvailable] = useState(false), [feed, setFeed] = useState(null);
+  const [loading, setLoading] = useState(false), [error, setError] = useState("");
+  const [revision, setRevision] = useState(0), [profilesRevision, setProfilesRevision] = useState(0);
+  const feedRef = useRef(null), selectedIdRef = useRef("");
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/orchards", { signal: controller.signal }).then(async (response) => {
+      if (!response.ok) throw new Error("Monitoring is unavailable.");
+      const value = await response.json();
+      if (!Array.isArray(value.orchards) || value.orchards.some((item) => !isObject(item) || typeof item.id !== "string" || typeof item.name !== "string")) throw new Error("Monitoring locations could not be read.");
+      if (!controller.signal.aborted) { setAvailable(true); setOrchards(value.orchards); setOrchardId((id) => { const next = value.orchards.some((item) => item.id === id) ? id : value.orchards[0]?.id || ""; selectedIdRef.current = next; return next; }); }
+    }).catch(() => { if (!controller.signal.aborted) setAvailable(false); });
+    return () => controller.abort();
+  }, [profilesRevision]);
+  useEffect(() => {
+    if (!active || !orchardId) return;
+    let controller, disposed = false, version = 0;
+    async function load() {
+      const current = ++version;
+      controller?.abort(); controller = new AbortController();
+      setLoading(!feedRef.current); setError("");
+      try {
+        const response = await fetch(`/api/orchards/${encodeURIComponent(orchardId)}/messages`, { signal: controller.signal });
+        if (!response.ok) throw new Error("Monitoring updates are unavailable. Previous notes are retained.");
+        const value = validFeed(await response.json(), orchardId);
+        if (!disposed && current === version && selectedIdRef.current === orchardId) { feedRef.current = value; setFeed(value); }
+      } catch (reason) { if (!disposed && current === version && selectedIdRef.current === orchardId && reason.name !== "AbortError") setError(reason.message); }
+      finally { if (!disposed && current === version && selectedIdRef.current === orchardId) setLoading(false); }
+    }
+    load();
+    const poll = setInterval(() => { if (document.visibilityState === "visible") load(); }, 30000);
+    const visible = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", visible);
+    return () => { disposed = true; controller?.abort(); clearInterval(poll); document.removeEventListener("visibilitychange", visible); };
+  }, [active, orchardId, revision]);
+  const selectOrchard = useCallback((id) => { selectedIdRef.current = id; feedRef.current = null; setFeed(null); setError(""); setOrchardId(id); }, []);
+  const addOrchard = useCallback((profile) => {
+    setOrchards((previous) => [...previous.filter((item) => item.id !== profile.id), profile]);
+    setAvailable(true); selectedIdRef.current = profile.id; feedRef.current = null; setFeed(null); setOrchardId(profile.id); setRevision((value) => value + 1);
+  }, []);
+  return { orchards, orchardId, orchard: orchards.find((item) => item.id === orchardId), available, feed, loading, error, selectOrchard, addOrchard, refresh: () => setRevision((value) => value + 1), refreshProfiles: () => setProfilesRevision((value) => value + 1) };
+}
+
+export function FarmConversation({ farm, onDetails, selectedMessage, detailsLoading, detailsError }) {
+  const monitor = farm.feed?.monitor;
+  const messages = [...(farm.feed?.messages || [])].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id.localeCompare(b.id));
+  const mode = monitor?.orchard?.mode || farm.orchard?.mode;
+  return <div className="farm-conversation">
+    <div className="farm-thread-context"><strong>{orchardLabel(monitor?.orchard || farm.orchard)}</strong><span>{mode === "current" ? "Orchard updates" : mode ? "Injected replay · demo" : "Monitoring"}</span></div>
+    {farm.error && <div className="load-error" role="status"><p>{farm.error}</p><button onClick={farm.refresh}>Retry updates</button></div>}
+    {monitor && (!monitor.comparison_available || monitor.source_error) && <div className="availability-status" role="status"><strong>Weather support unavailable</strong><span>{monitor.data_through ? `Last reading · ${timestamp(monitor.data_through)}` : "Waiting for usable station readings."}</span></div>}
+    {farm.loading && !farm.feed ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening field notes…</p></div> : messages.length ? <div className="farm-messages" role="log" aria-label="Orchard field notes" aria-live="polite" aria-relevant="additions text">{messages.map((message) => <article className="farm-note" key={message.id}>
+      <time className="farm-note-time" dateTime={message.created_at}>{timestamp(message.created_at)}</time>
+      <button className={`incoming-bubble farm-message${selectedMessage === message.id ? " selected-note" : ""}`} onClick={(event) => onDetails(event, message)} aria-describedby={"farm-note-text-" + message.id} aria-label={`Open ${message.kind === "answer" ? "answer" : "field note"} from ${timestamp(message.created_at)}`}><span id={"farm-note-text-" + message.id}>{message.text}</span></button>
+      <div className="farm-note-meta"><span>{deliveryLabel(message.delivery)}</span><button onClick={(event) => onDetails(event, message)} aria-disabled={detailsLoading && selectedMessage === message.id}>{detailsLoading && selectedMessage === message.id ? "Opening…" : "Details"}<Icon name="chevron" size={10} /></button></div>
+    </article>)}</div> : !farm.loading && <div className="empty-state"><Icon name="location" size={22} /><h2>No field notes yet</h2><p>Updates appear here when the monitor records a meaningful change.</p></div>}
+    {detailsError && <p className="query-error" role="alert">{detailsError}</p>}
+  </div>;
+}
+
+export function FarmOverview({ farm, details }) {
+  const monitor = farm.feed?.monitor, summary = monitor?.summary;
+  const receipt = details?.transport_receipt;
+  return <div className="farm-overview">
+    <div className="evidence-title"><h2>{orchardLabel(monitor?.orchard || farm.orchard)}</h2><span>{[(monitor?.orchard || farm.orchard)?.variety, (monitor?.orchard || farm.orchard)?.crop].filter(Boolean).join(" · ") || "Orchard"}</span></div>
+    <div className="chill-reading"><small>Estimated chill</small><strong>{Number.isFinite(summary?.hours) ? <>{summary.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })}<span> h</span></> : "Unavailable"}</strong><span>{summary?.status === "offseason" ? "Outside chill season" : summary?.complete ? "32–45°F · since November 1" : summary ? "Incomplete coverage" : "Waiting for readings"}</span></div>
+    <dl className="facts"><div><dt>Weather support</dt><dd>{monitor?.comparison_available ? "Usable" : "Unavailable"}</dd></div><div><dt>Coverage</dt><dd>{Number.isFinite(summary?.coverage) ? `${(summary.coverage * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%` : "Unavailable"}</dd></div><div><dt>Historical pace</dt><dd>{Number.isFinite(summary?.percentile20_hours) ? words(summary.status) : "Unavailable"}</dd></div></dl>
+    <details className="disclosure farm-status-details"><summary><Icon name="file" /><span>Monitoring details</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body">{summary?.warning && <p className="microcopy">{summary.warning}</p>}<dl className="facts"><div><dt>Checked</dt><dd>{timestamp(monitor?.last_checked)}</dd></div><div><dt>Data through</dt><dd>{timestamp(monitor?.data_through)}</dd></div><div><dt>Worker</dt><dd>{words(monitor?.worker?.heartbeat_status)}</dd></div><div><dt>Chill method</dt><dd>{summary?.method || "Not supplied"}</dd></div><div><dt>Historical seasons</dt><dd>{summary?.reference_count ?? "Unavailable"}</dd></div></dl><p className="microcopy">Orchard chill uses 32–45°F from November 1, in fixed Pacific standard time. Reported FNRIC station totals remain separate.</p></div></details>
+    {details && <details className="disclosure"><summary><Icon name="file" /><span>Message and delivery</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body"><dl className="facts"><div><dt>Local note</dt><dd>{details.message?.status || "Unavailable"}</dd></div><div><dt>Phone</dt><dd>{deliveryLabel(receipt)}</dd></div><div><dt>Updated</dt><dd>{timestamp(receipt?.updated_at_utc)}</dd></div></dl><p className="microcopy">Local publication and provider acceptance do not confirm phone delivery. The JSON tab contains the exact message, events, source evidence and receipt.</p>{details.fnric && <><p className="detail-label">Reported FNRIC station totals · separate metric</p><pre className="detail-json">{JSON.stringify(details.fnric, null, 2)}</pre></>}</div></details>}
+  </div>;
+}

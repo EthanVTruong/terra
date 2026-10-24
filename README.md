@@ -1,5 +1,5 @@
 # terra
-Everything you need to know about your chill data in iMessage
+Orchard chill and weather updates in a compact inbox, with optional SMS.
 
 ## ChillWatch data / ML layer
 
@@ -35,6 +35,26 @@ After building the web preview, open <http://127.0.0.1:8512>. For frontend
 iteration, Vite proxies `/api` to that same local service. Follow the linked
 runbook for the build, development commands, cache/freshness behavior and tests.
 
-Queries are on demand, with a 120-second response-cache window. This is not a
-continuous monitoring worker, deployed service or SMS transport. Real current
-weather, retained cached data and controlled examples remain explicitly labelled.
+Queries are on demand, with a 120-second response-cache window. Use the combined
+runtime below for persistent monitoring. Real current weather, retained cached
+data and controlled examples remain explicitly labelled.
+
+## Persistent orchard inbox
+
+The [combined local runtime](docs/terra/local-runtime.md) serves the interface and
+API and runs one durable orchard monitor. It stores observations, meaningful
+condition changes and concise grower notes; optionally it dispatches eligible
+notes through Twilio and reconciles receipts with the browser closed. The default
+West Orchard pin is a labelled demonstration location. Create a profile explicitly
+and retain the state directory across restarts. Local inbox publication, provider
+acceptance and phone delivery remain separate states.
+
+## Phone alerts with Twilio
+
+The optional [Twilio integration](docs/terra/twilio-sms.md) delivers selected,
+persisted orchard notifications to one configured phone through a shared transport. The
+**Phone alerts** panel can also run a controlled temperature spike through the
+frozen detector and send its clearly labelled demo text. Saved examples and
+uploaded JSON and ordinary location queries never send messages. SMS stays disabled until explicitly configured.
+Delivery records survive restarts; uncertain sends are withheld from automatic
+resending. Real phone delivery requires a working Twilio account and approved sender.

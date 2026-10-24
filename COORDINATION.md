@@ -1,5 +1,47 @@
 # Terra integration coordination
 
+```json
+{
+  "kind": "task",
+  "id": "terra-twilio-sms",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests comprehensive Twilio setup and actual phone delivery when Terra flags a reading, with simulated flags for the demo. Add an explicitly enabled fixed-recipient transport, controlled detector demo, durable duplicate suppression and delivery evidence. Configure the account using computer control where permitted; keep authentication and regulated/paid submissions with the user. Preserve frozen QC, Nathan algorithms and current on-demand query semantics.",
+  "branch": "codex/terra-twilio-sms",
+  "base": "22d4594a768af930b655118959942ae06567b768",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra_sms.py",
+    "tests/test_terra_sms_server.py",
+    "docs/terra/**",
+    "web/**",
+    ".env.example",
+    ".github/workflows/terra.yml",
+    "README.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "2ac2beb96eb2f324f3b2fc78fa8248072d664ce8",
+    "summary": "SMS software handoff ready: fixed-recipient transport, explicit real-detector simulated demo, immutable farm-message delivery, durable attempt/retry/receipt journal and shared guarded server assembly. Ordinary queries remain pure. Integration owner owns combined farm worker/UI merge; no second worker or message queue added.",
+    "evidence": [
+      "145 transport/envelope tests and58 HTTP/composition tests pass. Full configured scoped check passes on the transport source against actual upstream22d4594; final assembly-hook cases separately pass. Production build and4packaging cases pass; browser disabled-send/setup/focus-return verified; preview8513 healthok and removed raw-send route404.",
+      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTP→MockTransport→receipt→pause→restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
+      "Actual read-only Twilio account and owned-number APIs both HTTP200: accountactiveTrial, ownedSMSsenders0. Console shows100freeSMS, predefined templates and a trialsharedsender. Requested recipient absent from verified tester list. Recipient entered in Add a verified tester; Verify not pressed; zero OTPs, real SMS or paid actions.",
+      "Existing account credentials plus opted-in recipient saved only in ignored private runtime configuration; shared CIMIS environment preserved. Redacted local readiness record available to integration owner. Original Terra staged checkout, Nathan implementation and frozen reference preserved."
+    ],
+    "uncertainty": "Actual custom Terra phone delivery remains unverified: requested tester needs phone verification; trial custom-body restriction and approved sender readiness remain. No spending approval, purchase or upgrade. One automatic browser accessibility snapshot included the existing token in this private tool trace; no source/public Git/handoff contains it, and owner credential rotation was not performed silently.",
+    "next": "Root integration owner consumes this branch and shared private SMS env path, mounts optional farm router once, drains immutable outbox on startup/ticks and reconciles pending receipts. User completes Verify on prepared Twilio tester screen and reviews sender/custom-messaging upgrade requirements and budget before any real test. Keep SMS disabled until ready."
+  }
+}
+```
+
 This record covers ET's additive statistical QC/JSON work. Existing `backend/chillwatch`,
 configuration, ingestion, repair and model code remain Nathan-owned; they are not
 replaced by this checkpoint. Source facts live in the modules. This is a shared
@@ -61,12 +103,24 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "spec.md",
     "tests/test_terra_live.py",
     "tests/test_terra_server.py",
+    "tests/test_terra_sms.py",
+    "tests/test_terra_sms_server.py",
     "tests/fixtures/terra_live/**",
-    ".env.example"
+    ".env.example",
+    "tests/test_terra_pipeline.py",
+    "scripts/terra-service/**",
+    "tests/test_terra_runtime.py",
+    "tests/test_farm_chill_ops.py",
+    "tests/test_farm_chill_ops_api.py",
+    "tests/test_farm_chill_ops*.py"
   ],
   "depends_on": [],
   "checks": [
-    "terra-json-tests"
+    "terra-json-tests",
+    "terra-sms-tests",
+    "terra-farm-tests",
+    "terra-runtime-tests",
+    "terra-pipeline-tests"
   ]
 }
 ```
@@ -240,7 +294,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "evidence": [
       "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
       "Windows and macOS minimal-runtime jobs each passed 64 targeted cases plus 31 harness cases. Production web build and four packaging cases passed. Independent review verified 15 focused regressions and all six source-import hashes plus the frozen reference SHA.",
-      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1\u201341.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
+      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1–41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
       "Two grid and eight synthetic model/scenario cases passed, including all four faults with original assertions, seeds, folds and thresholds. Calendar/fixture coverage needed repair; no numerical algorithm or real-data model refit changed.",
       "GitHub confirmed merged=true at 1d5caf7, containing reviewed head 5ffec23 and prior Nathan main 229106c. The merged tree matched tested source exactly. Original Terra still has the same nine staged entries and numstat counts.",
       "Completion follow-up check passed against actual merged origin/main 1d5caf7 (31 harness + 64 targeted cases). Only .gitignore and this coordination record changed afterward; application source remains identical to tested 5ffec23."
@@ -344,6 +398,244 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "next": "Integration owner merges PR4 after its checks and consumes LiveQueryService.assess/query JSON. Live-source scope has no remaining implementation work. Three isolated worker checkpoints are preserved on codex/terra-live-api b69a76a, codex/terra-live-ui 64b88b0 and codex/terra-live-tests 9685d46; their clean worktrees were removed.",
     "pull_request": "https://github.com/EthanVTruong/terra/pull/4",
     "verification_run": "https://github.com/EthanVTruong/terra/actions/runs/40077329673"
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-full-pipeline",
+  "owner": "et",
+  "status": "active",
+  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio data→flag→message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
+  "branch": "codex/terra-end-to-end",
+  "base": "37948ed4f76cbbfbef7b4570d8ed06b84c6e8723",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "AGENTS.md",
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra*.py",
+    "tests/fixtures/terra_live/**",
+    "tests/fixtures/terra/**",
+    "scripts/terra-service/**",
+    "requirements-terra.txt",
+    "requirements-terra-dev.txt",
+    ".env.example",
+    "docs/terra/**",
+    "spec.md",
+    "README.md",
+    "web/**",
+    ".github/workflows/terra.yml",
+    "tests/test_farm_chill_ops.py",
+    "tests/test_farm_chill_ops_api.py"
+  ],
+  "depends_on": [
+    "terra-authorship"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "5b3aa90cfbad2c9a85c556442b2c5c43243c2957",
+    "summary": "All software slices integrated: real CIMIS/frozenQC/Nathan estimates, persistent farm events/inbox, optional fixed-recipient Twilio transport, one local runtime and accepted UI. Root independently ran all499 focusedPython cases, scopedharness, productionbuild/7webcases and real installed-service restart. Final PR5 CI pending; account activation remains external.",
+    "evidence": [
+      "Combined local groups: baseline189,SMS203,farm64,runtime34,cross-layer9 allpass; scoped terra.py check passes against37948ed. No numericalQC/Nathan/config changes in this pipeline diff.",
+      "Unified8512 browser: one explicit demonstrationDavis orchard, optedout; welcome60.6F/6sources evidence then real newhourM monitoringlimitednote. UIownerdesktop390/320 focus/exactJSON/sourcefailure checks pass after onefocusedaccessibilityrepair dc9a113.",
+      "Actual Windows launcher start/stop and installed worker restart: two same persistednoteIDs, new workerPID/freshheartbeat,0SMSattempts/bothflagsfalse. Secret-exclusion scan found no actual configured values in trackedfiles/newhistory; original nine stagedbootstrap entries unchanged."
+    ],
+    "uncertainty": "Full latest-head PostgreSQL/Windows/macOS/webCI mustpass beforemainmerge. ActualTwilio phone verification/customsendertrialrestriction/chargeauthorization/tokenrotation remain unresolved. No actualSMS accepted/delivered; no natural faultaccuracy or automatic matching5-seasonhistory claimed. GithubAPIonlyEthan/Nathan; sidebarcache servercontrolled.",
+    "next": "Push finalsource toPR5, inspect all4 exact-head checks, merge normally and fast-forward localmain, restart service frommain with samejournals. KeepSMSdisabled and report requiredaccount actions; preserveownersbranches/originalstagedwork."
+  }
+}
+```
+
+
+```json
+{
+  "kind": "check",
+  "id": "terra-sms-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_sms.py",
+    "tests/test_terra_sms_server.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "check",
+  "id": "terra-farm-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_farm_chill_ops.py",
+    "tests/test_farm_chill_ops_api.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "check",
+  "id": "terra-runtime-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_runtime.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "check",
+  "id": "terra-pipeline-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_pipeline.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "check",
+  "id": "farm-chill-ops-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "-p",
+    "no:cacheprovider",
+    "tests/test_farm_chill_ops.py",
+    "tests/test_farm_chill_ops_api.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "farm-chill-ops",
+  "owner": "et",
+  "status": "done",
+  "intent": "User explicitly requested a goal to finish the compact LLM contract/system prompt and tidy persistent farm-chill-ops backend after the product interview. Build the scoped seasonal monitor, orchard storage, selective event lifecycle, local inbox, factual Q&A, optional LLM/fallback, CLI/HTTP and verification. No new model fitting, bulk provider backfill, GDD/forecast/SMS/hosting/auth scope. Preserve Nathan and active live-query work.",
+  "branch": "codex/farm-chill-ops",
+  "base": "7f37e2670103fc2efa83c272e1cab285e3616620",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/farm_ops/**",
+    "tests/test_farm_chill_ops*.py",
+    "docs/terra/farm-chill-ops.md",
+    "docs/terra/farm-chill-ops/**"
+  ],
+  "depends_on": [
+    "terra-main-consolidation"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "4c3b4e8ce8a51e5a15e05e861f46b1762479ca3a",
+    "summary": "Implemented the scoped persistent farm-chill-ops backend, compact message contract/system prompt, additive API and independent worker.64 focused farm/API cases plus187 existing pure QC/estimator/live/HTTP and31 harness checks pass. Original numerical models/provider implementation unchanged. Branch is ready for root-owned unified UI/SMS/runtime integration; no main merge or push from this chat.",
+    "evidence": [
+      "PASS python -B terra.py check --base7f37e2670103fc2efa83c272e1cab285e3616620 --task farm-chill-ops: farm-chill-ops-tests,terra-harness,terra-json-tests and filesystem/coordination. Active-scope overlap was explicitly coordinated with root/UI/SMS owners.",
+      "Actual saved-weather assessment demo: ok/insufficient_data/ok/ok/ok through real frozen e1QC and Nathan estimate_location, producing one welcome, one limited notice and one3-reading recovery. All messages labelled Demo replay; rerun reuses saved IDs.",
+      "Separate Python process add/once/restart/once/2-tick bounded run with provider/LLM credentials removed and SMS disabled preserves exactly one initial message and same ID; no browser required.",
+      "One focused receipt repair: atomic monotonic merge preserves delivered against older OR newer delayed provider_accepted; failed is terminal; tests pass. Canonical receipt fields and source_event_id persisted; reconciliation runs on every drain.",
+      "docs/terra/farm-chill-ops/verification.json contains module SHA256s and proof scope. API fixture, compact example/schema and exact prompt are in that directory; run/API/event policies in docs/terra/farm-chill-ops.md.",
+      "create_router(monitor,mutation_guard=shared_raising_guard) is the canonical HTTP hook. Monitor.check persists,groups,publishes,then always reconciles/drains immutable notification envelopes. SMS starts opted out; setup can atomically opt in before first check. Local published is never SMS delivered."
+    ],
+    "uncertainty": "Based on committed live interface7f37; root owns later live fixes, SMS f85549a and combined runtime merge/checks. No actual provider/LLM/SMS send or deployment in our verification. Real five-season matching orchard history remains unpopulated unless explicitly imported; incomplete/mismatched history withholds pace.400h is only a configured cultivar reference, not a matched biological requirement. No GDD/forecast expansion or model refitting.",
+    "next": "Root merge/reconcile this clean isolated branch with current live/SMS/runtime, include create_router before catchall and inject the shared guard/dispatcher/absolute DB; run final cross-layer/native/portable/browser acceptance. Preserve this branch and the original Terra staged prototype."
+  }
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-ui-fidelity",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests a further design pass matching the exact Grok Bot / Fliptexts references, approved lowercase terra wordmark, interaction design and animation polish. Preserve accepted compact conversation, three-value notes, pinned temperature context and the current live assessment contract. Isolated checkout based on the live-query commit; no backend edits, provider ingestion, training, delivery, deployment or changes to another chat's files. Root-authorized second slice: reconcile actual orchard setup/feed/evidence with the existing SMS-owner component. Preserve pure assessment requests, shared local-session guard, incoming-only notes and actual delivery receipts; no real SMS action during UI QA.",
+  "branch": "codex/terra-ui-fidelity",
+  "base": "7f37e2670103fc2efa83c272e1cab285e3616620",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/**",
+    "docs/terra/ui-fidelity.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "4ff79ce87fa71ac64dd3e13d60e8e33e2baf06b5",
+    "summary": "Visual and combined UI slices complete, plus one focused Details/mobile-trap accessibility repair. Actual unified8512 API verified through8504 UI. Root owns final merge/build/restart/CI and external account readiness.",
+    "evidence": [
+      "Exact Grok/Fliptexts source inspection and combined comparison at .terra-local/ui-fidelity/comparison-unified.png; approved1080px assets match their manifest. Native744x768 shell,44px header, source font/bubble values; proposed motion explicitly distinguished.",
+      "Protected UI setup created one Davis Demo orchard, orchard-e8cea869-3bf6-4274-a20b-a4c54c1f9225; API SMS opt-in false. No send/enable/opt-in action during QA.",
+      "Actual current welcome plus new-hour monitoring-limited note persisted; both local-inbox/not_requested. Welcome Details shows60.6F/six stations; displayed full record semantically equals the exact API details object.",
+      "Actual missing current readings and missing historical pace remain unavailable. Ordinary Check location uses pure/api/assess; no false fault or delivered conclusion.",
+      "Desktop/390px/320px evidence, focusable Details, visible-only mobile Tab trap, Escape/opener return, disabled phone controls and fresh console pass. web/design-qa.md final result passed.",
+      "Build,4 packaging tests,3 receipt-state tests and scoped configured checks pass. Original Terra nine staged bootstrap files remain untouched."
+    ],
+    "uncertainty": "UI verification only for actual disabled phone state; external SMS activation/delivery, physical touch, OS preference switching and external clipboard paste remain separately unverified. Native Grok window motion is unavailable from the article. Immutable example text repeats the demo name (P3 retained).",
+    "next": "Root integrates the final small focus/QA commit, rebuilds/restarts unified8512 and completes latest-head CI. UI scope is frozen; no further feature work is pending."
   }
 }
 ```

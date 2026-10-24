@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Terra compact grower-message input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "orchard",
+    "as_of",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "terra-grower-message-v1"
+    },
+    "mode": {
+      "enum": [
+        "current",
+        "replay",
+        "injected"
+      ]
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "orchard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "crop",
+        "variety",
+        "demo_location"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "crop": {
+          "const": "almond"
+        },
+        "variety": {
+          "const": "Nonpareil"
+        },
+        "demo_location": {
+          "type": "boolean"
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "transition",
+          "severity",
+          "occurred_at",
+          "display_time",
+          "facts"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "welcome",
+              "monitoring_limited",
+              "monitoring_recovered",
+              "chill_pace",
+              "chill_pace_recovered",
+              "chill_reference",
+              "chill_total",
+              "history",
+              "station_health",
+              "explain_alert",
+              "unsupported"
+            ]
+          },
+          "transition": {
+            "enum": [
+              "initial",
+              "opening",
+              "escalation",
+              "recovery",
+              "milestone",
+              "answer"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "moderate",
+              "strong"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "display_time": {
+            "type": "string"
+          },
+          "facts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "comparison_available": {
+                "type": "boolean"
+              },
+              "complete": {
+                "type": "boolean"
+              },
+              "consecutive_valid_readings": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "coverage": {
+                "type": "number"
+              },
+              "cutoff": {
+                "type": "string"
+              },
+              "data_through": {
+                "type": "string"
+              },
+              "deviation_f": {
+                "type": "number"
+              },
+              "expected_f": {
+                "type": "number"
+              },
+              "explanation": {
+                "type": "string"
+              },
+              "historical_median_hours": {
+                "type": "number"
+              },
+              "hours": {
+                "type": "number"
+              },
+              "observation_time": {
+                "type": "string"
+              },
+              "observed_f": {
+                "type": "number"
+              },
+              "percentile20_hours": {
+                "type": "number"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "reference_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reference_hours": {
+                "type": "number"
+              },
+              "season_start": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "target_kind": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intent",
+        "text"
+      ],
+      "properties": {
+        "intent": {
+          "enum": [
+            "chill_total",
+            "history",
+            "station_health",
+            "explain_alert",
+            "unsupported"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    }
+  }
+}

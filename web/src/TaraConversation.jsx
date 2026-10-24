@@ -1,8 +1,8 @@
-import { sourceFetch as fetch } from "./source-fetch";
+import { sourceFetch as fetch, sourceIdentity } from "./source-fetch";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { clockTime, dayLabel, localDay, publicationTime, timestamp } from "./presentation";
-import { createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreTaraOperation, taraDisplayText, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
+import { bindTaraOperationSource, createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreTaraOperation, taraDisplayText, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 import { showTaraNotification } from "./notification-return";
 
@@ -70,10 +70,12 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
     const operationScope = currentScope.current;
     request.current.controller?.abort(); request.current.version += 1;
     const next = { ...operation, status: "sending" };
-    mutation.current = next; setPending(next); setError(""); writeTaraStorage(`${operationScope}.pending`, next);
+    setError("");
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 60000);
     try {
+      Object.assign(next, bindTaraOperationSource(operation, sourceIdentity()), { status: "sending" });
+      mutation.current = next; setPending(next); writeTaraStorage(`${operationScope}.pending`, next);
       const guardResponse = await fetch("/api/sms/status", { signal: controller.signal, cache: "no-store" });
       if (!guardResponse.ok) throw new Error("Reconnect to the local Terra service, then retry this request.");
       const guard = await guardResponse.json();

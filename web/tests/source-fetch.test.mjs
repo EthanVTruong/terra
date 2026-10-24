@@ -8,23 +8,25 @@ test("a delayed request retains its original document source after another tab s
   let cookieSource = "live-A";
   const calls = [];
   const transport = createSourceTransport(async (path, options) => {
-    if (path === "/api/simulation/connection") return json({ source_context: cookieSource });
+    if (path === "/api/simulation/connection") return json({ source_context: cookieSource, connected: false, data_mode: "current", source_expired: false });
     calls.push(options.headers.get("X-Terra-Source-Context"));
     return options.headers.get("X-Terra-Source-Context") === cookieSource ? json({}) : json({ error: { code: "source_context_mismatch" } }, 409);
   }, "http://localhost");
   await transport.initialize();
+  assert.deepEqual(transport.identity(), { context: "live-A", kind: "live" });
   cookieSource = "replay-B";
-  await assert.rejects(transport.fetch("/api/tara/setup", { method: "POST" }), /source changed/);
+  await assert.rejects(transport.fetch("/api/tara/setup", { method: "POST" }), (error) => /source changed/.test(error.message) && error.rejected === true && error.sourceChanged === true);
   assert.deepEqual(calls, ["live-A"]);
   await assert.rejects(transport.fetch("/api/tara", { method: "POST" }), /source changed/);
   assert.deepEqual(calls, ["live-A", "live-A"]);
+  assert.deepEqual(transport.identity(), { context: "live-A", kind: "live" });
 });
 
 test("unconfirmed runtime blocks writes without sending the mutation", async () => {
   const calls = [];
   const transport = createSourceTransport(async (path) => { calls.push(path); return json({}, 503); }, "http://localhost");
   await transport.initialize();
-  await assert.rejects(transport.fetch("/api/orchards", { method: "POST" }), /could not be confirmed/);
+  await assert.rejects(transport.fetch("/api/orchards", { method: "POST" }), (error) => /could not be confirmed/.test(error.message) && error.rejected === true && error.sourceChanged === true);
   assert.deepEqual(calls, ["/api/simulation/connection"]);
 });
 
@@ -46,5 +48,6 @@ test("only explicit standalone replay context permits the endpoint-free replay s
 test("simulator expiry remains explicit and does not adopt a new source", async () => {
   const transport = createSourceTransport(async (path, options) => path === "/api/simulation/connection" ? json({ source_context: "expired-token", source_expired: true }) : json({ error: { code: "simulation_context_expired" } }, 409), "http://localhost");
   await transport.initialize();
-  await assert.rejects(transport.fetch("/api/tara"), /restart/);
+  await assert.rejects(transport.fetch("/api/tara"), (error) => /restart/.test(error.message) && error.rejected === true && error.sourceChanged === true);
+  assert.equal(transport.identity().kind, "expired");
 });

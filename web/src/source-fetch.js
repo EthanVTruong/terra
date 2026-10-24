@@ -2,16 +2,21 @@
 // must never silently redirect a delayed location callback or chat submission.
 export function createSourceTransport(nativeFetch, origin) {
   let initialization;
+  let identity = Object.freeze({ kind: "unconfirmed" });
+  const remember = (value) => { identity = Object.freeze(value); return identity; };
   const initialize = () => initialization ||= (async () => {
     try {
       const status = await nativeFetch("/api/simulation/connection", { cache: "no-store", signal: AbortSignal.timeout(10000) });
       if (status.ok) {
         const value = await status.json();
-        if (typeof value.source_context === "string" && value.source_context) return { context: value.source_context };
+        if (typeof value.source_context === "string" && value.source_context) return remember({
+          context: value.source_context,
+          kind: value.source_expired === true ? "expired" : value.connected === true ? "simulation" : value.connected === false && value.data_mode === "current" ? "live" : "unconfirmed",
+        });
       } else if (status.status === 404) {
         // The standalone replay server deliberately has no live-source router.
         const response = await nativeFetch("/api/context", { cache: "no-store", signal: AbortSignal.timeout(10000) });
-        if (response.ok && (await response.json()).replay_only === true) return { isolated: true };
+        if (response.ok && (await response.json()).replay_only === true) return remember({ isolated: true, context: "standalone-replay", kind: "isolated" });
       }
     } catch { /* Reads remain available; mutations need a confirmed source. */ }
     return {};
@@ -22,22 +27,23 @@ export function createSourceTransport(nativeFetch, origin) {
     const source = await initialize();
     const method = (options.method || input?.method || "GET").toUpperCase();
     if (!source.context && !source.isolated && !["GET", "HEAD", "OPTIONS"].includes(method)) {
-      throw new Error("The chat source could not be confirmed. Reload Terra before making changes.");
+      throw Object.assign(new Error("The chat source could not be confirmed. Reload Terra before making changes."), { rejected: true, sourceChanged: true });
     }
     const headers = new Headers(options.headers || input?.headers);
-    if (source.context) headers.set("X-Terra-Source-Context", source.context);
+    if (source.context && !source.isolated) headers.set("X-Terra-Source-Context", source.context);
     const response = await nativeFetch(input, { ...options, headers });
     if (response.status === 409) {
       const body = await response.clone().json().catch(() => null);
       if (["source_context_mismatch", "simulation_context_expired"].includes(body?.error?.code)) {
-        throw new Error("This chat’s source changed in another tab or after a restart. Reload Terra to continue.");
+        throw Object.assign(new Error("This chat’s source changed in another tab or after a restart. Reload Terra to continue."), { rejected: true, sourceChanged: true });
       }
     }
     return response;
   }
-  return { initialize, fetch };
+  return { initialize, fetch, identity: () => identity };
 }
 
 const source = createSourceTransport((...args) => globalThis.fetch(...args), globalThis.location?.origin || "http://localhost");
 export const initializeSource = source.initialize;
 export const sourceFetch = source.fetch;
+export const sourceIdentity = source.identity;

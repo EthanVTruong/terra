@@ -83,12 +83,26 @@ export function createTaraOperation(kind, body, requestId) {
   return { version: 1, kind, path, body: { ...body, request_id: requestId }, status: "sending" };
 }
 
+export function bindTaraOperationSource(operation, source) {
+  const known = identifier(source?.context) && ["live", "simulation", "isolated"].includes(source.kind);
+  const bound = Object.hasOwn(operation, "sourceContext");
+  // A restored pre-feature operation came from live monitoring. It must not be
+  // silently adopted by a simulator opened after that operation was saved.
+  const legacyRetry = !bound && operation.status !== "sending";
+  if (!known || (bound && operation.sourceContext !== source.context) ||
+      (legacyRetry && !["live", "isolated"].includes(source.kind))) {
+    throw Object.assign(new Error("This saved request belongs to another chat source. Your draft is retained; reload Terra and send a new request."), { rejected: true, sourceChanged: true });
+  }
+  return { ...operation, sourceContext: source.context };
+}
+
 export function restoreTaraOperation(value) {
   if (!object(value) || value.version !== 1 || !["message", "setup", "reconcile"].includes(value.kind) || value.path !== (value.kind === "message" ? "/api/tara/messages" : value.kind === "reconcile" ? "/api/tara/reconcile" : "/api/tara/setup") || !object(value.body) || !identifier(value.body.request_id)) return null;
   if (value.kind === "message" && (typeof value.body.text !== "string" || !value.body.text.trim() || value.body.text.length > 1000)) return null;
   if (value.kind === "setup" && !["location", "device_location", "notifications", "restart"].includes(value.body.action)) return null;
   if (value.kind === "setup" && value.body.action === "device_location" && !validDeviceLocation(value.body.device_location)) return null;
   if (value.kind === "reconcile" && (!identifier(value.body.target_request_id) || value.body.confirm_uncertain !== true || !nullableId(value.body.orchard_id))) return null;
+  if (Object.hasOwn(value, "sourceContext") && !identifier(value.sourceContext)) return null;
   return { ...value, status: ["in_progress", "result_available"].includes(value.status) ? value.status : "unconfirmed" };
 }
 

@@ -244,6 +244,8 @@ def weather_answer(intent, monitor, orchard_id, *, evidence_id=None, referenced=
     checked = assessment.get("query", {}).get("as_of_utc") if referenced else status.get("last_checked")
     findings = assessment.get("station_findings", [])
     health = assessment.get("data_health", [])
+    weather_packet = assessment.get("weather")
+    weather_packet = weather_packet if isinstance(weather_packet, dict) else {}
     facts = {"data_mode": status["orchard"]["mode"], "evidence_id": evidence_id,
              "observation_time": stamp, "last_checked": checked,
              "referenced_snapshot": referenced, "current_conditions_verified": not referenced and not replay and available,
@@ -260,11 +262,11 @@ def weather_answer(intent, monitor, orchard_id, *, evidence_id=None, referenced=
     prefix = "Replay only: " if replay else "Saved assessment: " if referenced else ""
     at = _weather_time(stamp) if stamp else None
     if intent in VARIABLE_INTENTS or intent == "weather_variables":
-        text, facts = _variable_weather_answer(intent, assessment.get("weather", {}), facts,
+        text, facts = _variable_weather_answer(intent, weather_packet, facts,
             source_error=bool(source_error), replay=replay, referenced=referenced)
         return prefix + text, facts
-    if intent == "station_findings" and assessment.get("weather", {}).get("schema_version") == "terra-weather-assessment-v1":
-        weather_flags = [item for item in assessment["weather"].get("findings", []) if isinstance(item, dict)
+    if intent == "station_findings" and weather_packet.get("schema_version") == "terra-weather-assessment-v1":
+        weather_flags = [item for item in weather_packet.get("findings", []) if isinstance(item, dict)
                          and item.get("variable") in _VARIABLE_LABELS and isinstance(item.get("station_id"), int)]
         if weather_flags:
             details = [f"station {item['station_id']} ({_VARIABLE_LABELS[item['variable']][0].lower()})" for item in weather_flags]

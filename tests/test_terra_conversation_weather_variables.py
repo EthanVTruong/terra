@@ -82,6 +82,17 @@ def test_old_temperature_only_packets_withhold_variable_conclusions(weather):
         assert "normal" not in text and "0%" not in text
 
 
+def test_legacy_null_weather_keeps_temperature_questions_operational(weather):
+    monitor, profile, clock = weather
+    value = packet(profile, clock[0])
+    value["weather"] = None
+    monitor.apply(profile["id"], {"latest": value}, now=clock[0])
+    text, facts = weather_answer("station_findings", monitor, profile["id"])
+    assert "No supporting-station discrepancy" in text and facts["comparison_available"]
+    humidity, _ = weather_answer("humidity", monitor, profile["id"])
+    assert "aren't available" in humidity
+
+
 def test_quality_and_missing_never_become_zero_or_discrepancies(weather):
     health = [{"variable": "relative_humidity_pct", "station_id": 6, "valid_utc": HOUR.isoformat(), "reason": "source_warning"}]
     retain(weather, values=(99, None, 0), statuses=("unavailable", "unavailable", "low_daylight"), health=health)

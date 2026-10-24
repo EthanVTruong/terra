@@ -1,5 +1,31 @@
 # Terra full-flow verification
 
+## Combined release checkpoint
+
+The first combined release is merged as main
+`8f028a8320661c4a59344f1e3067e8af2bb79a74` through
+[PR 15](https://github.com/EthanVTruong/terra/pull/15). Its tree is identical to
+the tested `1a1182f` head. All four [CI jobs](https://github.com/EthanVTruong/terra/actions/runs/40120705168)
+passed: Windows and macOS scoped integration, full backend including PostgreSQL,
+and both web builds/tests. Ancestry includes the exact `37b417f` behavior repairs,
+Nathan's authoritative `098ebe0` layer and accepted `71627c1` Station lab slice.
+
+The runtime owner completed an actual new-Python-process cutover at port 8512
+and a fresh monitoring cycle. I independently inspected its retained-state proof
+and the live browser: health is OK, served bundles match clean main, the cube
+interface and ChatGPT-plan connection appear, and a retained coverage warning
+opens its correct saved Details. Existing messages, events, evidence, profile
+and old revisions were preserved. Hours were re-estimated under the new native
+estimator contract while old payload revisions were retained. The SMS journal
+is exactly unchanged; the confirmed placeholder remains delivered at one attempt.
+
+This checkpoint is operational. A subsequent bounded follow-up restores the
+exact quieter composer/menu arrangement from the user's screenshots and fixes
+a saved-crop question alias and native CLI import. Those changes require their
+own final head/checks/rollout receipt. The separately requested humidity, wind
+and solar expansion is a new additive feature, with numerical/sim ownership
+handed off; it is not covered by the temperature results below.
+
 Verified behavior candidate: `37b417fab75c49c03f5f356eabc9090c7d5b75a7`.
 The source is frozen. This report and its evidence are a metadata-only handoff to
 the main consolidation owner. The combined release must separately pass its

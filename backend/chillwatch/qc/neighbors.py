@@ -229,28 +229,36 @@ def theil_sen_lapse_excluding_each(
 
 
 def adjusted_neighbor_temps(
-    W: np.ndarray, idx: np.ndarray, dz: np.ndarray, gamma: np.ndarray
+    W: np.ndarray, idx: np.ndarray, dz: np.ndarray, gamma: np.ndarray, shrink: float = 1.0
 ) -> np.ndarray:
-    """(H, k) lapse-adjusted neighbor temperatures (NaN where neighbor missing/invalid)."""
+    """(H, k) lapse-adjusted neighbor temperatures (NaN where neighbor missing/invalid).
+
+    ``shrink`` scales the lapse term (1 = the spec's full adjustment).
+    """
     H = W.shape[0]
     rows = np.arange(H)[:, None]
     vals = np.where(idx >= 0, W[rows, np.clip(idx, 0, None)], np.nan)
     g = np.where(np.isfinite(gamma), gamma, 0.0)[:, None]
-    return vals + g * dz / 1000.0
+    return vals + shrink * g * dz / 1000.0
 
 
 def idw_baseline(
-    adj: np.ndarray, dist_km: np.ndarray, min_neighbors: int | None = None, min_distance_km: float | None = None
+    adj: np.ndarray, dist_km: np.ndarray, min_neighbors: int | None = None, min_distance_km: float | None = None,
+    dz_ft: np.ndarray | None = None, dz_scale_ft: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """``T_base = sum(w_i * adj_i) / sum(w_i)``, ``w_i = 1/d_i^2`` over valid neighbors.
 
-    Returns (T_base, n_valid); T_base is NaN when fewer than ``min_neighbors`` are valid.
+    With ``dz_scale_ft`` the weights also fall off with elevation difference:
+    ``w_i *= exp(-(dz_i / dz_scale_ft)^2)``. Returns (T_base, n_valid); T_base is NaN when
+    fewer than ``min_neighbors`` are valid.
     """
     th = config.thresholds()
     min_neighbors = int(min_neighbors or th["baseline"]["min_neighbors"])
     dmin = float(min_distance_km if min_distance_km is not None else th["neighbors"]["min_distance_km"])
     valid = np.isfinite(adj) & np.isfinite(dist_km)
     w = np.where(valid, 1.0 / np.maximum(np.nan_to_num(dist_km, nan=1.0), dmin) ** 2, 0.0)
+    if dz_scale_ft and dz_ft is not None:
+        w = w * np.exp(-((np.nan_to_num(dz_ft) / float(dz_scale_ft)) ** 2))
     num = np.where(valid, adj, 0.0) * w
     sw = w.sum(axis=1)
     n = valid.sum(axis=1)

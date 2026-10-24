@@ -36,6 +36,9 @@ ORCHARD = {"lat": 38.55, "lon": -121.78, "elevation_ft": 60.0}
 SESSION_KEY = "demo-simulation:session-v1"
 PRESETS = ("normal", "minor", "spike", "support_loss", "recover")
 MAP_BOUNDS = {"south": 38.22, "north": 38.86, "west": -122.45, "east": -121.14}
+# Test sensors are uncalibrated inputs: the estimator may use them, frozen station QC never scores them.
+SENSOR_BASE_ID = 900_000
+MAX_SENSORS = 6
 
 
 class DemoSimulation:
@@ -93,6 +96,7 @@ class DemoSimulation:
                 raise ValueError("An existing demo session uses different source weather")
             if self.session.get("weather_source_sha256") != (self.weather_provenance or {}).get("sha256"):
                 raise ValueError("This session predates the weather-variable source; choose a fresh simulation state directory")
+            self.session.setdefault("sensors", [])
             self._evaluate()
 
     def _save(self):
@@ -104,7 +108,7 @@ class DemoSimulation:
         self.session = {"run_id": run, "orchard_id": "sim-" + run, "clock": START,
                         "source_sha256": self.provenance["sha256"], "revision": 0,
                         "weather_source_sha256": (self.weather_provenance or {}).get("sha256"),
-                        "frames": {}, "offline": [], "actions": [], "evaluations": {}, "weather_overrides": {}}
+                        "frames": {}, "offline": [], "sensors": [], "actions": [], "evaluations": {}, "weather_overrides": {}}
         self.monitor.create_orchard("Demo West Orchard", orchard_id=self.session["orchard_id"],
                                     mode="injected", **ORCHARD)
         self._evaluate()
@@ -150,13 +154,26 @@ class DemoSimulation:
                                     field + "_availability_reason": "simulated_offline", field + "_available": False,
                                     field + "_availability_reasons": ["simulated_offline"]})
             rows.append(row)
+        # A test sensor reports its set value every source hour in the replay window.
+        hours = sorted({r["timestamp"] for r in rows})
+        for sensor in self.session["sensors"]:
+            rows.extend({"station_id": sensor["id"], "timestamp": hour, "temperature_f": sensor["value_f"],
+                         "temperature_unit": "F", "quality": "usable", "source_flag": "", "timestamp_verified": True,
+                         "timestamp_basis": "fixed_pst_hour_ending", "availability_reason": None,
+                         "source": "demo_test_sensor", "demo_override": {"kind": "test_sensor"}} for hour in hours)
         return pd.DataFrame(rows)
+
+    def _all_stations(self):
+        sensors = [{"id": s["id"], "station_id": s["id"], "name": "Test sensor", "lat": s["lat"], "lon": s["lon"],
+                    "elevation_ft": ORCHARD["elevation_ft"]} for s in self.session["sensors"]]
+        return _stations(pd.DataFrame(self.station_metadata + sensors))
 
     def _evaluate(self):
         observations = self._inputs()
+        self.stations = self._all_stations()
         now = pd.Timestamp(self.session["clock"])
         snapshot = fingerprint({"source": self.provenance["sha256"], "weather_source": self.weather_provenance,
-                                "frames": self.session["frames"],
+                                "frames": self.session["frames"], "sensors": self.session["sensors"],
                                 "clock": self.session["clock"]})
         self.packet = assess_location(**ORCHARD, valid_utc=now, as_of=now,
             observations=observations, stations=self.stations, snapshot_id="demo:" + snapshot,
@@ -164,7 +181,7 @@ class DemoSimulation:
             geometry_source="explicit demonstration orchard pin; 60 ft configured elevation")
         self.observations = observations
         self.cleaned = _operation_gate(_clean(_observations(observations, now), self.station_ids), self.stations)
-        known = self.cleaned[self.cleaned.operation_available].copy()
+        known = self.cleaned[self.cleaned.operation_available & self.cleaned.station_id.isin(self.station_ids)].copy()
         known["quality"] = known["source_quality"]
         self.scored = _score(known, self.reference)
         self.monitor.apply(self.session["orchard_id"], {"latest": self.packet}, now=now)
@@ -192,6 +209,27 @@ class DemoSimulation:
             raise ValueError("Choose one of the five calibrated stations")
         return value
 
+    def _sensor(self, value):
+        match = [s for s in self.session["sensors"] if not isinstance(value, bool) and s["id"] == value]
+        if not match:
+            raise ValueError("Choose an existing test sensor")
+        return match[0]
+
+    @staticmethod
+    def _temperature(value):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not -10 <= value <= 125:
+            raise ValueError("Temperature must be finite and between -10 and 125 degrees Fahrenheit")
+        return float(value)
+
+    @staticmethod
+    def _spot(lat, lon):
+        for value in (lat, lon):
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise ValueError("Latitude and longitude must be finite numbers")
+        if not (MAP_BOUNDS["south"] <= lat <= MAP_BOUNDS["north"] and MAP_BOUNDS["west"] <= lon <= MAP_BOUNDS["east"]):
+            raise ValueError("Choose a spot inside the demonstration map")
+        return float(lat), float(lon)
+
     def action(self, action):
         with self._lock:
             if not isinstance(action, dict):
@@ -201,20 +239,37 @@ class DemoSimulation:
                       "weather": {"type", "station_id", "variable", "value", "source_flag"},
                       "weather_reset": {"type", "station_id", "variable"},
                       "online": {"type", "station_id", "online"}, "advance": {"type", "hours"},
-                      "preset": {"type", "name"}, "reset": {"type"}, "reset_temperatures": {"type"}}
+                      "preset": {"type", "name"}, "reset": {"type"}, "reset_temperatures": {"type"},
+                      "sensor": {"type", "lat", "lon", "value_f"}, "sensor_value": {"type", "sensor_id", "value_f"},
+                      "sensor_remove": {"type", "sensor_id"}}
             if kind not in fields or set(action) != fields[kind]:
                 raise ValueError("Unknown action or unexpected action fields")
             if kind == "reset":
                 self._reset()
             elif kind == "reset_temperatures":
-                # Recorded readings return for this hour; reporting interruptions stay.
+                # Recorded readings return for this hour and test sensors go; reporting interruptions stay.
                 self._frame()["temperatures"] = {}
+                self.session["sensors"] = []
                 self._evaluate()
             elif kind == "temperature":
-                station, value = self._station_id(action["station_id"]), action["value_f"]
-                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not -10 <= value <= 125:
-                    raise ValueError("Temperature must be finite and between -10 and 125 degrees Fahrenheit")
-                self._frame()["temperatures"][str(station)] = float(value)
+                station, value = self._station_id(action["station_id"]), self._temperature(action["value_f"])
+                self._frame()["temperatures"][str(station)] = value
+                self._evaluate()
+            elif kind == "sensor":
+                lat, lon = self._spot(action["lat"], action["lon"])
+                value = self._temperature(action["value_f"])
+                if len(self.session["sensors"]) >= MAX_SENSORS:
+                    raise ValueError(f"Remove a test sensor first; at most {MAX_SENSORS} can be placed")
+                self.session["sensors"].append({"id": SENSOR_BASE_ID + self.session["revision"] + 1,
+                                                "lat": lat, "lon": lon, "value_f": value})
+                self._evaluate()
+            elif kind == "sensor_value":
+                sensor, value = self._sensor(action["sensor_id"]), self._temperature(action["value_f"])
+                sensor["value_f"] = value
+                self._evaluate()
+            elif kind == "sensor_remove":
+                sensor = self._sensor(action["sensor_id"])
+                self.session["sensors"] = [s for s in self.session["sensors"] if s is not sensor]
                 self._evaluate()
             elif kind == "online":
                 station, online = self._station_id(action["station_id"]), action["online"]
@@ -301,11 +356,7 @@ class DemoSimulation:
 
     def point(self, lat, lon):
         """Read-only estimate at one map spot; it never changes the session."""
-        for value in (lat, lon):
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-                raise ValueError("Latitude and longitude must be finite numbers")
-        if not (MAP_BOUNDS["south"] <= lat <= MAP_BOUNDS["north"] and MAP_BOUNDS["west"] <= lon <= MAP_BOUNDS["east"]):
-            raise ValueError("Choose a spot inside the demonstration map")
+        lat, lon = self._spot(lat, lon)
         with self._lock:
             layers = {}
             for layer, findings in self._layer_findings():
@@ -318,7 +369,8 @@ class DemoSimulation:
 
     def _heatmap(self):
         current = self.session["clock"]
-        key = fingerprint({"current": current, "frames": self.session["frames"], "grid": self._grid_size})
+        key = fingerprint({"current": current, "frames": self.session["frames"], "sensors": self.session["sensors"],
+                           "grid": self._grid_size})
         if key in self._map_cache:
             return self._map_cache[key]
         bounds = MAP_BOUNDS
@@ -441,6 +493,8 @@ class DemoSimulation:
                 "source": {**self.provenance, "no_training_overlap": True, "immutable": True,
                            "weather_variables": self.weather_provenance},
                 "stations": stations, "assessment": self.packet, "heatmap": self._heatmap(),
+                "sensors": [{**s, "elevation_ft": ORCHARD["elevation_ft"], "calibrated": False}
+                            for s in self.session["sensors"]],
                 "orchard": self.store.orchard(orchard_id), "monitor": monitor,
                 "messages": messages, "notifications": notifications, "events": events, "history": history,
                 "actions": self.session["actions"], "controls": {"presets": list(PRESETS),

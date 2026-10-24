@@ -1,6 +1,6 @@
 # ChillWatch estimator vs Terra's pipeline: compatibility report
 
-Checked 2026-10-24 against `terra-nathan-agent-handoff.md` (dated 2026-10-23). ChillWatch code at commit `daa451a`.
+Checked 2026-10-24 against `terra-nathan-agent-handoff.md` (dated 2026-10-23). ChillWatch code at commit `14e1250` (same tree as the `daa451a` named in earlier copies).
 
 **Where the numbers come from:**
 - Validation figures: `bench/terra_compat/`, i.e. its scripts plus `eval.json`, `extra.json`, `stats.json` and `checks.json`.
@@ -9,6 +9,43 @@ Checked 2026-10-24 against `terra-nathan-agent-handoff.md` (dated 2026-10-23). C
 - `data/` and `bench/results/*.json` are git-ignored, so hashes are given below.
 
 Cross-owner changes are **proposals only**. Nothing on ET's side was changed.
+
+## Status after the follow-up work (later on 2026-10-24)
+
+The ChillWatch-side changes proposed below are now built in `backend/chillwatch/estimate.py` (`estimate_location`).
+Details and numbers are in `docs/DECISIONS.md` ("Terra integration, hourly offsets, year-round data").
+
+| Gap below | Now |
+|---|---|
+| 1. Output fields | **Done.** Location id (`TEST-…` when no orchard is given), geometry source, hour, °F, method, a parameter-hash version, used and excluded station ids with reasons (held-out target, Terra finding, quality, source flag, missing, out of range), lapse stations, data-through, as-of and status. |
+| 2. Terra findings | **Done.** Findings exclude readings in a single pass. A finding with an unknown visibility time still counts. |
+| 3. `Y` flags | Terra's rule (blank flags only) is the default; `usable_flags` can keep `Y`. The decision is still ET's. |
+| 4. Unapproved predictors | Unchanged: the Terra path uses air temperature only, and LightGBM stays out. |
+| 5. Intervals | **Calibrated** on the physics fit's leave-one-station-out residuals (region-wide lapse): 79.9% of held-out 2023-25 hours at all region stations fall inside the nominal 80%. With `estimate_location`: 77–86% pooled on Terra's network, 83–93% at the ASOS sites, 54–98% at single sites. **Off by default** (`estimate.intervals`). When on, `method_version` includes a hash of the bin table. |
+| 6. As-of / freshness | **Done.** `as_of` and `visible_at` are respected. A reading not yet visible is treated as absent. There is no forecast past `as_of`, and `stale` is returned past `max_age_hours`. |
+| 7. October–March only | **Done.** April–September 2006–2026 is ingested and seasons are September–August years. On Terra's stations, each estimated from the other four: 1.78 °F Oct–Mar 2024-25 and 2.34 °F Apr–Aug 2025 (peer median 1.86 / 2.29 °F). In summer the Delta site (212) reads 3.3 °F cooler than the other four predict (estimate − truth = +3.3 °F). |
+
+Other items:
+- **Lapse correction:** off on Terra's network. It applies only when the stations within 80 km span 500 ft or more.
+- **Peer minimum:** `insufficient_data` below 3 usable peers.
+- **Known-station offsets:** now by hour of day.
+- **March 2026:** nothing in the follow-up work was fitted on it. But the proposals it led to are now built: the lapse span gate, Terra's flag rule as the default, and hour-of-day offsets. `bench/terra_compat/intervals.json` also reports on it. So, as the windows table says, it is not a fresh holdout for the new configuration.
+
+Superseded in the report below (it describes commit `14e1250`):
+- **Known-station model:** `cimis-v2` is active. It was trained year-round on Sep–Aug seasons 2005-06..2022-23, through 2023-09-01. Its hashes:
+  - `model.txt`: `b474d05e3a7fd177b7a2e5d86cf6b289a3c950f14b70790eed270c8c6e2822b8`
+  - `uncertainty.json`: `c531dedef6aec4baf1c8ad278d950b6eb8c286ae62377f900b2d7f04562a9180`
+  - `features.json`: unchanged
+- **`data/models/physics_fit.json`** now holds the year-round fit:
+  - Settings: lapse ×0.75, 600 ft weighting, with the p10/p90 bins.
+  - Fitted on Sep–Aug 2018-19..2022-23 and checked on 2023-24 + 2024-25: 2.333 °F, vs 2.384 °F for the spec physics.
+  - SHA-256 `37633cc95ce00dc5a645c84d244050160d60292fd8593ff768de37552cccda1a`.
+  - The Oct–Mar fit quoted below (×0.5, 2.14 °F, SHA-256 `be0ba06f…`) is kept as `physics_fit_octmar_2026-10-24.json`. It has no bins.
+- **Windows:**
+  - Training and the physics fit now use data before 2023-09-01, not 2023-04-01.
+  - The holdout seasons 2023-24 and 2024-25 now include April–September. They cover all of Terra's offset-fit window (2023-09-01 → 2025-09-01), not only its Oct–Mar parts.
+  - The 2025-26 season starts 2025-09-01. It is still excluded from training.
+- **Season coverage:** year-round (gap 7 above). The Oct–Mar-only statements below describe the earlier state.
 
 ## Verdict
 

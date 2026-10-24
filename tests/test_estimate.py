@@ -119,9 +119,13 @@ def test_too_few_peers():
     assert {"station_id": 212, "reason": "missing"} in out["excluded"].iloc[0]
 
 
-def test_outside_validated_months():
+def test_outside_validated_months(monkeypatch):
+    from chillwatch import config
+
     hrs = pd.date_range("2026-07-01 09:00", periods=2, freq="h", tz="UTC")
     obs = _obs().assign(timestamp=lambda d: d["timestamp"] + (hrs[0] - HOURS[0]))
+    assert (estimate_location(38.5, -121.8, 60.0, hrs, hrs[-1], obs, _stations())["status"] == "ok").all()
+    monkeypatch.setitem(config.thresholds()["estimate"], "validated_months", [10, 11, 12, 1, 2, 3])
     out = estimate_location(38.5, -121.8, 60.0, hrs, hrs[-1], obs, _stations())
     assert (out["status_reason"] == "outside_validated_months").all()
 
@@ -209,6 +213,40 @@ def test_lapse_ignores_stations_beyond_max_km():
     obs = pd.concat([_obs(), _obs({900: 20.0}).query("station_id == 900")])
     out = _at_davis(stations=st, observations=obs)
     assert (out["method"] == "idw").all() and (out["lapse_station_ids"].map(len) == 0).all()
+
+
+def test_intervals_only_when_enabled_and_calibrated(monkeypatch, tmp_path):
+    import json
+    import os
+
+    from chillwatch import config
+
+    # own data dir, so a run without tests/conftest.py (--noconftest) never touches data/models
+    monkeypatch.setenv("CHILLWATCH_DATA_DIR", str(tmp_path / "data"))
+    assert _at_davis()[["p10", "p90"]].isna().all().all()  # off by default
+    v_off = method_version()
+    monkeypatch.setitem(config.thresholds()["estimate"], "intervals", True)
+    no_bins = _at_davis()
+    assert no_bins[["p10", "p90"]].isna().all().all()  # on, but no calibrated bins yet
+    d = config.data_dir() / "models"
+    d.mkdir(parents=True, exist_ok=True)
+
+    def write_bins(q10, q90, mtime):
+        st = {"sd": 1.0, "q10": q10, "q90": q90, "n": 1000, "bias": 0.0}
+        f = d / "physics_fit.json"
+        f.write_text(json.dumps({"uncertainty": {"_all": st, "_pooled_n": st, "_pooled_d": st, "_widest": st}}))
+        os.utime(f, (mtime, mtime))  # the bins cache is keyed by mtime
+
+    write_bins(-2.0, 1.5, 1_000_000)
+    out = _at_davis()
+    assert np.allclose(out["p10"], out["temperature"] - 2.0) and np.allclose(out["p90"], out["temperature"] + 1.5)
+    assert out["method_version"].iloc[0] != v_off  # the interval switch is part of the version
+    assert out["method_version"].iloc[0] != no_bins["method_version"].iloc[0]  # so is the bin table
+    assert out["method_version"].iloc[0] == method_version()
+    write_bins(-3.0, 2.5, 2_000_000)  # a refit
+    refit = _at_davis()
+    assert np.allclose(refit["p10"], refit["temperature"] - 3.0)
+    assert refit["method_version"].iloc[0] != out["method_version"].iloc[0]
 
 
 def _operating_date_case(hours):

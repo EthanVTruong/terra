@@ -334,6 +334,8 @@ def markdown(r: dict[str, Any]) -> str:
               "Detection thresholds: " + ", ".join(f"{k} {r['thresholds']['residual'][k]}" for k in
                                                   ("spike_sigma", "cusum_k", "cusum_h", "mean24_sigma")
                                                   if k in r["thresholds"].get("residual", {}))
+              + f" ({r['thresholds'].get('residual', {}).get('mean24_basis', 'hourly')} basis)"
+              + f"; offset learning lag {r['thresholds'].get('offsets', {}).get('lag_days', 0)} d"
               + f"; stuck {r['thresholds'].get('stuck', {}).get('min_hours')} h"
               + f"; offline {r['thresholds'].get('offline', {}).get('warn_hours')} h", "",
               "## Detection", "",

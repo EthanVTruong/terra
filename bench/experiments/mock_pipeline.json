@@ -1,0 +1,330 @@
+{
+ "checks": {
+  "interpolation beats the nearest-station and the six-station-mean baselines": {
+   "pass": true,
+   "mae_f": 1.039,
+   "nearest_station_mae_f": 1.137,
+   "six_station_mean_mae_f": 1.472,
+   "better_baseline_picked_per_site_with_hindsight_mae_f": 0.986
+  },
+  "lapse helps at the foothill site": {
+   "pass": true,
+   "elevation_ft": 1450.0,
+   "mae_f": 0.733,
+   "mae_lapse_off_f": 1.782
+  },
+  "p10-p90 covers ~80% at held-out sites": {
+   "pass": true,
+   "coverage": 0.843,
+   "on_fit_check_season": 0.7929
+  },
+  "chill hours at held-out sites within 15% of truth": {
+   "pass": true,
+   "abs_error_h": [
+    35.0,
+    195.0,
+    223.0,
+    148.0,
+    109.0
+   ],
+   "true_h": [
+    2156.0,
+    1971.0,
+    1606.0,
+    1839.0,
+    1803.0
+   ]
+  },
+  "hour-of-day offsets follow a within-night/within-day pattern better than night/day offsets": {
+   "pass": true,
+   "max_abs_error_f": 0.546,
+   "mean_abs_error_f": 0.287,
+   "night_day_pair_max_abs_error_f": 1.637,
+   "night_day_pair_mean_abs_error_f": 0.86,
+   "within_half_share_recovered": 0.667,
+   "pattern_f": [
+    2.75,
+    3.06,
+    3.3,
+    3.45,
+    3.5,
+    3.45,
+    3.3,
+    3.06,
+    2.75,
+    2.39,
+    2.0,
+    1.61,
+    1.25,
+    0.94,
+    0.7,
+    0.55,
+    0.5,
+    0.55,
+    0.7,
+    0.94,
+    1.25,
+    1.61,
+    2.0,
+    2.39
+   ],
+   "recovered_f": [
+    2.69,
+    2.9,
+    3.06,
+    3.16,
+    3.19,
+    3.16,
+    3.06,
+    2.69,
+    2.48,
+    2.24,
+    1.98,
+    1.72,
+    1.48,
+    1.28,
+    1.12,
+    1.02,
+    0.98,
+    1.02,
+    1.12,
+    1.49,
+    1.69,
+    1.93,
+    2.19,
+    2.45
+   ]
+  },
+  "spike, stuck and outage detected": {
+   "pass": true,
+   "spike": true,
+   "stuck": true,
+   "outage": true
+  },
+  "4 F offset and 5 F drift detected": {
+   "pass": true,
+   "offset": {
+    "station": 67,
+    "detected": true,
+    "detected_as": "offset",
+    "hours_to_detect": 24.0
+   },
+   "drift": {
+    "station": 141,
+    "detected": true,
+    "detected_as": "offset",
+    "hours_to_detect": 72.0
+   }
+  },
+  "false alarms on clean stations below 1 per station-month": {
+   "pass": true,
+   "per_station_month": 0.385,
+   "alarms": [
+    [
+     1,
+     "offset",
+     "2022-12-01"
+    ],
+    [
+     1,
+     "offset",
+     "2022-12-11"
+    ],
+    [
+     1,
+     "offset",
+     "2022-12-22"
+    ],
+    [
+     1,
+     "offset",
+     "2023-01-03"
+    ],
+    [
+     1,
+     "spike",
+     "2022-12-22"
+    ],
+    [
+     1,
+     "spike",
+     "2023-01-11"
+    ],
+    [
+     6,
+     "spike",
+     "2023-01-13"
+    ],
+    [
+     12,
+     "spike",
+     "2023-01-13"
+    ],
+    [
+     12,
+     "spike",
+     "2023-01-14"
+    ],
+    [
+     71,
+     "spike",
+     "2023-01-13"
+    ]
+   ]
+  },
+  "findings remove a spiking neighbor from the estimate": {
+   "pass": true,
+   "site": 4,
+   "spike_neighbor_used": true,
+   "err_clean_f": [
+    0.88,
+    0.8
+   ],
+   "err_unflagged_f": [
+    1.72,
+    1.74
+   ],
+   "err_flagged_f": [
+    0.79,
+    0.85
+   ]
+  },
+  "3-day outage filled, MAE under 3 F": {
+   "pass": true,
+   "filled_share": 1.0,
+   "mae_f": 1.824
+  }
+ },
+ "held_out": {
+  "4": {
+   "elevation_ft": 1450.0
+  },
+  "21": {
+   "elevation_ft": 287.0
+  },
+  "125": {
+   "elevation_ft": 165.0
+  },
+  "162": {
+   "elevation_ft": 137.0
+  },
+  "211": {
+   "elevation_ft": 151.0
+  }
+ },
+ "physics_fit": {
+  "best": {
+   "lapse_shrink": 1.0,
+   "dz_scale_ft": null
+  },
+  "check_mae_f": 1.203006859970917,
+  "check_coverage": {
+   "all": 0.7929,
+   "hours": 104832,
+   "night": 0.7973,
+   "day": 0.7885,
+   "nearest_lt_15km": 0.7933,
+   "nearest_15_40km": 0.795,
+   "nearest_ge_40km": 0.7729,
+   "dz_ge_300ft": 0.7925
+  }
+ },
+ "interpolation": {
+  "4": {
+   "elevation_ft": 1450.0,
+   "ok_hours": 4368,
+   "mae_f": 0.733,
+   "mae_lapse_off_f": 1.782,
+   "mae_nearest_station_f": 0.855,
+   "mae_six_station_mean_f": 2.17,
+   "lapse_hours_share": 1.0,
+   "p10_p90_coverage": 0.91,
+   "chill_true_h": 2156.0,
+   "chill_est_h": 2121.0
+  },
+  "21": {
+   "elevation_ft": 287.0,
+   "ok_hours": 4368,
+   "mae_f": 1.146,
+   "mae_lapse_off_f": 0.919,
+   "mae_nearest_station_f": 1.456,
+   "mae_six_station_mean_f": 0.776,
+   "lapse_hours_share": 1.0,
+   "p10_p90_coverage": 0.829,
+   "chill_true_h": 1971.0,
+   "chill_est_h": 1776.0
+  },
+  "125": {
+   "elevation_ft": 165.0,
+   "ok_hours": 4368,
+   "mae_f": 1.23,
+   "mae_lapse_off_f": 1.23,
+   "mae_nearest_station_f": 1.103,
+   "mae_six_station_mean_f": 2.026,
+   "lapse_hours_share": 0.0,
+   "p10_p90_coverage": 0.809,
+   "chill_true_h": 1606.0,
+   "chill_est_h": 1829.0
+  },
+  "162": {
+   "elevation_ft": 137.0,
+   "ok_hours": 4368,
+   "mae_f": 1.067,
+   "mae_lapse_off_f": 0.814,
+   "mae_nearest_station_f": 1.027,
+   "mae_six_station_mean_f": 1.22,
+   "lapse_hours_share": 1.0,
+   "p10_p90_coverage": 0.8,
+   "chill_true_h": 1839.0,
+   "chill_est_h": 1691.0
+  },
+  "211": {
+   "elevation_ft": 151.0,
+   "ok_hours": 4368,
+   "mae_f": 1.017,
+   "mae_lapse_off_f": 1.47,
+   "mae_nearest_station_f": 1.242,
+   "mae_six_station_mean_f": 1.17,
+   "lapse_hours_share": 1.0,
+   "p10_p90_coverage": 0.865,
+   "chill_true_h": 1803.0,
+   "chill_est_h": 1694.0
+  }
+ },
+ "detection": {
+  "spike": {
+   "station": 70,
+   "detected": true,
+   "detected_as": "spike",
+   "hours_to_detect": 20.0
+  },
+  "stuck": {
+   "station": 5,
+   "detected": true,
+   "detected_as": "stuck",
+   "hours_to_detect": 24.0
+  },
+  "offset": {
+   "station": 67,
+   "detected": true,
+   "detected_as": "offset",
+   "hours_to_detect": 24.0
+  },
+  "drift": {
+   "station": 141,
+   "detected": true,
+   "detected_as": "offset",
+   "hours_to_detect": 72.0
+  },
+  "outage": {
+   "station": 176,
+   "detected": true,
+   "detected_as": "offline",
+   "hours_to_detect": 48.0
+  }
+ },
+ "summary": {
+  "passed": 10,
+  "of": 10
+ }
+}

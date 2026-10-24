@@ -64,6 +64,107 @@ Experiments in `/tmp/claude-0/ablation` during the build; all variants scored on
 - ASOS (`asos-v1`, 83 airport stations, leave-stations-out): model 2.71 F vs physics 2.49 F on their own (not identical) rows,
   consistent with the CIMIS finding.
 
+## Terra integration, hourly offsets, year-round data (2026-10-24)
+
+See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below come from
+`bench/terra_compat/` and `bench/experiments/`.
+
+- **`estimate_location`** (`backend/chillwatch/estimate.py`) is the Terra-facing estimate for a place with no station.
+  - Inputs: observations, findings and geometry.
+  - Output per hour:
+    - the estimate, its method and a parameter-hash version;
+    - used and excluded station ids with reasons;
+    - lapse stations, data-through and as-of times;
+    - status: `ok`, `stale` or `insufficient_data`.
+  - Eligibility follows Terra's rule by default (usable, blank CIMIS flag). Findings and readings respect `as_of` and `visible_at`.
+  - The lapse is fitted only from stations within 80 km, and only when they span 500 ft or more. On Terra's 129 ft network it
+    is off: there it sat at the ±10 °F/kft clip half the time and added nothing.
+  - It reproduces the evaluated method exactly (`bench/terra_compat/estimate_check.json`).
+- **Hour-of-day offsets**: 24 PST bins, each pulled toward its night/day median with weight n/(n+14).
+  - Held-out 2023-24 + 2024-25 with `cimis-v1`, weekly 28-day learning, scored Nov 1 – Mar 31 (run before the year-round
+    change), vs night/day offsets: MAE 1.734 → 1.678 °F; chill-hour net error 104 → 97 h, where net error is per station
+    with both seasons summed, averaged over stations (`bench/experiments/offset_bins.json`).
+  - In the mock pipeline, on an injected pattern that varies within the night and within the day, they land within
+    0.29 °F on average vs 0.86 °F for the night/day pair. As designed, they recover two-thirds of each hour's departure
+    from its half's mean after 28 days, so a within-night pattern is not recovered exactly.
+- **Year-round seasons**: seasons are Sep 1 – Aug 31; April–September 2006–2026 is now ingested (8.66M rows; the readings table holds 17.3M).
+  - Season labels follow the configured start.
+  - Chill counts Nov 1 – Mar 31.
+  - The benchmark, chill map and demo scenario use the Oct–Mar focus window.
+  - `cimis-v2`:
+    - Training data: Sep–Aug seasons 2005-06..2022-23 (through 2023-09-01), 10M sampled rows. Seasons are built
+      `model.build_workers` at a time and subsampled as they arrive. Building them all at once ran out of memory, and so
+      did three at a time, so `cimis-v2` was built one at a time (`build_workers: 1`, now the default).
+    - It is active.
+    - Held-out 2023-25, known stations, vs `cimis-v1` (`bench/experiments/compare_v1_v2.json`), with hour-of-day offsets
+      learned from 2022-23 on the matching half-year (Oct–Mar offsets for Oct–Mar hours, Apr–Sep for Apr–Sep):
+      - MAE: Oct–Mar 1.897 → 1.881 °F; Apr–Sep 2.396 → 1.938 °F.
+      - Chill-hour net error per station-season about even: mean 82 → 86 h, median 56.5 → 55.5 h.
+      - Without offsets: Oct–Mar 2.016 → 2.008 °F, Apr–Sep 2.989 → 2.218 °F.
+      - An earlier version pooled the offsets over all 12 months. That mixed v1's out-of-sample summer residuals into
+        its winter offsets and overstated v2's winter and chill gains (1.987 → 1.931 °F, median 69.5 → 60.5 h).
+      - Matched offsets beat pooled ones for both models, which fits production's rolling 28-day windows.
+- **Physics refit year-round**: shrink 0.75 with 600 ft weighting (the Oct–Mar fit chose 0.5).
+  - Held-out 2023-25: 2.384 → 2.333 °F vs the spec physics.
+  - The no-station path now uses p10/p90 bins fitted on the physics fit's leave-one-station-out residuals: 79.9% coverage
+    of the nominal 80% on held-out 2023-25 hours at all region stations. That estimator uses the region-wide lapse, not
+    `estimate_location`'s local, span-gated lapse.
+  - With `estimate_location` (`bench/terra_compat/intervals.json`):
+    - Terra's network, each station estimated from the other four: 77–86% pooled (Oct–Mar 2024-25, Apr–Aug 2025, Mar 2026).
+    - Six ASOS sites near Davis: 83–93% pooled.
+    - Single sites: 54–98%.
+    - So the Terra-facing intervals stay off by default.
+    - When they are on, `method_version` includes a hash of the bin table, so a refit changes the version.
+- **Detection of drifts and offsets**:
+  - **Why recall was low:** the spec gate (24 h mean residual > 3 hourly sigma) cannot fire at noisy stations. Station 193
+    has an hourly sigma of 2.8 °F, so a 5.3 °F offset's 24 h mean never reaches 8.4 °F.
+  - **Offset absorption is not the main cause:** a 14-day lag on offset learning did not help. Drift went 5 → 4 of 16
+    and offset stayed at 6 of 16 (`bench/results/20261024-064834` without the lag, `20261024-064930` with it).
+  - **Option added:** `residual.mean24_basis: daily` judges the 24 h mean against the robust spread of 24 h means.
+  - **Causal snapshot harness** (`bench/experiments/drift_offset_snapshots.json`, `cimis-v1` expected values, no learned
+    offsets), tuned on 2023-24, numbers from 2024-25: the 4× daily gate raises drift recall 31 → 59% and offset recall
+    23 → 46%; drift/offset false alarms rise 0.07 → 0.24 per station-month.
+  - **Full replay** (`bench/experiments/detection_gate_replay.json`; per-season runs in `bench/results/20261024-1*`,
+    made with `bench/experiments/bench_season.py`):
+    - Setup: `cimis-v2`, weekly hour-of-day offsets. Seasons 2023-24, 2024-25 and 2025-26, each with the bench's 50 faults
+      (24 drifts and 24 offsets in all). No gate setting was tuned on 2025-26, but its results were seen before the
+      default was decided.
+
+      | Gate | Drift caught | Offset caught | False drift/offset alarms per station-month | All false alarms | Chill error on faulted stations, repaired |
+      |---|---:|---:|---:|---:|---:|
+      | spec: hourly sigma, 3× | 11/24 | 9/24 | 0.07 | 0.43 | 19.8 h |
+      | daily spread, 5× | 13/24 | 8/24 | 0.11 | 0.45 | 17.2 h |
+      | daily spread, 4× | 19/24 | 15/24 | 0.28 | 0.63 | 19.1 h |
+
+    - Unrepaired chill error on the faulted stations: 23.7 h.
+    - 2025-26 on its own, with false alarms per station-month:
+      - spec: 6/8 drifts, 3/8 offsets; 0.07 drift/offset false alarms, 0.48 of all types.
+      - 4×: 8/8 drifts, 4/8 offsets; 0.35 drift/offset false alarms, 0.76 of all types.
+      - This was the noisiest of the three seasons under both gates.
+    - Whatever the gate, the spikes, stuck runs, outages and clock shifts come out the same.
+  - **Decision: the spec gate stays the default.**
+    - No setting is a free gain.
+      - The harness suggested the 5× daily gate would catch more drifts and offsets for a small rise in false alarms
+        (2024-25: drift 31 → 40%, offset 23 → 29%, false alarms 0.065 → 0.081).
+      - In the full replay it catches about as many as the spec (21 vs 20 of 48), while drift/offset false alarms rise
+        0.07 → 0.11.
+    - The 4× daily gate catches 14 more of the 48 faults but quadruples false drift/offset alarms. On the ~90 stations
+      that report, that is about 25 a month instead of 6 (rates per observed station-month, measured Oct–Mar). Each
+      alarm replaces a station's readings with estimates.
+    - Turning it on is a two-line config change (`mean24_basis: daily`, `mean24_sigma: 4.0`) and a call for whoever
+      reviews the alarms.
+  - **Holdout use:**
+    - 2023-24 and 2024-25 were used to choose the offset scheme, the model and the gate candidates.
+    - 2025-26 was inspected for the Terra report and was part of the replay behind the gate default, so it is no longer
+      a clean detection holdout either.
+    - A clean check of the combined configuration needs 2026-27 or later.
+- **Tests**: the SQL tests default to a separate `chillwatch_test` database. The end-to-end test deletes and rewrites rows
+  for synthetic ids that are real CIMIS ids (6 Davis, 70, 71, ...).
+- **Mock pipeline** (`bench/experiments/mock_pipeline.py`): the whole pipeline on synthetic data with known truth passes
+  10 of 10 checks. It covers interpolation vs baselines, lapse at a foothill site, coverage, offsets, detection, the
+  findings handoff and gap filling. False alarms on its 20 clean stations: 0.38 per station-month. The 5 °F drift was
+  found but typed as an offset; the bench counts drift and offset as interchangeable for recall.
+
 ## Design decisions
 
 - **Station ids**: CIMIS stations keep their CIMIS number as `station_id`; other sources get ids from 100000 up (`store.assign_station_id`).

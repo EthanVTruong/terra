@@ -329,30 +329,42 @@ def train(
     seed = int(m["seed"])
     frames = []
     has_extras: set[str] = set()
-    jobs = []
-    for s in train_seasons:
-        start, end = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
-        r = slim_readings(store.readings(start, end, stations["station_id"].tolist()))
-        if r.empty or r["temp_f"].notna().sum() == 0:
-            continue
-        jobs.append((s, r, start, end))
-    workers = max(1, min(len(jobs), int(m.get("build_workers", 4))))
+    workers = max(1, min(len(train_seasons), int(m.get("build_workers", 4))))
     extras = tuple(EXTRA_FEATURES) if use_extras else ()
-    if workers > 1:
-        from concurrent.futures import ProcessPoolExecutor
+    # build seasons a few at a time and subsample each as it arrives, so year-round data
+    # (~1.1M rows per season) never has to sit in memory all at once
+    per_season = -(-int(max_rows) // max(len(train_seasons), 1)) if max_rows else None
+    for i in range(0, len(train_seasons), workers):
+        jobs = []
+        for s in train_seasons[i:i + workers]:
+            start, end = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
+            r = slim_readings(store.readings(start, end, stations["station_id"].tolist()))
+            if r.empty or r["temp_f"].notna().sum() == 0:
+                continue
+            jobs.append((s, r, stations, start, end, extras))
+        if workers > 1 and len(jobs) > 1:
+            from concurrent.futures import ProcessPoolExecutor
 
-        with ProcessPoolExecutor(max_workers=workers) as ex:
-            built = list(ex.map(_season_frame, [(s, r, stations, a, b, extras) for s, r, a, b in jobs]))
-    else:
-        built = [_season_frame((s, r, stations, a, b, extras)) for s, r, a, b in jobs]
-    for s, tf, ex_found in built:
-        has_extras |= ex_found
-        if len(tf):
-            frames.append(tf)
-        log.info("season %s: %d rows", s, len(tf))
+            with ProcessPoolExecutor(max_workers=min(workers, len(jobs))) as ex:
+                built = list(ex.map(_season_frame, jobs))
+        else:
+            built = [_season_frame(j) for j in jobs]
+        del jobs
+        for s, tf, ex_found in built:
+            has_extras |= ex_found
+            n = len(tf)
+            if per_season and n > per_season:
+                tf = tf.sample(n=per_season, random_state=seed)
+            if len(tf):
+                frames.append(tf)
+            log.info("season %s: %d rows (kept %d)", s, n, len(tf))
+        del built
     if not frames:
         raise RuntimeError("no training data: run `chillwatch backfill` first")
     data = pd.concat(frames, ignore_index=True)
+    del frames
+    if per_season:
+        data = data.sort_values(["station_id", "ts"], kind="stable").reset_index(drop=True)
     if max_rows and len(data) > max_rows:
         data = data.sample(n=max_rows, random_state=seed).sort_values(["station_id", "ts"]).reset_index(drop=True)
     feats = feature_names(extras=tuple(c for c in EXTRA_FEATURES if c in has_extras))
@@ -548,7 +560,10 @@ def predict_location_frame(
     method = np.where(model_ok, "model", np.where(use_idw, "idw_lapse", "none"))
     exp = np.where(model_ok, pred, np.where(use_idw, tb, np.nan))
     sd_m, q10_m, q90_m = unc.lookup(bundle.unc_model, aux["nearest_km"], aux["nearest_dz_ft"], night)
-    sd_i, q10_i, q90_i = unc.lookup(bundle.unc_idw, aux["nearest_km"], aux["nearest_dz_ft"], night)
+    # the fitted no-station physics has its own calibrated bins (fit-physics); the spec IDW fallback
+    # inside the model path keeps the bins fitted on spec residuals
+    phys = unc.physics_bins() if not use_model else None
+    sd_i, q10_i, q90_i = unc.lookup(phys or bundle.unc_idw, aux["nearest_km"], aux["nearest_dz_ft"], night)
     sd = np.where(model_ok, sd_m, np.where(use_idw, sd_i, np.nan))
     q10 = np.where(model_ok, q10_m, np.where(use_idw, q10_i, np.nan))
     q90 = np.where(model_ok, q90_m, np.where(use_idw, q90_i, np.nan))

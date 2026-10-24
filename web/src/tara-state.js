@@ -105,12 +105,15 @@ export function mergeTaraTimeline(turns, fieldNotes = []) {
   const linked = new Set(turns.filter((turn) => turn.role === "assistant" && identifier(turn.data?.message_id)).map((turn) => turn.data.message_id));
   const entries = turns.map((turn, index) => ({ type: "turn", key: `turn:${turn.id}`, value: turn, order: index }));
   const noteIds = new Set();
-  for (const note of fieldNotes) {
+  // Native field-note feeds are newest first, including equal source clocks.
+  // Turn arrays already retain their original oldest-first publication order.
+  for (const note of [...fieldNotes].reverse()) {
     if (!object(note) || !identifier(note.id) || !date(note.created_at) || linked.has(note.id) || noteIds.has(note.id)) continue;
     noteIds.add(note.id);
     entries.push({ type: "note", key: `note:${note.id}`, value: note, order: entries.length });
   }
-  return entries.sort((a, b) => Date.parse(a.value.created_at) - Date.parse(b.value.created_at) || a.order - b.order);
+  const timelineTime = (value) => Date.parse(date(value.published_at) && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value.published_at) ? value.published_at : value.created_at);
+  return entries.sort((a, b) => timelineTime(a.value) - timelineTime(b.value) || a.order - b.order);
 }
 
 export function validateFarmLocation(draft) {

@@ -1,18 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { usePresence } from "./usePresence";
+import { demoResultText } from "./delivery";
 
 const terminal = new Set(["delivered", "failed", "undelivered", "canceled", "rejected", "uncertain", "suppressed", "rate_limited"]);
 const retrySameEvent = new Set(["not_found", "not_configured", "disabled", "suppressed", "rate_limited"]);
-const resultText = (result) => {
-  const status = result.provider_status || result.status;
-  if (result.receipt_error) return `Delivery status could not be refreshed (${result.receipt_error}). Last reported state: ${String(status || "unknown").replaceAll("_", " ")}. Checking again will not resend.`;
-  if (status === "delivered") return "Twilio reports delivered. Check your phone for the message labelled TERRA DEMO.";
-  if (["provider_accepted", "queued", "accepted", "sending", "sent"].includes(status)) return `Twilio: ${status}. Phone delivery is still unconfirmed.`;
-  if (status === "uncertain") return "The send outcome is uncertain. Check Twilio’s message log before sending a new demo.";
-  if (["failed", "undelivered", "rejected"].includes(status)) return `Message ${status}${result.error_code ? ` (${result.error_code})` : ""}. Check your Twilio sender and account readiness.`;
-  return `SMS: ${String(status || "unavailable").replaceAll("_", " ")}${result.error_code ? ` (${result.error_code})` : ""}.`;
-};
 
 export default function SmsControls({ onStatus, onAssessment, orchard }) {
   const [open, setOpen] = useState(false), [status, setStatus] = useState(null);
@@ -127,11 +119,12 @@ export default function SmsControls({ onStatus, onAssessment, orchard }) {
       {status?.configured ? <p className="sms-state">To {status.recipient} · {status.suppressed ? "Paused" : status.enabled ? "Enabled" : "Disabled"}</p> : <p className="sms-state">Phone alerts aren’t connected yet.</p>}
       {orchard && <div className="sms-orchard"><label><input type="checkbox" checked={subscribed === true} disabled={busy || subscriptionBusy || subscribed === null || (!subscribed && (!status?.configured || !status?.enabled || status?.suppressed))} onChange={changeSubscription} /><span>Phone updates for {orchard.name}{orchard.demo_location ? " · demo" : ""}</span></label>{subscribed === null && <p className="microcopy">Subscription unavailable. Refresh setup to retry.</p>}</div>}
       <p className="microcopy">The monitor sends opted-in orchard updates.</p>
+      {status?.content_mode === "trial_template" && <p className="microcopy">Twilio sample SMS only. Open Terra for the actual finding.</p>}
       <div className="sms-demo-label">Simulated flag · explicit test</div>
       {status?.configured && !status?.demo_enabled && <p className="microcopy">Demo delivery is disabled in the server configuration.</p>}
-      {result && <p className="sms-result" role="status">{resultText(result)}{result.duplicate ? " This event was already recorded; no second message was sent." : ""}</p>}
+      {result && <p className="sms-result" role="status">{demoResultText(result)}{result.duplicate ? " This event was already recorded; no second message was sent." : ""}</p>}
       {error && <p className="query-error" role="alert">{error}</p>}
-      <div className="sms-actions"><button type="button" className="query-submit" onClick={send} disabled={!ready || busy || Boolean(result && !retrySameEvent.has(result.status))}>{busy ? "Working…" : result && retrySameEvent.has(result.status) ? "Retry this demo" : "Send simulated flag to my phone"}</button><button type="button" className="query-cancel" onClick={checkReceipt} disabled={busy || !status?.configured}>Check delivery</button></div>
+      <div className="sms-actions"><button type="button" className="query-submit" onClick={send} disabled={!ready || busy || Boolean(result && !retrySameEvent.has(result.status))}>{busy ? "Working…" : result && retrySameEvent.has(result.status) ? "Retry this demo" : status?.content_mode === "trial_template" ? "Send trial placeholder to my phone" : "Send simulated flag to my phone"}</button><button type="button" className="query-cancel" onClick={checkReceipt} disabled={busy || !status?.configured}>Check delivery</button></div>
       {result && terminal.has(result.provider_status || result.status) && result.status !== "uncertain" && <button type="button" className="sms-text-button" onClick={newDemo} disabled={busy}>Prepare another demo</button>}
       <div className="sms-actions sms-secondary"><button type="button" className="sms-text-button" onClick={refreshSetup} disabled={busy || subscriptionBusy}>Refresh setup</button>{status?.enabled && !status?.suppressed && <button type="button" className="sms-text-button" onClick={stop} disabled={busy}>Pause all phone alerts</button>}</div>
       <p className="microcopy">Twilio may charge for messages. A queued or sent result does not confirm phone delivery.</p>

@@ -31,9 +31,11 @@ SID = re.compile(r"SM[0-9a-fA-F]{32}\Z")
 OUTBOUND_STATUSES = {"accepted", "scheduled", "queued", "sending", "sent", "delivered",
                      "undelivered", "failed", "canceled"}
 TERMINAL_STATUSES = {"delivered", "undelivered", "failed", "canceled"}
+TRIAL_TEMPLATE = "sms_internal_alerts"
 ENV_KEYS = {"TERRA_SMS_ENABLED", "TERRA_SMS_DEMO_ENABLED", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN",
             "TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "API_KEY_SID", "API_KEY_SECRET",
-            "TWILIO_FROM_NUMBER", "TERRA_SMS_TO_NUMBER", "TERRA_SMS_DB_PATH", "TERRA_SMS_MAX_PER_DAY"}
+            "TWILIO_FROM_NUMBER", "TERRA_SMS_TO_NUMBER", "TERRA_SMS_DB_PATH", "TERRA_SMS_MAX_PER_DAY",
+            "TERRA_SMS_CONTENT_MODE"}
 DEFAULT_DB = DEFAULT_STATE_DIR / "sms.sqlite3"
 
 
@@ -90,6 +92,11 @@ class SMSConfig:
     db_path: Path = DEFAULT_DB
     max_per_day: int = 10
     errors: tuple[str, ...] = ()
+    content_mode: str = "terra"
+
+    @property
+    def template_name(self) -> str | None:
+        return TRIAL_TEMPLATE if self.content_mode == "trial_template" else None
 
     @classmethod
     def from_env(cls, environment: Mapping[str, str] | None = None, *,
@@ -108,6 +115,10 @@ class SMSConfig:
         key_secret = values.get("TWILIO_API_KEY_SECRET", values.get("API_KEY_SECRET", "")).strip()
         sender = values.get("TWILIO_FROM_NUMBER", "").strip()
         recipient = values.get("TERRA_SMS_TO_NUMBER", "").strip()
+        content_mode = values.get("TERRA_SMS_CONTENT_MODE", "terra").strip()
+        if content_mode not in {"terra", "trial_template"}:
+            errors.append("invalid_content_mode")
+            content_mode = "terra"  # Never echo an invalid operator value.
         if not re.fullmatch(r"AC[0-9a-fA-F]{32}", account):
             errors.append("invalid_or_missing_account_sid")
         if key or key_secret:
@@ -118,7 +129,7 @@ class SMSConfig:
             if not re.fullmatch(r"[0-9a-fA-F]{32}", token):
                 errors.append("invalid_or_missing_auth_token")
             username, secret = account, token
-        if not PHONE.fullmatch(sender):
+        if content_mode == "terra" and not PHONE.fullmatch(sender):
             errors.append("invalid_or_missing_sender")
         if not PHONE.fullmatch(recipient):
             errors.append("invalid_or_missing_recipient")
@@ -136,7 +147,7 @@ class SMSConfig:
             errors.append("invalid_delivery_store_path")
         return cls(account, username, secret, sender, recipient, boolean("TERRA_SMS_ENABLED"),
                    boolean("TERRA_SMS_DEMO_ENABLED"), db_path,
-                   limit, tuple(errors))
+                   limit, tuple(errors), content_mode)
 
 
 def build_demo_assessment() -> dict:
@@ -212,7 +223,8 @@ class SMSDispatcher:
                 mode TEXT NOT NULL, body_hash TEXT NOT NULL, status TEXT NOT NULL,
                 created_at TEXT NOT NULL, updated_at TEXT NOT NULL, attempted_at TEXT,
                 provider_sid TEXT, provider_status TEXT, error_code TEXT,
-                attempt_count INTEGER NOT NULL DEFAULT 1, next_attempt_at TEXT, source_event_id TEXT
+                attempt_count INTEGER NOT NULL DEFAULT 1, next_attempt_at TEXT, source_event_id TEXT,
+                content_mode TEXT NOT NULL DEFAULT 'terra', template_name TEXT, source_body_hash TEXT
             );
             CREATE INDEX IF NOT EXISTS sms_event ON sms_delivery(recipient_hash, event_id);
             CREATE TABLE IF NOT EXISTS sms_attempt (
@@ -221,11 +233,13 @@ class SMSDispatcher:
                 PRIMARY KEY (delivery_key, attempt_no)
             );
         """)
-        # Existing local ledgers predate rate-limit retry support. Add fields
+        # Existing local ledgers predate retry and content metadata. Add fields
         # without discarding no-resend evidence or the retired episode table.
         columns = {row[1] for row in db.execute("PRAGMA table_info(sms_delivery)")}
         for column, declaration in (("attempt_count", "INTEGER NOT NULL DEFAULT 1"),
-                                    ("next_attempt_at", "TEXT"), ("source_event_id", "TEXT")):
+                                    ("next_attempt_at", "TEXT"), ("source_event_id", "TEXT"),
+                                    ("content_mode", "TEXT NOT NULL DEFAULT 'terra'"),
+                                    ("template_name", "TEXT"), ("source_body_hash", "TEXT")):
             if column not in columns:
                 try:
                     db.execute("ALTER TABLE sms_delivery ADD COLUMN " + column + " " + declaration)
@@ -246,17 +260,22 @@ class SMSDispatcher:
 
     def status(self) -> dict:
         errors = list(self.config.errors)
+        if self.config.content_mode not in {"terra", "trial_template"}:
+            errors.append("invalid_content_mode")
+        configured = not errors
         try:
             suppressed = self._suppressed()
         except (OSError, sqlite3.Error, ValueError):
             suppressed = True
             errors.append("delivery_store_unavailable")
-        configured = not self.config.errors
         enabled = bool(self.config.enabled and configured and not suppressed and not errors)
         return {"transport": "twilio", "configured": configured, "enabled": enabled,
                 "live_enabled": enabled, "demo_enabled": bool(enabled and self.config.demo_enabled),
                 "suppressed": suppressed, "recipient": _mask(self.config.recipient),
-                "sender": _mask(self.config.sender), "max_per_day": self.config.max_per_day,
+                "sender": _mask(self.config.sender) if self.config.content_mode == "terra" else None,
+                "max_per_day": self.config.max_per_day,
+                "content_mode": self.config.content_mode if self.config.content_mode in {"terra", "trial_template"} else None,
+                "template_name": self.config.template_name,
                 "configuration_errors": sorted(set(errors))}
 
     @staticmethod
@@ -280,7 +299,10 @@ class SMSDispatcher:
                    ("error_code", "error_code"), ("updated_at_utc", "updated_at"),
                    ("attempt_count", "attempt_count"), ("next_attempt_at_utc", "next_attempt_at"),
                    ("source_event_id", "source_event_id")) if row[column] is not None}
-        return self._result(row["event_id"], status, mode=row["mode"], duplicate=duplicate, **fields)
+        return self._result(row["event_id"], status, mode=row["mode"], duplicate=duplicate,
+                            transport="twilio", data_mode={"demo": "synthetic", "farm": "current",
+                                                         "live": "current"}.get(row["mode"]),
+                            content_mode=row["content_mode"], template_name=row["template_name"], **fields)
 
     def _key(self, event_id: str) -> str:
         return _digest(self._recipient_hash + ":" + event_id)
@@ -315,13 +337,19 @@ class SMSDispatcher:
             db.commit()
             return self._row_result(row)
 
-    def _reserve(self, event_id: str, mode: str, body: str, source_event_id: str | None = None) -> dict | None:
+    def _reserve(self, event_id: str, mode: str, body: str, source_event_id: str | None = None,
+                 source_body_hash: str | None = None) -> dict | None:
         now = _stamp(self._clock())
+        source_body_hash = source_body_hash or _digest(body)
         with self._connection() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
             if row is not None:
-                if row["body_hash"] != _digest(body) or row["mode"] != mode or row["source_event_id"] not in {None, source_event_id}:
+                if (row["body_hash"] != _digest(body) or row["mode"] != mode
+                        or row["content_mode"] != self.config.content_mode
+                        or row["template_name"] != self.config.template_name
+                        or (row["source_body_hash"] or row["body_hash"]) != source_body_hash
+                        or row["source_event_id"] not in {None, source_event_id}):
                     db.commit()
                     return self._result(event_id, "blocked", mode=mode, error_code="event_id_conflict")
                 if source_event_id is not None and row["source_event_id"] is None:
@@ -345,10 +373,12 @@ class SMSDispatcher:
             attempt = 1 if row is None else row["attempt_count"] + 1
             if row is None:
                 db.execute("""INSERT INTO sms_delivery
-                    (delivery_key,event_id,recipient_hash,mode,body_hash,status,created_at,updated_at,attempted_at,source_event_id)
-                    VALUES (?,?,?,?,?,'sending',?,?,?,?)""",
+                    (delivery_key,event_id,recipient_hash,mode,body_hash,status,created_at,updated_at,attempted_at,
+                     source_event_id,content_mode,template_name,source_body_hash)
+                    VALUES (?,?,?,?,?,'sending',?,?,?,?,?,?,?)""",
                     (self._key(event_id), event_id, self._recipient_hash, mode, _digest(body),
-                     now.isoformat(), now.isoformat(), now.isoformat(), source_event_id))
+                     now.isoformat(), now.isoformat(), now.isoformat(), source_event_id,
+                     self.config.content_mode, self.config.template_name, source_body_hash))
             else:
                 db.execute("""UPDATE sms_delivery SET status='sending',attempt_count=?,next_attempt_at=NULL,error_code=NULL,
                     attempted_at=?,updated_at=? WHERE delivery_key=?""",
@@ -396,8 +426,9 @@ class SMSDispatcher:
             return self._result(event_id, "suppressed", mode=mode)
         if not state["enabled"] or mode == "demo" and not state["demo_enabled"]:
             return self._result(event_id, "disabled", mode=mode)
+        wire_body = self.config.template_name if self.config.content_mode == "trial_template" else body
         try:
-            duplicate = self._reserve(event_id, mode, body, source_event_id)
+            duplicate = self._reserve(event_id, mode, wire_body, source_event_id, _digest(body))
             if duplicate is not None:
                 return duplicate
             try:
@@ -412,8 +443,13 @@ class SMSDispatcher:
                         if remaining < 1:
                             return self._update(event_id, status="expired", error_code="event_expired")
                         validity_period = min(validity_period, remaining)
-                    response = client.post(self._url(), data={"From": self.config.sender,
-                        "To": self.config.recipient, "Body": body, "ValidityPeriod": str(validity_period)})
+                    payload = {"To": self.config.recipient, "Body": wire_body}
+                    if self.config.content_mode == "terra":
+                        payload.update(From=self.config.sender, ValidityPeriod=str(validity_period))
+                    # Trials accept predefined bodies only. Their API does not
+                    # support From or ValidityPeriod; local expiry still gates
+                    # submission, but cannot bound Twilio's later queue time.
+                    response = client.post(self._url(), data=payload)
             except httpx.HTTPError:
                 return self._update(event_id, status="uncertain", error_code="provider_outcome_unknown")
             try:

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .. import config
+from ..qc.features import is_night
 from ..qc.model import ModelBundle, chill_hours, chill_mask, predict_location_frame, train, unseen_uses_model
 from ..qc.neighbors import build_field
 from ..timeutil import season_bounds, seasons_between
@@ -114,21 +115,46 @@ def durham_rescue(ctx: Any | None = None, station_id: int = 12, min_coverage: fl
     seasons = seasons_between(reg["seasons"]["first"], reg["seasons"]["last"])
     bundle = blind_model(station_id, ctx, retrain)
     out = []
+    prev_offset: tuple[float, float] | None = None
     for s in seasons:
         a, b = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
         r = ctx.store.readings(a, b, [station_id])
         hours = (b - a) / pd.Timedelta(hours=1) + 1
         if r.empty or r["temp_f"].notna().sum() < min_coverage * hours:
+            prev_offset = None
             continue
         res = blind_test(station_id, s, ctx, model=bundle)
-        res.pop("series")
+        series = res.pop("series")
         res["chill_hours_error"] = res["chill_hours_predicted"] - res["chill_hours_actual"]
+        # the rescue: the station's own night/day offset, learned from its PREVIOUS season only
+        night = is_night(pd.DatetimeIndex(series["ts"]))
+        resid = (series["actual"] - series["predicted"]).to_numpy(dtype="float64")
+        if prev_offset is not None:
+            corr = series["predicted"].to_numpy(dtype="float64") + np.where(night, prev_offset[0], prev_offset[1])
+            act = series["actual"].to_numpy(dtype="float64")
+            both = np.isfinite(act) & np.isfinite(corr)
+            cm = chill_mask(pd.DatetimeIndex(series["ts"])) & both
+            res["with_prev_season_offset"] = {
+                "offset_night_f": round(prev_offset[0], 3), "offset_day_f": round(prev_offset[1], 3),
+                "mae_f": float(np.mean(np.abs(act[both] - corr[both]))),
+                "chill_hours_predicted": chill_hours(corr[cm]),
+                "chill_hours_error": chill_hours(corr[cm]) - chill_hours(act[cm]),
+            }
+        prev_offset = (float(np.nanmedian(resid[night])), float(np.nanmedian(resid[~night])))
         out.append(res)
     errs = np.array([abs(x["chill_hours_error"]) for x in out]) if out else np.array([])
+    off = [x["with_prev_season_offset"] for x in out if "with_prev_season_offset" in x]
+    oerr = np.array([abs(x["chill_hours_error"]) for x in off]) if off else np.array([])
     return {
         "station_id": station_id,
         "seasons": out,
         "mean_abs_chill_hours_error": float(errs.mean()) if len(errs) else None,
         "median_abs_chill_hours_error": float(np.median(errs)) if len(errs) else None,
         "mean_mae_f": float(np.mean([x["mae_f"] for x in out])) if out else None,
+        "with_prev_season_offset": {
+            "seasons": len(off),
+            "mean_abs_chill_hours_error": float(oerr.mean()) if len(oerr) else None,
+            "median_abs_chill_hours_error": float(np.median(oerr)) if len(oerr) else None,
+            "mean_mae_f": float(np.mean([x["mae_f"] for x in off])) if off else None,
+        },
     }

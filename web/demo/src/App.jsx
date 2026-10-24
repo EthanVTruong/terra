@@ -1,6 +1,6 @@
-import { sourceFetch as fetch } from "../../src/source-fetch";
+import { sourceFetch as fetch, sourceIdentity } from "../../src/source-fetch";
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowClockwise, ArrowRight, ArrowUp, ArrowUpRight, BellSimple, CaretDown, CaretRight, Check, CircleNotch, Info, MapPin, MapTrifold, Minus, Plus, SidebarSimple, SpeakerHigh, SpeakerSlash, WarningCircle, X } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, BellSimple, CaretDown, CaretRight, Check, CircleNotch, Info, MapPin, MapTrifold, Minus, Plus, SidebarSimple, SpeakerHigh, SpeakerSlash, WarningCircle, X } from '@phosphor-icons/react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 const number = (v, d = 1) => Number.isFinite(v) ? v.toFixed(d) : '—';
 const degrees = v => Number.isFinite(v) ? `${number(v)}°` : '—';
@@ -680,6 +680,34 @@ function SpotControl({
       sensor_id: target.id
     }).then(onRemoved) : onRemoved()}><X size={13} />{sensor ? 'Remove sensor' : 'Remove spot'}</button></div><p className="control-footnote">Select a station on the map to return to its controls.</p></aside>;
 }
+function ReturnToLiveChat() {
+  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const pending = useRef(false);
+  if (sourceIdentity().kind !== 'simulation') return null;
+  async function returnToLive() {
+    if (pending.current) return;
+    pending.current = true; setBusy(true); setError('');
+    try {
+      const signal = AbortSignal.timeout(60000);
+      const status = await fetch('/api/sms/status', { signal, cache: 'no-store' });
+      const guard = status.ok ? await status.json() : null;
+      if (!guard?.control_token) throw new Error('Reload Terra to return to live chat.');
+      const response = await fetch('/api/simulation/connection', { method: 'DELETE', signal, headers: { 'X-Terra-SMS-Control': guard.control_token } });
+      if (!response.ok || (await response.json()).connected !== false) throw new Error('Finish the current request, then return to live chat.');
+      try {
+        const liveFarm = localStorage.getItem('terra.simulation.liveFarm');
+        if (liveFarm) localStorage.setItem('terra.tara.activeFarm', liveFarm);
+        else localStorage.removeItem('terra.tara.activeFarm');
+        localStorage.removeItem('terra.simulation.liveFarm');
+      } catch { /* The live server retains the original farm selection. */ }
+      window.location.assign('/');
+    } catch (reason) {
+      setError(reason.name === 'AbortError' ? 'Returning took too long. Try again.' : reason.message);
+    } finally { pending.current = false; setBusy(false); }
+  }
+  return <><button className="icon-button" type="button" onClick={returnToLive} disabled={busy} aria-label="Return to live chat" title="Return to live chat">{busy ? <CircleNotch className="spin" size={16} /> : <ArrowLeft size={16} />}</button>{error && <span className="reading-state" role="alert">{error}</span>}</>;
+}
+
 function StationApp({
   demo
 }) {
@@ -712,7 +740,7 @@ function StationApp({
   function removeSpot(id) {
     setSpots(current => current.filter(s => s.id !== id));
   }
-  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} spots={spots} readings={readings} onAddSpot={addSpot} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div>{selectedSpot || selectedSensor ? <SpotControl key={selected} state={state} target={selectedSpot || selectedSensor} sensor={Boolean(selectedSensor)} reading={selectedSpot && readings[selectedSpot.id]} layer={layer} act={act} busy={busy} onPlaced={(spotId, sensorId) => {
+  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><ReturnToLiveChat /><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} spots={spots} readings={readings} onAddSpot={addSpot} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div>{selectedSpot || selectedSensor ? <SpotControl key={selected} state={state} target={selectedSpot || selectedSensor} sensor={Boolean(selectedSensor)} reading={selectedSpot && readings[selectedSpot.id]} layer={layer} act={act} busy={busy} onPlaced={(spotId, sensorId) => {
           removeSpot(spotId);
           setSelected(sensorId);
         }} onRemoved={() => {

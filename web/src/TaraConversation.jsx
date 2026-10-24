@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
-import { timestamp } from "./presentation";
+import { clockTime, dayLabel, localDay, timestamp } from "./presentation";
 import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 
 const EMPTY_PRESETS = [];
-const shortDate = (value) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric" }).format(new Date(value));
 const storageScope = (orchardId) => `terra.tara.v1.${orchardId || "setup"}`;
 const newId = () => `tara-${crypto.randomUUID()}`;
 
@@ -255,12 +254,19 @@ export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS,
     <div className="tara-turns" role="log" aria-label="Conversation with Tara" aria-live={loading ? "off" : "polite"} aria-relevant="additions text">
       {turns.length === 0 && state.setup.stage === "crop" && state.initial_prompt ? <article className="tara-turn tara-assistant"><div className="incoming-bubble">{state.initial_prompt}</div></article> : null}
       {timeline.map((entry, index) => {
-        if (entry.type === "note") return <React.Fragment key={entry.key}>{renderFieldNote(entry.value)}</React.Fragment>;
         const turn = entry.value;
-        return turn.role === "event" ? <div className={`tara-saved-event${turn.kind === "notice" ? " tara-notice-event" : ""}`} key={entry.key}><Icon name={turn.kind === "location" ? "location" : turn.kind === "notice" ? "file" : "phone"} size={15} /><span>{turn.text}</span>{turn.kind !== "notice" ? <Icon name="check" size={14} /> : null}</div> : <article className={`tara-turn tara-${turn.role}`} key={entry.key}>
-        <div className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"}><span>{turn.text}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Tara reacted with a thumbs up">👍</span> : null}</div>
-        <div className="tara-turn-meta"><time dateTime={turn.created_at} title={timestamp(turn.created_at)} className={index === 0 || shortDate(turn.created_at) !== shortDate(timeline[index - 1].value.created_at) ? undefined : "sr-only"}>{shortDate(turn.created_at)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}{turn.data?.message_id && onDetails ? <button className="tara-text-button" onClick={(event) => onDetails(event, { id: turn.data.message_id, text: turn.text, kind: "answer", created_at: turn.created_at })}>Details</button> : null}</div>
-      </article>; })}
+        const showDay = index === 0 || localDay(turn.created_at) !== localDay(timeline[index - 1].value.created_at);
+        const hasDetails = turn.data?.message_id && onDetails;
+        const Bubble = hasDetails ? "button" : "div";
+        return <React.Fragment key={entry.key}>
+          {showDay && <div className="day-separator"><time dateTime={localDay(turn.created_at)} title={timestamp(turn.created_at)}>{dayLabel(turn.created_at)}</time></div>}
+          {entry.type === "note" ? renderFieldNote(turn) : turn.role === "event" ? <div className={`tara-saved-event${turn.kind === "notice" ? " tara-notice-event" : ""}`}><Icon name={turn.kind === "location" ? "location" : turn.kind === "notice" ? "file" : "phone"} size={15} /><span>{turn.text}</span>{turn.kind !== "notice" ? <Icon name="check" size={14} /> : null}</div> : <article className={`tara-turn tara-${turn.role}`}>
+            <Bubble type={hasDetails ? "button" : undefined} className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"} title={hasDetails ? "View readings" : undefined} aria-label={hasDetails ? `Open answer from ${timestamp(turn.created_at)}` : undefined} aria-describedby={hasDetails ? `tara-turn-text-${turn.id}` : undefined} onClick={hasDetails ? (event) => onDetails(event, { id: turn.data.message_id, text: turn.text, kind: "answer", created_at: turn.created_at }) : undefined}><span id={`tara-turn-text-${turn.id}`}>{turn.text}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Tara reacted with a thumbs up">👍</span> : null}</Bubble>
+            <div className="tara-turn-meta"><time dateTime={turn.created_at} title={timestamp(turn.created_at)} aria-label={timestamp(turn.created_at)}>{clockTime(turn.created_at)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}</div>
+          </article>}
+        </React.Fragment>;
+      })}
+
     </div>
     {state.setup.stage === "location" ? <FarmLocation conversation={conversation} stationPresets={stationPresets} /> : state.setup.stage === "notifications" ? <NotificationChoice conversation={conversation} /> : null}
     {state.setup.stage === "complete" ? <div className={`tara-monitoring tara-monitoring-${conversation.stale ? "unavailable" : state.monitoring.status}`} role="status"><Icon name="location" size={14} /><span>{conversation.stale ? "Monitoring status couldn’t be refreshed" : state.monitoring.status === "ready" ? "Monitoring" : state.monitoring.status === "pending" ? "Farm saved · connecting monitoring data" : state.monitoring.status === "unavailable" ? "Farm saved · monitoring unavailable" : "Monitoring not configured"}</span></div> : null}

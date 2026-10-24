@@ -9,17 +9,32 @@
   "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner.",
   "branch": "codex/terra-consolidate-main",
   "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
-  "domains": ["terra-coordination", "terra-qc-json"],
-  "paths": ["COORDINATION.md", "backend/terra_monitoring/**", "tests/test_terra*.py", "web/**", "docs/terra/**", "README.md", ".github/workflows/terra.yml"],
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra*.py",
+    "web/**",
+    "docs/terra/**",
+    "README.md",
+    ".github/workflows/terra.yml"
+  ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": null,
-    "summary": "Consolidation authorized directly by ET. Read-only branch and dirty-work audits distinguish missing approved features from already integrated worker checkpoints. Core and live rollout remain coordinated with the existing implementation-plan owner.",
-    "evidence": ["PR11 and PR12 reviewed; Nathan data/model layer is already an ancestor of main. Older worker snapshots are integrated or superseded. Original uncommitted Terra prototype and unrelated handoffs preserved."],
-    "uncertainty": "Combined source, full-flow fixes and UI reconciliation require scoped checks and final CI before integration. No new inference, credential edits or phone sends are part of this consolidation.",
-    "next": "Reconcile approved UI polish with Tara, consume the demo owner's frozen verified candidate, refresh upstream, run scoped integration checks and publish main through a small reviewed merge."
+    "revision": "970ef873d5f1d258dad9b749a906b53336725d88",
+    "summary": "Root-selected single semantic reconciliation merges approved local UI polish 82b0102 with the isolated Tara and assigned-sender candidate. Both histories and all task sets remain preserved. Tara onboarding, recovery, notification controls, ChatGPT props and background polling remain; compact field notes and one Pacific day divider per mixed timeline are integrated. Evidence-backed answer buttons expose their full answer through a stable accessible description.",
+    "evidence": [
+      "All nine configured scoped groups pass against captured upstream adced1ad91da099309172fdd8dddba6e3d215b1b: ChatGPT, conversation, farm, harness, JSON, pipeline, runtime, setup and SMS; coordination/filesystem and staged whitespace checks pass.",
+      "Root verified the reconciled source before the accessibility attribute repair: 34 of 34 available UI cases, production build and isolated browser onboarding from walnuts through confirmed Davis location, declined alerts, saved farm, grounded crop answer and quiet reload with zero browser errors.",
+      "Root arbitration selected this staged reconciliation as the one repair; the separate UI owner will independently review its commit. Only frontend, documentation and coordination changed in this merge; private state, numerical code, source branches and shared services were untouched."
+    ],
+    "uncertainty": "Newer upstream main, the Tara owner's bounded repairs for old-note dates, returning-farm notification consent and mixed known/custom crops, and the demo owner's final candidate still require root integration and final combined validation. This source checkpoint does not claim main publication or a runtime rollout. No provider calls, credential edits or phone sends occurred.",
+    "next": "Root consumes this preserved-lineage UI merge, obtains the independent UI review, integrates the exact final Tara and demo candidates, refreshes upstream and runs final combined checks and CI before publishing main."
   }
 }
 ```
@@ -1094,5 +1109,78 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "-q"
   ],
   "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-local-polish",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly authorizes merging PR10, reconciling the approved polished UI with current main for fresh clones, adopting local-first open-source operation and then beginning a visual sim polish pass. PR10 merged as adced1a after all4 exact-head checks. Preserve newer ChatGPT controls, replay-only semantics, fixed-phone readiness, existing backend/scientific behavior and all private services/state. Sim conversation/engine work is active separately; presentation refinement must preserve its owner changes.",
+  "branch": "codex/terra-local-polish",
+  "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "README.md",
+    "docs/terra/**",
+    "web/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "f8e5273",
+    "summary": "One semantic UI reconciliation completed: cube/header, quiet copy, day/time grouping and fixed-phone readiness retained with current-main ChatGPT control, replay-only warning and canonical trial receipt helper. All4 UI test files run together. README selects local-first operation and defers cloud migration. Browser confirmed 390/320 containment, account/phone panels, retained historical note and Escape focus return.",
+    "evidence": [
+      "Shared main fast-forwarded cleanly to adced1a; original staged prototype and current8504/8512/8517/8520 services untouched.",
+      "Read current sim branch facts only: separate8520 station/grower app, active conversation verification owner; no backend or sim owner checkout mutations.",
+      "Production build passed;22 UI and4 packaging checks pass. No backend, scientific, reference, dependency or private state diff against main.",
+      "Isolated18520 runtime seeded with the existing offline demo, worker/source/SMS disabled and fresh ChatGPT state. Both connection panels work without authorization/provider requests. Mobile390 and320 have exact viewport-width/no horizontal overflow; selected unavailable note preserves its old values and Escape restores its note focus."
+    ],
+    "uncertainty": "Final combined scoped checks and exact-head CI must pass before user-authorized integration. Sim owner is still reconciling conversation behavior in its own dirty checkout; no mutation there.",
+    "next": "Publish a small UI integration PR and merge after exact-head checks; then make an isolated CSS/presentation slice for the sim using a committed owner revision."
+  }
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-ui-quiet",
+  "owner": "et",
+  "status": "done",
+  "intent": "UI design refinement: approved square character and header spacing, quiet context/copy, Pacific day dividers and clock-only note footers, central evidence JSON, and clear phone setup. User selected the existing verified number for the demo. Phone connection checks remain read-only, orchard opt-in is separate, and source/availability warnings plus delivery semantics remain truthful. No writer, auth, backend, recipient or provider configuration changes in the phone refinement.",
+  "branch": "codex/terra-ui-quiet",
+  "base": "78e835d",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "22072a6f19c2e3c3bc8df98e68773c3445180704",
+    "summary": "Fixed-phone UI implemented: explicit Connect phone action; Connecting, Setup required, Ready, Sending paused and Unavailable states. Ready shows masked number and a separate field-note alert switch. Ten-second deadlines, stale-status guards and focus restoration handle async checks. Trial-template mode says notification only; receipt checks appear for existing test events and survive paused sending. Earlier quiet UI refinements remain on this branch.",
+    "evidence": [
+      "Production build, 14 UI tests, four packaging tests and whitespace check pass. Scope/coordination/filesystem validation passes against declared task base 78e835d. Current origin/main advanced to a9dcc6c during the pass; no web changes in that upstream delta. Current-main integration is deliberately left to the integration owner.",
+      "Actual 8504/8512 path: Connect phone performs status/preference GETs, returns Setup required and restores focus. Isolated React fixture: Ready, controlled 1.4-second Connecting state, preference on/off without losing readiness, 34x20 switch, focus restoration and mobile no-overflow verified. Fixture rejects sends and has no real provider/API connection. No real SMS or actual orchard preference change made.",
+      "Sources: current Apple HIG toggles, GOV.UK phone confirmation and Twilio Verify/trial docs. User chose fixed verified phone; full enrollment remains a future reference. web/phone-connection-design.md documents logistics. Screenshots .terra-local/phone-connection/; selected inline preview terra-verified-phone.html in thread visualization root."
+    ],
+    "uncertainty": "The live SMS server still needs delivery setup; frontend checks do not configure credentials, enable sending or prove handset delivery. Main has backend/contract updates and separate ChatGPT/placeholder transport work; reconcile this UI branch once with current main and the transport owner, preserving trial content_mode and existing writer/auth work. No App.jsx or writer/auth changes in this phone refinement.",
+    "next": "Integration owner consumes codex/terra-ui-quiet, reconciles current main and incoming trial-placeholder transport labels, then runs current integration checks. Operator completes SMS delivery configuration; UI will show Ready for its fixed verified phone. User can then opt this orchard in explicitly. Preserve the integration owner\u2019s announced FarmFeed.jsx fix: non-current stale saved readings get a quiet Replay only / saved readings do not describe current conditions banner; actual current-data unavailable behavior stays unchanged. This incoming fix is an announced intent, not a revision verified on this branch."
+  }
 }
 ```

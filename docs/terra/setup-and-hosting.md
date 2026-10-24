@@ -2,6 +2,10 @@
 
 Audited on 2026-10-24 against main `cb580227851d6194dc6a001bbe51e3b615f4dba2`, including the local ChatGPT connection. This change improves local setup; it does not turn the runtime into a hosted multi-user service.
 
+**Selected direction:** Terra remains local-first and open source. Complete the
+local quickstart and reviewed interface; defer hosted migration. The Vercel
+assessment below records what would be needed if that scope changes.
+
 ## Local setup
 
 Install Python 3.12 (CI baseline), Node.js 24 LTS and pnpm 11.25.0. Minimum Node is 22.13, matching the pinned pnpm requirement. If needed, install pnpm with `npm install --global pnpm@11.25.0`. Linux distributions that package Python's `venv`/pip separately need those packages too.
@@ -54,13 +58,13 @@ Doctor does not install packages, read private configuration contents or contact
 
 ## Release alignment
 
-The reviewed UI preview at port 8504 comes from `codex/terra-ui-quiet` (`4464760`),
-whose cube logo, leaner copy and phone-readiness changes are not in audited main.
-Main contains the newer ChatGPT connection. A fresh clone currently gets main's
-older presentation rather than the complete reviewed experience. Integrate both
-through one reconciled UI change, preserving the ChatGPT control and replay-only
-banner intent, then verify the same build used for the public demo. This setup
-pass does not merge those UI branches or restart the shared runtime.
+The audit found that the reviewed UI at port 8504 came from `codex/terra-ui-quiet`
+(`4464760`), while main contained the newer ChatGPT connection. The subsequent
+local-first integration combines the cube logo, leaner copy and phone-readiness
+states with the ChatGPT control, trial receipt semantics and replay-only warning.
+Use the same committed build for fresh clones and the demonstration. The
+separate simulation/conversation feature branch still has its own verification
+and integration boundary.
 
 ## Vercel
 

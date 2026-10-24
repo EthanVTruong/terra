@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
-import { timestamp } from "./presentation";
+import { clockTime, dayLabel, displayNoteText, localDay, timestamp } from "./presentation";
 import { deliveryLabel } from "./delivery";
 
 const isObject = (value) => value && typeof value === "object" && !Array.isArray(value);
 const words = (value) => String(value || "Unavailable").replaceAll("_", " ");
-export const orchardLabel = (orchard) => orchard?.demo_location ? `${orchard.name} · demo` : orchard?.name || "Monitoring";
 function validFeed(value, id) {
   if (!isObject(value) || value.schema_version !== "terra-farm-feed-v1" || value.orchard_id !== id || !Array.isArray(value.messages) || !isObject(value.monitor)) throw new Error("Monitoring updates could not be read. Previous notes are retained.");
   const ids = new Set();
@@ -61,12 +60,10 @@ export function useFarmFeed(active, { pollInBackground = false } = {}) {
   return { orchards, orchardId, orchard: orchards.find((item) => item.id === orchardId), available, feed, loading, error, selectOrchard, addOrchard, refresh: () => setRevision((value) => value + 1), refreshProfiles: () => setProfilesRevision((value) => value + 1) };
 }
 
-export function FarmNote({ message, onDetails, selectedMessage, detailsLoading }) {
-  const date = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric" }).format(new Date(message.created_at));
+export function FarmNote({ message, orchard, onDetails, selectedMessage, detailsLoading }) {
   return <article className="farm-note">
-    <time className="farm-note-time" dateTime={message.created_at} title={timestamp(message.created_at)}>{date}</time>
-    <button className={`incoming-bubble farm-message${selectedMessage === message.id ? " selected-note" : ""}`} onClick={(event) => onDetails(event, message)} aria-describedby={"farm-note-text-" + message.id} aria-label={`Open ${message.kind === "answer" ? "answer" : "field note"} from ${timestamp(message.created_at)}`}><span id={"farm-note-text-" + message.id}>{message.text}</span></button>
-    <div className="farm-note-meta"><span>{deliveryLabel(message.delivery)}</span><button onClick={(event) => onDetails(event, message)} aria-disabled={detailsLoading && selectedMessage === message.id}>{detailsLoading && selectedMessage === message.id ? "Opening…" : "Details"}<Icon name="chevron" size={10} /></button></div>
+    <button className={`incoming-bubble farm-message${selectedMessage === message.id ? " selected-note" : ""}`} onClick={(event) => onDetails(event, message)} aria-busy={detailsLoading && selectedMessage === message.id} title="View readings" aria-describedby={"farm-note-text-" + message.id} aria-label={`Open ${message.kind === "answer" ? "answer" : "field note"} from ${timestamp(message.created_at)}`}><span id={"farm-note-text-" + message.id}>{displayNoteText(message, orchard)}</span></button>
+    <div className="farm-note-meta"><time dateTime={message.created_at} title={timestamp(message.created_at)} aria-label={timestamp(message.created_at)}>{clockTime(message.created_at)}</time>{message.delivery && !["not_requested", "published"].includes(message.delivery.provider_status || message.delivery.status || "not_requested") && <span>{deliveryLabel(message.delivery)}</span>}</div>
   </article>;
 }
 
@@ -84,21 +81,17 @@ export function FarmConversation({ farm, onDetails, selectedMessage, detailsLoad
   const messages = [...(farm.feed?.messages || [])].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id.localeCompare(b.id));
   const mode = monitor?.orchard?.mode || farm.orchard?.mode;
   return <div className="farm-conversation">
-    <div className="farm-thread-context"><strong>{orchardLabel(monitor?.orchard || farm.orchard)}</strong><span>{mode === "current" ? "Orchard updates" : mode ? "Injected replay · demo" : "Monitoring"}</span></div>
+    {mode && mode !== "current" && <div className="feed-mode">{mode === "injected" ? "Injected replay" : mode === "synthetic" ? "Synthetic data" : "Historical replay"}</div>}
     <FarmAvailability farm={farm} />
-    {farm.loading && !farm.feed ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening field notes…</p></div> : messages.length ? <div className="farm-messages" role="log" aria-label="Orchard field notes" aria-live="polite" aria-relevant="additions text">{messages.map((message) => <FarmNote key={message.id} message={message} onDetails={onDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} />)}</div> : !farm.loading && <div className="empty-state"><Icon name="location" size={22} /><h2>No field notes yet</h2><p>Updates appear here when the monitor records a meaningful change.</p></div>}
+    {farm.loading && !farm.feed ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening field notes…</p></div> : messages.length ? <div className="farm-messages" role="log" aria-label="Orchard field notes" aria-live="polite" aria-relevant="additions text">{messages.map((message, index) => <React.Fragment key={message.id}>{(!index || localDay(message.created_at) !== localDay(messages[index - 1].created_at)) && <div className="day-separator"><time dateTime={localDay(message.created_at)} title={timestamp(message.created_at)}>{dayLabel(message.created_at)}</time></div>}<FarmNote message={message} orchard={monitor?.orchard || farm.orchard} onDetails={onDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} /></React.Fragment>)}</div> : !farm.loading && <div className="empty-state"><Icon name="location" size={22} /><h2>No field notes yet</h2><p>Updates appear here when the monitor records a meaningful change.</p></div>}
     {detailsError && <p className="query-error" role="alert">{detailsError}</p>}
   </div>;
 }
 
-export function FarmOverview({ farm, details }) {
+export function FarmOverview({ farm }) {
   const monitor = farm.feed?.monitor, summary = monitor?.summary;
-  const receipt = details?.transport_receipt;
   return <div className="farm-overview">
-    <div className="evidence-title"><h2>{orchardLabel(monitor?.orchard || farm.orchard)}</h2><span>{[(monitor?.orchard || farm.orchard)?.variety, (monitor?.orchard || farm.orchard)?.crop].filter(Boolean).join(" · ") || "Orchard"}</span></div>
     <div className="chill-reading"><small>Estimated chill</small><strong>{Number.isFinite(summary?.hours) ? <>{summary.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })}<span> h</span></> : "Unavailable"}</strong><span>{summary?.status === "offseason" ? "Outside chill season" : summary?.complete ? "32–45°F · since November 1" : summary ? "Incomplete coverage" : "Waiting for readings"}</span></div>
-    <dl className="facts"><div><dt>Weather support</dt><dd>{monitor?.comparison_available ? "Usable" : "Unavailable"}</dd></div><div><dt>Coverage</dt><dd>{Number.isFinite(summary?.coverage) ? `${(summary.coverage * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%` : "Unavailable"}</dd></div><div><dt>Historical pace</dt><dd>{Number.isFinite(summary?.percentile20_hours) ? words(summary.status) : "Unavailable"}</dd></div></dl>
-    <details className="disclosure farm-status-details"><summary><Icon name="file" /><span>Monitoring details</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body">{summary?.warning && <p className="microcopy">{summary.warning}</p>}<dl className="facts"><div><dt>Checked</dt><dd>{timestamp(monitor?.last_checked)}</dd></div><div><dt>Data through</dt><dd>{timestamp(monitor?.data_through)}</dd></div><div><dt>Worker</dt><dd>{words(monitor?.worker?.heartbeat_status)}</dd></div><div><dt>Chill method</dt><dd>{summary?.method || "Not supplied"}</dd></div><div><dt>Historical seasons</dt><dd>{summary?.reference_count ?? "Unavailable"}</dd></div></dl><p className="microcopy">Orchard chill uses 32–45°F from November 1, in fixed Pacific standard time. Reported FNRIC station totals remain separate.</p></div></details>
-    {details && <details className="disclosure"><summary><Icon name="file" /><span>Message and delivery</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body"><dl className="facts"><div><dt>Local note</dt><dd>{details.message?.status || "Unavailable"}</dd></div><div><dt>Phone</dt><dd>{deliveryLabel(receipt)}</dd></div><div><dt>Updated</dt><dd>{timestamp(receipt?.updated_at_utc)}</dd></div></dl><p className="microcopy">Local publication and provider acceptance do not confirm phone delivery. The JSON tab contains the exact message, events, source evidence and receipt.</p>{details.fnric && <><p className="detail-label">Reported FNRIC station totals · separate metric</p><pre className="detail-json">{JSON.stringify(details.fnric, null, 2)}</pre></>}</div></details>}
+    <dl className="facts"><div><dt>Weather support</dt><dd>{monitor?.comparison_available ? "Usable" : "Unavailable"}</dd></div><div><dt>Coverage</dt><dd>{Number.isFinite(summary?.coverage) ? `${(summary.coverage * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%` : "Unavailable"}</dd></div><div><dt>Historical pace</dt><dd title={summary?.warning || undefined}>{Number.isFinite(summary?.percentile20_hours) ? words(summary.status) : "Unavailable"}</dd></div></dl>
   </div>;
 }

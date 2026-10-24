@@ -1,19 +1,17 @@
 /* Persisted field notes share the conversation and artifact primitives. */
-.farm-thread-context{display:flex;flex-direction:column;gap:3px;text-align:center;margin:0 0 28px;font-size:11px;line-height:17px;color:#737373}
-.farm-thread-context strong{font-size:12px;font-weight:400;color:#666}
+.feed-mode{text-align:center;margin:0 0 24px;font-size:11px;line-height:17px;color:#737373}
 .farm-messages{display:flex;flex-direction:column;align-items:flex-start;gap:24px}
 .farm-note{max-width:100%;min-width:0}
-.farm-note-time{display:block;font-size:11px;line-height:17px;color:#737373;margin:0 0 7px;padding-left:12px}
+.day-separator{align-self:stretch;text-align:center;font-size:11px;line-height:17px;color:#737373;margin:0 0 -8px}
+.day-separator:not(:first-child){margin-top:8px}
 .farm-message{font-weight:400;white-space:pre-line;overflow-wrap:anywhere;max-width:300px}
 .farm-message:hover,.farm-message.selected-note{background:#e9e9e9}
 .farm-note-meta{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:5px 10px 0 12px;font-size:10px;line-height:17px;color:#737373;max-width:300px}
-.farm-note-meta button{display:flex;align-items:center;gap:3px;border:0;padding:0;background:transparent;color:#737373;font-size:10px}
-.farm-note-meta button:hover{color:#333}
+.farm-note-meta time{flex-shrink:0;font-variant-numeric:tabular-nums}
 .chill-reading{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin:24px 0}
 .chill-reading>small,.chill-reading>span{font-size:11px;line-height:17px;color:#737373}
 .chill-reading>strong{font-size:29px;line-height:38px;letter-spacing:-.5px;font-weight:400;font-variant-numeric:tabular-nums;color:#292929}
 .chill-reading>strong>span{font-size:18px;letter-spacing:0;color:#737373}
-.farm-status-details{margin-top:20px}
 .farm-extra{margin-top:22px;border-top:1px solid var(--line);padding-top:6px}
 .farm-extra>.disclosure-body{padding-left:0}
 .farm-extra .chill-reading{margin:17px 0}
@@ -27,7 +25,7 @@
 .orchard-name>small{display:block;margin-top:7px;font-size:10px;color:#737373}
 .setup-link{margin-right:auto;padding:4px 0;border:0;background:transparent;color:#666;font-size:11px;text-decoration:underline;text-underline-offset:3px}
 .sms-controls{position:static;display:flex;align-items:center}
-.sms-panel{top:50px;bottom:auto;left:auto;right:12px;width:min(360px,calc(100% - 24px));max-height:calc(100dvh - 90px);transform-origin:top right;z-index:8}
+.sms-panel{top:58px;bottom:auto;left:auto;right:12px;width:min(360px,calc(100% - 24px));max-height:calc(100dvh - 90px);transform-origin:top right;z-index:8}
 .sms-description,.sms-state,.sms-result{font-size:12px;line-height:19px;color:#666;margin:8px 0}
 .sms-state{color:#444;overflow-wrap:anywhere}
 .sms-result{padding:10px 12px;background:#f0f2ee;border-radius:8px;color:#465343}
@@ -40,8 +38,26 @@
 .sms-orchard{margin-top:12px}
 .sms-orchard label{display:flex;align-items:flex-start;gap:8px;color:#555;font-size:12px;line-height:18px}
 .sms-orchard input[type=checkbox]{width:14px;height:14px;margin:2px 0 0;padding:0;accent-color:#53674f;flex-shrink:0}
-@media(max-width:700px){.thread-actions{gap:3px}.presence{font-size:11px;margin-right:4px}.sms-panel{top:54px}.farm-message{max-width:min(300px,100%)}}
+@media(max-width:700px){.thread-actions{gap:3px}.presence{font-size:11px;margin-right:4px}.sms-panel{top:58px}.farm-message{max-width:min(300px,100%)}}
 
-.farm-thread-context,.evidence-title h2,.sms-orchard label span{min-width:0;overflow-wrap:anywhere}
+.evidence-title h2,.sms-orchard label span{min-width:0;overflow-wrap:anywhere}
 
 .farm-note{animation:message-arrive 180ms var(--ease) both}.sms-toggle[aria-expanded=true]{background:#eee;color:#555}
+
+.sms-connection-status{display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:17px;color:#737373;margin-left:auto;white-space:nowrap}
+.sms-connection-status[data-state=connected]{color:var(--green)}
+.sms-connected-number{font-size:14px;line-height:20px;font-variant-numeric:tabular-nums;color:#333;margin:16px 0 0}
+.sms-description{margin-top:16px}
+.sms-connect-actions{margin-top:18px}
+.sms-connect-actions .query-submit{width:100%}
+.sms-preference{margin-top:18px}
+.sms-preference>label{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.sms-preference-copy{display:flex;flex-direction:column;gap:2px;font-size:12px;line-height:18px;color:#444}
+.sms-preference-copy small{font-size:11px;line-height:17px;color:#737373;overflow-wrap:anywhere}
+.sms-preference-unavailable{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:#737373}
+.sms-preference input.sms-switch{appearance:none;box-sizing:border-box;position:relative;width:34px;height:20px;min-width:34px;padding:0;margin:0;border:1px solid #ddd;border-radius:12px;background:#ddd;transition:background 150ms ease,border-color 150ms ease}
+.sms-preference input.sms-switch:before{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--canvas);transition:transform 150ms var(--ease)}
+.sms-preference input.sms-switch:checked{background:var(--green);border-color:var(--green)}
+.sms-preference input.sms-switch:checked:before{transform:translateX(14px)}
+.sms-preference input.sms-switch:disabled{opacity:.45}
+@media(pointer:coarse){.sms-preference>label,.sms-panel .sms-actions button,.sms-panel .sms-text-button{min-height:44px}.sms-panel .query-heading .icon-button{min-width:44px;min-height:44px}}

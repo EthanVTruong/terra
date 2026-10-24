@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import httpx
+import pytest
 
 from terra_monitoring.farm_ops.conversational_writer import ConversationalWriter, compact_text
 from terra_monitoring.farm_ops.writer import Writer, message_input
@@ -181,3 +182,37 @@ def test_real_runtime_routes_select_plan_writer_only_for_relevant_input(tmp_path
         assert legacy.status_code == 200
         assert len(provider.calls) == 1
         assert client.post("/api/tara/messages", json={"request_id": "unguarded", "text": "Chill?", "orchard_id": orchard}).status_code == 403
+
+
+@pytest.mark.parametrize("question", ["Why did I get this alert?", "Terra, why did I get this alert?"])
+def test_referenced_get_alert_question_uses_the_configured_fact_checked_writer_once(tmp_path, question):
+    from terra_monitoring.conversation import ConversationService
+    from terra_monitoring.farm_ops.service import Monitor
+    from terra_monitoring.farm_ops.store import Store
+
+    clock = datetime(2026, 1, 14, 16, tzinfo=timezone.utc)
+    monitor = Monitor(Store(tmp_path / "referenced-alert.sqlite3"), writer=Writer(key="", model=""), clock=lambda: clock)
+    profile = monitor.create_orchard("Saved walnut farm", orchard_id="walnut-farm", crops=["walnut"])
+    with monitor.store.connect(write=True) as db:
+        monitor.store.set_state(db, "watch:" + profile["id"], {"welcomed": True})
+    monitor._source_failure(profile["id"], clock)
+    monitor.flush(profile["id"], now=clock)
+    source = monitor.store.messages(profile["id"])[0]
+    original = copy.deepcopy(source)
+    provider = Generator("weather coverage is limited and the orchard estimate is incomplete")
+    monitor.writer = ConversationalWriter(Writer(generator=provider))
+    service = ConversationService(monitor)
+    body = {"request_id": "why-get-alert", "text": question, "orchard_id": profile["id"], "reply_to": source["id"]}
+    answer = service.message(**body)["assistant_turn"]
+    assert answer["data"]["intent"] == "explain_alert"
+    assert answer["data"]["generation"] == "chatgpt_plan"
+    assert answer["data"]["source_event_ids"] == source["event_ids"]
+    assert "weather coverage is limited" in answer["text"].lower()
+    assert len(provider.calls) == 1
+    assert body["text"] not in json.dumps(provider.calls)
+    assert monitor.store.message(source["id"]) == original
+    assert service.message(**body)["assistant_turn"] == answer
+    assert len(provider.calls) == 1
+    for index, text in enumerate(("Why did I get this alert in Minecraft?", "Why did I get this alert about qux telemetry?")):
+        service.message(request_id=f"out-of-scope-{index}", text=text, orchard_id=profile["id"], reply_to=source["id"])
+    assert len(provider.calls) == 1

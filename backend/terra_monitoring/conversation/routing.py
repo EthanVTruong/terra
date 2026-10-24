@@ -22,8 +22,8 @@ historical history pace behind ahead accumulated accumulating accumulation total
 temperature temperatures weather data station stations neighbor neighbors neighboring support supporting coverage reliable reliability usable
 available unavailable incomplete complete missing spotty stale old new reading readings quality alert alerts warning warnings flag flags note notes
 mean means meaning wrong off low high too long season seasonal orchard farm condition conditions status getting looking doing good okay ok back
-still more less not no enough under over slow slowly recent look like says say help hey hi tara count counting current gap difference am s t
-got but cold hot warm degrees fahrenheit fresh freshness age outdated acting up suspect flagged findings taken recorded updated checked there
+still more less not no enough under over slow slowly recent look like says say help hey hi tara terra count counting current gap difference am s t
+get got but cold hot warm degrees fahrenheit fresh freshness age outdated acting up suspect flagged findings taken recorded updated checked there
 jan january feb february mar march apr april
 may jun june jul july aug august sep september oct october nov november dec december pst pdt utc""".split())
 

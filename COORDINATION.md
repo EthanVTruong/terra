@@ -6,7 +6,7 @@
   "id": "terra-product-consolidation",
   "owner": "et",
   "status": "active",
-  "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner. Final direct user steering requires the selected polished chat and Station lab screens while preserving full messaging. The bounded follow-up repairs the upstream synthetic CLI missing season_bounds import and the common saved-crop question alias without numerical/model changes.",
+  "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner. Final direct user steering requires the selected polished chat and Station lab screens while preserving full messaging. The bounded follow-up repairs the upstream synthetic CLI missing season_bounds import and the common saved-crop question alias without numerical/model changes. Root authorizes the bounded get-alert wording compatibility fix and safe check-runner capture/timeout diagnostics, preserving the configured time and output bounds.",
   "branch": "codex/terra-consolidate-main",
   "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
   "domains": [
@@ -24,7 +24,9 @@
     "README.md",
     ".github/workflows/terra.yml",
     "backend/chillwatch/demo/scenario.py",
-    "tests/test_scenario.py"
+    "tests/test_scenario.py",
+    "terra.py",
+    "tests/test_terra_harness.py"
   ],
   "depends_on": [],
   "contracts": [],

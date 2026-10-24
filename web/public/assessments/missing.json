@@ -55,6 +55,8 @@
     "observed_f": 61.0,
     "expected_f": null,
     "departure_f": null,
+    "typical_low_f": null,
+    "typical_high_f": null,
     "classification": null,
     "level": "none",
     "reference_id": "terra-qc-v4-e1e59ac0ea395d80",

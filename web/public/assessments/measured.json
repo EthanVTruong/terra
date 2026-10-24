@@ -51,6 +51,8 @@
     "observed_f": 61.0,
     "expected_f": 37.3,
     "departure_f": 23.700000000000003,
+    "typical_low_f": 35.125,
+    "typical_high_f": 41.474999999999994,
     "classification": "suspected_anomaly",
     "level": "strong",
     "reference_id": "terra-qc-v4-e1e59ac0ea395d80",

@@ -79,6 +79,10 @@ def test_measured_known_station_uses_its_calibrated_comparison(observations, sta
     assert comparison["observed_f"] == 120.0
     assert comparison["departure_f"] == pytest.approx(120.0 - comparison["expected_f"])
     assert comparison["expected_method"] == "terra-pair-adjusted-median"
+    from terra_qc.reference import load_reference
+    limits = load_reference().manifest["range_calibration"]["bounds"][6]
+    assert comparison["typical_low_f"] == pytest.approx(comparison["expected_f"] + limits["typical_low_residual_f"])
+    assert comparison["typical_high_f"] == pytest.approx(comparison["expected_f"] + limits["typical_high_residual_f"])
     assert result["location_estimate"]["method"] == "idw"
     assert 6 not in result["location_estimate"]["used_station_ids"]
     assert result["provenance"]["peer_exclusion_basis"] == "target_held_out"
@@ -111,7 +115,31 @@ def test_unknown_measured_station_gets_numbers_without_calibrated_fault_label(ob
     assert comparison["reason"] == "no_calibrated_station_policy"
     assert comparison["classification"] is None and comparison["reference_id"] is None
     assert comparison["observed_f"] == 70.0 and comparison["departure_f"] is not None
+    assert comparison["typical_low_f"] is None and comparison["typical_high_f"] is None
     assert 999 not in result["location_estimate"]["used_station_ids"]
+
+
+@pytest.mark.parametrize("invalid", ["bad", "40", True, float("nan"), float("inf")])
+def test_invalid_unknown_sensor_keeps_numeric_json_contract_and_original_data(observations, stations, invalid):
+    # Object dtype preserves bool/string inputs instead of allowing pandas to
+    # coerce them into apparently valid numerical measurements before the API.
+    observations = observations.astype({"temperature_f": object})
+    extra = observations[observations.station_id.eq(6)].copy()
+    extra["station_id"] = 999
+    extra["temperature_f"] = pd.Series([invalid] * len(extra), index=extra.index, dtype=object)
+    observations = pd.concat([observations, extra], ignore_index=True)
+    original = observations.copy(deep=True)
+    stations = pd.concat([stations, pd.DataFrame([{"station_id": 999, "lat": 38.6, "lon": -121.8,
+                                                  "elevation_ft": 60.0}])], ignore_index=True)
+    result = packet(observations, stations, target_station_id=999)
+    comparison = result["target_comparison"]
+    assert comparison["status"] == "unavailable"
+    assert comparison["reason"] == "missing_or_nonfinite_value"
+    assert comparison["observed_f"] is None and comparison["classification"] is None
+    assert comparison["typical_low_f"] is None and comparison["typical_high_f"] is None
+    assert 999 not in result["location_estimate"]["used_station_ids"]
+    json.dumps(result, allow_nan=False)
+    pd.testing.assert_frame_equal(observations, original)
 
 
 def test_future_rows_and_not_yet_visible_revision_cannot_affect_past_packet(observations, stations):
@@ -163,6 +191,8 @@ def test_stale_numbers_are_explicit_and_cannot_be_classified_current(observation
     assert result["location_estimate"]["temperature"] is not None
     assert result["target_comparison"]["status"] == "stale"
     assert result["target_comparison"]["classification"] is None
+    assert result["target_comparison"]["typical_low_f"] is not None
+    assert result["target_comparison"]["typical_high_f"] is not None
 
 
 def test_missing_peers_yield_strict_json_nulls_not_anomaly(observations, stations):
@@ -173,6 +203,8 @@ def test_missing_peers_yield_strict_json_nulls_not_anomaly(observations, station
     assert result["target_comparison"]["status"] == "unavailable"
     assert result["target_comparison"]["classification"] is None
     assert result["station_findings"] == []
+    assert result["target_comparison"]["typical_low_f"] is None
+    assert result["target_comparison"]["typical_high_f"] is None
     json.dumps(result, allow_nan=False)
 
 

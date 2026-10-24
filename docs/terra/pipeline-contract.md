@@ -46,11 +46,41 @@ text, recipients, evidence, clocks or eligibility. Pending-message retrieval
 rechecks whether all included events remain relevant; expired or superseded
 facts must not be sent as a fresh alert.
 
+The transport's canonical receipt fields are `status`, `provider_message_id`,
+`updated_at_utc` and `source_event_id`. `provider_accepted` prevents a second
+send, but remains eligible for receipt reconciliation until a terminal outcome.
+The farm store preserves these fields instead of calling acceptance delivery.
+
+## HTTP and runtime assembly
+
+Use the implemented orchard API without parallel `/api/farm` aliases:
+
+- `GET/POST /api/orchards` lists or explicitly creates an immutable profile.
+- `GET /api/orchards/{id}` returns monitoring/chill status.
+- `GET /api/orchards/{id}/messages` returns `terra-farm-feed-v1`, persisted
+  messages, redacted delivery states and monitor status.
+- `GET /api/orchards/{id}/messages/{message_id}/details` retains exact compact
+  facts, source events, full assessments and transport receipt evidence.
+- `GET/PUT /api/orchards/{id}/sms-opt-in` retains explicit durable consent.
+- `POST /api/orchards/{id}/questions` supports factual answers; answers are not
+  automatically sent as proactive SMS messages.
+- `GET /api/monitor/status` and protected `POST /api/monitor/check` expose worker
+  health and an explicit cycle.
+
+Mutating orchard routes share the SMS service's raising local-session guard.
+Read-only queries never become sends. Install the orchard router before
+catch-all/static routes. One combined runtime uses the existing farm `run_loop`,
+one live service, one monitor and one SMS dispatcher. Imports and unit-test app
+factories do not start polling. Resolve private environment files and farm/SMS
+journals explicitly to absolute paths.
+
 ## Freshness, failures and receipts
 
 - A current data-health warning may describe an old or absent observation. Its
   eligibility comes from a fresh monitor check and active incident. This does
   not make stale numerical temperature evidence eligible.
+- Current daily chill evidence follows the latest completed-day cutoff and its
+  own coverage rules, rather than an hourly temperature observation-age limit.
 - The dispatcher requires a fresh eligibility check, explicit expiry and current
   mode for normal sends. Demo delivery is a separate deliberate action and says
   that the injected weather fault is simulated.

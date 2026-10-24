@@ -5,7 +5,7 @@
   "kind": "task",
   "id": "twilio-trial-placeholder",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User requested holding custom SMS/webhook work and, if supported, sending predefined trial templates as placeholders when discrepancies select a meaningful alert. Add an explicitly configured template mode to the existing dispatcher with honest persisted receipts/UI labels. Preserve event selection, opt-in, ledger, retry, frozen QC and Nathan models. No paid account changes; automatic sends stay disabled until private credential readiness is resolved.",
   "branch": "codex/twilio-trial-placeholder",
   "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
@@ -15,11 +15,11 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
-    "summary": "Implementing the explicit trial-template fallback. Prior predefined SMS delivered and handset confirmed. Temporary inbound listener/tunnel have been stopped and unsaved Twilio form closed.",
-    "evidence": ["Official trial Messages API documents To plus an allowlisted Body template. Existing dispatcher already owns suppression, event identity, attempt limits and reconciliation."],
-    "uncertainty": "Automatic trial API delivery has not been tested; existing token needs private rotation. A placeholder cannot contain Terra's actual finding text, and no proactive custom-content claim will be made.",
-    "next": "Implement and verify bounded transport/UI changes, then provide concrete private activation steps without enabling exposed credentials."
+    "revision": "22f10639ef5352f0bfb31f8513ea2701044fcef7",
+    "summary": "Explicit trial-template transport and honest UI/receipt labels implemented and verified. The existing event/opt-in/ledger/retry path sends the fixed sample when configured; actual messages/evidence remain immutable in Terra. No new worker, webhook or endpoint. Temporary inbound experiment stopped. Root integration owner owns merge and activation.",
+    "evidence": ["All325 combined SMS/HTTP/farm/runtime/pipeline cases passed; after final receipt contract additions,159 transport cases and the focused farm persistence case passed again. Final terra.py scoped check against78e835d passed all six configured groups and coordination/filesystem. Overlap with terra-full-pipeline explicitly reconciled with root owner.", "Five UI receipt semantics cases, four packaging cases and final production build pass. Independent read-only review found no concrete P1/P2 regressions. No configured private values in source diff; commit attributed to established Ethan identity with no assistant trailers.", "Trial payload exactly To plus fixed Body=sms_internal_alerts; custom Terra mode remains default. Persisted content_mode/template_name/transport/data_mode/source_event_id/provider_message_id distinguish sample delivery from actual finding content across restarts/config changes. Old journals migrate as Terra content.", "No additional real SMS or account mutation in this implementation. Prior Console sample provider-delivered and handset-confirmed stays separate from unverified automatic API delivery."],
+    "uncertainty": "Automatic trial API delivery remains unverified and disabled pending private token rotation and root integration. No proactive custom-content capability claimed. Trial API omits ValidityPeriod: expired submission is withheld locally, but Twilio queue time after acceptance is unbounded by this adapter.",
+    "next": "Root integrates this tested branch and performs the single service.py whitelist reconciliation with backend-cleanup owner, then combined final checks. Set private TERRA_SMS_CONTENT_MODE=trial_template and enable only after valid rotated credentials/consent. Verify one explicit detector-to-template real send and receipt before claiming automatic phone readiness; preserve quiet existing orchard policy."
   }
 }
 ```

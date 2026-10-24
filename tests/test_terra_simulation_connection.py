@@ -166,6 +166,66 @@ def test_shared_chatgpt_mutations_are_source_checked_but_never_replay_routed(sou
         assert calls == ["live-account-controls"] and len(made) == 1
 
 
+def test_signed_out_restart_recovers_expired_simulation_before_account_controls(source_runtime, tmp_path):
+    app, monitor, made = source_runtime
+    original_setup = monitor.store.get("tara:setup")
+    with TestClient(app, base_url=ORIGIN) as previous:
+        old_live = status(previous)["source_context"]
+        connected = previous.post("/api/simulation/connect", headers=headers(previous, old_live), json={})
+        assert connected.status_code == 200
+        old_sim = connected.json()["source_context"]
+        old_cookie = previous.cookies.get(COOKIE)
+
+    replacement = create_runtime_app(monitor=monitor, state_dir=tmp_path / "replacement",
+                                     web_root=tmp_path / "web", chatgpt_enabled=False)
+    account_calls = []
+
+    # These outer routes stand in for signed-out account capabilities. The real
+    # runtime guard and dispatch execute; no OAuth/account provider is invoked.
+    async def account_status():
+        return {"state": "disconnected", "plan_enabled": False}
+
+    async def connect_capability():
+        account_calls.append("local-connect-capability")
+        return {"available": True, "oauth_started": False}
+
+    protected = [Depends(replacement.state.local_mutation_guard)]
+    replacement.router.routes.insert(0, APIRoute("/api/chatgpt/status", account_status,
+                                                methods=["GET"], dependencies=protected))
+    replacement.router.routes.insert(0, APIRoute("/api/chatgpt/connect", connect_capability,
+                                                methods=["POST"], dependencies=protected))
+    with TestClient(replacement, base_url=ORIGIN) as client:
+        client.cookies.set(COOKIE, old_cookie, domain="127.0.0.1", path="/")
+        expired = status(client)
+        assert expired["source_expired"] and not expired["connected"] and expired["data_mode"] is None
+        assert expired["source_context"] not in {old_live, old_sim}
+        auth = headers(client, expired["source_context"])
+        assert client.post("/api/chatgpt/connect", json={}).status_code == 403
+        blocked = client.post("/api/chatgpt/connect", headers=auth, json={})
+        assert blocked.status_code == 409 and blocked.json()["error"]["code"] == "simulation_context_expired"
+        assert not account_calls
+
+        assert client.delete("/api/simulation/connection").status_code == 403
+        recovered = client.delete("/api/simulation/connection", headers=auth)
+        assert recovered.status_code == 200 and not recovered.json()["source_expired"]
+        assert client.cookies.get(COOKIE) is None
+        assert "Max-Age=0" in recovered.headers["set-cookie"]
+
+        # A document reload captures the new live context. The previous expired
+        # document still cannot initiate account work after cookie recovery.
+        live = status(client)
+        assert live["data_mode"] == "current" and live["source_context"] == recovered.json()["source_context"]
+        assert client.post("/api/chatgpt/connect", headers=auth, json={}).status_code == 409
+        live_auth = {**auth, SOURCE_HEADER: live["source_context"]}
+        account = client.get("/api/chatgpt/status", headers=live_auth)
+        assert account.status_code == 200 and account.json() == {"state": "disconnected", "plan_enabled": False}
+        ready = client.post("/api/chatgpt/connect", headers=live_auth, json={})
+        assert ready.status_code == 200 and ready.json() == {"available": True, "oauth_started": False}
+        assert client.post("/api/chatgpt/connect", headers={**live_auth, "Origin": "https://other.invalid"}, json={}).status_code == 403
+        assert account_calls == ["local-connect-capability"]
+    assert monitor.store.get("tara:setup") == original_setup and len(made) == 1
+
+
 @pytest.mark.parametrize("connected", [False, True])
 def test_switch_refuses_a_held_mutation_and_pending_native_requests(source_runtime, connected):
     app, monitor, made = source_runtime

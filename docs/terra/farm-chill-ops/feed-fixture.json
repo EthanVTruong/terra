@@ -1,0 +1,112 @@
+{
+  "messages": [
+    {
+      "created_at": "2026-01-11T09:00:00+00:00",
+      "delivery": {
+        "reason": "demo_mode",
+        "status": "not_requested"
+      },
+      "event_ids": [
+        "0f1d6d70bee627752147cec9f0546aebd6ac723f48b643f345f2e52ca6efd644"
+      ],
+      "generation": "template",
+      "generation_outcome": "llm_not_configured",
+      "id": "3bbed5904dd2e983ea5dcf1491f60e3553c7003bf40ecb63e4f9d8c4fae99443",
+      "kind": "proactive",
+      "llm_input": {
+        "as_of": "2026-01-11T09:00:00+00:00",
+        "events": [
+          {
+            "display_time": "Jan 11, 1:00 AM PST",
+            "facts": {
+              "comparison_available": true,
+              "complete": false,
+              "coverage": 0.001,
+              "cutoff": "2026-01-11T09:00:00+00:00",
+              "data_through": "2026-01-11T09:00:00+00:00",
+              "hours": 1.0,
+              "reference_count": 0,
+              "season_start": "2025-11-01",
+              "status": "incomplete"
+            },
+            "occurred_at": "2026-01-11T09:00:00+00:00",
+            "severity": "info",
+            "transition": "initial",
+            "type": "welcome"
+          }
+        ],
+        "mode": "injected",
+        "orchard": {
+          "crop": "almond",
+          "demo_location": true,
+          "name": "West Orchard",
+          "variety": "Nonpareil"
+        },
+        "schema_version": "terra-grower-message-v1"
+      },
+      "orchard_id": "demo-west",
+      "published_at": "2026-01-11T09:00:00+00:00",
+      "status": "published",
+      "text": "Demo replay: West Orchard: monitoring is connected; estimated chill is 1 hour with incomplete coverage; weather support is usable. As of Jan 11, 1:00 AM PST.",
+      "transport": "local_inbox"
+    }
+  ],
+  "monitor": {
+    "comparison_available": true,
+    "data_through": "2026-01-11T09:00:00+00:00",
+    "last_checked": "2026-01-11T09:00:00+00:00",
+    "orchard": {
+      "chill_method": "orchard-hours-32-45-nov1-mar31-fixed-pst-v1",
+      "crop": "almond",
+      "demo_location": true,
+      "elevation_ft": 70.0,
+      "geometry_key": "f05b13b53046b4605c3a2e909a6628c1e1b309d5a0eeb037fe4e83603097c066",
+      "id": "demo-west",
+      "lat": 38.6,
+      "location_source": "configured Davis-area demonstration pin",
+      "lon": -121.84,
+      "mode": "injected",
+      "name": "West Orchard",
+      "target": {
+        "agronomic_requirement_verified": false,
+        "hours": 400.0,
+        "kind": "configured_reference",
+        "note": "Published cultivar reference; counting-method equivalence has not been verified.",
+        "source": "https://fps.ucdavis.edu/treedetails.cfm?hidepics=yes&v=1064"
+      },
+      "variety": "Nonpareil"
+    },
+    "pending_events": 0,
+    "source_error": null,
+    "summary": {
+      "active_season": true,
+      "basis": "estimated orchard temperature; FNRIC station totals are separate",
+      "comparison_coverage": 0.0005865102639296188,
+      "comparison_hours": 1.0,
+      "complete": false,
+      "coverage": 0.0005865102639296188,
+      "cutoff": "2026-01-11T09:00:00+00:00",
+      "data_through": "2026-01-11T09:00:00+00:00",
+      "estimator_method_version": "edb06003c465967346a5fda741c7015213b59baf0129aef45ce2799eef189376",
+      "expected_hours": 1705,
+      "historical_median_hours": null,
+      "hours": 1.0,
+      "known_hours": 1,
+      "method": "orchard-hours-32-45-nov1-mar31-fixed-pst-v1",
+      "percentile20_hours": null,
+      "reference_count": 0,
+      "references": [],
+      "season_start": "2025-11-01",
+      "status": "incomplete",
+      "warning": "Historical pace is unavailable without matching estimates, 95% coverage and at least five prior seasons."
+    },
+    "transport": "local_inbox",
+    "worker": {
+      "heartbeat_status": "no_continuous_worker_recorded",
+      "last_cycle": null,
+      "runtime": null
+    }
+  },
+  "orchard_id": "demo-west",
+  "schema_version": "terra-farm-feed-v1"
+}

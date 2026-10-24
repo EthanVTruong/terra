@@ -1,0 +1,888 @@
+{
+ "windows": {
+  "untouched_2026-03": [
+   "2026-03-01 08:00:00+00:00",
+   "2026-04-01 08:00:00+00:00"
+  ],
+  "inspected_winter": [
+   "2025-12-01 08:00:00+00:00",
+   "2026-03-01 08:00:00+00:00"
+  ]
+ },
+ "fit_window": [
+  "2023-09-01 08:00:00+00:00",
+  "2025-09-01 08:00:00+00:00"
+ ],
+ "cw_offsets": {
+  "6": {
+   "night_f": 0.274,
+   "day_f": -0.223,
+   "n": 8760
+  },
+  "226": {
+   "night_f": 0.079,
+   "day_f": 0.138,
+   "n": 8757
+  },
+  "139": {
+   "night_f": -0.014,
+   "day_f": -0.098,
+   "n": 8726
+  },
+  "212": {
+   "night_f": -0.773,
+   "day_f": 0.009,
+   "n": 8759
+  },
+  "235": {
+   "night_f": -0.748,
+   "day_f": -0.316,
+   "n": 8759
+  }
+ },
+ "results": {
+  "untouched_2026-03": {
+   "6": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 486,
+      "coverage": 0.9759,
+      "mae": 1.428,
+      "bias": -0.743,
+      "rmse": 1.943,
+      "p95_abs": 4.3,
+      "chill_obs_h": 3,
+      "chill_est_h": 5,
+      "chill_err_h": 2
+     },
+     "cw_physics_et4": {
+      "n": 494,
+      "coverage": 0.992,
+      "mae": 1.212,
+      "bias": -0.123,
+      "rmse": 1.627,
+      "p95_abs": 3.61,
+      "chill_obs_h": 3,
+      "chill_est_h": 1,
+      "chill_err_h": -2
+     },
+     "cw_physics_full_network": {
+      "n": 498,
+      "coverage": 1.0,
+      "mae": 1.274,
+      "bias": -0.12,
+      "rmse": 1.76,
+      "p95_abs": 3.73,
+      "chill_obs_h": 3,
+      "chill_est_h": 1,
+      "chill_err_h": -2
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 497,
+      "coverage": 0.998,
+      "mae": 1.164,
+      "bias": -0.347,
+      "rmse": 1.585,
+      "p95_abs": 3.38,
+      "chill_obs_h": 3,
+      "chill_est_h": 1,
+      "chill_err_h": -2
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 486,
+      "coverage": 0.9759,
+      "mae": 1.3,
+      "bias": -0.652,
+      "rmse": 1.776,
+      "p95_abs": 3.69,
+      "chill_obs_h": 3,
+      "chill_est_h": 5,
+      "chill_err_h": 2
+     },
+     "cw_model_plus_offset": {
+      "n": 498,
+      "coverage": 1.0,
+      "mae": 1.167,
+      "bias": -0.188,
+      "rmse": 1.561,
+      "p95_abs": 3.24,
+      "chill_obs_h": 3,
+      "chill_est_h": 0,
+      "chill_err_h": -3
+     }
+    },
+    "full_network_neighbors_used": [
+     139,
+     212,
+     226,
+     235,
+     243,
+     273
+    ]
+   },
+   "226": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 501,
+      "coverage": 0.9507,
+      "mae": 1.781,
+      "bias": -1.343,
+      "rmse": 2.277,
+      "p95_abs": 4.4,
+      "chill_obs_h": 6,
+      "chill_est_h": 3,
+      "chill_err_h": -3
+     },
+     "cw_physics_et4": {
+      "n": 521,
+      "coverage": 0.9886,
+      "mae": 1.431,
+      "bias": -0.936,
+      "rmse": 1.847,
+      "p95_abs": 3.64,
+      "chill_obs_h": 6,
+      "chill_est_h": 0,
+      "chill_err_h": -6
+     },
+     "cw_physics_full_network": {
+      "n": 527,
+      "coverage": 1.0,
+      "mae": 1.303,
+      "bias": -0.779,
+      "rmse": 1.636,
+      "p95_abs": 3.19,
+      "chill_obs_h": 6,
+      "chill_est_h": 0,
+      "chill_err_h": -6
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 525,
+      "coverage": 0.9962,
+      "mae": 1.45,
+      "bias": -1.001,
+      "rmse": 1.857,
+      "p95_abs": 3.62,
+      "chill_obs_h": 6,
+      "chill_est_h": 0,
+      "chill_err_h": -6
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 501,
+      "coverage": 0.9507,
+      "mae": 1.448,
+      "bias": -0.65,
+      "rmse": 1.897,
+      "p95_abs": 3.75,
+      "chill_obs_h": 6,
+      "chill_est_h": 1,
+      "chill_err_h": -5
+     },
+     "cw_model_plus_offset": {
+      "n": 527,
+      "coverage": 1.0,
+      "mae": 1.053,
+      "bias": 0.19,
+      "rmse": 1.376,
+      "p95_abs": 2.74,
+      "chill_obs_h": 6,
+      "chill_est_h": 0,
+      "chill_err_h": -6
+     }
+    },
+    "full_network_neighbors_used": [
+     6,
+     131,
+     139,
+     212,
+     235,
+     273
+    ]
+   },
+   "139": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 491,
+      "coverage": 0.7372,
+      "mae": 2.302,
+      "bias": -1.397,
+      "rmse": 3.199,
+      "p95_abs": 7.35,
+      "chill_obs_h": 9,
+      "chill_est_h": 6,
+      "chill_err_h": -3
+     },
+     "cw_physics_et4": {
+      "n": 559,
+      "coverage": 0.8393,
+      "mae": 2.373,
+      "bias": -1.312,
+      "rmse": 3.255,
+      "p95_abs": 6.96,
+      "chill_obs_h": 9,
+      "chill_est_h": 2,
+      "chill_err_h": -7
+     },
+     "cw_physics_full_network": {
+      "n": 666,
+      "coverage": 1.0,
+      "mae": 2.141,
+      "bias": -0.903,
+      "rmse": 2.953,
+      "p95_abs": 6.49,
+      "chill_obs_h": 9,
+      "chill_est_h": 5,
+      "chill_err_h": -4
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 587,
+      "coverage": 0.8814,
+      "mae": 2.517,
+      "bias": -1.782,
+      "rmse": 3.467,
+      "p95_abs": 7.57,
+      "chill_obs_h": 9,
+      "chill_est_h": 5,
+      "chill_err_h": -4
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 491,
+      "coverage": 0.7372,
+      "mae": 2.07,
+      "bias": -0.83,
+      "rmse": 2.815,
+      "p95_abs": 6.3,
+      "chill_obs_h": 9,
+      "chill_est_h": 1,
+      "chill_err_h": -8
+     },
+     "cw_model_plus_offset": {
+      "n": 666,
+      "coverage": 1.0,
+      "mae": 2.065,
+      "bias": -0.666,
+      "rmse": 2.788,
+      "p95_abs": 5.95,
+      "chill_obs_h": 9,
+      "chill_est_h": 3,
+      "chill_err_h": -6
+     }
+    },
+    "full_network_neighbors_used": [
+     6,
+     77,
+     212,
+     226,
+     235,
+     243
+    ]
+   },
+   "212": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 502,
+      "coverage": 0.8367,
+      "mae": 2.819,
+      "bias": 2.194,
+      "rmse": 3.694,
+      "p95_abs": 7.7,
+      "chill_obs_h": 25,
+      "chill_est_h": 5,
+      "chill_err_h": -20
+     },
+     "cw_physics_et4": {
+      "n": 565,
+      "coverage": 0.9417,
+      "mae": 3.054,
+      "bias": 2.628,
+      "rmse": 3.973,
+      "p95_abs": 8.13,
+      "chill_obs_h": 25,
+      "chill_est_h": 0,
+      "chill_err_h": -25
+     },
+     "cw_physics_full_network": {
+      "n": 600,
+      "coverage": 1.0,
+      "mae": 2.142,
+      "bias": 1.633,
+      "rmse": 2.848,
+      "p95_abs": 6.04,
+      "chill_obs_h": 25,
+      "chill_est_h": 0,
+      "chill_err_h": -25
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 590,
+      "coverage": 0.9833,
+      "mae": 1.959,
+      "bias": 1.232,
+      "rmse": 2.611,
+      "p95_abs": 5.7,
+      "chill_obs_h": 25,
+      "chill_est_h": 0,
+      "chill_err_h": -25
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 502,
+      "coverage": 0.8367,
+      "mae": 2.29,
+      "bias": 1.442,
+      "rmse": 2.935,
+      "p95_abs": 5.8,
+      "chill_obs_h": 25,
+      "chill_est_h": 11,
+      "chill_err_h": -14
+     },
+     "cw_model_plus_offset": {
+      "n": 600,
+      "coverage": 1.0,
+      "mae": 1.731,
+      "bias": 0.878,
+      "rmse": 2.323,
+      "p95_abs": 4.95,
+      "chill_obs_h": 25,
+      "chill_est_h": 8,
+      "chill_err_h": -17
+     }
+    },
+    "full_network_neighbors_used": [
+     6,
+     139,
+     140,
+     242,
+     243,
+     247
+    ]
+   },
+   "235": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 503,
+      "coverage": 0.83,
+      "mae": 1.985,
+      "bias": 1.638,
+      "rmse": 2.662,
+      "p95_abs": 5.75,
+      "chill_obs_h": 16,
+      "chill_est_h": 0,
+      "chill_err_h": -16
+     },
+     "cw_physics_et4": {
+      "n": 566,
+      "coverage": 0.934,
+      "mae": 2.177,
+      "bias": 1.927,
+      "rmse": 2.884,
+      "p95_abs": 6.14,
+      "chill_obs_h": 16,
+      "chill_est_h": 0,
+      "chill_err_h": -16
+     },
+     "cw_physics_full_network": {
+      "n": 606,
+      "coverage": 1.0,
+      "mae": 2.495,
+      "bias": 2.297,
+      "rmse": 3.288,
+      "p95_abs": 6.64,
+      "chill_obs_h": 16,
+      "chill_est_h": 1,
+      "chill_err_h": -15
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 595,
+      "coverage": 0.9818,
+      "mae": 2.058,
+      "bias": 1.706,
+      "rmse": 2.702,
+      "p95_abs": 5.72,
+      "chill_obs_h": 16,
+      "chill_est_h": 1,
+      "chill_err_h": -15
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 503,
+      "coverage": 0.83,
+      "mae": 1.637,
+      "bias": 0.843,
+      "rmse": 2.211,
+      "p95_abs": 4.89,
+      "chill_obs_h": 16,
+      "chill_est_h": 7,
+      "chill_err_h": -9
+     },
+     "cw_model_plus_offset": {
+      "n": 606,
+      "coverage": 1.0,
+      "mae": 1.716,
+      "bias": 0.656,
+      "rmse": 2.225,
+      "p95_abs": 4.56,
+      "chill_obs_h": 16,
+      "chill_est_h": 21,
+      "chill_err_h": 5
+     }
+    },
+    "full_network_neighbors_used": [
+     6,
+     131,
+     139,
+     195,
+     226,
+     273
+    ]
+   }
+  },
+  "inspected_winter": {
+   "6": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 2024,
+      "coverage": 0.9859,
+      "mae": 1.106,
+      "bias": -0.6,
+      "rmse": 1.612,
+      "p95_abs": 3.35,
+      "chill_obs_h": 790,
+      "chill_est_h": 843,
+      "chill_err_h": 53
+     },
+     "cw_physics_et4": {
+      "n": 2042,
+      "coverage": 0.9946,
+      "mae": 0.943,
+      "bias": -0.251,
+      "rmse": 1.363,
+      "p95_abs": 2.81,
+      "chill_obs_h": 801,
+      "chill_est_h": 823,
+      "chill_err_h": 22
+     },
+     "cw_physics_full_network": {
+      "n": 2053,
+      "coverage": 1.0,
+      "mae": 0.895,
+      "bias": -0.32,
+      "rmse": 1.304,
+      "p95_abs": 2.69,
+      "chill_obs_h": 810,
+      "chill_est_h": 844,
+      "chill_err_h": 34
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 2049,
+      "coverage": 0.9981,
+      "mae": 0.895,
+      "bias": -0.297,
+      "rmse": 1.301,
+      "p95_abs": 2.65,
+      "chill_obs_h": 806,
+      "chill_est_h": 839,
+      "chill_err_h": 33
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 2024,
+      "coverage": 0.9859,
+      "mae": 1.032,
+      "bias": -0.252,
+      "rmse": 1.417,
+      "p95_abs": 2.72,
+      "chill_obs_h": 790,
+      "chill_est_h": 802,
+      "chill_err_h": 12
+     },
+     "cw_model_plus_offset": {
+      "n": 2053,
+      "coverage": 1.0,
+      "mae": 0.779,
+      "bias": -0.022,
+      "rmse": 1.091,
+      "p95_abs": 2.21,
+      "chill_obs_h": 810,
+      "chill_est_h": 807,
+      "chill_err_h": -3
+     }
+    },
+    "full_network_neighbors_used": [
+     139,
+     212,
+     226,
+     235,
+     243,
+     273
+    ]
+   },
+   "226": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 2044,
+      "coverage": 0.9729,
+      "mae": 1.26,
+      "bias": -1.01,
+      "rmse": 1.755,
+      "p95_abs": 3.75,
+      "chill_obs_h": 763,
+      "chill_est_h": 849,
+      "chill_err_h": 86
+     },
+     "cw_physics_et4": {
+      "n": 2076,
+      "coverage": 0.9881,
+      "mae": 0.944,
+      "bias": -0.716,
+      "rmse": 1.331,
+      "p95_abs": 2.74,
+      "chill_obs_h": 776,
+      "chill_est_h": 833,
+      "chill_err_h": 57
+     },
+     "cw_physics_full_network": {
+      "n": 2101,
+      "coverage": 1.0,
+      "mae": 0.943,
+      "bias": -0.691,
+      "rmse": 1.334,
+      "p95_abs": 2.76,
+      "chill_obs_h": 780,
+      "chill_est_h": 842,
+      "chill_err_h": 62
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 2080,
+      "coverage": 0.99,
+      "mae": 0.948,
+      "bias": -0.701,
+      "rmse": 1.341,
+      "p95_abs": 2.76,
+      "chill_obs_h": 777,
+      "chill_est_h": 836,
+      "chill_err_h": 59
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 2044,
+      "coverage": 0.9729,
+      "mae": 1.043,
+      "bias": -0.036,
+      "rmse": 1.407,
+      "p95_abs": 2.85,
+      "chill_obs_h": 763,
+      "chill_est_h": 754,
+      "chill_err_h": -9
+     },
+     "cw_model_plus_offset": {
+      "n": 2101,
+      "coverage": 1.0,
+      "mae": 0.856,
+      "bias": 0.279,
+      "rmse": 1.174,
+      "p95_abs": 2.29,
+      "chill_obs_h": 780,
+      "chill_est_h": 744,
+      "chill_err_h": -36
+     }
+    },
+    "full_network_neighbors_used": [
+     6,
+     131,
+     139,
+     212,
+     235,
+     273
+    ]
+   },
+   "139": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 1977,
+      "coverage": 0.9635,
+      "mae": 1.638,
+      "bias": -0.236,
+      "rmse": 2.35,
+      "p95_abs": 5.06,
+      "chill_obs_h": 733,
+      "chill_est_h": 770,
+      "chill_err_h": 37
+     },
+     "cw_physics_et4": {
+      "n": 2005,
+      "coverage": 0.9771,
+      "mae": 1.586,
+      "bias": -0.004,
+      "rmse": 2.234,
+      "p95_abs": 4.81,
+      "chill_obs_h": 737,
+      "chill_est_h": 743,
+      "chill_err_h": 6
+     },
+     "cw_physics_full_network": {
+      "n": 2052,
+      "coverage": 1.0,
+      "mae": 1.494,
+      "bias": -0.041,
+      "rmse": 2.119,
+      "p95_abs": 4.72,
+      "chill_obs_h": 738,
+      "chill_est_h": 747,
+      "chill_err_h": 9
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 2027,
+      "coverage": 0.9878,
+      "mae": 1.51,
+      "bias": -0.074,
+      "rmse": 2.147,
+      "p95_abs": 4.77,
+      "chill_obs_h": 738,
+      "chill_est_h": 745,
+      "chill_err_h": 7
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 1977,
+      "coverage": 0.9635,
+      "mae": 1.623,
+      "bias": 0.049,
+      "rmse": 2.292,
+      "p95_abs": 4.87,
+      "chill_obs_h": 733,
+      "chill_est_h": 739,
+      "chill_err_h": 6
+     },
+     "cw_model_plus_offset": {
+      "n": 2052,
+      "coverage": 1.0,
+      "mae": 1.511,
+      "bias": 0.221,
+      "rmse": 2.116,
+      "p95_abs": 4.59,
+      "chill_obs_h": 738,
+      "chill_est_h": 731,
+      "chill_err_h": -7
+     }
+    },
+    "full_network_neighbors_used": [
+     6,
+     77,
+     212,
+     226,
+     235,
+     243
+    ]
+   },
+   "212": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 1990,
+      "coverage": 0.9866,
+      "mae": 1.917,
+      "bias": 1.383,
+      "rmse": 2.686,
+      "p95_abs": 5.7,
+      "chill_obs_h": 904,
+      "chill_est_h": 769,
+      "chill_err_h": -135
+     },
+     "cw_physics_et4": {
+      "n": 2003,
+      "coverage": 0.9931,
+      "mae": 1.948,
+      "bias": 1.41,
+      "rmse": 2.746,
+      "p95_abs": 5.85,
+      "chill_obs_h": 908,
+      "chill_est_h": 773,
+      "chill_err_h": -135
+     },
+     "cw_physics_full_network": {
+      "n": 2017,
+      "coverage": 1.0,
+      "mae": 1.405,
+      "bias": 1.04,
+      "rmse": 1.873,
+      "p95_abs": 4.03,
+      "chill_obs_h": 909,
+      "chill_est_h": 819,
+      "chill_err_h": -90
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 2014,
+      "coverage": 0.9985,
+      "mae": 1.401,
+      "bias": 1.037,
+      "rmse": 1.872,
+      "p95_abs": 4.07,
+      "chill_obs_h": 909,
+      "chill_est_h": 817,
+      "chill_err_h": -92
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 1990,
+      "coverage": 0.9866,
+      "mae": 1.676,
+      "bias": 0.342,
+      "rmse": 2.293,
+      "p95_abs": 4.65,
+      "chill_obs_h": 904,
+      "chill_est_h": 860,
+      "chill_err_h": -44
+     },
+     "cw_model_plus_offset": {
+      "n": 2017,
+      "coverage": 1.0,
+      "mae": 1.078,
+      "bias": 0.15,
+      "rmse": 1.467,
+      "p95_abs": 3.15,
+      "chill_obs_h": 909,
+      "chill_est_h": 916,
+      "chill_err_h": 7
+     }
+    },
+    "full_network_neighbors_used": [
+     6,
+     139,
+     140,
+     242,
+     243,
+     247
+    ]
+   },
+   "235": {
+    "station_held_out": {
+     "et4_peer_median": {
+      "n": 2016,
+      "coverage": 0.9849,
+      "mae": 1.527,
+      "bias": 0.963,
+      "rmse": 2.115,
+      "p95_abs": 4.26,
+      "chill_obs_h": 869,
+      "chill_est_h": 811,
+      "chill_err_h": -58
+     },
+     "cw_physics_et4": {
+      "n": 2036,
+      "coverage": 0.9946,
+      "mae": 1.617,
+      "bias": 1.188,
+      "rmse": 2.224,
+      "p95_abs": 4.63,
+      "chill_obs_h": 876,
+      "chill_est_h": 789,
+      "chill_err_h": -87
+     },
+     "cw_physics_full_network": {
+      "n": 2047,
+      "coverage": 1.0,
+      "mae": 1.575,
+      "bias": 1.254,
+      "rmse": 2.157,
+      "p95_abs": 4.48,
+      "chill_obs_h": 877,
+      "chill_est_h": 792,
+      "chill_err_h": -85
+     },
+     "cw_physics_full_network_et_eligibility": {
+      "n": 2044,
+      "coverage": 0.9985,
+      "mae": 1.574,
+      "bias": 1.258,
+      "rmse": 2.157,
+      "p95_abs": 4.49,
+      "chill_obs_h": 876,
+      "chill_est_h": 790,
+      "chill_err_h": -86
+     }
+    },
+    "known_station": {
+     "et4_peer_median_plus_month_hour_offset": {
+      "n": 2016,
+      "coverage": 0.9849,
+      "mae": 1.474,
+      "bias": -0.162,
+      "rmse": 1.958,
+      "p95_abs": 4.0,
+      "chill_obs_h": 869,
+      "chill_est_h": 891,
+      "chill_err_h": 22
+     },
+     "cw_model_plus_offset": {
+      "n": 2047,
+      "coverage": 1.0,
+      "mae": 1.351,
+      "bias": -0.193,
+      "rmse": 1.752,
+      "p95_abs": 3.52,
+      "chill_obs_h": 877,
+      "chill_est_h": 933,
+      "chill_err_h": 56
+     }
+    },
+    "full_network_neighbors_used": [
+     6,
+     131,
+     139,
+     195,
+     226,
+     273
+    ]
+   }
+  }
+ },
+ "eligibility": {
+  "untouched_2026-03": {
+   "target_rows": 3720,
+   "et_usable": 2897,
+   "cw_usable_qc_base_ok": 3683,
+   "source_flag_Y_kept_by_cw": 786
+  },
+  "inspected_winter": {
+   "target_rows": 10800,
+   "et_usable": 10270,
+   "cw_usable_qc_base_ok": 10739,
+   "source_flag_Y_kept_by_cw": 469
+  }
+ },
+ "replay": {
+  "clean": {
+   "226": 36.92,
+   "139": 36.46,
+   "212": 37.37,
+   "235": 36.9
+  },
+  "davis_spike_unflagged": {
+   "226": 48.78,
+   "139": 48.33,
+   "212": 47.26,
+   "235": 43.04
+  },
+  "davis_spike_excluded_by_terra_flag": {
+   "226": 36.83,
+   "139": 35.93,
+   "212": 37.62,
+   "235": 36.86
+  },
+  "davis_obs_at_hit": 37.0,
+  "prefix_vs_full_davis_model_estimate": [
+   37.3174,
+   37.3174
+  ]
+ }
+}

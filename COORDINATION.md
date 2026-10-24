@@ -5,6 +5,32 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-multivariable-review",
+  "owner": "et",
+  "status": "done",
+  "intent": "Independently review and regress the authorized humidity, wind and solar lifecycle integration. Root owns production changes; this isolated branch owns only regression scenarios and this record.",
+  "branch": "codex/terra-multivariable-review",
+  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "tests/test_terra_weather_lifecycle_review.py"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": null,
+    "summary": "Added independent event lifecycle and actual SQLite/Monitor publication scenarios against the production integration branch. Reviewed source provenance, independent variable eligibility, stale evidence and same-hour corrections.",
+    "evidence": ["All eleven regression scenarios pass against codex/terra-multivariable-flags backend: later-incident identity, current recovery, same-hour correction, distinct-hour persistence, gaps, source-QC separation, low daylight, stale readings, escalation and queued-opening suppression.", "Native parser-to-weather assessment conflict scenario now preserves conflicting_duplicate on humidity while independent wind remains assessable after the root repair.", "Actual simulation API actions on isolated temporary state show clean baseline, real humidity and wind discrepancy events, and unchanged retained note evidence after advancing. Nighttime solar remains low_daylight without a false missing-data event."],
+    "uncertainty": "This test-only branch intentionally does not contain production weather modules. Validation uses the integration checkout backend through PYTHONPATH; the root will repeat tests after cherry-picking.",
+    "next": "Sole integration owner cherry-picks this test slice, repeats checks in the integrated checkout and completes native interface verification."
+  }
+}
+```
+
+## Multivariable agent facts and Terra naming
+
+```json
+{
+  "kind": "task",
   "id": "terra-multivariable-agent",
   "owner": "et",
   "status": "done",

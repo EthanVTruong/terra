@@ -1,5 +1,40 @@
 # Terra integration coordination
 
+## Interactive orchard-support simulation
+
+```json
+{
+  "kind": "check",
+  "id": "terra-demo-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_demo_simulation.py", "-q"],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-demo-simulation",
+  "owner": "et",
+  "status": "active",
+  "intent": "Build a separate local two-view simulation: real held-out weather with manual station controls and Nathan-estimator heatmap; exact source-grounded Grok Bot style grower chat showing actual frozen QC and orchard-support events, evidence and simulated phone ping. No live-system changes, external messages, refit or provider calls.",
+  "branch": "codex/terra-demo-simulation",
+  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "docs/terra/demo-simulation.md", "docs/terra/demo-simulation/**"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": null,
+    "summary": "ET selected orchard-support alert for actual workflow, then authorized fully fleshed separate simulation app using held-out actual observations, manual controls/heatmap and exact Grok Bot style chat. Isolated worktree based on shared main; no production files changed.",
+    "evidence": ["Source reference x.ai/news/designing-grok-bot and existing measured web typography/primitives; frozen QC and orchard monitoring modules inspected."],
+    "uncertainty": "Held-out slice and complete browser behavior still to verify; no actual SMS intended by simulation scope.",
+    "next": "Verify data provenance, implement isolated simulation with unchanged scientific modules, then exercise all demo states and compare source-grounded visuals."
+  }
+}
+```
+
 ```json
 {
   "kind": "task",
@@ -92,6 +127,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "config/terra/**",
     "docs/terra/**",
     "tests/test_terra_json.py",
+    "tests/test_terra_demo_simulation.py",
     "tests/test_terra_qc_*.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
@@ -117,6 +153,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "depends_on": [],
   "checks": [
     "terra-json-tests",
+    "terra-demo-tests",
     "terra-sms-tests",
     "terra-farm-tests",
     "terra-runtime-tests",

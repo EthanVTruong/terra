@@ -39,7 +39,7 @@ PRESETS = ("normal", "minor", "spike", "support_loss", "recover")
 class DemoSimulation:
     """One shared local session, synchronized by two browser apps and durable SQLite."""
 
-    def __init__(self, *, state_dir=None, data_dir=None, grid_size=6):
+    def __init__(self, *, state_dir=None, data_dir=None, grid_size=8):
         self._lock = RLock()
         self.data_dir = Path(data_dir or DATA).resolve()
         self.provenance = json.loads((self.data_dir / "provenance.json").read_text(encoding="utf-8"))
@@ -230,7 +230,7 @@ class DemoSimulation:
         key = fingerprint({"current": current, "frames": self.session["frames"], "grid": self._grid_size})
         if key in self._map_cache:
             return self._map_cache[key]
-        bounds = {"south": 38.26, "north": 38.82, "west": -122.01, "east": -121.58}
+        bounds = {"south": 38.22, "north": 38.86, "west": -122.45, "east": -121.14}
         size = self._grid_size
         exclusions = pd.DataFrame([
             {"station_id": row["station_id"], "timestamp": current, "reason": row["reason"]}

@@ -2,6 +2,7 @@ from datetime import date
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from chillwatch.normalize import (
     cimis_ts_utc,
@@ -29,6 +30,26 @@ def test_cimis_2400_rolls_to_next_day():
     assert ts[0] == utc("2024-02-01 08:00")
     # and it belongs to Jan 31 local
     assert local_date_of_hour(ts)[0] == date(2024, 1, 31)
+
+
+@pytest.mark.parametrize("hour", ["0000", "0030", "0130", "2360", "2401", "2500", "-100", "10000", "", None])
+def test_cimis_invalid_hours_do_not_roll_into_valid_timestamps(hour):
+    with pytest.raises(ValueError, match="0100 through 2400"):
+        cimis_ts_utc(["2026-01-11"], [hour])
+
+
+def test_cimis_hour_batch_validates_every_row_and_length():
+    with pytest.raises(ValueError, match="0100 through 2400"):
+        cimis_ts_utc(["2026-01-11"] * 3, ["0100", "2500", "2400"])
+    with pytest.raises(ValueError, match="same length"):
+        cimis_ts_utc(["2026-01-11"], ["0100", "0200"])
+
+
+def test_cimis_all_hour_endings_and_existing_numeric_padding():
+    hours = [f"{h:02d}00" for h in range(1, 25)]
+    actual = cimis_ts_utc(["2026-01-11"] * 24, hours)
+    assert actual.tolist() == list(pst_day_hours(date(2026, 1, 11), date(2026, 1, 11)))
+    assert cimis_ts_utc(["2026-01-11"], [100]).iloc[0] == actual.iloc[0]
 
 
 def test_pst_day_hours():

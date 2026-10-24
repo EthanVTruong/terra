@@ -1,0 +1,31 @@
+{
+  "as_of": "2026-01-11T09:00:00+00:00",
+  "events": [
+    {
+      "display_time": "Jan 11, 1:00 AM PST",
+      "facts": {
+        "comparison_available": true,
+        "complete": false,
+        "coverage": 0.001,
+        "cutoff": "2026-01-11T09:00:00+00:00",
+        "data_through": "2026-01-11T09:00:00+00:00",
+        "hours": 1.0,
+        "reference_count": 0,
+        "season_start": "2025-11-01",
+        "status": "incomplete"
+      },
+      "occurred_at": "2026-01-11T09:00:00+00:00",
+      "severity": "info",
+      "transition": "initial",
+      "type": "welcome"
+    }
+  ],
+  "mode": "injected",
+  "orchard": {
+    "crop": "almond",
+    "demo_location": true,
+    "name": "West Orchard",
+    "variety": "Nonpareil"
+  },
+  "schema_version": "terra-grower-message-v1"
+}

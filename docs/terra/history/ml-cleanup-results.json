@@ -1,0 +1,100 @@
+{
+  "completed_at_utc": "2026-10-24T06:20:42.868585+00:00",
+  "branch": "codex/terra-ml-cleanup",
+  "decision": "All ML executable paths retired; statistical detector retained",
+  "modified_paths": [
+    "terra_app/qc.py",
+    "terra_app/service.py",
+    "terra_app/__main__.py",
+    "tests/test_residual.py",
+    "tests/test_service.py",
+    "requirements-lock.txt",
+    "README.md",
+    "spec.md",
+    "docs/setup.md",
+    "docs/experiments/README.md",
+    "COORDINATION.md"
+  ],
+  "removed_source_paths": [
+    "docs/experiments/summarize_fresh.py",
+    "docs/experiments/validate_fresh.py",
+    "docs/experiments/validate_profiles.py",
+    "docs/experiments/validate_spatial.py",
+    "requirements-legacy.txt",
+    "terra_app/legacy_qc.py",
+    "tests/test_qc.py"
+  ],
+  "retired_file_count": 503,
+  "recovery_archive": ".terra-local/retired/ml-retirement-20261024T060526Z.zip",
+  "recovery_archive_sha256": "8ce38ffdea3d0b732a32b9bfbc99cdf1aaf59cd14aa4cb1493eecdfb515c2b58",
+  "retirement_manifest": ".terra-local/retired/ml-retirement-20261024T060526Z.json",
+  "recovery_directory": ".terra-local/retired/ml-disabled-20261024T060526Z",
+  "archive_and_all_relocated_files_verified": true,
+  "ml_packages_absent": [
+    "scikit-learn",
+    "scipy",
+    "joblib",
+    "threadpoolctl",
+    "cloudpickle"
+  ],
+  "python_tests": 200,
+  "harness_tests": 31,
+  "pipeline_tests": 154,
+  "temporal_tests": 15,
+  "configured_check": "PASS harness-tests + pipeline-tests + temporal-tests + coordination/filesystem",
+  "pip_check": "No broken requirements found",
+  "frontend_build": "PASS, existing chunk-size advisory only",
+  "frontend_tests": 4,
+  "browser": "Davis51.1F expected44.8F departure+6.4F typical42.6–48.9F,5readings,correctpeak10AM; no capturedwarnings/errors; viewportreset,replaypaused",
+  "snapshot": {
+    "active_reference": "terra-qc-v4-e1e59ac0ea395d80",
+    "reference_sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
+    "data_sha256": "4d152b359ac00bc343137315eccbe77737d3a3324a363b5b7cae659e7f1cd741",
+    "snapshot_before_sha256": "23a9a02e60a4b1cc5ae24b043c04978f24b247a21ddc52cd0562b4080b3d9aee",
+    "snapshot_after_sha256": "23a9a02e60a4b1cc5ae24b043c04978f24b247a21ddc52cd0562b4080b3d9aee",
+    "snapshot_identical": true,
+    "cases": 25,
+    "prefixes": 2400,
+    "ml_packages_absent": [
+      "sklearn",
+      "scipy",
+      "joblib",
+      "threadpoolctl",
+      "cloudpickle"
+    ]
+  },
+  "source_sha256": {
+    "terra_app/__init__.py": "328881c846536f40256dfed867db7003cf756e586d8933db90b7ac5d77a9bbf3",
+    "terra_app/__main__.py": "ff1e7e7c1c0a1cd530c6c8029869a02f1999d0478b1c11c0265f8f2e11dbc2d4",
+    "terra_app/availability.py": "ac451c5cd1967acdc45744c21a490b2f3854efd657424afd0774d32e50407176",
+    "terra_app/chill.py": "f4071717e61b706df7d0ee987bc55720eaf69c974ac327471e37a23fc3b0fd44",
+    "terra_app/console_export.py": "c86be4e6c23f10c2646bc10288531434c9426edc58d0bc6732140f9f9668edf1",
+    "terra_app/demo.py": "cde828805c5cd54a4df61ddf5bf44eaf5579f50256765599a4bbb18ea79a5cee",
+    "terra_app/qc.py": "6b94e17eac85fd0e8367c65e30988528af96b3cce0904c515fdb867268690789",
+    "terra_app/refresh.py": "946d25e255be8d582407717b924b5d5be0f1ea0683029828008a77672806540a",
+    "terra_app/service.py": "b7e12b20c99692a8ea2c5551d7de953df2be0514a45b193e5db5892c44dc0d28",
+    "terra_app/sources.py": "2ab11bc6a455d01b84cd84a726addb8631d262fde82b7e402b23d022bcf4f7f4",
+    "terra_app/spatial.py": "33d029845fea1b672653572952505fd0c8f0a3cd2dfe82328464d5d9765d1013",
+    "terra_app/store.py": "a87fa481bba67940815a25bf711e6620a1a6ced5efca3ef426e0ad848192b7ab",
+    "terra_app/temporal.py": "348d48ca66b9c327ae7d7a38d2cc83e70e6bd69bfe7ffb9f30d58fe840e64ecb",
+    "terra_app/station_geometry.json": "ae36f33e8a7eb9c0eaa7600baee59d05c4e12fbd9786f73da85ebb0d19243241"
+  },
+  "model": {
+    "id": "terra-qc-v4-e1e59ac0ea395d80",
+    "path": ".terra-local/artifacts/terra-qc-v4-e1e59ac0ea395d80-809c78b69d80d93d.reference.json",
+    "sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
+    "bytes": 177729,
+    "metadata_path": ".terra-local/artifacts/terra-qc-v4-e1e59ac0ea395d80.json"
+  },
+  "dataset": {
+    "id": "cimis-hourly-spatial-v4-4d152b359ac00bc3",
+    "path": ".terra-local/artifacts/cimis-hourly-4d152b359ac00bc3.json",
+    "sha256": "4d152b359ac00bc343137315eccbe77737d3a3324a363b5b7cae659e7f1cd741"
+  },
+  "original_record_digest": "23ff5f254daadcb8681aea590b8a33e11f01683e50ab43ff3ed25a54580aad75",
+  "original_staged_bootstrap_preserved": true,
+  "git_remote_configured": false,
+  "git_author_configured": false,
+  "known_team_destination": "https://github.com/EthanVTruong/terra",
+  "next_chat": "Plan next monitoring system step owns checkpoint/shared-repository integration after this handoff; no cleanup commit/push or remote change performed."
+}

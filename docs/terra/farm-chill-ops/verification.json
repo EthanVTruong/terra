@@ -1,0 +1,53 @@
+{
+  "scope": "persistent farm-chill-ops backend, compact writer and additive API",
+  "base": "7f37e2670103fc2efa83c272e1cab285e3616620",
+  "farm_cases": 64,
+  "existing_pure_cases": 187,
+  "coordination_cases": 31,
+  "scoped_check": {
+    "command": "python -B terra.py check --base 7f37e2670103fc2efa83c272e1cab285e3616620 --task farm-chill-ops",
+    "result": "PASS farm-chill-ops-tests; PASS terra-harness; PASS terra-json-tests; PASS coordination + filesystem"
+  },
+  "independent_process_smoke": {
+    "separate_process_restart": true,
+    "message_count": 1,
+    "same_message_id": true,
+    "bounded_worker_without_browser": "stale_or_stopped",
+    "provider_credentials_removed": true,
+    "external_dispatch_disabled": true
+  },
+  "saved_weather_demo": {
+    "source": "committed location.request.json; actual e1 QC and Nathan estimate_location",
+    "mode": "injected",
+    "estimate_phases": [
+      "ok",
+      "insufficient_data",
+      "ok",
+      "ok",
+      "ok"
+    ],
+    "local_messages": 3,
+    "external_calls": false
+  },
+  "receipt_repair": [
+    "atomic monotonic status merge; delivered never regresses to delayed provider_accepted",
+    "failed is terminal for pending drain"
+  ],
+  "limits": [
+    "software/controlled injection evidence, not natural fault labels",
+    "no real SMS or LLM call performed",
+    "five matching historical orchard seasons not automatically downloaded",
+    "400h configured reference only; no biological requirement equivalence established"
+  ],
+  "module_sha256": {
+    "backend/terra_monitoring/farm_ops/__init__.py": "b4e923850070e6344710d3311b0ef0f2347d5e2026e9b866acd416dee44ed533",
+    "backend/terra_monitoring/farm_ops/__main__.py": "b939471db403b6cdbef69fbec252cf285ddf363ccf2d3030ae0c35d94333b747",
+    "backend/terra_monitoring/farm_ops/api.py": "8c49f17d4efbbcafd5cbfdd5f7c51fcb79f4066a80ef97fafe682c72414bd129",
+    "backend/terra_monitoring/farm_ops/demo.py": "43b7020e1f784f40992ce72e6b25c5e099bd51697e2536e1fd59cfaaff90489c",
+    "backend/terra_monitoring/farm_ops/season.py": "3b2c26fa358d92a44301bdde2adfb6ded4ba6e53d98b369ebdf85eb24a06ef0d",
+    "backend/terra_monitoring/farm_ops/service.py": "68b12d00b881ed4232dda4675311578d062871726c48ecfb0377ac269132028d",
+    "backend/terra_monitoring/farm_ops/source.py": "9bc82c418161eee4be3aa3627c193d20f6cff1d6fc07c39194496a5d753c4d63",
+    "backend/terra_monitoring/farm_ops/store.py": "ffda59af77fca7ce33166c0142c02243ae73b0b2f6e2eda5075cade57f14025b",
+    "backend/terra_monitoring/farm_ops/writer.py": "f8bfd3453b9c0b896ed8a16152ae949c883f04d70bb71e2f3e88b8cb8285ca98"
+  }
+}

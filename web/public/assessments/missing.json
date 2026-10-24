@@ -1,0 +1,81 @@
+{
+  "schema_version": "terra-location-assessment-v1",
+  "data_mode": "injected",
+  "query": {
+    "location_id": "CIMIS-6",
+    "lat": 38.535694,
+    "lon": -121.77636,
+    "elevation_ft": 60.0,
+    "valid_utc": "2026-01-11T09:00:00+00:00",
+    "as_of_utc": "2026-01-11T09:00:00+00:00",
+    "target_station_id": 6,
+    "max_age_hours": 6.0
+  },
+  "location_estimate": {
+    "location_id": "CIMIS-6",
+    "lat": 38.535694,
+    "lon": -121.77636,
+    "elevation_ft": 60.0,
+    "geometry_source": "caller-supplied",
+    "valid_utc": "2026-01-11T09:00:00+00:00",
+    "temperature": null,
+    "unit": "degF",
+    "method": "idw",
+    "method_version": "chillwatch-idw/ba874ff7bab7",
+    "n_used": 2,
+    "used_station_ids": [
+      212,
+      235
+    ],
+    "excluded": [
+      {
+        "station_id": 6,
+        "reason": "held_out_target"
+      },
+      {
+        "station_id": 226,
+        "reason": "missing"
+      },
+      {
+        "station_id": 139,
+        "reason": "missing"
+      }
+    ],
+    "lapse_station_ids": [],
+    "data_through_utc": {
+      "212": "2026-01-11T09:00:00+00:00",
+      "235": "2026-01-11T09:00:00+00:00"
+    },
+    "as_of_utc": "2026-01-11T09:00:00+00:00",
+    "status": "insufficient_data",
+    "status_reason": "fewer_than_3_usable_peers"
+  },
+  "target_comparison": {
+    "station_id": 6,
+    "observed_f": 61.0,
+    "expected_f": null,
+    "departure_f": null,
+    "typical_low_f": null,
+    "typical_high_f": null,
+    "classification": null,
+    "level": "none",
+    "reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+    "expected_method": "terra-pair-adjusted-median",
+    "status": "unavailable",
+    "reason": "insufficient_neighbors"
+  },
+  "station_findings": [],
+  "data_health": [],
+  "estimator_qc_exclusions": [],
+  "provenance": {
+    "qc_reference_id": "terra-qc-v4-e1e59ac0ea395d80",
+    "qc_reference_sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
+    "data_snapshot_id": "sha256:9c65748a3370b02d279942832be6f5d4b4dd74ab780618363106767300a09c71",
+    "estimator_method_version": "chillwatch-idw/ba874ff7bab7",
+    "adapter_operation_gate_version": "terra-station-operation-v1",
+    "operation_day_pst": "2026-01-11",
+    "publication_visibility": "snapshot_only",
+    "peer_exclusion_basis": "target_held_out",
+    "side_effects": "none"
+  }
+}

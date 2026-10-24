@@ -1,0 +1,18 @@
+{
+  "version": "terra-station-geometry-v1",
+  "datum": "WGS84",
+  "datum_verified": false,
+  "distance_assumption": "WGS84-compatible geographic coordinates on a spherical Earth for approximate distance screening; the source datum was not verified.",
+  "audited_on": "2026-10-23",
+  "provenance": "Current public CIMIS station API coordinates and station-details elevations, inspected in the read-only data audit. Historical station location epochs remain unverified.",
+  "details_url": "https://cimis-proxy.water.ca.gov/Stations.aspx",
+  "historical_epochs_verified": false,
+  "elevation_conversion": "feet multiplied by 0.3048",
+  "stations": {
+    "6": {"name": "Davis", "latitude": 38.535694, "longitude": -121.776360, "elevation_ft": 60, "elevation_m": 18.288, "effective_from": null, "source_url": "https://et.water.ca.gov/api/station/6"},
+    "226": {"name": "Woodland", "latitude": 38.672722, "longitude": -121.811720, "elevation_ft": 82, "elevation_m": 24.9936, "effective_from": null, "source_url": "https://et.water.ca.gov/api/station/226"},
+    "139": {"name": "Winters", "latitude": 38.501258, "longitude": -121.978530, "elevation_ft": 136, "elevation_m": 41.4528, "effective_from": null, "source_url": "https://et.water.ca.gov/api/station/139"},
+    "212": {"name": "Hastings Tract East", "latitude": 38.278056, "longitude": -121.741110, "elevation_ft": 7, "elevation_m": 2.1336, "effective_from": null, "source_url": "https://et.water.ca.gov/api/station/212"},
+    "235": {"name": "Verona", "latitude": 38.797944, "longitude": -121.611360, "elevation_ft": 24, "elevation_m": 7.3152, "effective_from": null, "source_url": "https://et.water.ca.gov/api/station/235"}
+  }
+}

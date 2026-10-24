@@ -15,6 +15,7 @@ An observation is used only if all of these hold:
 * ``quality == "usable"``;
 * ``source_flag`` (stripped) in ``usable_flags``; blank only by default, matching Terra's QC;
 * ``timestamp_verified`` is True, when that column is given;
+* the station operates on the reading's PST hour-ending date;
 * no finding for that station and hour (a finding is ignored only when its ``visible_at`` is
   after ``as_of``; unknown visibility counts as visible).
 
@@ -40,6 +41,7 @@ from .qc.features import is_night
 from .qc.neighbors import (
     adjusted_neighbor_temps,
     haversine_km,
+    hour_local_dates,
     idw_baseline,
     neighbor_schedule,
     theil_sen_lapse,
@@ -208,6 +210,14 @@ def estimate_location(
         return pd.DataFrame(columns=ESTIMATE_COLUMNS)
 
     obs = _prepare_observations(observations, set(pos), as_of)
+    if len(obs):
+        # Apply the neighbor schedule's operating dates before both lapse fitting and
+        # provenance. In particular, midnight PST ends the previous operating day.
+        days = pd.Series(hour_local_dates(pd.DatetimeIndex(obs["timestamp"])), index=obs.index)
+        station_dates = st.set_index("station_id")
+        conn = pd.to_datetime(obs["station_id"].map(station_dates["connect_date"]))
+        disc = pd.to_datetime(obs["station_id"].map(station_dates["disconnect_date"]))
+        obs = obs[(conn.isna() | (conn <= days)) & (disc.isna() | (days <= disc))]
     why_row = _exclusion_reasons(obs, findings, as_of, p["usable_flags"], p["range_f"]) if len(obs) \
         else pd.Series(dtype=object)
     W = np.full((H, S), np.nan)

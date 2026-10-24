@@ -1,0 +1,10 @@
+-r requirements-terra.txt
+
+# Pure runtime/source/HTTP checks use pytest --noconftest; the native backend
+# suite retains its separate conftest and pyproject [dev] dependencies.
+pytest==9.1.1
+colorama==0.4.6
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.7.0
+Pygments==2.21.0

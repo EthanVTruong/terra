@@ -1,0 +1,132 @@
+name: Terra integration checks
+
+on:
+  pull_request:
+    paths:
+      - backend/terra_qc/**
+      - backend/terra_monitoring/**
+      - config/terra/**
+      - docs/terra/**
+      - tests/test_terra*.py
+      - tests/fixtures/terra/**
+      - web/**
+      - requirements-terra*.txt
+      - backend/chillwatch/**
+      - config/**
+      - migrations/**
+      - alembic.ini
+      - pyproject.toml
+      - tests/**
+      - terra.py
+      - run_terra.py
+      - COORDINATION.md
+      - spec.md
+      - README.md
+      - .env.example
+      - scripts/terra-service/**
+      - .github/workflows/terra.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: chillwatch
+          POSTGRES_PASSWORD: chillwatch
+          POSTGRES_DB: chillwatch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chillwatch -d chillwatch"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CHILLWATCH_DB_URL: postgresql+psycopg://chillwatch:chillwatch@localhost:5432/chillwatch
+      CHILLWATCH_TEST_DB_URL: postgresql+psycopg://chillwatch:chillwatch@localhost:5432/chillwatch
+      CHILLWATCH_LGB_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-terra-dev.txt -e '.[dev]'
+      - run: python -m pip check
+      - run: python -m alembic upgrade head
+      - name: Complete backend suite including PostgreSQL
+        run: python -m pytest --junitxml=backend-results.xml
+      - name: Require database tests to execute
+        shell: python
+        run: |
+          import xml.etree.ElementTree as ET
+          root = ET.parse('backend-results.xml').getroot()
+          skipped = [case.attrib.get('name') for case in root.iter('testcase')
+                     if case.find('skipped') is not None]
+          if skipped:
+              raise SystemExit(f'Unexpected skipped backend tests: {skipped}')
+  statistical-json:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      TERRA_BRANCH: ${{ github.head_ref || github.ref_name }}
+      TERRA_BASE: ${{ github.event.pull_request.base.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-terra-dev.txt
+      - name: Validate scoped integration against the actual base
+        shell: python
+        run: |
+          import os
+          import subprocess
+          import sys
+          subprocess.run([sys.executable, '-B', 'terra.py', 'check',
+                          '--base', os.environ['TERRA_BASE']], check=True)
+          if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
+              # A manual run may have no diff; still exercise the pure runtime.
+              subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests',
+                              '-p', 'test_terra_harness.py', '-q'], check=True)
+              subprocess.run([sys.executable, '-m', 'pytest', '--noconftest', '-o',
+                              'pythonpath=backend', 'tests/test_terra_json.py',
+                              'tests/test_terra_qc_reference.py', 'tests/test_estimate.py',
+                              'tests/test_terra_live.py', 'tests/test_terra_server.py',
+                              'tests/test_terra_sms.py', 'tests/test_terra_sms_server.py',
+                              'tests/test_farm_chill_ops.py', 'tests/test_farm_chill_ops_api.py',
+                              'tests/test_farm_chill_ops_writer.py', 'tests/test_farm_chill_ops_state.py',
+                              'tests/test_backend_input_guards.py', 'tests/test_normalize.py',
+                              'tests/test_terra_runtime.py', 'tests/test_terra_bootstrap.py',
+                              'tests/test_terra_pipeline.py', '-q'], check=True)
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.25.0'
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web build
+      - run: pnpm --dir web test:sites
+      - run: pnpm --dir web test:ui

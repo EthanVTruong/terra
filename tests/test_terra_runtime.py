@@ -508,3 +508,116 @@ def test_default_journal_migration_does_not_abandon_legacy_operator_history(tmp_
     with pytest.raises(JournalSelectionError, match="existing delivery history"):
         SMSDispatcher.from_env({})
     assert SMSDispatcher.from_env({"TERRA_SMS_DB_PATH": str(legacy)}).config.db_path == legacy
+
+
+@pytest.fixture
+def simulation_runtime(tmp_path, monkeypatch):
+    from copy import deepcopy
+    from terra_monitoring.demo_simulation import full_flow
+    from terra_monitoring.demo_simulation.engine import DemoSimulation, ORCHARD, START
+    from terra_monitoring.farm_ops.service import Monitor
+    from terra_monitoring.farm_ops.store import utc
+    from terra_monitoring.farm_ops.writer import Writer
+
+    class CountWriter:
+        def __init__(self):
+            self.calls = 0
+            self.local = Writer(key="", model="")
+
+        def write(self, packet):
+            self.calls += 1
+            return self.local.write(packet)
+
+    live, sms, writer = Live(), SMS(), CountWriter()
+    monitor = Monitor(Store(tmp_path / "live.sqlite3"), source=Source(live), delivery=sms,
+                      writer=writer, clock=lambda: utc(START))
+    profile = monitor.create_orchard("My walnuts", orchard_id="my-farm", crops=["walnut"], **ORCHARD)
+    sample = DemoSimulation(state_dir=tmp_path / "sample", grid_size=2)
+    packet = deepcopy(sample.packet)
+    packet["data_mode"] = "current"
+    monitor.apply(profile["id"], {"latest": packet}, now=utc(START))
+    monitor.flush(profile["id"], now=utc(START))
+    app = runtime.create_runtime_app(monitor=monitor, state_dir=tmp_path / "runtime", web_root=tmp_path / "web")
+    with monitor.store.connect(write=True) as db:
+        monitor.store.set_state(db, "tara:setup", {"stage": "complete", "orchard_id": profile["id"],
+            "crops": ["walnut"], "variety": None, "location": {**ORCHARD, "name": profile["name"]},
+            "notification_preference": None})
+    lab = tmp_path / "lab"
+    lab.mkdir()
+    (lab / "index.html").write_text('<script src="/assets/lab.js"></script>station-lab', encoding="utf-8")
+    factory = full_flow.create_app
+    monkeypatch.setattr(full_flow, "DemoSimulation", lambda **kwargs: DemoSimulation(grid_size=2, **kwargs))
+    monkeypatch.setattr(full_flow, "create_app", lambda **kwargs: factory(demo_root=lab, **kwargs))
+    return app, monitor, live, sms, writer
+
+
+def test_simulation_connection_is_lazy_guarded_and_rejects_unknown_farms(simulation_runtime, tmp_path):
+    app, monitor, live, sms, writer = simulation_runtime
+    before = writer.calls
+    sessions = tmp_path / "runtime/simulator-sessions"
+    with TestClient(app, base_url=ORIGIN) as client:
+        assert client.get("/api/simulation/connection").json()["connected"] is False
+        assert not sessions.exists()
+        token = client.get("/api/sms/status").json()["control_token"]
+        headers = {**HEADERS, "X-Terra-SMS-Control": token}
+        assert client.post("/api/simulation/connect", json={}).status_code == 403
+        assert client.post("/api/simulation/connect", headers={**headers, "Origin": "https://other.invalid"}, json={}).status_code == 403
+        assert client.post("/api/simulation/connect", headers=headers, json={"orchard_id": "unknown"}).status_code == 404
+        assert client.post("/api/simulation/connect", headers=headers, json={"extra": True}).status_code == 422
+        assert not sessions.exists()
+    assert writer.calls == before and live.calls == [] and sms.sends == []
+
+
+def test_connected_browser_replays_its_native_chat_and_station_changes_without_touching_live_state(simulation_runtime):
+    app, monitor, live, sms, writer = simulation_runtime
+    before = monitor.store.path.read_bytes()
+    original_messages = monitor.store.messages("my-farm")
+    original_evidence = monitor.store.details("my-farm", original_messages[0]["id"])
+    before_calls = writer.calls
+    with TestClient(app, base_url=ORIGIN) as connected, TestClient(app, base_url=ORIGIN) as ordinary:
+        token = connected.get("/api/sms/status").json()["control_token"]
+        headers = {**HEADERS, "X-Terra-SMS-Control": token}
+        result = connected.post("/api/simulation/connect", headers=headers, json={"orchard_id": "my-farm"})
+        assert result.status_code == 200, result.text
+        assert result.json() == {"connected": True, "data_mode": "injected", "station_url": "/stations", "orchard_id": "my-farm"}
+        assert "HttpOnly" in result.headers["set-cookie"] and "SameSite=strict" in result.headers["set-cookie"]
+        assert writer.calls == before_calls  # Connecting never spends inference allowance.
+        assert connected.get("/api/context").json()["replay_only"] is True
+        assert ordinary.get("/api/simulation/connection").json()["connected"] is False
+        assert "data_mode" not in ordinary.get("/api/context").json()
+        assert connected.get("/api/orchards").json()["orchards"][0]["mode"] == "injected"
+        assert ordinary.get("/api/orchards").json()["orchards"][0]["mode"] == "current"
+        assert "station-lab" in connected.get("/stations").text
+        assert connected.get("/api/sms/status").json()["control_token"] == token
+        assert connected.get("/api/sms/status").json()["enabled"] is False
+        conversation = connected.get("/api/tara/conversation").json()
+        assert conversation["orchard_id"] == "my-farm" and conversation["setup"]["crops"] == ["walnut"]
+        assert connected.get(f'/api/orchards/my-farm/messages/{original_messages[0]["id"]}/details').json() == original_evidence
+        changed = connected.post("/api/demo/action", headers=HEADERS, json={"type": "preset", "name": "support_loss"})
+        assert changed.status_code == 200, changed.text
+        feed = connected.get("/api/orchards/my-farm/messages").json()
+        assert feed["monitor"]["comparison_available"] is False
+        assert len(feed["messages"]) > len(original_messages)
+        assert writer.calls == before_calls + 1  # Internal lab farm uses only its local writer.
+        newest = next(message for message in feed["messages"] if message["id"] not in {m["id"] for m in original_messages})
+        evidence = connected.get(f'/api/orchards/my-farm/messages/{newest["id"]}/details').json()
+        assert evidence["assessments"][0]["data_mode"] == "injected"
+        assert connected.delete("/api/simulation/connection").status_code == 403
+        assert connected.delete("/api/simulation/connection", headers=headers).json()["connected"] is False
+        assert connected.get("/api/orchards").json()["orchards"][0]["mode"] == "current"
+    assert monitor.store.path.read_bytes() == before
+    assert monitor.store.messages("my-farm") == original_messages and live.calls == [] and sms.sends == []
+
+
+def test_simulation_connection_refuses_an_in_flight_conversation(simulation_runtime):
+    app, monitor, _, _, writer = simulation_runtime
+    with monitor.store.connect(write=True) as db:
+        db.execute("INSERT INTO tara_requests(id,thread,signature,created,status) VALUES(?,?,?,?,?)",
+                   ("still-working", "my-farm", "signature", "2026-03-11T11:00:00+00:00", "pending"))
+    before = writer.calls
+    with TestClient(app, base_url=ORIGIN) as client:
+        token = client.get("/api/sms/status").json()["control_token"]
+        result = client.post("/api/simulation/connect", headers={**HEADERS, "X-Terra-SMS-Control": token}, json={})
+        assert result.status_code == 409
+        assert client.get("/api/simulation/connection").json()["connected"] is False
+    assert writer.calls == before

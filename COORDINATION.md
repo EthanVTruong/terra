@@ -1,5 +1,49 @@
 # Terra integration coordination
 
+## Grower chat simplification
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chat-simplify",
+  "owner": "et",
+  "status": "done",
+  "intent": "Remove redundant chat header/footer controls, clean composer focus, add a bean-shaped Terra read receipt, and connect Station lab through + with chat fed by simulation instead of live CIMIS. Verify and incorporate into main, as explicitly requested by ET.",
+  "branch": "codex/terra-chat-simplify",
+  "base": "db0a57e",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "web/**",
+    "backend/terra_monitoring/**",
+    "tests/test_terra_full_flow.py",
+    "tests/test_terra_runtime.py",
+    "tests/test_terra_server.py",
+    "run_terra.py",
+    "tests/test_terra_bootstrap.py",
+    "docs/terra/**",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "b746d8b",
+    "summary": "Requested UI and functional simulator connection implemented. Removed redundant farm/setup/writing header and plan/usage footer; green outgoing bubbles retain Grok Bot geometry, single accessible composer focus and bean-cropped existing Terra receipt. + connects browser session to isolated station readings, opens lab and restores live selection on disconnect. Source changes lock chat briefly; setup builds both clients.",
+    "evidence": [
+      "82 runtime/full-flow/demo backend tests pass; 47 UI helper tests and 4 packaging checks pass (2 pre-existing browser tests skipped). Both client production builds pass.",
+      "Actual browser on isolated 8540: saved walnut farm and chat preserved through connect; /stations opened; Support loss generated a new native grower note; disconnect restored original live conversation without simulated notes.",
+      "Independent UI review findings fixed and rechecked: transition lock, stable menu focus and composer focus contrast. Preview .terra-local/ui-qa/chat-preview.png.",
+      "Required terra.py check --base origin/main --task terra-chat-simplify running; final results retained by integration owner."
+    ],
+    "uncertainty": "Live provider inference/SMS not invoked by verification. Simulation is historical, retains isolated journals and requires reconnection after server restart. Required scoped checks and remote CI/main integration pending at this source checkpoint.",
+    "next": "Root completes required checks, merges the reviewed candidate to main and refreshes local main build/runtime while preserving operator journals and account configuration."
+  }
+}
+```
+
 ```json
 {
   "kind": "task",
@@ -288,7 +332,7 @@
   "status": "active",
   "intent": "Integrate all approved product functionality into main: selected quiet cube-branded chat with complete messaging, saved evidence and ChatGPT-plan writing; one-button device location with real terrain elevation; Nathan draggable/interpolated Station lab; temperature plus independent humidity/wind/solar and missing-data monitoring through the same live or replay feed. Preserve private runtime and human drafts. Consolidate local work into one TechProjects/Terra folder, retain recoverable historical work, and stop completed chat loops.",
   "branch": "codex/terra-consolidate-main",
-  "base": "db0a57e932c8a3c2dcac957eeec6d15dc0ec2a6b",
+  "base": "92793c5199b32c2e0a8498be9cea7a857f5ddff0",
   "domains": [
     "terra-coordination",
     "terra-qc-json",
@@ -310,14 +354,15 @@
     "AGENTS.md",
     "config/terra/**",
     "spec.md",
-    "pyproject.toml"
+    "pyproject.toml",
+    "run_terra.py"
   ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "a046879f5aa194a7abb6c62b53e104496f026b2c",
-    "summary": "One final candidate now contains quiet UI d390d39/visible Terra labels b8eeea7, addressed alert routing eb7eee1, device c2604e5, all-variable weather/map bridge62cbbd5, Nathan main4fba932, product-first README b952d46 and final demo proof0dba4bd. The single reconciliation preserves location-display/retry semantics together with the plus/input/send capsule and mounted ChatGPT provider; routing retains get/tara/terra and independent weather vocabulary. Final combined verification caught and repaired device setup bypassing the replay factory (db05ebd) and new weather wording using a preset selector. Weather b89198f genuinely authors validated prose for pure/supported mixed facts through one configured generator; referenced weather alerts now retain original station/variable facts at the conversation caller. Nathan db0a57e zoom/adjustable point sensors and the eca1100 open-source docs/license/font patch are now included. Root MIT license and package metadata agree; the selected layout/cube/composer use the existing system font fallback, so the earlier exact-font comparison is historical.",
+    "revision": "92793c5199b32c2e0a8498be9cea7a857f5ddff0",
+    "summary": "Baseline published via PR16 at92793c5 after all14 actual573-base checks. Follow-up PR19 is being reconciled once with current native device, weather, provider and Nathan map paths; root owns integration, backend helper owns bounded stale-source guard tests, UI owner owns finite bean/location/greeting patch. Preserve selected quiet one-capsule composer and full messaging. No private runtime or extra SMS changes.",
     "evidence": [
       "Device owner: all393 conversation cases,30 focused device cases,12 native-browser and51 pure/helper checks; full11-group scoped8f gate passed. Actual App to guarded API to official USGS lookup verified using a public Davis test position; no actual OS permission click or human setup write.",
       "Weather owner62cbbd5: all12 required groups passed against actual main4fba932;127 focused weather cases, both builds and55 UI/packaging checks passed with2 existing optional skips. Actual map spot to shared feed to persisted wind note and grounded question passed; source warnings remain separate.480 bounded real station-hours audited;360 overlapping temperature values are identical.",
@@ -332,10 +377,12 @@
       "Combined browser and guarded API proof verified a real crop message, one location button, public Davis terrain lookup, saved location, separate in-chat notification choice and local saved-profile reply. This exposed the factory mismatch before merge; the final repaired-source smoke and exact-head gates remain required.",
       "Final combined-source production and Station lab builds,51 pure/helper UI cases and8 packaging cases pass;2 existing optional browser cases skipped. All51 demo/full-flow/weather integration cases pass after the final native map merge. Native point sensors are included in both lab and grower data-snapshot fingerprints.",
       "Actual final guarded API flow preserved injected factory mode, real public Davis terrain provenance and usable comparison; map spot query and wind60mph action returned200 and the production feed retained the station note. A transient terrain503 retained clean setup and the same-ID retry succeeded. No native permission, SMS, worker or paid generation was used.",
-      "Hosted Windowsbd gate passed11 groups but the combined412-case conversation command exceeded its legacy60s default at152 completed cases. No assertion failed; full backend andmacOS passed, and local exactbd passedall12. The focused verification repair partitions the identical12 conversation files into three bounded120s checks, with unchanged assertions, backend-matching2-thread limits and15min outer portable job budget. No product code changes."
+      "Hosted Windowsbd gate passed11 groups but the combined412-case conversation command exceeded its legacy60s default at152 completed cases. No assertion failed; full backend andmacOS passed, and local exactbd passedall12. The focused verification repair partitions the identical12 conversation files into three bounded120s checks, with unchanged assertions, backend-matching2-thread limits and15min outer portable job budget. No product code changes.",
+      "Published tree4e13b0a3587ac5b65631598c37d6b7ba790bf3f2 equals checked5b98159; exact-head web/macOS CI passed at publication, other jobs pending. PR17closed as fully included.",
+      "PR19 semantic union builds both interfaces.55 UI helper cases pass with2 existing optional skips, including fixed document-source tests for late callbacks, cross-tab switching, unknown runtime and isolated replay."
     ],
-    "uncertainty": "Final configuration-only Windows repair must pass exact-head CI and actualdb0-base scoped groups before merge. Product source and independent fresh-clone acceptance remain unchanged frombd71502; private cutover/archives still require runtime-owner quiesce.",
-    "next": "Run one combined exact-head gate cycle, publish through PR16, then coordinate private/runtime quiesce, consistent backups and canonical TechProjects/Terra migration. Remove verified inactive worktrees and rebuildable copies only after preservation; retain two to three core chats without waiting loops."
+    "uncertainty": "PR19 source safety repair and finite UI/greeting patch require combined scoped and browser verification before follow-up merge. Private canonical move awaits operator quiesce/state preservation. Baseline is available on main now.",
+    "next": "Finish one PR19 reconciliation/check cycle, publish; complete verified inactive cleanup and one canonical Terra folder with operator-controlled runtime restoration. Conclude completed chat lanes."
   }
 }
 ```

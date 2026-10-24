@@ -1,3 +1,4 @@
+import { sourceFetch as fetch } from "./source-fetch";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { clockTime, dayLabel, displayNoteText, localDay, publicationTime, timestamp } from "./presentation";

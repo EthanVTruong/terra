@@ -121,17 +121,21 @@ def export_parquet_cmd() -> None:
 
 @app.command("train")
 def train_cmd(version: str = typer.Option(None), folds: int = typer.Option(None, help="0 = true LOSO"),
+              fold_procedure: str = typer.Option(None, help="full | fixed (fold models reuse the main round count)"),
               verbose: bool = True) -> None:
     """Train the neighbor model on non-holdout seasons; writes data/models/{version}/metrics.json."""
     _setup(verbose)
     from .qc.model import train
 
-    b = train(_ctx().store, version=version, loso_folds=folds)
+    b = train(_ctx().store, version=version, loso_folds=folds, fold_procedure=fold_procedure)
     m = b.metrics
     key = "loso" if "loso_model" in m else "in_sample"
+    hk = m.get("holdout_known_stations") or {}
     typer.echo(json.dumps({"version": b.version, "validation": m["validation"], "fit": m["fit"],
+                           "holdout_known_stations_mae_f": {k: v["mae_f"] for k, v in hk.items()
+                                                            if isinstance(v, dict) and "mae_f" in v},
                            f"{key}_model": m[f"{key}_model"],
-                           f"{key}_common_rows": m[f"{key}_common_rows"]}, indent=2))
+                           f"{key}_common_rows": m[f"{key}_common_rows"]}, indent=2, default=str))
 
 
 @app.command()

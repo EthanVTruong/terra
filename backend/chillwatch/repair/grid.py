@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from .. import config
-from ..qc.model import chill_mask, predict_location_frame
+from ..qc.model import chill_mask, predict_location_frame, unseen_uses_model
 from ..qc.neighbors import build_field, haversine_km
 from ..timeutil import season_bounds, utc
 
@@ -84,6 +84,7 @@ def predict_grid(ctx: Any, season: str, km: float = 5.0, end: Any | None = None,
     log.info("%d grid cells at %.1f km", len(cells), km)
 
     bundle = ctx.model
+    use_ml = unseen_uses_model()
     pool = bundle.oof_blocks()
     flat = pool[np.isfinite(pool)]
     pool_sd = float(1.4826 * np.median(np.abs(flat - np.median(flat)))) if flat.size else 1.0
@@ -103,7 +104,7 @@ def predict_grid(ctx: Any, season: str, km: float = 5.0, end: Any | None = None,
                          "model_share": 0.0, "nearest_dz_ft": np.nan, "mean_temp_f": np.nan, "est_sd_f": np.nan,
                          "reason": "water"})
             continue
-        df = predict_location_frame(fld, bundle, float(c.lat), float(c.lon), float(c.elevation_ft))
+        df = predict_location_frame(fld, bundle, float(c.lat), float(c.lon), float(c.elevation_ft), use_model=use_ml)
         e = df["expected_f"].to_numpy(dtype="float64")
         ok = np.isfinite(e)
         cov = float(ok[cm].mean()) if cm.any() else 0.0
@@ -136,7 +137,8 @@ def predict_grid(ctx: Any, season: str, km: float = 5.0, end: Any | None = None,
             log.info("grid: %d/%d cells", i + 1, len(cells))
     out = pd.concat([cells.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
     out["valid"] = out["reason"].eq("") & out["chill_hours"].notna()
-    out.attrs.update({"season": season, "end": end_ts.isoformat(), "km": km, "model": bundle.version,
+    out.attrs.update({"season": season, "end": end_ts.isoformat(), "km": km,
+                      "model": bundle.version if use_ml else f"physics (IDW + lapse; uncertainty from {bundle.version})",
                       "chill_from": config.thresholds()["chill"]["start_mmdd"]})
     return out
 

@@ -97,7 +97,8 @@ model:
   valid_station_fraction: 0.15  # TODO source: station-grouped early-stopping split
   dirty_label_sigma: 5.0  # spec
   loso_folds: 5           # GroupKFold by station; 0 = true leave-one-station-out
-  loso_procedure: full    # full = each fold model gets its own early stopping + dirty-label removal
+  loso_procedure: full    # full = each fold model gets its own early stopping + dirty-label removal; fixed = main model's round count
+  unseen_method: idw_lapse  # places with no station history (map, virtual stations, blind tests): idw_lapse | model
   log_every: 100          # log validation loss every N boosting rounds
   num_threads: 0          # 0 = all cores; set lower (or CHILLWATCH_LGB_THREADS) when sharing the machine
   prism_mask_fraction: 0.3  # spec

@@ -292,6 +292,8 @@ def train(
     drop_ids: set[int] | None = None,
     max_rows: int | None = None,
     activate: bool = True,
+    fold_procedure: str | None = None,
+    evaluate_holdout: bool = True,
 ) -> ModelBundle:
     """Train the neighbor model on non-holdout seasons and run LOSO validation.
 
@@ -347,6 +349,9 @@ def train(
             data[f] = np.nan
     booster, info = fit_model(data, feats, seed)
     data["t_base_pred"] = data["t_base"]
+    holdout_report = None
+    if evaluate_holdout and not drop_ids:
+        holdout_report = _holdout_known_stations(store, stations, booster, feats, data, reg, extras, workers)
 
     # ---------------- LOSO / GroupKFold by station
     folds = int(loso_folds if loso_folds is not None else m["loso_folds"])
@@ -354,7 +359,7 @@ def train(
     n_groups = len(np.unique(groups))
     n_splits = n_groups if folds == 0 else min(folds, n_groups)
     oof = np.full(len(data), np.nan)
-    fold_procedure = str(m.get("loso_procedure", "full"))
+    fold_procedure = str(fold_procedure or m.get("loso_procedure", "full"))
     fold_info = []
     if n_splits >= 2:
         for k, (tr, va) in enumerate(GroupKFold(n_splits=n_splits).split(data, groups=groups)):
@@ -392,6 +397,8 @@ def train(
     metrics[f"{key}_model"] = error_report(data, "pred")
     metrics[f"{key}_idw_lapse"] = error_report(data.assign(pred_idw=data["t_base"]), "pred_idw")
     # like-for-like comparison: the same hours for both (the model also covers 1-neighbor hours)
+    if holdout_report is not None:
+        metrics["holdout_known_stations"] = holdout_report
     metrics[f"{key}_common_rows"] = {
         "model": error_report(data[common], "pred"),
         "idw_lapse": error_report(data[common].assign(pred_idw=data.loc[common, "t_base"]), "pred_idw"),
@@ -418,6 +425,60 @@ def train(
         (path.parent / "ACTIVE").write_text(version)
     _register(bundle, store, activate)
     return bundle
+
+
+def _holdout_known_stations(store: Any, stations: pd.DataFrame, booster: lgb.Booster, feats: list[str],
+                            data: pd.DataFrame, reg: dict[str, Any], extras: tuple[str, ...],
+                            workers: int) -> dict[str, Any] | None:
+    """Accuracy at stations the model was trained on, in the held-out (never trained) seasons.
+
+    This is the QC / gap-fill situation. Per-station night/day offsets come from the most recent
+    training season (median residual), as the production offsets would.
+    """
+    hold = list(reg.get("holdout_seasons", []))
+    jobs = []
+    for s in hold:
+        a, b = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
+        r = store.readings(a, b, stations["station_id"].tolist())
+        if len(r) and r["temp_f"].notna().any():
+            jobs.append((s, r, stations, a, b, extras))
+    if not jobs:
+        return None
+    if workers > 1 and len(jobs) > 1:
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=min(workers, len(jobs))) as ex:
+            built = list(ex.map(_season_frame, jobs))
+    else:
+        built = [_season_frame(j) for j in jobs]
+    frames = [tf for _, tf, _ in built if len(tf)]
+    if not frames:
+        return None
+    h = pd.concat(frames, ignore_index=True)
+    h = h[h["station_id"].isin(set(data["station_id"]))].reset_index(drop=True)
+    for f in feats:
+        if f not in h.columns:
+            h[f] = np.nan
+    h["pred"] = booster.predict(h[feats].to_numpy(dtype="float32"))
+    last = data[data["season"] == data["season"].max()]
+    r_last = last["y"].to_numpy() - booster.predict(last[feats].to_numpy(dtype="float32"))
+    key = pd.MultiIndex.from_arrays([h["station_id"], h["night"]])
+    off_m = pd.Series(r_last, index=pd.MultiIndex.from_arrays([last["station_id"], last["night"]])).groupby(level=[0, 1]).median()
+    off_i = (last["y"] - last["t_base"]).groupby([last["station_id"], last["night"]]).median()
+    h["pred_off"] = h["pred"] + off_m.reindex(key).fillna(0).to_numpy()
+    h["idw"] = h["t_base"]
+    h["idw_off"] = h["t_base"] + off_i.reindex(key).fillna(0).to_numpy()
+    common = np.isfinite(h[["pred", "pred_off", "idw", "idw_off"]].to_numpy()).all(axis=1)
+    hc = h[common]
+    return {
+        "seasons": [s for s, _, _ in built],
+        "stations": int(hc["station_id"].nunique()),
+        "offsets_from": str(data["season"].max()),
+        "model": error_report(hc, "pred"),
+        "model_plus_offset": error_report(hc, "pred_off"),
+        "idw_lapse": error_report(hc, "idw"),
+        "idw_lapse_plus_offset": error_report(hc, "idw_off"),
+    }
 
 
 def _register(bundle: ModelBundle, store: Any, active: bool) -> None:
@@ -458,22 +519,26 @@ def predict_location_frame(
     exclude: set[int] | None = None,
     offsets: pd.DataFrame | None = None,
     prism: pd.DataFrame | None = None,
+    use_model: bool = True,
 ) -> pd.DataFrame:
-    """Expected temperature over ``fld.hours`` for a location (pure: field in, frame out)."""
+    """Expected temperature over ``fld.hours`` for a location (pure: field in, frame out).
+
+    ``use_model=False`` gives the physics estimate (IDW + lapse) with its own uncertainty bins.
+    """
     X, aux = location_features(fld, lat, lon, elevation_ft, exclude=exclude, prism=prism)
     n = aux["n_valid"]
     night = is_night(fld.hours)
-    pred = bundle.predict(X) if bundle.booster is not None else np.full(len(X), np.nan)
-    use_model = np.isfinite(pred) & (n >= 1)
+    pred = bundle.predict(X) if (bundle.booster is not None and use_model) else np.full(len(X), np.nan)
+    model_ok = np.isfinite(pred) & (n >= 1)
     tb = aux["t_base"]
-    use_idw = ~use_model & np.isfinite(tb)
-    method = np.where(use_model, "model", np.where(use_idw, "idw_lapse", "none"))
-    exp = np.where(use_model, pred, np.where(use_idw, tb, np.nan))
+    use_idw = ~model_ok & np.isfinite(tb)
+    method = np.where(model_ok, "model", np.where(use_idw, "idw_lapse", "none"))
+    exp = np.where(model_ok, pred, np.where(use_idw, tb, np.nan))
     sd_m, q10_m, q90_m = unc.lookup(bundle.unc_model, aux["nearest_km"], aux["nearest_dz_ft"], night)
     sd_i, q10_i, q90_i = unc.lookup(bundle.unc_idw, aux["nearest_km"], aux["nearest_dz_ft"], night)
-    sd = np.where(use_model, sd_m, np.where(use_idw, sd_i, np.nan))
-    q10 = np.where(use_model, q10_m, np.where(use_idw, q10_i, np.nan))
-    q90 = np.where(use_model, q90_m, np.where(use_idw, q90_i, np.nan))
+    sd = np.where(model_ok, sd_m, np.where(use_idw, sd_i, np.nan))
+    q10 = np.where(model_ok, q10_m, np.where(use_idw, q10_i, np.nan))
+    q90 = np.where(model_ok, q90_m, np.where(use_idw, q90_i, np.nan))
     df = pd.DataFrame(
         {
             "ts": fld.hours,
@@ -560,8 +625,17 @@ def predict_at_location(
 
     ctx = ctx or get_context()
     fld = ctx.field(start, end)
-    df = predict_location_frame(fld, ctx.model, lat, lon, elevation_ft)
+    df = predict_location_frame(fld, ctx.model, lat, lon, elevation_ft, use_model=unseen_uses_model())
     return df[PRED_COLUMNS].reset_index(drop=True)
+
+
+def unseen_uses_model() -> bool:
+    """Whether places with no station history use the ML model (else the physics estimate).
+
+    Validation on CIMIS: for never-seen stations the model did not beat IDW + lapse, while at
+    stations with history it did; see docs/DECISIONS.md.
+    """
+    return str(config.thresholds()["model"].get("unseen_method", "idw_lapse")) == "model"
 
 
 # =========================================================================== offsets

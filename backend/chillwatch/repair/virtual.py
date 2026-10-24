@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .. import config
-from ..qc.model import ModelBundle, chill_hours, chill_mask, predict_location_frame, train
+from ..qc.model import ModelBundle, chill_hours, chill_mask, predict_location_frame, train, unseen_uses_model
 from ..qc.neighbors import build_field
 from ..timeutil import season_bounds, seasons_between
 
@@ -37,8 +37,8 @@ def blind_model(station_id: int, ctx: Any, retrain: bool = True) -> ModelBundle:
     The blind model is fitted without cross-validation, so its own residuals are in-sample; its
     uncertainty bands are taken from the production model's leave-stations-out residual bins.
     """
-    if not retrain:
-        return ctx.model
+    if not retrain or not unseen_uses_model():
+        return ctx.model  # physics estimate for unseen places needs no retrained model
     base = ctx.model
     out = config.data_dir() / "models" / "blind"
     path = out / f"blind-{station_id}-{base.version}"
@@ -75,7 +75,9 @@ def blind_test(station_id: int, season: str, ctx: Any | None = None, retrain: bo
     bundle = model or blind_model(int(station_id), ctx, retrain)
     rd = ctx.store.readings(start, end, st["station_id"].tolist())
     fld = build_field(rd, st, start, end, valid_col="qc_status", drop_ids={int(station_id)})
-    pred = predict_location_frame(fld, bundle, float(row.lat), float(row.lon), float(row.elevation_ft))
+    use_ml = unseen_uses_model()
+    pred = predict_location_frame(fld, bundle, float(row.lat), float(row.lon), float(row.elevation_ft),
+                                  use_model=use_ml)
     own = rd[rd["station_id"] == int(station_id)].set_index("ts")
     actual = own["temp_f"].where(own["qc_status"] == "ok").reindex(pred["ts"]).to_numpy(dtype="float64")
     series = pd.DataFrame({"ts": pred["ts"], "actual": actual, "predicted": pred["expected_f"],
@@ -88,8 +90,8 @@ def blind_test(station_id: int, season: str, ctx: Any | None = None, retrain: bo
     return {
         "station_id": int(station_id),
         "season": season,
-        "model": bundle.version,
-        "blind": bool(model is not None or retrain),
+        "model": bundle.version if use_ml else "physics (IDW + lapse)",
+        "blind": bool(model is not None or retrain or not use_ml),
         "series": series,
         "n_hours": int(both.sum()),
         "mae_f": float(np.mean(np.abs(series["actual"][both] - series["predicted"][both]))) if both.any() else None,

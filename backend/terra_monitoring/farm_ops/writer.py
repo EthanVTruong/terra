@@ -400,8 +400,8 @@ class Writer:
             result = write_weather(packet, self.generator)
             if result is not None:
                 return result
-            # Mixed event families keep all original roles and clocks through
-            # the existing deterministic renderer.
+            # Unknown event families/questions retain the deterministic path;
+            # supported mixed weather/core packets share one validated call.
             return {"text": fallback(packet), "provider": "template", "outcome": "weather_factual_response"}
         if self.voice == "text" and (self.generator is not None or not self.key or not self.model):
             from . import texting

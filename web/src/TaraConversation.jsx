@@ -3,6 +3,7 @@ import { Icon } from "./Icon";
 import { timestamp } from "./presentation";
 import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
+import { showTaraNotification } from "./notification-return";
 
 const EMPTY_PRESETS = [];
 const shortDate = (value) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric" }).format(new Date(value));
@@ -215,8 +216,10 @@ function NotificationChoice({ conversation }) {
   return <div className="tara-setup-controls"><p className="tara-capability">Browser alerts work while Terra is open. Updates always stay in chat.</p><div className="tara-actions"><button className="query-submit" type="button" onClick={() => choose(true)} disabled={!supported || conversation.locked || busy}>{busy ? "Saving choice…" : "Enable browser alerts"}<Icon name="phone" size={14} /></button><button className="query-cancel" type="button" onClick={() => choose(false)} disabled={conversation.locked || busy}>Keep in chat</button></div>{!supported ? <p className="tara-capability">This browser doesn’t support alerts. In-chat updates are available.</p> : null}{error ? <p className="query-error" role="alert">{error}</p> : null}</div>;
 }
 
-export function useTaraBrowserAlerts(conversation, farm, { enabled = true } = {}) {
+export function useTaraBrowserAlerts(conversation, farm, { enabled = true, onOpen } = {}) {
   const baseline = useRef({ orchardId: null, seen: new Set(), enabled: false });
+  const openNote = useRef(onOpen);
+  openNote.current = onOpen;
   const [error, setError] = useState("");
   const orchardId = conversation.state?.orchard_id;
   useEffect(() => {
@@ -231,7 +234,7 @@ export function useTaraBrowserAlerts(conversation, farm, { enabled = true } = {}
     const farmName = profile?.name || farm?.orchard?.name || "Terra update";
     const title = profile?.mode === "replay" ? `Demo replay · ${farmName}` : profile?.mode === "injected" ? `Injected demo · ${farmName}` : profile?.demo_location ? `Demo farm · ${farmName}` : farmName;
     for (const note of additions) {
-      try { new Notification(title, { body: note.text, tag: `terra-${note.id}` }); }
+      try { showTaraNotification(Notification, title, note, { orchardId, onOpen: (target) => openNote.current?.(target) }); }
       catch { setError("Browser alerts are unavailable here. Your updates remain in chat."); }
     }
   }, [conversation.state?.notifications.enabled, conversation.state?.notifications.capability, conversation.state?.orchards, enabled, farm?.feed, farm?.orchard?.name, orchardId]);
@@ -240,7 +243,7 @@ export function useTaraBrowserAlerts(conversation, farm, { enabled = true } = {}
 
 export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS, farm, onSelectOrchard, onDetails, onOpenConnection, showFarmSelector = true, fieldNotes = EMPTY_PRESETS, renderFieldNote, alertsManaged = false, notificationError = "" }) {
   const { state, loading, locked } = conversation;
-  const internalNotificationError = useTaraBrowserAlerts(conversation, farm, { enabled: !alertsManaged });
+  const internalNotificationError = useTaraBrowserAlerts(conversation, farm, { enabled: !alertsManaged, onOpen: (target) => { onSelectOrchard?.(target.orchard_id); onDetails?.(null, target); } });
   const alertsError = notificationError || internalNotificationError;
   if (!state) return <div className="tara-conversation"><p className="tara-status" role="status">{loading ? "Opening conversation…" : "The conversation is unavailable."}</p>{!loading ? <button className="tara-text-button" onClick={conversation.refresh}>Retry conversation</button> : null}</div>;
   const orchard = state.orchards.find((item) => item.id === state.orchard_id);

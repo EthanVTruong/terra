@@ -8,6 +8,7 @@ import { writeTaraStorage } from "./tara-state";
 import SmsControls from "./SmsControls";
 import ChatGPTConnection from "./ChatGPTConnection";
 import { usePresence } from "./usePresence";
+import { farmNoteDetailsPath, farmNoteTarget } from "./notification-return";
 import "./tara-integration.css";
 
 const SCHEMA = "terra-location-assessment-v1";
@@ -170,9 +171,11 @@ export function App() {
     try { const value = localStorage.getItem("terra.tara.activeFarm"); return value && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : ""; }
     catch { return ""; }
   });
+  const [notificationNote, setNotificationNote] = useState(null);
   const [connectionRequest, setConnectionRequest] = useState(0), [connectionStatus, setConnectionStatus] = useState(null);
   const farmRef = useRef(null);
   const chooseTaraFarm = useCallback((id) => {
+    setNotificationNote(null);
     setTaraFarmId(id);
     try { if (id) localStorage.setItem("terra.tara.activeFarm", id); else localStorage.removeItem("terra.tara.activeFarm"); } catch { /* This tab can retain the selection in memory. */ }
     farmRef.current?.selectOrchard(id);
@@ -184,9 +187,10 @@ export function App() {
   const [farmDetails, setFarmDetails] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false), [detailsError, setDetailsError] = useState("");
-  const farm = useFarmFeed(view === "monitor" || browserAlerts, { pollInBackground: browserAlerts });
+  const [context, setContext] = useState(null);
+  const farm = useFarmFeed(view === "monitor" || browserAlerts, { pollInBackground: browserAlerts, replayOnly: context?.replay_only === true });
   farmRef.current = farm;
-  const browserAlertError = useTaraBrowserAlerts(tara, farm);
+  const browserAlertError = useTaraBrowserAlerts(tara, farm, { onOpen: openNotificationNote });
   const detailRequest = useRef({ version: 0, controller: null }), nearBottom = useRef(true);
   const [entries, setEntries] = useState([]);
   const [selectedId, setSelectedId] = useState("");
@@ -198,7 +202,6 @@ export function App() {
   const [pendingKind, setPendingKind] = useState(null);
   const [notice, setNotice] = useState("");
   const [indexRetry, setIndexRetry] = useState(0);
-  const [context, setContext] = useState(null);
   const [contextError, setContextError] = useState("");
   const [contextLoading, setContextLoading] = useState(true);
   const [contextRetry, setContextRetry] = useState(0);
@@ -333,6 +336,12 @@ export function App() {
     detailRequest.current.controller?.abort(); detailRequest.current.version += 1;
     setFarmDetails(null); setSelectedMessage(null); setDetailsLoading(false); setDetailsError("");
   }, [farm.orchardId]);
+  useEffect(() => {
+    // Switching farms clears old evidence; wait for both native views to agree.
+    if (!notificationNote || view !== "monitor" || notificationNote.orchard_id !== farm.orchardId || notificationNote.orchard_id !== tara.state?.orchard_id) return;
+    setNotificationNote(null);
+    openFarmDetails(null, notificationNote);
+  }, [notificationNote, view, farm.orchardId, tara.state?.orchard_id]);
   useEffect(() => () => detailRequest.current.controller?.abort(), []);
   useEffect(() => {
     if (view === "monitor" && nearBottom.current) requestAnimationFrame(() => {
@@ -440,17 +449,31 @@ export function App() {
     } catch (reason) { setQueryError(reason.message); }
   }
 
+  function openNotificationNote(message) {
+    const target = farmNoteTarget(message);
+    if (target.orchard_id !== taraFarmId) chooseTaraFarm(target.orchard_id);
+    openMonitor();
+    setNotificationNote(target);
+  }
+
   async function openFarmDetails(event, message) {
-    if (detailsLoading && selectedMessage === message.id) return;
-    opener.current = event.currentTarget; setPanelTab("temperature"); setPanelOpen(true);
+    let target;
+    try { target = farmNoteTarget(message, tara.state?.orchard_id || farm.orchardId); }
+    catch (reason) { setDetailsError(reason.message); return; }
+    if (target.orchard_id !== (tara.state?.orchard_id || farm.orchardId)) {
+      openNotificationNote(target);
+      return;
+    }
+    opener.current = event?.currentTarget || panelTrigger.current; setPanelTab("temperature"); setPanelOpen(true);
     if (mobile) setMobileJson(true);
+    if (detailsLoading && selectedMessage === message.id) return;
     detailRequest.current.controller?.abort();
     const task = { version: detailRequest.current.version + 1, controller: new AbortController() };
     detailRequest.current = task;
     setSelectedMessage(message.id); setFarmDetails(null); setDetailsLoading(true); setDetailsError("");
     try {
-      const detailFarmId = tara.state?.orchard_id || farm.orchardId;
-      const response = await fetch("/api/orchards/" + encodeURIComponent(detailFarmId) + "/messages/" + encodeURIComponent(message.id) + "/details", { signal: task.controller.signal });
+      const detailFarmId = target.orchard_id;
+      const response = await fetch(farmNoteDetailsPath(target), { signal: task.controller.signal });
       if (!response.ok) throw new Error("The note’s evidence is unavailable. Open Details to retry.");
       const value = await response.json();
       if (value.message?.id !== message.id || value.message?.orchard_id !== detailFarmId || !Array.isArray(value.assessments) || !Array.isArray(value.events)) throw new Error("The note’s evidence could not be read.");

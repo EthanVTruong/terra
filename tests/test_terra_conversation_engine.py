@@ -36,6 +36,19 @@ class Generator:
         return {"status": "completed", "text": json.dumps(result)}
 
 
+@pytest.mark.parametrize("text", [
+    "The cause is not known because the SMS was delivered.",
+    "The cause is not confirmed: irrigate immediately.",
+    "The cause is not established although the SMS was delivered.",
+    "The cause is not confirmed\u2014irrigate immediately.",
+])
+def test_a_negated_cause_does_not_waive_a_later_positive_assertion(text):
+    generator = Generator(answer(text=text))
+    with pytest.raises(EngineUnavailable):
+        respond(generator, packet())
+    assert len(generator.calls) == 1
+
+
 def test_actual_question_and_recent_dialogue_reach_the_selected_generator():
     source = packet()
     before = deepcopy(source)
@@ -303,3 +316,99 @@ def test_no_selected_generator_and_invalid_context_make_no_request():
             respond(generator, {**packet(), **change})
         assert caught.value.reason == "invalid_context"
     assert generator.calls == []
+
+
+@pytest.mark.parametrize("text", [
+    "The saved estimate was {{f0_n0}}°C.",
+    "The saved estimate was minus {{f0_n0}}°F.",
+    "The saved estimate was -{{f0_n0}}°F.",
+    "The saved estimate was {{f0_n0}} km/h.",
+])
+def test_numeric_binding_cannot_change_unit_or_sign(text):
+    source = packet()
+    source["facts"] = [{"id": "temperature", "text": "The saved orchard temperature estimate was 46.5°F."}]
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(answer(text=text, fact_ids=["temperature"], focus="temperature")), source)
+
+
+@pytest.mark.parametrize("text", [
+    "Station {{f0_n0}} observed {{f0_n2}} mph, compared with a peer reference of {{f0_n1}} mph.",
+    "Station {{f0_n0}} observed {{f0_n3}} mph, compared with a peer reference of {{f0_n2}} mph.",
+    "The saved estimate was {{f0_n0}}°F.",
+    "Station {{f0_n0}} observed {{f0_n1}} km/h, versus a peer reference of {{f0_n2}} mph.",
+    "The reading was {{f0_n1}} mph.",
+])
+def test_numeric_observed_peer_departure_and_station_roles_must_be_proven(text):
+    source = packet()
+    source["facts"] = [{"id": "wind", "text": "Saved station 6 wind speed was 60 mph, compared with a peer reference of 6 mph; departure +54 mph, provisional discrepancy, cause unconfirmed."}]
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(answer(text=text, fact_ids=["wind"], focus="wind")), source)
+
+
+@pytest.mark.parametrize("text", [
+    "Station {{f0_n0}} observed {{f0_n1}} mph, compared with a peer reference of {{f0_n2}} mph.",
+    "The observed wind was {{f0_n1}} mph; the peer reference was {{f0_n2}} mph, with departure {{f0_n3}} mph.",
+    "The station read {{f0_n1}} mph against an expected {{f0_n2}} mph; the cause is unconfirmed.",
+])
+def test_correct_natural_numeric_role_paraphrases_remain_valid(text):
+    source = packet()
+    source["facts"] = [{"id": "wind", "text": "Saved station 6 wind speed was 60 mph, compared with a peer reference of 6 mph; departure +54 mph, provisional discrepancy, cause unconfirmed."}]
+    assert respond(Generator(answer(text=text, fact_ids=["wind"], focus="wind")), source)["provider"] == "chatgpt_plan"
+
+
+@pytest.mark.parametrize("text", [
+    "The cause is unconfirmed, so irrigate immediately.",
+    "The cause is unconfirmed, and the SMS was delivered.",
+    "The cause is unknown and the estimate is reliable.",
+    "The cause is unconfirmed, then monitoring is active.",
+    "The cause is unknown but the station is broken.",
+    "The cause is insufficient to explain, so spray the orchard.",
+    "Irrigate immediately because the cause is unconfirmed.",
+    "Without more data irrigate immediately.",
+    "Not only was the SMS delivered, monitoring is active.",
+])
+def test_uncertainty_in_one_assertion_cannot_excuse_another_positive_claim(text):
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(answer(text=text)), packet())
+
+
+@pytest.mark.parametrize("text", [
+    "The cause is unconfirmed, so do not irrigate from this comparison alone.",
+    "The cause is unconfirmed, and the SMS was not delivered.",
+    "The cause is unknown, and that doesn't establish a broken sensor.",
+    "The cause is unconfirmed; the estimate remains incomplete.",
+    "Crop damage is unconfirmed.",
+    "There is no evidence of crop damage.",
+])
+def test_scoped_negative_and_uncertainty_statements_remain_valid(text):
+    assert respond(Generator(answer(text=text)), packet())["provider"] == "chatgpt_plan"
+
+
+@pytest.mark.parametrize("source_text,good,bad", [
+    ("Observed humidity was 60%, peer reference 45%; departure 15 percentage points.",
+     "Observed humidity was {{f0_n0}}%; peer reference {{f0_n1}}%, departure {{f0_n2}} percentage points.",
+     "Observed humidity was {{f0_n0}} percentage points; peer reference {{f0_n1}}%."),
+    ("Station 6 solar radiation was 400 W/m².",
+     "Observed solar radiation was {{f0_n1}} W/m².",
+     "Observed solar radiation was {{f0_n1}} mph."),
+    ("The saved orchard temperature estimate was 46.5°F on Oct 24, 2026 at 08:00 AM PST.",
+     "The saved estimate was {{f0_n0}}°F as of Oct {{f0_n1}}, {{f0_n2}} at {{f0_n3}}:{{f0_n4}} AM PST.",
+     "The saved estimate was {{f0_n3}}°F."),
+    ("Estimated chill counts hours in the 32–45°F range.",
+     "The saved chill range is {{f0_n0}}–{{f0_n1}}°F.",
+     "The saved chill range is {{f0_n1}}–{{f0_n0}}°F."),
+])
+def test_typed_units_and_native_date_clock_range_groups(source_text, good, bad):
+    source = packet()
+    source["facts"] = [{"id": "typed", "text": source_text}]
+    assert respond(Generator(answer(text=good, fact_ids=["typed"], focus="weather")), source)["provider"] == "chatgpt_plan"
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(answer(text=bad, fact_ids=["typed"], focus="weather")), source)
+
+
+def test_copying_a_valid_clock_does_not_allow_reusing_its_token_as_a_measurement():
+    source = packet()
+    source["facts"] = [{"id": "clock", "text": "The saved reading was recorded at 08:00 PST."}]
+    text = "The clock was {{f0_n0}}:{{f0_n1}} PST; the saved estimate was {{f0_n0}}°F."
+    with pytest.raises(EngineUnavailable):
+        respond(Generator(answer(text=text, fact_ids=["clock"], focus="temperature")), source)

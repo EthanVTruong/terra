@@ -1,5 +1,5 @@
 # terra
-Everything you need to know about your chill data in iMessage
+Orchard chill and weather updates in a compact inbox, with optional SMS.
 
 ## ChillWatch data / ML layer
 

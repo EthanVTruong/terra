@@ -440,14 +440,15 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "3117d2b50da8c510adb38febe89726071bfb422f",
-    "summary": "PR4 merged after all exact-head checks passed. Frozen SMS transport and unified runtime integrated; farm owner finalizes receipt monotonicity and UI owner connects accepted incoming design to actual persisted feed. Root owns final whole-layer tests, scope reconciliation, publication and local service handoff.",
+    "revision": "5b3aa90cfbad2c9a85c556442b2c5c43243c2957",
+    "summary": "All software slices integrated: real CIMIS/frozenQC/Nathan estimates, persistent farm events/inbox, optional fixed-recipient Twilio transport, one local runtime and accepted UI. Root independently ran all499 focusedPython cases, scopedharness, productionbuild/7webcases and real installed-service restart. Final PR5 CI pending; account activation remains external.",
     "evidence": [
-      "Live PR4 22d4594 all four CI jobs green; merged37948ed includes PostgreSQL with zero skips. SMSf855 software handoff203 cases green; runtimeea78 overlay34cases green, merged-tree rerun pending.",
-      "Cross-layer acceptance worker uses actual classes and mock transport, no real sends. Baseline+SMS fastcheck exceeded120s after scope growth; one focused harness repair separates independently bounded groups without reducing coverage."
+      "Combined local groups: baseline189,SMS203,farm64,runtime34,cross-layer9 allpass; scoped terra.py check passes against37948ed. No numericalQC/Nathan/config changes in this pipeline diff.",
+      "Unified8512 browser: one explicit demonstrationDavis orchard, optedout; welcome60.6F/6sources evidence then real newhourM monitoringlimitednote. UIownerdesktop390/320 focus/exactJSON/sourcefailure checks pass after onefocusedaccessibilityrepair dc9a113.",
+      "Actual Windows launcher start/stop and installed worker restart: two same persistednoteIDs, new workerPID/freshheartbeat,0SMSattempts/bothflagsfalse. Secret-exclusion scan found no actual configured values in trackedfiles/newhistory; original nine stagedbootstrap entries unchanged."
     ],
-    "uncertainty": "Real Twilio custom SMS blocked: requested tester not yet verified, no owned approved sender, trial custom-body restrictions, no spending answer. Existing Auth Token appeared only in a private tool trace; credential rotation required before activation. Both SMS flags remain false. No real messages accepted/delivered. Githubsidebar cache server-controlled.",
-    "next": "Merge farm and combined UI owner sources; run all groups, real CIMIS smoke, worker restart/delivery mock acceptance and browser checks; publish verified main. Keep account gates explicit and preserve original staged bootstrap."
+    "uncertainty": "Full latest-head PostgreSQL/Windows/macOS/webCI mustpass beforemainmerge. ActualTwilio phone verification/customsendertrialrestriction/chargeauthorization/tokenrotation remain unresolved. No actualSMS accepted/delivered; no natural faultaccuracy or automatic matching5-seasonhistory claimed. GithubAPIonlyEthan/Nathan; sidebarcache servercontrolled.",
+    "next": "Push finalsource toPR5, inspect all4 exact-head checks, merge normally and fast-forward localmain, restart service frommain with samejournals. KeepSMSdisabled and report requiredaccount actions; preserveownersbranches/originalstagedwork."
   }
 }
 ```

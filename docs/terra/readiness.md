@@ -7,8 +7,8 @@ The [shared contract](pipeline-contract.md) defines accepted product policies.
 | Slice | Current evidence | Remaining acceptance |
 | --- | --- | --- |
 | Live source → QC → location JSON | PR #4 merged at `37948ed`; all four CI jobs passed, including PostgreSQL with zero skips. Combined runtime reads real CIMIS; the demo evidence showed 60.6°F from six usable stations | Final combined CI |
-| Grower UI | Accepted incoming interface, persisted orchard feed, guarded setup/consent, exact evidence and delivery labels integrated from `4ff79ce`; production build, four packaging and three semantic UI tests pass | Final unified browser pass |
-| Farm monitor and event store | Farm `73bee6b` and runtime `ea78c7d` integrated. 64 farm/API and 34 lifecycle cases pass on the actual merged tree | Final combined CI and installed-service restart smoke |
+| Grower UI | Accepted incoming interface, persisted orchard feed, guarded setup/consent, exact evidence and delivery labels integrated from `4ff79ce` plus `dc9a113` focus repair; desktop/390px/320px unified browser checks, production build, four packaging and three semantic UI tests pass | Final combined CI |
+| Farm monitor and event store | Farm `73bee6b` and runtime `ea78c7d` integrated. 64 farm/API and 34 lifecycle cases pass. Actual installed service restarted with two identical note IDs, fresh worker and zero SMS attempts | Final combined CI |
 | Message → SMS | 203 transport/HTTP cases and nine cross-layer acceptance cases pass. Mocked provider receipts reconcile with the UI closed, survive restart, retain backoff and avoid blind resend | Real sender/account readiness and phone receipt |
 | Twilio account | Existing active trial credentials are privately configured. Read-only account probes succeeded; owned senders: zero. Requested tester still requires verification; trial template restriction prevents arbitrary Terra text | Tester verification, approved custom-message sender/capability, charge authorization if needed, token rotation, then a real delivery test |
 | GitHub contributors | Published histories and contributor API contain only Ethan and Nathan; supported background rebuild requested | Sidebar refresh is controlled by GitHub |
@@ -54,6 +54,11 @@ health and empty-orchard responses succeeded; stop retained state and terminated
 the matching process. The actual combined runtime then started on loopback8512
 with one five-minute worker, explicit absolute private configuration and shared
 state. The existing demo profile remains opted out of SMS.
+The subsequent real restart changed the worker PID while retaining both note IDs
+exactly, with no duplicate notes or SMS attempts. The live new-hour missing-data
+transition produced a monitoring-limited note; it did not create a temperature
+fault conclusion. Final browser checks also verified exact API/record JSON,
+mobile focus containment/opener return and the disabled phone state.
 
 The intended recipient and existing credentials remain only in ignored private
 configuration. One browser accessibility observation included the existing Auth

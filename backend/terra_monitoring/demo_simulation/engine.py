@@ -135,11 +135,13 @@ class DemoSimulation:
         known["quality"] = known["source_quality"]
         self.scored = _score(known, self.reference)
         self.monitor.apply(self.session["orchard_id"], {"latest": self.packet}, now=now)
-        self.monitor.flush(self.session["orchard_id"], now=now)
+        published = self.monitor.flush(self.session["orchard_id"], now=now)
         self.session["evaluations"][self.session["clock"]] = {
             "orchard_f": self.packet["location_estimate"]["temperature"],
             "orchard_available": self.packet["location_estimate"]["status"] == "ok",
         }
+        if published is not None:
+            self._retain_note_snapshot(published)
         self._state_cache = None
 
     def _advance(self, hours):
@@ -212,7 +214,12 @@ class DemoSimulation:
 
     def question(self, text, request_id=None):
         with self._lock:
-            message = self.monitor.ask(self.session["orchard_id"], text, request_id=request_id)
+            identity = request_id if request_id is not None else uuid.uuid4().hex
+            existing = self.store.message(fingerprint({"orchard": self.session["orchard_id"],
+                                                       "events": [], "question": identity}))
+            message = self.monitor.ask(self.session["orchard_id"], text, request_id=identity)
+            if existing is None:
+                self._retain_note_snapshot(message)
             self.session["revision"] += 1
             self._state_cache = None
             self._save()
@@ -267,43 +274,73 @@ class DemoSimulation:
             "typical_high_f": row.get("typical_high_f"), "neighbor_count": row.get("neighbor_count", 0),
             "extreme_low_f": row.get("extreme_low_f"), "extreme_high_f": row.get("extreme_high_f")})
 
+    def _station_view(self):
+        current = self.session["clock"]
+        changes = self.session["frames"].get(current, {})
+        current_scores = self.scored[self.scored.timestamp.eq(pd.Timestamp(current))]
+        scored_by_station = {int(r["station_id"]): r for r in current_scores.to_dict("records")}
+        source_by_station = {int(r["station_id"]): r for r in self.observations[
+            self.observations.timestamp.eq(current)].to_dict("records")}
+        # Input timestamps are ISO strings; the scorer owns normalized dates.
+        stations = []
+        flagged = {f["station_id"] for f in self.packet["station_findings"]}
+        for metadata in self.station_metadata:
+            sid = metadata["id"]
+            original = self._original_by_key.get((current, sid), {})
+            online = sid not in changes.get("offline", [])
+            source = source_by_station.get(sid, {})
+            stations.append({**metadata, "original_f": original.get("temperature_f"),
+                "value_f": source.get("temperature_f") if online else None,
+                "online": online, "override": changes.get("temperatures", {}).get(str(sid)),
+                "source_quality": original.get("quality"), "source_flag": original.get("source_flag"),
+                "flagged": sid in flagged, "assessment": self._assessment(scored_by_station.get(sid, {}), online)})
+        return _json(stations)
+
+    def _history_view(self):
+        current = self.session["clock"]
+        history = []
+        for row in self.scored.to_dict("records"):
+            stamp = pd.Timestamp(row["timestamp"]).isoformat()
+            if pd.Timestamp(stamp) < pd.Timestamp(current) - pd.Timedelta(hours=24):
+                continue
+            sid = int(row["station_id"])
+            online = sid not in self.session["frames"].get(stamp, {}).get("offline", [])
+            history.append(_json({"timestamp": stamp, "station_id": sid,
+                "original_f": self._original_by_key.get((stamp, sid), {}).get("temperature_f"),
+                "value_f": row.get("temperature_f") if online else None,
+                "expected_f": row.get("expected_f"), "level": row.get("level", "none"),
+                "online": online, **self.session["evaluations"].get(stamp,
+                    {"orchard_f": None, "orchard_available": False})}))
+        return history
+
+    def _snapshot_key(self, message_id):
+        return "demo-simulation:snapshot:" + self.session["run_id"] + ":" + message_id
+
+    def _retain_note_snapshot(self, message):
+        """Keep first-publication demo context without changing farm evidence.
+
+        Reading an old note or resuming a session never reconstructs its context
+        from today's mutable controls. This intentionally excludes the heatmap.
+        """
+        key = self._snapshot_key(message["id"])
+        with self.store.connect(write=True) as db:
+            if self.store.state(db, key) is None:
+                self.store.set_state(db, key, {"schema_version": "terra-demo-note-snapshot-v1",
+                    "message_id": message["id"], "run_id": self.session["run_id"],
+                    "timestamp": self.session["clock"], "stations": self._station_view(),
+                    "history": self._history_view(), "assessment": self.packet})
+
     def state(self):
         with self._lock:
             if self._state_cache is not None:
                 return deepcopy(self._state_cache)
             current = self.session["clock"]
-            changes = self.session["frames"].get(current, {})
-            current_scores = self.scored[self.scored.timestamp.eq(pd.Timestamp(current))]
-            scored_by_station = {int(r["station_id"]): r for r in current_scores.to_dict("records")}
-            source_by_station = {int(r["station_id"]): r for r in self.observations[
-                self.observations.timestamp.eq(current)].to_dict("records")}
-            # Input timestamps are ISO strings; the scorer owns normalized dates.
-            stations = []
-            flagged = {f["station_id"] for f in self.packet["station_findings"]}
-            for metadata in self.station_metadata:
-                sid = metadata["id"]
-                original = self._original_by_key.get((current, sid), {})
-                online = sid not in changes.get("offline", [])
-                source = source_by_station.get(sid, {})
-                stations.append({**metadata, "original_f": original.get("temperature_f"),
-                    "value_f": source.get("temperature_f") if online else None,
-                    "online": online, "override": changes.get("temperatures", {}).get(str(sid)),
-                    "source_quality": original.get("quality"), "source_flag": original.get("source_flag"),
-                    "flagged": sid in flagged, "assessment": self._assessment(scored_by_station.get(sid, {}), online)})
-            history = []
-            for row in self.scored.to_dict("records"):
-                stamp = pd.Timestamp(row["timestamp"]).isoformat()
-                if pd.Timestamp(stamp) < pd.Timestamp(current) - pd.Timedelta(hours=24):
-                    continue
-                sid = int(row["station_id"])
-                online = sid not in self.session["frames"].get(stamp, {}).get("offline", [])
-                history.append(_json({"timestamp": stamp, "station_id": sid,
-                    "original_f": self._original_by_key.get((stamp, sid), {}).get("temperature_f"),
-                    "value_f": row.get("temperature_f") if online else None,
-                    "expected_f": row.get("expected_f"), "level": row.get("level", "none"),
-                    "online": online, **self.session["evaluations"].get(stamp,
-                        {"orchard_f": None, "orchard_available": False})}))
+            stations, history = self._station_view(), self._history_view()
             orchard_id = self.session["orchard_id"]
+            watch = self.store.get("watch:" + orchard_id, {})
+            monitor = self.monitor.status(orchard_id)
+            monitor["demo_health"] = {"incident_active": bool(watch.get("health_incident")),
+                "consecutive_good_readings": watch.get("health_good_count", 0), "required_good_readings": 3}
             events = self.store.events(orchard_id)
             types = {e["id"]: e["type"] for e in events}
             messages = [{**m, "event_types": [types[e] for e in m["event_ids"]],
@@ -319,7 +356,7 @@ class DemoSimulation:
                     "label": "Historical observation hour; advances only when controlled"},
                 "source": {**self.provenance, "no_training_overlap": True, "immutable": True},
                 "stations": stations, "assessment": self.packet, "heatmap": self._heatmap(),
-                "orchard": self.store.orchard(orchard_id), "monitor": self.monitor.status(orchard_id),
+                "orchard": self.store.orchard(orchard_id), "monitor": monitor,
                 "messages": messages, "notifications": notifications, "events": events, "history": history,
                 "actions": self.session["actions"], "controls": {"presets": list(PRESETS),
                     "temperature_min_f": -10, "temperature_max_f": 125, "advance_max_hours": 6,
@@ -331,4 +368,6 @@ class DemoSimulation:
 
     def details(self, message_id):
         with self._lock:
-            return self.store.details(self.session["orchard_id"], message_id)
+            result = self.store.details(self.session["orchard_id"], message_id)
+            result["demo_snapshot"] = self.store.get(self._snapshot_key(message_id))
+            return result

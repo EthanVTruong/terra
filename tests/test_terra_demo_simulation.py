@@ -65,16 +65,55 @@ class DemoSimulationTests(unittest.TestCase):
         self.assertEqual(again["notifications"], first["notifications"])
 
     def test_recovery_requires_three_distinct_hourly_snapshots(self):
-        self.demo.action({"type": "preset", "name": "support_loss"})
+        limited = self.demo.action({"type": "preset", "name": "support_loss"})
+        self.assertEqual(limited["monitor"]["demo_health"], {
+            "incident_active": True, "consecutive_good_readings": 0, "required_good_readings": 3})
         for _ in range(3):
             same_hour = self.demo.action({"type": "preset", "name": "normal"})
         self.assertFalse(any(e["type"] == "monitoring_recovered" for e in same_hour["events"]))
+        self.assertEqual(same_hour["monitor"]["demo_health"]["consecutive_good_readings"], 1)
+        self.assertTrue(same_hour["monitor"]["demo_health"]["incident_active"])
         next_hour = self.demo.action({"type": "advance", "hours": 1})
         self.assertFalse(any(e["type"] == "monitoring_recovered" for e in next_hour["events"]))
+        self.assertEqual(next_hour["monitor"]["demo_health"]["consecutive_good_readings"], 2)
+        self.assertTrue(next_hour["monitor"]["demo_health"]["incident_active"])
         third = self.demo.action({"type": "advance", "hours": 1})
         self.assertEqual(sum(e["type"] == "monitoring_recovered" for e in third["events"]), 1)
         self.assertEqual(len(third["notifications"]), 2)
         self.assertEqual(utc(third["clock"]["current_utc"]), utc(START) + timedelta(hours=2))
+        self.assertEqual(third["monitor"]["demo_health"], {
+            "incident_active": False, "consecutive_good_readings": 3, "required_good_readings": 3})
+
+    def test_note_snapshot_preserves_full_first_publication_context_after_edits_and_restart(self):
+        first = self.demo.action({"type": "preset", "name": "support_loss"})
+        note_id = first["notifications"][0]["id"]
+        snapshot = self.demo.details(note_id)["demo_snapshot"]
+        self.assertEqual(snapshot["timestamp"], START)
+        self.assertEqual(snapshot["stations"], first["stations"])
+        self.assertEqual(snapshot["history"], first["history"])
+        self.assertEqual(snapshot["assessment"], first["assessment"])
+        self.assertEqual(sum(not s["online"] for s in snapshot["stations"]), 3)
+        self.demo.action({"type": "preset", "name": "normal"})
+        altered = self.demo.action({"type": "temperature", "station_id": 6, "value_f": 90})
+        self.assertNotEqual(altered["stations"], snapshot["stations"])
+        self.assertNotEqual(altered["history"], snapshot["history"])
+        self.assertEqual(self.demo.details(note_id)["demo_snapshot"], snapshot)
+        resumed = DemoSimulation(state_dir=self.directory, grid_size=2)
+        self.assertEqual(resumed.details(note_id)["demo_snapshot"], snapshot)
+        self.assertEqual(resumed.details(note_id)["assessments"][0], snapshot["assessment"])
+
+    def test_answer_snapshot_is_frozen_without_computing_an_intermediate_heatmap(self):
+        # The initial map is uncomputed. Note capture must not call state(),
+        # which would eagerly create the grid at every intermediate replay hour.
+        with patch.object(self.demo, "_heatmap", side_effect=AssertionError("snapshot rendered a map")):
+            self.demo._advance(2)
+        reply = self.demo.question("Is weather support usable?", request_id="frozen-question")
+        note_id = reply["message"]["id"]
+        snapshot = self.demo.details(note_id)["demo_snapshot"]
+        self.assertEqual(snapshot["timestamp"], reply["state"]["clock"]["current_utc"])
+        self.demo.action({"type": "temperature", "station_id": 6, "value_f": 90})
+        self.demo.question("Is weather support usable?", request_id="frozen-question")
+        self.assertEqual(self.demo.details(note_id)["demo_snapshot"], snapshot)
 
     def test_recover_preset_advances_three_new_hours_and_retains_incident_evidence(self):
         first = self.demo.action({"type": "preset", "name": "support_loss"})

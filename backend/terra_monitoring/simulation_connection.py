@@ -6,17 +6,36 @@ connected browser are dispatched to the replay's native conversation and API.
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 import json
 from pathlib import Path
 import secrets
 from threading import RLock
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
+from starlette.exceptions import HTTPException
 
 COOKIE = "terra_simulation"
+SOURCE_HEADER = "X-Terra-Source-Context"
 API_PREFIXES = ("/api/tara", "/api/orchards", "/api/monitor", "/api/sms", "/api/demo")
+CONTROLS = {"/api/simulation/connect", "/api/simulation/connection"}
+
+
+class SourceConflict(Exception):
+    def __init__(self, code):
+        self.code = code
+
+
+def _source_error(code):
+    from .server import _error
+    message = ("Wait for the current request to finish before changing the source."
+               if code == "source_context_busy" else
+               "The simulation session expired. Reload to explicitly choose the source."
+               if code == "simulation_context_expired" else
+               "The chat source changed. Reload before continuing; this request was not applied.")
+    return _error(code, message, 409)
 
 
 def _namespace(path, prefix):
@@ -34,6 +53,9 @@ class SimulationConnection:
         self.directory, self.web_root = Path(state_dir) / "simulator-sessions", web_root
         self.sessions = {}
         self.lock = RLock()
+        self.live_context = "live-" + secrets.token_urlsafe(24)
+        self.active = {}
+        self.switching = set()
 
     def session(self, token):
         with self.lock:
@@ -42,8 +64,54 @@ class SimulationConnection:
     def status(self, token):
         replay = self.session(token)
         setup = replay.state.full_flow_bridge.store.get("tara:setup", {}) if replay else {}
-        return {"connected": replay is not None, "data_mode": "injected" if replay else "current",
-                "station_url": "/stations" if replay else None, "orchard_id": setup.get("orchard_id")}
+        expired = bool(token) and replay is None
+        return {"connected": replay is not None, "data_mode": None if expired else "injected" if replay else "current",
+                "station_url": "/stations" if replay else None, "orchard_id": setup.get("orchard_id"),
+                "source_context": self.context(token), "source_expired": expired}
+
+    def context(self, token):
+        if not token:
+            return self.live_context
+        # This public identity is not the HttpOnly routing cookie or an auth
+        # token. Runtime restart changes it, including for expired cookies.
+        digest = hashlib.sha256((self.live_context + ":" + token).encode("utf-8")).hexdigest()
+        return ("simulation-" if self.session(token) is not None else "expired-") + digest
+
+    def validate_context(self, token, expected, *, recovery=False):
+        context = self.context(token)
+        if not expected or expected != context:
+            raise SourceConflict("source_context_mismatch")
+        if token and self.session(token) is None and not recovery:
+            raise SourceConflict("simulation_context_expired")
+        return context
+
+    def begin(self, token, expected, *, switching=False):
+        with self.lock:
+            context = self.validate_context(token, expected, recovery=switching)
+            if context in self.switching or switching and self.active.get(context, 0):
+                raise SourceConflict("source_context_busy")
+            if switching:
+                self.switching.add(context)
+            else:
+                self.active[context] = self.active.get(context, 0) + 1
+            return context
+
+    def finish(self, context, *, switching=False):
+        with self.lock:
+            if switching:
+                self.switching.discard(context)
+            elif self.active.get(context, 0) <= 1:
+                self.active.pop(context, None)
+            else:
+                self.active[context] -= 1
+
+    def pending(self, token):
+        replay = self.session(token)
+        if token and replay is None:
+            return False  # Explicit recovery of an expired routing cookie.
+        store = replay.state.full_flow_bridge.store if replay else self.monitor.store
+        with store.connect() as db:
+            return db.execute("SELECT 1 FROM tara_requests WHERE status='pending' LIMIT 1").fetchone() is not None
 
     def disconnect(self, token):
         with self.lock:
@@ -135,13 +203,48 @@ class ReplayDispatch:
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             path = scope["path"]
-            routed = path in {"/api/context", "/api/assess", "/stations", "/stations/", "/terra", "/terra/"} or any(
+            routed = path in {"/api/context", "/api/assess", "/stations", "/stations/", "/terra", "/terra/", "/terra-cube-1080.png"} or any(
                 _namespace(path, prefix) for prefix in (*API_PREFIXES, "/demo-assets", "/demo-static"))
-            if routed:
-                replay = self.connection.session(Request(scope).cookies.get(COOKIE))
-                if replay is not None:
-                    await replay(dict(scope), receive, send)
-                    return
+            request = Request(scope)
+            token = request.cookies.get(COOKIE)
+            expected = request.headers.get(SOURCE_HEADER)
+            mutation = scope.get("method", "GET") not in {"GET", "HEAD", "OPTIONS"}
+            api = _namespace(path, "/api")
+            held = None
+            try:
+                if path not in CONTROLS:
+                    if api and mutation:
+                        # Preserve existing authorization/origin rejection
+                        # before introducing a source-conflict response.
+                        if any(_namespace(path, prefix) for prefix in (*API_PREFIXES[:-1], "/api/chatgpt")):
+                            self.connection.app.state.local_mutation_guard(request)
+                        elif _namespace(path, "/api/demo"):
+                            from .server import _sms_local_request
+                            if not _sms_local_request(request):
+                                raise HTTPException(status_code=403)
+                        # This also protects shared ChatGPT configuration APIs,
+                        # but never dispatches their account/provider to replay.
+                        held = self.connection.begin(token, expected)
+                # Resolve once under the same registry lock as read validation.
+                # A disconnect after this snapshot must never turn a validated
+                # replay read into a live-store read between two lookups.
+                with self.connection.lock:
+                    if path not in CONTROLS and api and not mutation and expected:
+                        self.connection.validate_context(token, expected,
+                            recovery=path == "/api/sms/status")
+                    replay = self.connection.session(token) if routed else None
+                    if path not in CONTROLS and routed and token and replay is None and path != "/api/sms/status":
+                        raise SourceConflict("simulation_context_expired")
+                await (replay if replay is not None else self.app)(dict(scope), receive, send)
+            except SourceConflict as exc:
+                await _source_error(exc.code)(scope, receive, send)
+            except HTTPException as exc:
+                from .server import _error
+                await _error("http_error", "The request could not be completed.", exc.status_code)(scope, receive, send)
+            finally:
+                if held is not None:
+                    self.connection.finish(held)
+            return
         await self.app(scope, receive, send)
 
 
@@ -168,19 +271,40 @@ def attach_simulation_connection(app, *, monitor, state_dir, web_root=None):
 
     @app.post("/api/simulation/connect", dependencies=protected)
     async def connect(body: ConnectionInput, request: Request):
+        held = None
         try:
+            held = connection.begin(request.cookies.get(COOKIE), request.headers.get(SOURCE_HEADER), switching=True)
+            if await run_in_threadpool(connection.pending, request.cookies.get(COOKIE)):
+                raise SourceConflict("source_context_busy")
             token, result = await run_in_threadpool(connection.connect, request.cookies.get(COOKIE), body.orchard_id)
+        except SourceConflict as exc:
+            return _source_error(exc.code)
         except KeyError:
             return _error("not_found", "Choose an existing farm to connect.", 404)
         except (OSError, ValueError):
             return _error("simulation_unavailable", "The simulator could not connect. Your live farm is unchanged.", 503)
+        finally:
+            if held is not None:
+                connection.finish(held, switching=True)
         response = _json_response(result)
         response.set_cookie(COOKIE, token, httponly=True, samesite="strict", path="/")
         return response
 
     @app.delete("/api/simulation/connection", dependencies=protected)
     async def disconnect(request: Request):
-        response = _json_response(connection.disconnect(request.cookies.get(COOKIE)))
+        held = None
+        try:
+            token = request.cookies.get(COOKIE)
+            held = connection.begin(token, request.headers.get(SOURCE_HEADER), switching=True)
+            if await run_in_threadpool(connection.pending, token):
+                raise SourceConflict("source_context_busy")
+            result = connection.disconnect(token)
+        except SourceConflict as exc:
+            return _source_error(exc.code)
+        finally:
+            if held is not None:
+                connection.finish(held, switching=True)
+        response = _json_response(result)
         response.delete_cookie(COOKIE, path="/", httponly=True, samesite="strict")
         return response
 

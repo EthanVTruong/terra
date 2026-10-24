@@ -126,6 +126,15 @@ class FullFlowTests(unittest.TestCase):
         self.assertNotIn(6, packet["location_estimate"]["used_station_ids"])
         self.assertTrue(feed["monitor"]["comparison_available"])
 
+    def test_test_sensor_changes_get_distinct_grower_source_snapshot_ids(self):
+        profile = self.create_farm()
+        baseline = self.bridge.assessment(profile)["provenance"]["data_snapshot_id"]
+        lab = self.action({"type": "sensor", "lat": 38.55, "lon": -121.78, "value_f": 60.0})
+        added = self.bridge.assessment(profile)["provenance"]["data_snapshot_id"]
+        self.assertNotEqual(baseline, added)
+        self.action({"type": "sensor_value", "sensor_id": lab["sensors"][0]["id"], "value_f": 70.0})
+        self.assertNotEqual(added, self.bridge.assessment(profile)["provenance"]["data_snapshot_id"])
+
     def test_support_loss_native_feed_details_dedup_and_three_distinct_hour_recovery(self):
         self.create_farm()
         lab = self.action({"type": "preset", "name": "support_loss"})

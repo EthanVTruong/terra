@@ -122,7 +122,8 @@ class ReplayBridge:
             engine = self.engine
             now = pd.Timestamp(engine.session["clock"])
             snapshot = fingerprint({"source": engine.provenance["sha256"],
-                                    "frames": engine.session["frames"], "clock": now.isoformat()})
+                                    "frames": engine.session["frames"], "sensors": engine.session.get("sensors", []),
+                                    "clock": now.isoformat()})
             return assess_location(**{key: profile[key] for key in ("lat", "lon", "elevation_ft")},
                 valid_utc=now, as_of=now, observations=engine._inputs(), stations=engine.stations,
                 snapshot_id="full-flow-replay:" + snapshot, data_mode="injected",

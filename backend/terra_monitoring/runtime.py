@@ -149,6 +149,9 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
         # Preserve explicitly injected writers. Normal runtime replies share
         # the validated plan writer and never silently use API-key billing.
         monitor.writer = ConversationalWriter(monitor.writer)
+    from .simulation_connection import attach_simulation_connection
+
+    attach_simulation_connection(app, monitor=monitor, state_dir=resolved, web_root=web_root)
     return app
 
 

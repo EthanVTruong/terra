@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-PROMPT = "Hey, I'm Tara. What are you growing?"
+PROMPT = "Hey, I'm Terra. What are you growing?"
 QUESTIONS = {
     "chill_total": "How much chill has accumulated?",
     "history": "Compare historical chill pace.",

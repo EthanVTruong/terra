@@ -135,7 +135,7 @@ test("an existing completed farm can request explicit browser consent and retain
       return route.fulfill({ status: 404, json: { error: { code: "not_found" } } });
     });
     await page.goto(url.href);
-    const field = page.getByRole("textbox", { name: "Message Tara", exact: true });
+    const field = page.getByRole("textbox", { name: "Message Terra", exact: true });
     await field.waitFor();
     assert.equal(await page.getByRole("button", { name: "Enable browser alerts", exact: true }).count(), 0);
     await field.fill("Enable browser alerts");

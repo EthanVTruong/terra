@@ -48,7 +48,7 @@ def api(tmp_path):
 
 def test_http_setup_guards_and_strict_confirmation(api):
     client, service, writer = api
-    assert client.get("/api/tara/conversation").json()["initial_prompt"]
+    assert client.get("/api/tara/conversation").json()["initial_prompt"] == "Hey, I'm Terra. What are you growing?"
     for path, body in [("messages", {"request_id": "crop", "text": "almonds"}),
                        ("setup", {"request_id": "restart", "action": "restart"})]:
         assert client.post("/api/tara/" + path, json=body, headers={"x-test-session": "bad"}).status_code == 403

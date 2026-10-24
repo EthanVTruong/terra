@@ -16,7 +16,7 @@
   "kind": "task",
   "id": "terra-demo-simulation",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "Build a separate local two-view simulation: real held-out weather with manual station controls and Nathan-estimator heatmap; exact source-grounded Grok Bot style grower chat showing actual frozen QC and orchard-support events, evidence and simulated phone ping. No live-system changes, external messages, refit or provider calls.",
   "branch": "codex/terra-demo-simulation",
   "base": "e4292b21594d20b3983a62447e2f4632aac0f3bd",
@@ -26,11 +26,16 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": null,
-    "summary": "ET selected orchard-support alert for actual workflow, then authorized fully fleshed separate simulation app using held-out actual observations, manual controls/heatmap and exact Grok Bot style chat. Isolated worktree based on shared main; no production files changed.",
-    "evidence": ["Source reference x.ai/news/designing-grok-bot and existing measured web typography/primitives; frozen QC and orchard monitoring modules inspected."],
-    "uncertainty": "Held-out slice and complete browser behavior still to verify; no actual SMS intended by simulation scope.",
-    "next": "Verify data provenance, implement isolated simulation with unchanged scientific modules, then exercise all demo states and compare source-grounded visuals."
+    "revision": "6f419ff6376372e4b6f7e96cf27c4dd588c8ce26",
+    "summary": "Complete isolated two-app simulation: Station lab manual temperature/reporting controls, native raw/filtered heatmaps and exact source-grounded Grok Bot style grower chat. Real March weather outside fitting/calibration runs through frozen QC, Nathan estimate and actual orchard Monitor. Persisted proactive notes drive local simulated phone pings; old evidence remains immutable. Main loopback8520 demo is retained for ET; final browser checks used a separate8521 session.",
+    "evidence": [
+      "All7configured check groups pass against e4292b2, including14demo regressions with the updated3-subsequent-hour recovery rule. Production build,4packaging tests and app-local frozen pnpm install pass.",
+      "Browser verified precise/manual controls, pending-reset cancellation, no orchard false alert from one station spike, native heatmap exclusions, support-loss note/ping identity, factual question and evidence download,3new-hour recovery and retained old2-peer evidence after current support recovered to5.",
+      "web/demo/design-qa.md final result passed after independent source comparison and320px fix; exact xVf font hash,14/20 prose,8/12insets and16/16/16/6corners verified. Fresh final console warning/error log empty.",
+      "docs/terra/demo-simulation/evidence/final-runtime-verification.json; original weather d849852...2385 and reference809c78...90f unchanged. Existing scientific modules/configuration match pinned e4292b2; no real SMS/provider/LLM/refit or live-state writes."
+    ],
+    "uncertainty": "Visual taste remains available for ET refinement. Phone delivery is explicitly simulated; no actual handset receipt is claimed. Basemap tiles need network; numerical replay does not. Previously inspected held-out weather is not an untouched accuracy test. Later conversation-planning documentation is outside this additive simulation; the executable monitor baseline is pinned to e4292b2.",
+    "next": "Open8520/stations and8520/terra, preserve ET's current isolated session, and refine from concrete feedback. Do not reset the main demo automatically. Keep separate simulation paths and unchanged scientific reference; real SMS activation or hosting would be separate requested work."
   }
 }
 ```

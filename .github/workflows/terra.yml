@@ -125,3 +125,4 @@ jobs:
       - run: pnpm --dir web install --frozen-lockfile
       - run: pnpm --dir web build
       - run: pnpm --dir web test:sites
+      - run: pnpm --dir web test:ui

@@ -6,11 +6,11 @@ The [shared contract](pipeline-contract.md) defines accepted product policies.
 
 | Slice | Current evidence | Remaining acceptance |
 | --- | --- | --- |
-| Live source → QC → location JSON | PR #4 merged at `37948ed`; all four exact-head CI jobs passed, including 298 backend cases and PostgreSQL with zero skips | Retest through the combined runtime |
-| Grower UI | Accepted tight incoming layout, three-value comparisons and evidence sidebar; isolated UI owner verifies live/failure/mobile states | Integrate persistent feed and actual transport states |
-| Farm monitor and event store | Separate owner implements durable observations, matching-method chill, event/message identity and consent | Whole-path persistence, recovery, clock/freshness and worker tests |
-| Message → SMS | Transport owner implements fixed-recipient gates, attempt ledger, explicit demo, safe retry and receipt reconciliation | Whole-path acceptance and real sender/account readiness |
-| Twilio account | Existing trial account is signed in and API credentials are privately configured; read-only probe shows no sender yet | Approved sender/custom-message capability and actual phone delivery |
+| Live source → QC → location JSON | PR #4 merged at `37948ed`; all four CI jobs passed, including PostgreSQL with zero skips. Combined runtime reads real CIMIS; the demo evidence showed 60.6°F from six usable stations | Final combined CI |
+| Grower UI | Accepted incoming interface, persisted orchard feed, guarded setup/consent, exact evidence and delivery labels integrated from `4ff79ce`; production build, four packaging and three semantic UI tests pass | Final unified browser pass |
+| Farm monitor and event store | Farm `73bee6b` and runtime `ea78c7d` integrated. 64 farm/API and 34 lifecycle cases pass on the actual merged tree | Final combined CI and installed-service restart smoke |
+| Message → SMS | 203 transport/HTTP cases and nine cross-layer acceptance cases pass. Mocked provider receipts reconcile with the UI closed, survive restart, retain backoff and avoid blind resend | Real sender/account readiness and phone receipt |
+| Twilio account | Existing active trial credentials are privately configured. Read-only account probes succeeded; owned senders: zero. Requested tester still requires verification; trial template restriction prevents arbitrary Terra text | Tester verification, approved custom-message sender/capability, charge authorization if needed, token rotation, then a real delivery test |
 | GitHub contributors | Published histories and contributor API contain only Ethan and Nathan; supported background rebuild requested | Sidebar refresh is controlled by GitHub |
 
 Required combined acceptance:
@@ -38,3 +38,36 @@ Credentials, full phone numbers and private account data stay in ignored local
 configuration. Missing credentials, sender verification, account approval or
 spending authorization remain explicit. A simulated receipt does not establish
 real SMS readiness.
+
+## Evidence boundaries
+
+The merged local suites contain **499 Python cases**: 189 baseline/live/HTTP,
+203 SMS/HTTP, 64 farm/API, 34 runtime and nine cross-layer acceptance cases.
+The cross-layer tests use actual saved/raw weather adapters, frozen QC, Nathan's
+estimator, persisted farm state and transport journals with controlled weather
+and `httpx.MockTransport`. They establish software behavior, not natural sensor
+fault accuracy or real phone delivery. No actual SMS was accepted or delivered
+during this integration.
+
+The Windows launcher was exercised with an isolated state directory and port:
+health and empty-orchard responses succeeded; stop retained state and terminated
+the matching process. The actual combined runtime then started on loopback8512
+with one five-minute worker, explicit absolute private configuration and shared
+state. The existing demo profile remains opted out of SMS.
+
+The intended recipient and existing credentials remain only in ignored private
+configuration. One browser accessibility observation included the existing Auth
+Token in a private tool trace. It was not placed in tracked files or Git history;
+rotation is required before activation, and both SMS enable flags remain false.
+The secret-exclusion scan found no actual configured credential/contact values
+in tracked files or newly added history. Original staged bootstrap entries remain
+unchanged.
+
+No matching five-season orchard archive is automatically populated. Historical
+pace stays unavailable until a matching, sufficiently complete archive is
+explicitly imported. The 400-hour cultivar value remains a configured reference,
+not a validated biological threshold. Optional LLM writing is not required for
+the deterministic inbox and was not enabled or billed.
+
+Use [the local-runtime runbook](local-runtime.md) for one-process operation and
+[the Twilio runbook](twilio-sms.md) for account gates and receipt semantics.

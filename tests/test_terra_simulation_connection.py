@@ -1,4 +1,5 @@
-"""Source-bound real ASGI/native-store requests; no provider, replay computation or SMS."""
+"""Source-bound real ASGI/native-store requests; no provider or SMS."""
+from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -316,3 +317,82 @@ def test_existing_local_authorization_and_origin_rejections_keep_403_precedence(
         assert client.get("/api/simulation/connection", headers={"Origin": "https://other.invalid"}).status_code == 403
         assert client.post("/api/simulation/connect", json={}).status_code == 403
         assert monitor.store.get("tara:setup")["stage"] == "complete"
+
+
+def test_connected_sensor_alert_reaches_grower_feed_once_with_immutable_farm_evidence(tmp_path, monkeypatch):
+    """Use the actual connect/replay/monitor/feed path with frozen local computation."""
+    from terra_monitoring.demo_simulation import full_flow
+    from terra_monitoring.demo_simulation.engine import DemoSimulation
+
+    # Only map rendering resolution is bounded; sensor classification and the
+    # location estimator remain the same native computations as the browser.
+    monkeypatch.setattr(full_flow, "DemoSimulation", lambda **options: DemoSimulation(grid_size=2, **options))
+    monitor = Monitor(Store(tmp_path / "live.sqlite3"), writer=Writer(key="", model=""), clock=lambda: NOW)
+    profile = monitor.create_orchard("Walnuts", orchard_id="farm", crops=["walnut"],
+                                     lat=38.57, lon=-121.79, elevation_ft=42.0)
+    with monitor.store.connect(write=True) as db:
+        monitor.store.set_state(db, "tara:setup", {"stage": "complete", "orchard_id": profile["id"],
+            "crops": ["walnut"], "variety": None,
+            "location": {key: profile[key] for key in ("name", "lat", "lon", "elevation_ft")},
+            "notification_preference": None})
+    original_setup = deepcopy(monitor.store.get("tara:setup"))
+    app = create_runtime_app(live_service=Query(), sms_dispatcher=DisabledSMS(), monitor=monitor,
+                             state_dir=tmp_path / "runtime", web_root=tmp_path / "web")
+    with TestClient(app, base_url=ORIGIN) as client:
+        connected = client.post("/api/simulation/connect", headers=headers(client), json={"orchard_id": "farm"})
+        assert connected.status_code == 200, connected.text
+        context = connected.json()["source_context"]
+        auth = headers(client, context)
+        bridge = app.state.simulation_connection.session(client.cookies[COOKIE]).state.full_flow_bridge
+
+        def action(body):
+            response = client.post("/api/demo/action", headers=auth, json=body)
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        def notes(kind):
+            response = client.get("/api/orchards/farm/messages", headers={SOURCE_HEADER: context})
+            assert response.status_code == 200, response.text
+            events = {event["id"] for event in bridge.store.events("farm") if event["type"] == kind}
+            return [message for message in response.json()["messages"] if events.intersection(message["event_ids"])]
+
+        normal = action({"type": "sensor", "lat": 38.56, "lon": -121.79, "value_f": 48.0})
+        sensor = normal["sensors"][0]
+        assert sensor["check"]["level"] == "none"
+        assert notes("sensor_flag") == []
+        flagged = action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": 90.0})
+        check = flagged["sensors"][0]["check"]
+        assert check["level"] == "strong"
+        delivered = notes("sensor_flag")
+        assert len(delivered) == 1
+        assert "local sensor read 90" in delivered[0]["text"]
+        details_url = f'/api/orchards/farm/messages/{delivered[0]["id"]}/details'
+        immutable = client.get(details_url, headers={SOURCE_HEADER: context}).json()
+        sensor_event = next(event for event in immutable["events"] if event["type"] == "sensor_flag")
+        assert sensor_event["facts"] == {
+            "observed_f": 90.0, "expected_f": round(check["expected_f"], 1),
+            "deviation_f": round(check["deviation_f"], 1),
+            "observation_time": flagged["clock"]["current_utc"],
+        }
+        packet = immutable["assessments"][0]
+        assert {key: packet["query"][key] for key in ("lat", "lon", "elevation_ft")} == {
+            key: profile[key] for key in ("lat", "lon", "elevation_ft")}
+        assert packet["query"]["location_id"] == "farm"
+        assert packet["data_mode"] == "injected"
+
+        action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": 90.0})
+        later = action({"type": "advance", "hours": 1})
+        assert [note["id"] for note in notes("sensor_flag")] == [delivered[0]["id"]]
+        # Returning inside the comparison closes the incident quietly. A later
+        # excursion opens a distinct one without rewriting the first note.
+        expected = later["sensors"][0]["check"]["expected_f"]
+        action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": expected})
+        assert len(notes("sensor_flag")) == 1
+        action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": 90.0})
+        assert len(notes("sensor_flag")) == 2
+        assert client.get(details_url, headers={SOURCE_HEADER: context}).json() == immutable
+        assert monitor.store.orchard("farm") == profile
+        assert monitor.store.get("tara:setup") == original_setup
+        assert monitor.store.messages("farm") == []
+        assert bridge.monitor.delivery is None
+        assert client.get("/api/sms/status").json()["enabled"] is False

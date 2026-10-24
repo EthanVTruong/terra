@@ -132,11 +132,13 @@ class ReplayBridge:
                 geometry_source="supplied farm coordinates and elevation; controlled historical replay")
 
     def evaluate(self, profile):
-        packet = self.assessment(profile)
-        now = utc(self.engine.session["clock"])
-        self.monitor.apply(profile["id"], {"latest": packet}, now=now)
-        self.monitor.flush(profile["id"], now=now)
-        return packet
+        with self.engine._lock:
+            packet = self.assessment(profile)
+            now = utc(self.engine.session["clock"])
+            self.monitor.apply(profile["id"],
+                               {"latest": packet, "sensor_flags": self.engine.sensor_flags()}, now=now)
+            self.monitor.flush(profile["id"], now=now)
+            return packet
 
     def create_orchard(self, name="My farm", *, sms_opt_in=False, **options):
         with self.engine._lock:

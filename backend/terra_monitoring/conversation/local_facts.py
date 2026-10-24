@@ -131,7 +131,8 @@ def _variable_weather_answer(intent, weather, facts, *, source_error=False, repl
                     or isinstance(row["station_id"], bool) or row["station_id"] < 1):
                 continue
             stations.append({field: row.get(field) for field in ("station_id", "observed", "expected", "departure", "peer_count", "status", "reason", "classification")})
-        facts["weather_variables"].append({"variable": key, "unit": unit, "stations": stations})
+        departure_unit = "percentage points" if key == "relative_humidity_pct" else unit
+        facts["weather_variables"].append({"variable": key, "unit": unit, "departure_unit": departure_unit, "stations": stations})
         readings = []
         for row in stations[:5]:
             value, state, reason = row.get("observed"), row.get("status"), row.get("reason")
@@ -143,6 +144,9 @@ def _variable_weather_answer(intent, weather, facts, *, source_error=False, repl
                 detail = f"{value:g}{unit}" if unit == "%" else f"{value:g} {unit}"
                 if row.get("classification") == "suspected_discrepancy":
                     detail += " (suspected station discrepancy)"
+                    if _finite(row.get("expected")) and _finite(row.get("departure")):
+                        expected = f"{row['expected']:g}{unit}" if unit == "%" else f"{row['expected']:g} {unit}"
+                        detail += f", peer reference {expected}, departure {row['departure']:+g} {departure_unit}"
                 elif state == "low_daylight":
                     detail += " (solar comparison withheld in low daylight)"
             else:
@@ -151,7 +155,7 @@ def _variable_weather_answer(intent, weather, facts, *, source_error=False, repl
                     detail += " (" + _HEALTH_LABELS.get(reason, "a data-quality or comparison limitation") + ")"
             readings.append(f"station {row['station_id']}: {detail}")
         phrases.append(label + (" — " + "; ".join(readings) + "." if readings else " measurements are unavailable."))
-    fields = ("variable", "station_id", "classification", "severity", "observed", "expected", "departure", "unit", "start_utc", "end_utc", "detected_at_utc")
+    fields = ("variable", "station_id", "classification", "severity", "observed", "expected", "departure", "unit", "departure_unit", "start_utc", "end_utc", "detected_at_utc")
     facts["weather_findings"] = [{k: item[k] for k in fields if k in item} for item in findings]
     facts["weather_data_health"] = [{k: item[k] for k in ("variable", "station_id", "valid_utc", "reason", "source_flag") if k in item} for item in health]
     text = " ".join(phrases) + f" Readings from {at}."

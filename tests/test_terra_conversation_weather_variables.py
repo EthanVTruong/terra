@@ -97,15 +97,18 @@ def test_quality_and_missing_never_become_zero_or_discrepancies(weather):
 def test_variable_discrepancy_is_provisional_and_visible_in_station_question(weather):
     finding = {"id": "synthetic-rh", "variable": "relative_humidity_pct", "station_id": 6,
                "classification": "suspected_discrepancy", "severity": "strong", "observed": 95,
-               "expected": 40, "departure": 55, "unit": "%", "detected_at_utc": HOUR.isoformat()}
+               "expected": 40, "departure": 55, "unit": "%", "departure_unit": "percentage points", "detected_at_utc": HOUR.isoformat()}
     value = retain(weather, values=(95, 7.2, 0), findings=[finding])
     value["weather"]["variables"][0]["stations"][0]["classification"] = "suspected_discrepancy"
+    value["weather"]["variables"][0]["stations"][0].update(expected=40, departure=55)
     monitor, profile, clock = weather
     monitor.apply(profile["id"], {"latest": value}, now=clock[0])
     text, facts = weather_answer("humidity", monitor, profile["id"])
     assert "95%" in text and "provisional" in text and "cause is unconfirmed" in text
+    assert "peer reference 40%" in text and "departure +55 percentage points" in text
     assert "broken" not in text and "crop" not in text
     assert facts["weather_findings"][0]["expected"] == 40
+    assert facts["weather_findings"][0]["departure_unit"] == "percentage points"
     general, _ = weather_answer("station_findings", monitor, profile["id"])
     assert "relative humidity" in general and "No supporting-station discrepancy" not in general
 

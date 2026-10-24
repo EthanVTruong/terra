@@ -204,11 +204,13 @@ class Store:
     def publish(self, orchard, packet, result, event_ids, now, *, question_id=None, consumed_ids=None, created_at=None):
         message_id = fingerprint({"orchard": orchard, "events": sorted(event_ids), "question": question_id})
         body = {"id": message_id, "orchard_id": orchard, "created_at": utc(created_at or now).isoformat(),
-                "published_at": utc(now).isoformat(),
                 "kind": "answer" if question_id else "proactive",
                 "text": result["text"], "generation": result["provider"], "generation_outcome": result["outcome"],
                 "transport": "local_inbox", "status": "published", "llm_input": packet, "event_ids": event_ids}
         with self.connect(write=True) as db:
+            # Publication order is a wall-clock fact. Replay/source clocks stay
+            # in created_at and the immutable input; dedup returns the old body.
+            body["published_at"] = utc().isoformat()
             db.execute("INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?)", (message_id, orchard,
                        "answer" if question_id else "proactive", body["created_at"], encoded(body)))
             for event_id in consumed_ids if consumed_ids is not None else event_ids:

@@ -71,6 +71,49 @@ test("field notes and conversation remain chronological, with stable saved-event
   assert.equal(mergeTaraTimeline(turns, [{ id: "bad", created_at: "unknown" }]).length, turns.length);
 });
 
+test("real publication times interleave replay notes and turns without changing their shared observation clock", () => {
+  const sourceClock = "2026-03-11T11:00:00Z";
+  const turns = [
+    turn({ id: "farm-saved", role: "event", kind: "location", created_at: sourceClock, published_at: "2026-10-24T18:00:00Z" }),
+    turn({ id: "question", text: "Is the weather data usable?", created_at: sourceClock, published_at: "2026-10-24T18:00:02+00:00" }),
+    turn({ id: "answer", role: "assistant", text: "Weather data is spotty.", created_at: sourceClock, published_at: "2026-10-24T18:00:03Z", data: { message_id: "linked-answer" } }),
+    turn({ id: "thanks", text: "Thanks", created_at: sourceClock, published_at: "2026-10-24T18:00:03Z" }),
+  ];
+  const notes = [
+    { id: "linked-answer", kind: "answer", created_at: sourceClock, published_at: "2026-10-24T18:00:03Z" },
+    { id: "coverage-limited", text: "Weather data is spotty.", created_at: sourceClock, published_at: "2026-10-24T18:00:01Z" },
+    { id: "welcome", text: "Weather support is usable.", created_at: sourceClock, published_at: "2026-10-24T18:00:00.500Z" },
+  ];
+  const originals = structuredClone({ turns, notes });
+  for (const value of [...turns, ...notes]) Object.freeze(value);
+  Object.freeze(turns); Object.freeze(notes);
+  const merged = mergeTaraTimeline(turns, notes);
+  assert.deepEqual(merged.map(({ value }) => value.id), ["farm-saved", "welcome", "coverage-limited", "question", "answer", "thanks"]);
+  assert.ok(merged.every(({ value }) => value.created_at === sourceClock));
+  assert.deepEqual({ turns, notes }, originals);
+});
+
+test("legacy native notes sharing a replay clock display oldest first instead of latest coverage above welcome", () => {
+  const created_at = "2026-03-11T11:00:00Z";
+  const newestFirst = [
+    { id: "coverage-limited", text: "Weather data is spotty.", created_at },
+    { id: "welcome", text: "Weather support is usable.", created_at },
+  ];
+  assert.deepEqual(mergeTaraTimeline([], newestFirst).map(({ value }) => value.id), ["welcome", "coverage-limited"]);
+  assert.deepEqual(newestFirst.map(({ id }) => id), ["coverage-limited", "welcome"]);
+});
+
+test("malformed optional publication clocks fall back to created_at without losing notes or stable turn ties", () => {
+  const created_at = "2026-03-11T11:00:00Z";
+  const turns = [turn({ id: "first", created_at, published_at: null }), turn({ id: "second", created_at, published_at: "not-a-time" })];
+  const notes = [
+    { id: "later", created_at: "2026-03-11T12:00:00Z", published_at: "2026-10-24" },
+    { id: "earlier", created_at, published_at: 42 },
+  ];
+  assert.deepEqual(mergeTaraTimeline(turns, notes).map(({ value }) => value.id), ["first", "second", "earlier", "later"]);
+  assert.deepEqual(mergeTaraTimeline([], [...notes, notes[1]]).map(({ value }) => value.id), ["earlier", "later"]);
+});
+
 test("recovery is available only for a demonstrably exited owner with explicit server permission", () => {
   const pending = { request_id: "old-request", created_at: "2026-10-24T16:00:00Z" };
   assert.equal(reconcilableTaraRequests(snapshot({ pending_requests: [pending] })).length, 0);

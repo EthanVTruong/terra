@@ -3,6 +3,88 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-product-consolidation",
+  "owner": "et",
+  "status": "active",
+  "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner.",
+  "branch": "codex/terra-consolidate-main",
+  "base": "098ebe07f3c62af6ecd451f59952bc7d98f01f15",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra*.py",
+    "tests/test_farm_chill_ops*.py",
+    "web/**",
+    "docs/terra/**",
+    "README.md",
+    ".github/workflows/terra.yml"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "469612541419ad5937eca6724d9ce792d72846ee",
+    "summary": "All approved source slices are consolidated on one task branch: exact repaired Tara c6797c9, frozen simulation/publication-order source 37b417f, accepted local UI polish and sender main ancestry c95ec46. One bounded reconciliation preserves strict crop/context/date handling, exact-note notification returns, explicit consent and immutable evidence. Persisted first-publication time consistently drives chat ordering, day/clock labels, evidence display context and both sides of the notification-consent boundary. Desktop evidence defaults pinned when current farm/packet content exists and respects explicit closing; mobile sheets remain independent. The exact user-accepted Station lab balance at 71627c1 is included with its checked source history; further creative work remains separate.",
+    "evidence": [
+      "Affected backend validation passes all eleven conversation files plus full-flow, farm and state cases with no reported failures or skips. Main production build and packaging pass; 47 pure/helper UI cases pass. Two optional native browser cases were not configured in this run and are not counted as passes; the Tara owner separately verified its native App regressions.",
+      "Independent code review cleared combined crop routing, immutable weather references, source-specific old-alert dates, explicit selected-farm consent, publication-time fallback, legacy ordering and desktop/mobile pin isolation. Its one remaining consent-boundary mapping issue was fixed and regressed with March source clocks and October publication clocks before release freeze.",
+      "Earlier isolated browser proof verified actual crop-to-confirmed-location onboarding, declined notifications, saved crop answers, quiet reopening and zero browser errors. The temporary preview was stopped with its test state and screenshot retained. Final combined UI review remains an explicit gate.",
+      "All source branches and the unrelated uncommitted Terra prototype remain preserved. No private configuration, credential, SMS opt-in, provider request, live runtime or numerical module/reference was changed by this consolidation.",
+      "Nathan independently merged PR14 to main098ebe0 during PR15 creation. Consolidation refreshed that exact upstream once, preserving every native numerical/configuration change and adding its three authoritative coordination records. Final checks use098ebe0; earlierc95 receipts are prior-baseline evidence only."
+    ],
+    "uncertainty": "Final CI and actual098ebe0-base scoped checks must cover the newly merged authoritative Nathan layer together with the complete product. Independent final UI review remains a release gate. The simulation owner retains an evidence-only follow-up; no required frozen implementation is outside this candidate. The primary owner retains the single live rollout.",
+    "next": "Complete actual098ebe0-base checks and exact-head CI, obtain final UI review, then merge and push main and hand its SHA/tree/completeness receipt to the exclusive live-runtime owner. Preserve the independent native layer and all worker source histories."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-full-flow-verification",
+  "owner": "et",
+  "status": "active",
+  "intent": "Subsequent user-requested goal: independently test final contributor revisions as first-time, returning and skeptical data-operator users; exercise onboarding, held-out simulation through frozen QC/Nathan and monitoring, no-alert controls, proactive UI messages, truthful delivery state and grounded follow-ups. Fix concrete defects and push the reviewed integrated simulation and verification changes after the complete flow passes. Preserve current runtime, credentials and original staged prototype.",
+  "branch": "codex/terra-demo-simulation",
+  "base": "cb58022",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "web/**",
+    "tests/test_terra*.py",
+    "tests/test_farm_chill_ops*.py",
+    "docs/terra/**",
+    ".github/workflows/terra.yml"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "37b417fab75c49c03f5f356eabc9090c7d5b75a7",
+    "summary": "Frozen controlled replay, actual production-interface bridge, natural-language/crop/weather follow-ups, immutable old-note context and publication-order repair are included in the consolidated candidate alongside final Tara and approved UI. The functional source is committed; the source owner retains final browser evidence and task metadata separately. Source data, scientific reference, normal live process and original 8520 session were preserved.",
+    "evidence": [
+      "Source owner passed all ten configured groups on the pre-ordering implementation, then 386 affected conversation/farm/API cases and 28 UI/build cases for the bounded persisted-publication ordering repair. Consolidation subsequently combined final Tara source and passed all affected conversation/full-flow/farm/state cases plus 47 pure/helper UI cases and the production build.",
+      "Actual controlled checks establish quiet original/coherent-warming frames, a flagged excluded station with usable orchard peers, coverage loss producing one grower note, three distinct subsequent usable hours before recovery, and old loss Details retaining two supporting stations after current support recovers to five. These are controlled behavioral checks, not natural-fault accuracy labels.",
+      "The replay uses held-out March 2026 observations, isolated journals, local factual wording and disabled external delivery. Its simulated phone card is separate from the independently verified actual trial placeholder: ignored trial-api-success proof records provider delivered, one attempt and direct handset confirmation. Live configuration belongs solely to the primary owner.",
+      "First-publication wall timestamps now order new payloads without changing created_at, source/query clocks, IDs or immutable prior payloads. Consolidation applies the same validated publication/fallback mapping to presentation and notification consent; source-specific old-alert evidence remains unchanged."
+    ],
+    "uncertainty": "The owner is finalizing evidence-only browser artifacts and its own completion record on the preserved simulation branch. Final combined CI/UI review, publication and primary-owner runtime verification are tracked by terra-product-consolidation and terra-full-pipeline. No required known implementation is held solely in that metadata follow-up.",
+    "next": "Finish the source-owner evidence handoff without changing frozen implementation. Consolidation completes its exact-head release gates and publishes main; the primary owner performs the single retained-state live rollout. Keep actual trial delivery and isolated simulated phone behavior clearly distinguished."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-trial-assigned-sender",
   "owner": "et",
   "status": "done",
@@ -65,6 +147,55 @@
     ],
     "uncertainty": "Final repaired-head scoped/UI/backend gates and owner-controlled merged runtime verification remain pending. Current authorized SMS settings and all retained records must be preserved; browser alerts work while Terra is open.",
     "next": "Publish exact repaired head/tree and final combined CI. Root01a16ac9 merges PR11 only after green gates, verifies final source tree and performs retained-data cutover. Follow-on consolidation01a16f05 preserves these fixes. No further features or independent PR/main/runtime/account writes."
+  }
+}
+```
+
+## Interactive orchard-support simulation
+
+```json
+{
+  "kind": "check",
+  "id": "terra-demo-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_demo_simulation.py", "-q"],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-full-flow-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_full_flow.py", "-q"],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-demo-simulation",
+  "owner": "et",
+  "status": "done",
+  "intent": "Build a separate local two-view simulation: real held-out weather with manual station controls and Nathan-estimator heatmap; exact source-grounded Grok Bot style grower chat showing actual frozen QC and orchard-support events, evidence and simulated phone ping. No live-system changes, external messages, refit or provider calls.",
+  "branch": "codex/terra-demo-simulation",
+  "base": "e4292b21594d20b3983a62447e2f4632aac0f3bd",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "docs/terra/demo-simulation.md", "docs/terra/demo-simulation/**"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "6f419ff6376372e4b6f7e96cf27c4dd588c8ce26",
+    "summary": "Complete isolated two-app simulation: Station lab manual temperature/reporting controls, native raw/filtered heatmaps and exact source-grounded Grok Bot style grower chat. Real March weather outside fitting/calibration runs through frozen QC, Nathan estimate and actual orchard Monitor. Persisted proactive notes drive local simulated phone pings; old evidence remains immutable. Main loopback8520 demo is retained for ET; final browser checks used a separate8521 session.",
+    "evidence": [
+      "All7configured check groups pass against e4292b2, including14demo regressions with the updated3-subsequent-hour recovery rule. Production build,4packaging tests and app-local frozen pnpm install pass.",
+      "Browser verified precise/manual controls, pending-reset cancellation, no orchard false alert from one station spike, native heatmap exclusions, support-loss note/ping identity, factual question and evidence download,3new-hour recovery and retained old2-peer evidence after current support recovered to5.",
+      "web/demo/design-qa.md final result passed after independent source comparison and320px fix; exact xVf font hash,14/20 prose,8/12insets and16/16/16/6corners verified. Fresh final console warning/error log empty.",
+      "docs/terra/demo-simulation/evidence/final-runtime-verification.json; original weather d849852...2385 and reference809c78...90f unchanged. Existing scientific modules/configuration match pinned e4292b2; no real SMS/provider/LLM/refit or live-state writes."
+    ],
+    "uncertainty": "Visual taste remains available for ET refinement. Phone delivery is explicitly simulated; no actual handset receipt is claimed. Basemap tiles need network; numerical replay does not. Previously inspected held-out weather is not an untouched accuracy test. Later conversation-planning documentation is outside this additive simulation; the executable monitor baseline is pinned to e4292b2.",
+    "next": "Open8520/stations and8520/terra, preserve ET's current isolated session, and refine from concrete feedback. Do not reset the main demo automatically. Keep separate simulation paths and unchanged scientific reference; real SMS activation or hosting would be separate requested work."
   }
 }
 ```
@@ -252,6 +383,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "config/terra/**",
     "docs/terra/**",
     "tests/test_terra_json.py",
+    "tests/test_terra_demo_simulation.py",
+    "tests/test_terra_full_flow.py",
     "tests/test_terra_qc_*.py",
     "tests/fixtures/terra/**",
     "requirements-terra.txt",
@@ -281,6 +414,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "depends_on": [],
   "checks": [
     "terra-json-tests",
+    "terra-demo-tests",
+    "terra-full-flow-tests",
     "terra-sms-tests",
     "terra-farm-tests",
     "terra-runtime-tests",
@@ -608,15 +743,17 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "5b3aa90cfbad2c9a85c556442b2c5c43243c2957",
-    "summary": "All software slices integrated: real CIMIS/frozenQC/Nathan estimates, persistent farm events/inbox, optional fixed-recipient Twilio transport, one local runtime and accepted UI. Root independently ran all499 focusedPython cases, scopedharness, productionbuild/7webcases and real installed-service restart. Final PR5 CI pending; account activation remains external.",
+    "revision": "d4c2a6c489f804ca3a03c31dc308979dc61d40b7",
+    "summary": "The persistent QC-to-grower pipeline, local ChatGPT plan writer, Tara onboarding and replies, approved compact interface, held-out station/grower replay and assigned-sender trial transport are implemented in the consolidated candidate. Actual trial-placeholder API delivery and handset receipt are confirmed. The primary owner retains the single final preserved-state runtime rollout; this goal remains active until that verification completes.",
     "evidence": [
-      "Combined local groups: baseline189,SMS203,farm64,runtime34,cross-layer9 allpass; scoped terra.py check passes against37948ed. No numericalQC/Nathan/config changes in this pipeline diff.",
-      "Unified8512 browser: one explicit demonstrationDavis orchard, optedout; welcome60.6F/6sources evidence then real newhourM monitoringlimitednote. UIownerdesktop390/320 focus/exactJSON/sourcefailure checks pass after onefocusedaccessibilityrepair dc9a113.",
-      "Actual Windows launcher start/stop and installed worker restart: two same persistednoteIDs, new workerPID/freshheartbeat,0SMSattempts/bothflagsfalse. Secret-exclusion scan found no actual configured values in trackedfiles/newhistory; original nine stagedbootstrap entries unchanged."
+      "Core PR12 is merged through a14e148 and repaired Tara PR11 through c95ec46 after all four exact-head CI jobs, scoped checks and independent review. The consolidated source preserves both histories and the existing numerical modules/reference.",
+      "Ignored private proof .terra-local/runtime/trial-api-success.json records HTTP 201, provider delivered, one attempt and direct user handset confirmation for the fixed trial placeholder. The restricted Messages create/read key is configured; primary-token rotation is not a current delivery blocker. Earlier rejected attempts remain recorded and are not resent.",
+      "The live owner reports SMS enabled and demo enabled with trial_template content; real farm SMS opt-ins remain off. The ChatGPT plan connection and selected gpt-6-luna model retain the approved concise coverage voice. Fresh Tara setup does not preseed an almond farm.",
+      "Contributor audit reports EthanVTruong and Nathan-W123 only; original nine staged prototype entries remain preserved. The candidate adds verified question/context/date/crop/consent fixes, separate historical replay, consistent first-publication display and consent clocks, and the accepted desktop evidence pin. Raw observation/query clocks and immutable message content remain unchanged.",
+      "Authoritative Nathan PR14 subsequently merged to main098ebe0; the product candidate preserves those native model/estimate/configuration updates exactly. The frozen Terra statistical reference remains unchanged; final compatibility checks now target that newer upstream."
     ],
-    "uncertainty": "Full latest-head PostgreSQL/Windows/macOS/webCI mustpass beforemainmerge. ActualTwilio phone verification/customsendertrialrestriction/chargeauthorization/tokenrotation remain unresolved. No actualSMS accepted/delivered; no natural faultaccuracy or automatic matching5-seasonhistory claimed. GithubAPIonlyEthan/Nathan; sidebarcache servercontrolled.",
-    "next": "Push finalsource toPR5, inspect all4 exact-head checks, merge normally and fast-forward localmain, restart service frommain with samejournals. KeepSMSdisabled and report requiredaccount actions; preserveownersbranches/originalstagedwork."
+    "uncertainty": "Final combined candidate CI, actual-base scoped checks, independent UI review and publication are pending. The primary owner exclusively controls the live service, private vault, flags and journals. Controlled placeholder delivery does not establish custom SMS content or naturally occurring sensor-fault accuracy; historical replay remains labelled and isolated.",
+    "next": "Finish the frozen consolidated release gates, merge and push main, then have the primary owner perform one rollout retaining the existing ChatGPT connection, farm preferences, message IDs and SMS journal. Capture the actual post-rollout proof at .terra-local/runtime/final-cutover-20261024/after.json; this path is planned evidence, not an already completed check."
   }
 }
 ```
@@ -1002,11 +1139,15 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "pythonpath=backend",
     "tests/test_terra_conversation.py",
     "tests/test_terra_conversation_api.py",
-    "tests/test_terra_conversation_local_facts.py",
-    "tests/test_terra_conversation_recovery.py",
-    "tests/test_terra_conversation_writer_integration.py",
-    "tests/test_terra_conversation_reference_times.py",
     "tests/test_terra_conversation_crops.py",
+    "tests/test_terra_conversation_local_facts.py",
+    "tests/test_terra_conversation_natural_language.py",
+    "tests/test_terra_conversation_readiness.py",
+    "tests/test_terra_conversation_recovery.py",
+    "tests/test_terra_conversation_reference_times.py",
+    "tests/test_terra_conversation_timeline.py",
+    "tests/test_terra_conversation_weather.py",
+    "tests/test_terra_conversation_writer_integration.py",
     "-q"
   ]
 }
@@ -1073,6 +1214,120 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "-q"
   ],
   "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-local-polish",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly authorizes merging PR10, reconciling the approved polished UI with current main for fresh clones, adopting local-first open-source operation and then beginning a visual sim polish pass. PR10 merged as adced1a after all4 exact-head checks. Preserve newer ChatGPT controls, replay-only semantics, fixed-phone readiness, existing backend/scientific behavior and all private services/state. Sim conversation/engine work is active separately; presentation refinement must preserve its owner changes.",
+  "branch": "codex/terra-local-polish",
+  "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "README.md",
+    "docs/terra/**",
+    "web/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "f8e5273",
+    "summary": "One semantic UI reconciliation completed: cube/header, quiet copy, day/time grouping and fixed-phone readiness retained with current-main ChatGPT control, replay-only warning and canonical trial receipt helper. All4 UI test files run together. README selects local-first operation and defers cloud migration. Browser confirmed 390/320 containment, account/phone panels, retained historical note and Escape focus return.",
+    "evidence": [
+      "Shared main fast-forwarded cleanly to adced1a; original staged prototype and current8504/8512/8517/8520 services untouched.",
+      "Read current sim branch facts only: separate8520 station/grower app, active conversation verification owner; no backend or sim owner checkout mutations.",
+      "Production build passed;22 UI and4 packaging checks pass. No backend, scientific, reference, dependency or private state diff against main.",
+      "Isolated18520 runtime seeded with the existing offline demo, worker/source/SMS disabled and fresh ChatGPT state. Both connection panels work without authorization/provider requests. Mobile390 and320 have exact viewport-width/no horizontal overflow; selected unavailable note preserves its old values and Escape restores its note focus."
+    ],
+    "uncertainty": "Final combined scoped checks and exact-head CI must pass before user-authorized integration. Sim owner is still reconciling conversation behavior in its own dirty checkout; no mutation there.",
+    "next": "Publish a small UI integration PR and merge after exact-head checks; then make an isolated CSS/presentation slice for the sim using a committed owner revision."
+  }
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-ui-quiet",
+  "owner": "et",
+  "status": "done",
+  "intent": "UI design refinement: approved square character and header spacing, quiet context/copy, Pacific day dividers and clock-only note footers, central evidence JSON, and clear phone setup. User selected the existing verified number for the demo. Phone connection checks remain read-only, orchard opt-in is separate, and source/availability warnings plus delivery semantics remain truthful. No writer, auth, backend, recipient or provider configuration changes in the phone refinement.",
+  "branch": "codex/terra-ui-quiet",
+  "base": "78e835d",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "22072a6f19c2e3c3bc8df98e68773c3445180704",
+    "summary": "Fixed-phone UI implemented: explicit Connect phone action; Connecting, Setup required, Ready, Sending paused and Unavailable states. Ready shows masked number and a separate field-note alert switch. Ten-second deadlines, stale-status guards and focus restoration handle async checks. Trial-template mode says notification only; receipt checks appear for existing test events and survive paused sending. Earlier quiet UI refinements remain on this branch.",
+    "evidence": [
+      "Production build, 14 UI tests, four packaging tests and whitespace check pass. Scope/coordination/filesystem validation passes against declared task base 78e835d. Current origin/main advanced to a9dcc6c during the pass; no web changes in that upstream delta. Current-main integration is deliberately left to the integration owner.",
+      "Actual 8504/8512 path: Connect phone performs status/preference GETs, returns Setup required and restores focus. Isolated React fixture: Ready, controlled 1.4-second Connecting state, preference on/off without losing readiness, 34x20 switch, focus restoration and mobile no-overflow verified. Fixture rejects sends and has no real provider/API connection. No real SMS or actual orchard preference change made.",
+      "Sources: current Apple HIG toggles, GOV.UK phone confirmation and Twilio Verify/trial docs. User chose fixed verified phone; full enrollment remains a future reference. web/phone-connection-design.md documents logistics. Screenshots .terra-local/phone-connection/; selected inline preview terra-verified-phone.html in thread visualization root."
+    ],
+    "uncertainty": "The live SMS server still needs delivery setup; frontend checks do not configure credentials, enable sending or prove handset delivery. Main has backend/contract updates and separate ChatGPT/placeholder transport work; reconcile this UI branch once with current main and the transport owner, preserving trial content_mode and existing writer/auth work. No App.jsx or writer/auth changes in this phone refinement.",
+    "next": "Integration owner consumes codex/terra-ui-quiet, reconciles current main and incoming trial-placeholder transport labels, then runs current integration checks. Operator completes SMS delivery configuration; UI will show Ready for its fixed verified phone. User can then opt this orchard in explicitly. Preserve the integration owner\u2019s announced FarmFeed.jsx fix: non-current stale saved readings get a quiet Replay only / saved readings do not describe current conditions banner; actual current-data unavailable behavior stays unchanged. This incoming fix is an announced intent, not a revision verified on this branch."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-sim-visual",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests the next visual polish of the local simulation after merging setup/polished ordinary UI. First review slice is the station/map operator presentation using the approved quiet Terra/Grok direction and cube identity. Keep all numerical, map interpolation, scenario, conversation, notification and source/retention behavior intact. Root/demo owner continues functional verification separately. No shared runtime, credential, sender or provider actions.",
+  "branch": "codex/terra-sim-visual",
+  "base": "853336a",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/demo/src/**",
+    "web/demo/public/**",
+    "web/demo/AGENTS.md",
+    "docs/terra/sim-visual.md",
+    "docs/terra/sim-visual/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "71627c1f20cbe5000d1f8ac77894bbb19b9767e2",
+    "summary": "First station-operator visual slice implemented on frozen853336a: reused cube identity, reduced selected-station/header repetition, clearer selected station and raw/filtered controls, readable scenario buttons and consistent comparison hierarchy. User explicitly selected Keep this balance after the actual preview. No broader redesign selected.",
+    "evidence": [
+      "Existing demo AGENTS and source-grounded QA read; preserve real heatmaps, fixed historical clock and local-only phone semantics.",
+      "Owner explicitly confirmed frozen853336a and presentation ownership on web/demo/src. Visual runtime pins to that committed head; no owner checkout or8520 state changes.",
+      "Build and4 packaging checks pass. WeatherMap source is byte-identical to853336a; backend/config/immutable data have no diff. Logo bytes match the approved ordinary UI asset. Baseline stations/assessment/heatmap/messages/notifications/clock matched before any action.",
+      "Actual browser spike yielded Davis71.6F / expected46.5F / departure25.1F and Flagged, with4/5 orchard support and no phone notification. Filtered view shows excluded-from-field while preserving the flagged reading.",
+      "320px QA found the inherited body min-width caused15px horizontal overflow with classic scrollbars; scoped Station lab body min-width fix yields305px client and305px scroll. 390px had no horizontal overflow. Current preview journal and replay time are retained; all provider/SMS/LLM/training/live-state side-effect flags remain false.",
+      "All10 scoped groups plus coordination/filesystem pass against exact853336a. Four packaging tests and whitespace pass. User accepted the actual first layout balance. Before/after captures and a source/verification note are retained in docs/terra/sim-visual; no additional creative direction was silently chosen."
+    ],
+    "uncertainty": "The exact user-accepted presentation slice is included in the consolidated release candidate. Broader future visual refinement remains outside this scope. Final combined source gates and runtime rollout are tracked by the consolidation and primary pipeline tasks.",
+    "next": "Retain this approved visual intent and source-owner evidence through final consolidated CI and publication; preserve the existing simulation state and leave further creative work separate."
+  }
 }
 ```
 

@@ -1,5 +1,5 @@
 # terra
-Orchard chill and weather updates in a compact inbox, with optional SMS.
+Local-first orchard chill and weather updates in a compact inbox, with optional ChatGPT message writing and SMS.
 
 ## Run locally
 
@@ -17,6 +17,8 @@ The launcher creates `.venv`, installs the pinned product runtime, builds the we
 
 The preview shows **saved historical assessments and controlled examples**, not current weather. It disables weather credentials, ChatGPT and SMS, skips the background worker, and uses separate state in `.terra-local/preview`. These examples exercise the frozen QC reference and existing temperature estimator; launching Terra does not train a model.
 
+Terra opens with Tara's grower conversation: enter your crops, explicitly confirm your farm location and elevation, then choose browser notifications or in-chat updates. Farm questions use saved facts and retained note evidence; ChatGPT writing is optional. Reopening the conversation preserves its history and stays quiet. See [the conversation guide](docs/terra/tara-conversation.md).
+
 ```sh
 python run_terra.py --doctor
 python run_terra.py --setup-only
@@ -32,7 +34,7 @@ Create a private environment file outside the repository containing `CIMIS_APP_K
 python run_terra.py --live --env-file /absolute/path/to/cimis.env
 ```
 
-On Windows, a path such as `C:/private/cimis.env` works. Existing process variables take precedence. Omit `--env-file` if the key is already in the process environment. Confirm your actual location in Terra; the initial West Orchard pin is a labelled demonstration location.
+On Windows, a path such as `C:/private/cimis.env` works. Existing process variables take precedence. Omit `--env-file` if the key is already in the process environment. Confirm your actual location in Terra; saved station reference locations are examples to confirm or adjust.
 
 Live mode enables the five-minute monitor and retains journals in `.terra-local/runtime`. Keep that directory across restarts. Leave the process and computer running to continue monitoring with the browser closed. Add `--no-worker` for on-demand queries only. A running server alone does not prove weather coverage or phone readiness.
 
@@ -40,13 +42,21 @@ Live mode enables the five-minute monitor and retains journals in `.terra-local/
 - **Phone alerts:** add `--sms-env-file /absolute/path/to/twilio.env` in live mode, complete sender/verified-recipient setup and opt in for the orchard. SMS stays disabled until explicitly configured. See [Twilio setup](docs/terra/twilio-sms.md).
 - **Operator controls:** the [local runtime guide](docs/terra/local-runtime.md) covers private state paths, Windows background service helpers and shutdown.
 
-## Hosting
+## Local-first by design
 
-Terra currently runs as a **local single-user application**. A static Vercel build can show saved examples. The full live product needs durable shared storage, hosted user authorization, API routing and a reliable worker. Current Vercel supports FastAPI and background Daemons; Terra's local SQLite journals and loopback authentication still need adaptation. See the [setup and hosting assessment](docs/terra/setup-and-hosting.md). The launcher creates no cloud resources or public deployment.
+Terra is an **open-source, local single-user application**. The interface, API and monitor run on your computer; private account connections and retained journals stay in your own state directory. A Terra cloud account or Vercel deployment is unnecessary. Keep the process running and computer awake for background monitoring.
+
+The current product direction is to make this local experience complete and easy to run. Hosted migration is deferred; the [setup assessment](docs/terra/setup-and-hosting.md) retains the findings for future reference. The launcher creates no cloud resources or public deployment.
 
 ## Development
 
 For frontend iteration, see [web/README.md](web/README.md). The launcher uses `requirements-terra.txt`; test tooling is in `requirements-terra-dev.txt`. The broader native scientific workflow below has separate heavier dependencies in `pyproject.toml` and is not required for the product preview.
+
+## Controlled station and grower demonstration
+
+The [station lab and grower demo](docs/terra/demo-simulation.md) replay real March 2026 observations from after detector fitting and calibration. Manual controls change a copy of the readings; the frozen detector, existing estimator and orchard monitor calculate the outcome. A suspect station can be excluded while enough peers still support the orchard; insufficient support produces the grower note. Advancing through three subsequent usable hours demonstrates recovery.
+
+The [production-interface replay guide](docs/terra/full-flow-verification/replay.md) runs the actual Tara onboarding, inbox, Details and follow-up flow against the same controlled weather in a separate local process. Both demonstration entry points are included in this repository. Their phone cards are simulated; configured Twilio delivery and its persisted receipt remain separate.
 
 ## ChillWatch data / ML layer
 
@@ -82,9 +92,8 @@ data and controlled examples remain explicitly labelled.
 The [combined local runtime](docs/terra/local-runtime.md) serves the interface and
 API and runs one durable orchard monitor. It stores observations, meaningful
 condition changes and concise grower notes; optionally it dispatches eligible
-notes through Twilio and reconciles receipts with the browser closed. The default
-West Orchard pin is a labelled demonstration location. Create a profile explicitly
-and retain the state directory across restarts. Local inbox publication, provider
+notes through Twilio and reconciles receipts with the browser closed. Confirm a
+farm profile explicitly and retain the state directory across restarts. Local inbox publication, provider
 acceptance and phone delivery remain separate states.
 
 The optional [ChatGPT plan connection](docs/terra/chatgpt-plan.md) writes notes

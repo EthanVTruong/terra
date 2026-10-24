@@ -96,3 +96,106 @@ second orchard was created merely to stress multi-location races; those guards
 were reviewed. Source/native window timings remain unknown where previously
 noted. Actual phone account activation/delivery is a separate readiness gate.
 No unresolved P0/P1/P2 issue remains in this UI scope.
+
+## Quiet metadata refinement — 2026-10-24
+
+User direction: keep the accepted tight proportions and three readings; remove
+repeated context labels, use the approved square character, and group field notes
+by day with small times below each bubble.
+
+The header and favicon now use the existing approved cube asset. Normal local
+publication captions and repeated orchard/monitoring headings are omitted from
+the conversation; location, crop, demo context and transport remain in Details or
+Sources. Exact stored message text and JSON are unchanged. Actual delivery states,
+worker failures, unavailable weather and non-current data indicators remain visible.
+
+The exact Grok article shows a centered 12px/16px clock above its demonstration
+transcript. Terra adapts that restraint into one Pacific calendar-day divider and
+clock-only note footers. This multi-day behavior is Terra's implementation, not a
+claim about Grok's unobserved native app. The evidence heading is one row: Estimate
+(or the station name) and its reading time. Different-day readings keep a compact
+date, and historical/injected evidence retains its mode and date on mobile. Full
+timestamps are available through time labels/tooltips and the exact record.
+
+Verified at 1280×900, 390×844 and 320×568: no horizontal overflow, one Today divider
+for three same-day notes, clocks below bubbles, mobile Escape/opener restoration,
+focus wrap, compact estimate heading, historical mode/date and untouched raw JSON.
+Evidence: `../.terra-local/ui-quiet/desktop.png`, `mobile.png`,
+`mobile-evidence.png`. Calendar tests cover Pacific midnight, both daylight-saving
+transitions, different-day/year evidence and invalid timestamps.
+
+Final verification: production build, seven UI tests, four packaging tests, and
+all configured scoped checks pass against origin/main at 78e835d. The live API
+remains on 8512; this refinement changes no backend, data or notification behavior.
+
+## Character placement refinement — 2026-10-24
+
+User found the cube crowded into the top-left corner. The header now has a shared
+52px height, a 28px character, 24px left inset (20px below 370px), and approximately
+12px clearance above/below the character. The evidence header shares its baseline;
+the Phone Alerts popover retains a 6px gap below the taller header. This deliberate
+spacing refinement supersedes the earlier 44px source-height target.
+
+Production build and diff whitespace check pass. Actual browser checks at 1280x900,
+390x844 and 320x568 confirm aligned header borders, approximately 12px logo
+clearance, a 6px popover gap and no horizontal overflow. Screenshots are retained
+in `.terra-local/ui-logo-spacing/`. Corrected the earlier task artifact field to
+use declared artifact IDs only; the QA path remains an evidence pointer.
+
+## Lean copy and single evidence entry — 2026-10-24
+
+User requests removing repeated As of dates from bubbles, reducing Phone Alerts
+subtext, and avoiding Details on every page. Display formatting now strips only
+the generated trailing Pacific timestamp (including the template's truncated
+Details suffix). Meaningful dates within prose, stored messages, transport text
+and exact JSON remain intact.
+
+Notes open their readings directly; the duplicate per-note Details button is
+removed. Repeated Details, source/exclusion and message/delivery disclosures are
+removed from the conversation and sidebar. The evidence pane's JSON tab remains
+the central full record, including provenance, exclusions and delivery receipts.
+Unavailable data, stale findings, replay identity and actual receipt states retain
+visible treatment. Historical chill unavailability keeps its explanatory tooltip.
+
+Phone Alerts shows connection status, the orchard preference and Refresh when
+disconnected. Configured connections reveal the simulated test and delivery
+controls. The test stays explicitly simulated; cost copy appears when sending is
+available, while queued/sent results still say delivery is unconfirmed. Existing
+configuration gates, transport actions and duplicate-send guards are unchanged.
+
+Production build, nine UI tests and four packaging tests pass. Actual unified API
+and browser checks cover note tap-to-read, mobile Escape/focus return, original
+message timestamps in JSON, historical mode/date and complete assessment provenance
+in JSON after removing the redundant disclosures. The actual disconnected Phone
+Alerts view was checked; configured branches were reviewed without enabling SMS
+or sending a message. Screenshots: `.terra-local/ui-lean-copy/`.
+
+## Fixed verified phone interaction — 2026-10-24
+
+User selected the existing verified phone for the demo. Phone setup now uses an
+explicit action and readiness states. Its binary orchard subscription switch
+appears when useful after configuration. Phone readiness, subscription and message
+receipt are separate. The visible ready label is Ready rather than an implication
+of continuous handset presence. Trial-template mode states that the SMS is a
+notification and the actual field note remains in Terra.
+
+Read-only connection checks resolve to a bounded pending, setup-required, ready,
+paused or unavailable state. The real server's setup-required response was
+verified; ready and a controlled 1.4-second pending response were checked against
+an isolated HTTP fixture running the actual frontend. Preference on/off changes
+were fixture-only. Busy controls preserve focus, and receipt checks remain
+available for an existing event after sending pauses. No real SMS action was
+performed. Build, 14 UI tests, four packaging tests and scope validation pass.
+Design rationale and logistics: `phone-connection-design.md`. Review captures:
+`.terra-local/phone-connection/`; the selected interactive state preview is
+thread-scoped `terra-verified-phone.html`.
+
+Integration note: origin/main advanced during this pass with backend cleanup.
+Scope/record validation passes against the declared task base 78e835d; the UI
+branch preserves that base. The integration owner must reconcile current main
+and run its configured integration checks before merging this branch.
+
+
+## Local-first reconciliation
+
+User authorized integrating the approved quiet UI with main after PR10. The combined build retains ChatGPT controls, replay-only source warnings and trial-placeholder delivery labels, alongside the cube logo, Pacific day dividers, clock-only footers and explicit phone readiness. All22 UI checks and4 packaging cases run together. Isolated18520 browser verified the two-day offline feed, old support-loss evidence, connection controls, 390/320 containment and Escape focus return; no provider, SMS or actual subscription change. Cloud migration is deferred in favor of the local open-source quickstart.

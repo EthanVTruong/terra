@@ -7,6 +7,7 @@ role/quantity checks. Full input clocks and evidence stay in the immutable note.
 from __future__ import annotations
 
 from datetime import timedelta, timezone
+import re
 
 from .store import utc
 from .writer import Writer, fallback
@@ -64,6 +65,10 @@ def compact_text(packet, text):
         return text
     body = text[len(prefix):]
     events = packet.get("events", [])
+    if any(event.get("type") == "welcome" for event in events):
+        # A saved profile/first assessment does not establish that a continuous
+        # worker is running. The conversation's readiness state owns that claim.
+        body = re.sub(r"\bmonitoring\s+is\s+connected\b", "your farm is saved", body, flags=re.I)
     clocks = {event.get("display_time") for event in events}
     if events and len(clocks) == 1 and all(event.get("type") in _SEASONAL for event in events):
         suffix = " As of " + events[0]["display_time"] + "."

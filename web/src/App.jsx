@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { EvidencePanel } from "./EvidencePanel";
-import { dataModeLabel, departure, stationName, temperature, timestamp } from "./presentation";
+import { dataModeLabel, departure, publicationTime, stationName, temperature, timestamp } from "./presentation";
 import { FarmAvailability, FarmNote, FarmOverview, useFarmFeed } from "./FarmFeed";
 import { TaraComposer, TaraConversation, useTaraBrowserAlerts, useTaraConversation } from "./TaraConversation";
 import { writeTaraStorage } from "./tara-state";
 import SmsControls from "./SmsControls";
 import ChatGPTConnection from "./ChatGPTConnection";
 import { usePresence } from "./usePresence";
+import { farmNoteDetailsPath, farmNoteTarget } from "./notification-return";
 import "./tara-integration.css";
 
 const SCHEMA = "terra-location-assessment-v1";
@@ -105,19 +106,11 @@ function liveError(body, status) {
   return error;
 }
 
-function FactRows({ values }) {
-  return <dl className="facts">{values.filter(([, value]) => value !== undefined && value !== null).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{String(value)}</dd></div>)}</dl>;
-}
-
 function Values({ observed, expected, difference }) {
   return <div className="compact-finding"><div className="message-facts"><span><small>Observed</small><strong>{temperature(observed)}</strong></span><span><small>Expected</small><strong>{temperature(expected)}</strong></span></div><div className="message-departure"><span>Departure</span><strong>{departure(difference)}</strong></div></div>;
 }
 
-function Disclosure({ title, children }) {
-  return <details className="disclosure"><summary><Icon name="file" /><span>{title}</span><Icon name="chevron" size={13} /></summary><div className="disclosure-body">{children}</div></details>;
-}
-
-function AssessmentFacts({ packet, sourceKind, onOpenJson, onOpenEvidence }) {
+function AssessmentFacts({ packet, sourceKind, onOpenEvidence }) {
   const { query, location_estimate: estimate, target_comparison: comparison, provenance } = packet;
   const hasTarget = comparison.station_id !== null && comparison.station_id !== undefined;
   const unavailable = estimate.status !== "ok";
@@ -155,11 +148,6 @@ function AssessmentFacts({ packet, sourceKind, onOpenJson, onOpenEvidence }) {
           </article>;
         }) : <p className="no-findings">{hasTarget ? "No other station flags." : "No station flags."}</p>}
       </section>
-      <button className="attachment" onClick={onOpenJson}><Icon name="file" size={22} /><span><strong>Assessment JSON</strong><small>Exact values · source evidence</small></span><Icon name="chevron" size={14} /></button>
-    </div>
-    <div className="details-list">
-      <Disclosure title="Details"><FactRows values={[["Reading time", timestamp(query.valid_utc)], ["As of", timestamp(query.as_of_utc)], ["Location estimate", words(estimate.status)], ["Local comparison", words(comparison.status)], ["Peer count", estimate.n_used], ["Geometry", estimate.geometry_source], ["Maximum age", Number.isFinite(query.max_age_hours) ? `${query.max_age_hours} h` : "Not set"]]} /><p className="microcopy">Location interpolation and the frozen station comparison are separate calculations. A typical range describes the station's calibrated historical residual band; it is not a forecast or a guaranteed confidence interval.</p></Disclosure>
-      <Disclosure title="Sources and exclusions"><FactRows values={[["Used stations", estimate.used_station_ids.map(stationName).join(", ") || "None"], ["Interpolation", estimate.method_version], ["QC reference", provenance.qc_reference_id], ["Data snapshot", provenance.data_snapshot_id], ["Publication visibility", words(provenance.publication_visibility)]]} />{live && <><p className="detail-label">Current source check</p><FactRows values={[["Provider", live.provider], ["Checked", timestamp(live.checked_at_utc)], ["Retrieved", timestamp(live.retrieved_at_utc)], ["Data through", timestamp(live.data_through_utc)], ["Source state", words(live.status)], ["Cache age", Number.isFinite(live.cache_age_seconds) ? `${Math.round(live.cache_age_seconds)} seconds` : null], ["Missing stations", live.missing_station_ids?.length ? live.missing_station_ids.map(stationName).join(", ") : null], ["Failed stations", live.failed_station_ids?.length ? live.failed_station_ids.map(stationName).join(", ") : null]]} /></>}{estimate.excluded.length > 0 && <><p className="detail-label">Excluded from the estimate</p><ul className="exclusion-list">{estimate.excluded.map((item, index) => <li key={`${item.station_id}:${index}`}><span>{stationName(item.station_id)}</span><span>{words(item.reason)}</span></li>)}</ul></>}{packet.data_health?.length > 0 && <><p className="detail-label">Source availability</p><pre className="detail-json">{JSON.stringify(packet.data_health, null, 2)}</pre></>}{packet.estimator_qc_exclusions?.length > 0 && <><p className="detail-label">Target-held-out peer exclusions</p><pre className="detail-json">{JSON.stringify(packet.estimator_qc_exclusions, null, 2)}</pre></>}</Disclosure>
     </div>
   </>;
 }
@@ -170,9 +158,11 @@ export function App() {
     try { const value = localStorage.getItem("terra.tara.activeFarm"); return value && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : ""; }
     catch { return ""; }
   });
+  const [notificationNote, setNotificationNote] = useState(null);
   const [connectionRequest, setConnectionRequest] = useState(0), [connectionStatus, setConnectionStatus] = useState(null);
   const farmRef = useRef(null);
   const chooseTaraFarm = useCallback((id) => {
+    setNotificationNote(null);
     setTaraFarmId(id);
     try { if (id) localStorage.setItem("terra.tara.activeFarm", id); else localStorage.removeItem("terra.tara.activeFarm"); } catch { /* This tab can retain the selection in memory. */ }
     farmRef.current?.selectOrchard(id);
@@ -184,9 +174,10 @@ export function App() {
   const [farmDetails, setFarmDetails] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false), [detailsError, setDetailsError] = useState("");
-  const farm = useFarmFeed(view === "monitor" || browserAlerts, { pollInBackground: browserAlerts });
+  const [context, setContext] = useState(null);
+  const farm = useFarmFeed(view === "monitor" || browserAlerts, { pollInBackground: browserAlerts, replayOnly: context?.replay_only === true });
   farmRef.current = farm;
-  const browserAlertError = useTaraBrowserAlerts(tara, farm);
+  const browserAlertError = useTaraBrowserAlerts(tara, farm, { onOpen: openNotificationNote });
   const detailRequest = useRef({ version: 0, controller: null }), nearBottom = useRef(true);
   const [entries, setEntries] = useState([]);
   const [selectedId, setSelectedId] = useState("");
@@ -198,13 +189,12 @@ export function App() {
   const [pendingKind, setPendingKind] = useState(null);
   const [notice, setNotice] = useState("");
   const [indexRetry, setIndexRetry] = useState(0);
-  const [context, setContext] = useState(null);
   const [contextError, setContextError] = useState("");
   const [contextLoading, setContextLoading] = useState(true);
   const [contextRetry, setContextRetry] = useState(0);
   const [queryOpen, setQueryOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true);
   const [panelTab, setPanelTab] = useState("temperature");
   const [selectedEvidence, setSelectedEvidence] = useState(null);
   const [draft, setDraft] = useState({ lat: "", lon: "", elevation: "", preset: "" });
@@ -333,6 +323,12 @@ export function App() {
     detailRequest.current.controller?.abort(); detailRequest.current.version += 1;
     setFarmDetails(null); setSelectedMessage(null); setDetailsLoading(false); setDetailsError("");
   }, [farm.orchardId]);
+  useEffect(() => {
+    // Switching farms clears old evidence; wait for both native views to agree.
+    if (!notificationNote || view !== "monitor" || notificationNote.orchard_id !== farm.orchardId || notificationNote.orchard_id !== tara.state?.orchard_id) return;
+    setNotificationNote(null);
+    openFarmDetails(null, notificationNote);
+  }, [notificationNote, view, farm.orchardId, tara.state?.orchard_id]);
   useEffect(() => () => detailRequest.current.controller?.abort(), []);
   useEffect(() => {
     if (view === "monitor" && nearBottom.current) requestAnimationFrame(() => {
@@ -360,17 +356,12 @@ export function App() {
     return () => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", escape); };
   }, [queryOpen, controlsOpen]);
 
-  function showJson(event) {
-    opener.current = event.currentTarget; setPanelTab("json"); setPanelOpen(true);
-    if (mobile) setMobileJson(true);
-    else requestAnimationFrame(() => jsonPre.current?.focus());
-  }
   function showEvidence(event, finding = null, comparison = null) {
     const matching = comparison && packet.station_findings.find((item) => item.station_id === comparison.station_id && Array.isArray(item.evidence) && item.evidence.some((row) => Date.parse(row?.timestamp) === Date.parse(packet.query.valid_utc)));
-    opener.current = event.currentTarget; setPanelTab("temperature"); setSelectedEvidence({ finding: finding || matching || null, comparison }); setPanelOpen(true);
-    if (mobile) setMobileJson(true);
+    opener.current = event.currentTarget; setPanelTab("temperature"); setSelectedEvidence({ finding: finding || matching || null, comparison });
+    if (mobile) setMobileJson(true); else setPanelOpen(true);
   }
-  function closeJson() { setMobileJson(false); setPanelOpen(false); requestAnimationFrame(() => (opener.current?.isConnected ? opener.current : panelTrigger.current)?.focus()); }
+  function closeJson() { setMobileJson(false); if (!mobile) setPanelOpen(false); requestAnimationFrame(() => (opener.current?.isConnected ? opener.current : panelTrigger.current)?.focus()); }
   function retry() {
     userSelection.current = true;
     const attempt = lastAttempt.current;
@@ -426,7 +417,7 @@ export function App() {
     userSelection.current = true;
     request.current.controller?.abort(); request.current.version += 1;
     setLoading(false); setPendingKind(null); setError(""); setNotice(""); setView("monitor"); setQueryOpen(false); setControlsOpen(false);
-    setPanelTab("temperature"); setPanelOpen(false); setMobileJson(false); nearBottom.current = true;
+    setPanelTab("temperature"); setMobileJson(false); nearBottom.current = true;
   }
 
   async function startTaraFromLocation() {
@@ -440,18 +431,32 @@ export function App() {
     } catch (reason) { setQueryError(reason.message); }
   }
 
+  function openNotificationNote(message) {
+    const target = farmNoteTarget(message);
+    if (target.orchard_id !== taraFarmId) chooseTaraFarm(target.orchard_id);
+    openMonitor();
+    setNotificationNote(target);
+  }
+
   async function openFarmDetails(event, message) {
+    let target;
+    try { target = farmNoteTarget(message, tara.state?.orchard_id || farm.orchardId); }
+    catch (reason) { setDetailsError(reason.message); return; }
+    if (target.orchard_id !== (tara.state?.orchard_id || farm.orchardId)) {
+      openNotificationNote(target);
+      return;
+    }
+    opener.current = event?.currentTarget || panelTrigger.current; setPanelTab("temperature");
+    if (mobile) setMobileJson(true); else setPanelOpen(true);
     if (detailsLoading && selectedMessage === message.id) return;
-    opener.current = event.currentTarget; setPanelTab("temperature"); setPanelOpen(true);
-    if (mobile) setMobileJson(true);
     detailRequest.current.controller?.abort();
     const task = { version: detailRequest.current.version + 1, controller: new AbortController() };
     detailRequest.current = task;
     setSelectedMessage(message.id); setFarmDetails(null); setDetailsLoading(true); setDetailsError("");
     try {
-      const detailFarmId = tara.state?.orchard_id || farm.orchardId;
-      const response = await fetch("/api/orchards/" + encodeURIComponent(detailFarmId) + "/messages/" + encodeURIComponent(message.id) + "/details", { signal: task.controller.signal });
-      if (!response.ok) throw new Error("The note’s evidence is unavailable. Open Details to retry.");
+      const detailFarmId = target.orchard_id;
+      const response = await fetch(farmNoteDetailsPath(target), { signal: task.controller.signal });
+      if (!response.ok) throw new Error("The note’s readings are unavailable. Tap the note to retry.");
       const value = await response.json();
       if (value.message?.id !== message.id || value.message?.orchard_id !== detailFarmId || !Array.isArray(value.assessments) || !Array.isArray(value.events)) throw new Error("The note’s evidence could not be read.");
       if (detailRequest.current.version === task.version && !task.controller.signal.aborted) setFarmDetails(value);
@@ -469,14 +474,16 @@ export function App() {
     } catch { setNotice("A demo response was received, but its assessment could not be displayed."); }
   }, []);
 
-  const farmPackets = (farmDetails?.assessments || []).flatMap((item) => {
+  const currentFarmDetails = farmDetails?.message?.orchard_id === tara.state?.orchard_id ? farmDetails : null;
+  const matchingFarm = Boolean(tara.state?.orchard_id && farm.orchardId === tara.state.orchard_id && farm.feed?.orchard_id === tara.state.orchard_id);
+  const farmPackets = (currentFarmDetails?.assessments || []).flatMap((item) => {
     try { return [validateAssessment(item)]; } catch { return []; }
   }).sort((a, b) => Date.parse(a.query.valid_utc) - Date.parse(b.query.valid_utc));
   const panelPacket = view === "monitor" ? farmPackets.at(-1) || null : packet;
-  const panelRecord = view === "monitor" ? farmDetails || farm.feed : null;
-  const panelReady = view === "monitor" ? Boolean(farm.orchardId) : Boolean(packet);
+  const panelRecord = view === "monitor" ? currentFarmDetails || (matchingFarm ? farm.feed : null) : null;
+  const panelReady = view === "monitor" ? matchingFarm : Boolean(packet);
   const primaryLabel = view === "monitor" && !panelPacket ? "Chill" : "Temperature";
-  const monitorOverview = detailsLoading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening evidence…</p></div> : panelPacket ? <details className="disclosure farm-extra"><summary><Icon name="file" /><span>Chill and monitoring</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body"><FarmOverview farm={farm} details={farmDetails} /></div></details> : <FarmOverview farm={farm} details={farmDetails} />;
+  const monitorOverview = detailsLoading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening evidence…</p></div> : panelPacket ? <details className="disclosure farm-extra"><summary><Icon name="file" /><span>Chill</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body"><FarmOverview farm={farm} /></div></details> : <FarmOverview farm={farm} />;
   const showPanel = panelReady && (mobile ? mobileJson : panelOpen);
   const panelMounted = usePresence(showPanel, 220);
   const queryMounted = usePresence(queryOpen, 180);
@@ -485,24 +492,23 @@ export function App() {
   const evidenceComparison = selectedEvidence?.comparison || (!evidenceFinding && packet?.target_comparison.station_id !== null ? packet?.target_comparison : null);
   const querying = loading && pendingKind === "query";
   const previewNote = resultSource?.kind === "query" ? "Provider query · checked on demand" : resultSource?.kind === "file" ? `Local file · ${resultSource.label}` : resultSource?.description || "Saved assessment · no message delivery";
-  const matchingFarm = tara.state?.orchard_id && farm.feed?.orchard_id === tara.state.orchard_id;
   const fieldNotes = matchingFarm ? farm.feed.messages : [];
   const latestReplyId = tara.state?.turns.filter((turn) => turn.role === "assistant").at(-1)?.id || null;
   const usingPlan = connectionStatus?.plan_enabled && connectionStatus?.writer?.connected && !connectionStatus?.writer?.usage_paused && connectionStatus?.writer?.selected_model;
   return <main className={`app-window${showPanel ? " with-artifacts" : ""}${panelMounted ? " panel-mounted" : ""}`}>
     <section className="conversation" inert={mobile && mobileJson ? true : undefined} aria-hidden={mobile && mobileJson ? true : undefined}>
-      <header className="thread-header"><h1 className="brand-wordmark"><img src={`${import.meta.env.BASE_URL}brand/terra-wordmark-1080.png`} alt="terra" /></h1><div className="thread-actions"><span className={`presence${querying ? " is-working" : ""}`} title={querying ? "Checking current station data" : "On-demand location checks"}>{context?.chatgpt_preview ? "Connection preview" : querying ? "Checking…" : view === "monitor" ? tara.state?.monitoring.status === "ready" ? "Monitoring" : tara.state?.setup.stage !== "complete" ? "Farm setup" : "Updates unavailable" : "Field notes"}</span><ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} onStatus={setConnectionStatus} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { setPanelOpen(true); if (mobile) setMobileJson(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
+      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(context?.replay_only === true || querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{context?.replay_only === true ? "Replay" : querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} onStatus={setConnectionStatus} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { if (mobile) setMobileJson(true); else setPanelOpen(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
       <div ref={messageScroll} className="message-scroll" aria-busy={view === "monitor" ? farm.loading : loading} onScroll={(event) => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}>
         {view === "monitor" ? <>
           {notice && <p className="request-notice" role="status">{notice}</p>}
           {matchingFarm && <FarmAvailability farm={farm} />}
-          <TaraConversation conversation={tara} stationPresets={context?.station_presets || []} farm={farm} onSelectOrchard={(id) => { chooseTaraFarm(id); openMonitor(); }} onDetails={openFarmDetails} onOpenConnection={() => setConnectionRequest((value) => value + 1)} fieldNotes={fieldNotes} renderFieldNote={(message) => <FarmNote message={message} onDetails={openFarmDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} />} alertsManaged notificationError={browserAlertError} />
+          <TaraConversation conversation={tara} stationPresets={context?.station_presets || []} farm={farm} onSelectOrchard={(id) => { chooseTaraFarm(id); openMonitor(); }} onDetails={openFarmDetails} onOpenConnection={() => setConnectionRequest((value) => value + 1)} fieldNotes={fieldNotes} renderFieldNote={(message) => <FarmNote message={message} orchard={farm.orchard} onDetails={openFarmDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} />} alertsManaged notificationError={browserAlertError} />
           {detailsError && <p className="query-error" role="alert">{detailsError}</p>}
         </> : <>
         {error && <div className="load-error" role="alert"><p>{error}</p>{retryable && <button onClick={retry}><Icon name="refresh" size={14} />{lastAttempt.current?.kind === "query" ? "Retry query" : "Retry"}</button>}</div>}
         {loading && packet && <div className="request-status" role="status"><span>{querying ? "Checking location…" : "Opening assessment…"}<small>Previous result shown below.</small></span>{!queryOpen && <button onClick={cancel}>Cancel</button>}</div>}
         {notice && <p className="request-notice" role="status">{notice}</p>}
-        {packet ? <div className="assessment-arrival" key={`${packet.query.location_id}:${packet.query.valid_utc}:${resultSource?.kind}`}><AssessmentFacts packet={packet} sourceKind={resultSource?.kind} onOpenJson={showJson} onOpenEvidence={showEvidence} /></div> : loading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>{querying ? "Checking current station data…" : "Opening assessment…"}</p>{pendingKind && !queryOpen && <button className="cancel-empty" onClick={cancel}>Cancel</button>}</div> : <div className="empty-state"><Icon name="location" size={24} /><h2>Check a location</h2><p>Query current weather or open a saved assessment.</p></div>}
+        {packet ? <div className="assessment-arrival" key={`${packet.query.location_id}:${packet.query.valid_utc}:${resultSource?.kind}`}><AssessmentFacts packet={packet} sourceKind={resultSource?.kind} onOpenEvidence={showEvidence} /></div> : loading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>{querying ? "Checking current station data…" : "Opening assessment…"}</p>{pendingKind && !queryOpen && <button className="cancel-empty" onClick={cancel}>Cancel</button>}</div> : <div className="empty-state"><Icon name="location" size={24} /><h2>Check a location</h2><p>Query current weather or open a saved assessment.</p></div>}
         </>}
       </div>
       <footer className="assessment-controls">
@@ -514,7 +520,7 @@ export function App() {
           {contextLoading ? <p className="query-connection" role="status">Checking weather connection…</p> : contextError || !context?.configured ? <div className="query-connection"><p>{contextError || "Current weather isn’t connected yet. Saved assessments remain available."}</p><button type="button" onClick={() => setContextRetry((value) => value + 1)}>Retry connection</button></div> : <p className="query-connection">CIMIS hourly readings · checked on demand</p>}
           <div className="query-actions">{farm.available && <button type="button" className="setup-link" onClick={startTaraFromLocation}>Monitor this location</button>}{querying && <button type="button" className="query-cancel" onClick={cancel}>Cancel</button>}<button className="query-submit" type="submit" disabled={querying || contextLoading || !context?.configured}>{querying ? "Checking…" : "Check location"}<Icon name="location" size={14} /></button></div>
         </form>}
-        {controlsMounted && <div ref={controlsForm} className="source-panel" data-open={controlsOpen} inert={!controlsOpen ? true : undefined} aria-label="Assessment sources"><div className="query-heading"><strong>Sources</strong><button className="icon-button" onClick={() => { setControlsOpen(false); controlsTrigger.current?.focus(); }} aria-label="Close saved assessments"><Icon name="close" size={15} /></button></div>{farm.available && <div className="monitor-source"><label>Monitoring<select value={farm.orchardId} onChange={(event) => { chooseTaraFarm(event.target.value); openMonitor(); }}><option value="" disabled>No locations yet</option>{farm.orchards.map((orchard) => <option key={orchard.id} value={orchard.id}>{orchard.name}{orchard.demo_location ? " · demo" : ""}</option>)}</select></label><button className="open-file" onClick={openMonitor}><Icon name="location" size={16} /><span>Open Tara</span><Icon name="chevron" size={12} /></button></div>}<label htmlFor="assessment-example" className="source-label">Saved assessments</label><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()}><Icon name="upload" size={16} /><span>Open assessment JSON</span><span className="file-extension">.json</span></button><p className="preview-note">{previewNote}</p></div>}
+        {controlsMounted && <div ref={controlsForm} className="source-panel" data-open={controlsOpen} inert={!controlsOpen ? true : undefined} aria-label="Assessment sources"><div className="query-heading"><strong>Sources</strong><button className="icon-button" onClick={() => { setControlsOpen(false); controlsTrigger.current?.focus(); }} aria-label="Close saved assessments"><Icon name="close" size={15} /></button></div>{farm.available && <div className="monitor-source"><label>Locations<select value={farm.orchardId} onChange={(event) => { chooseTaraFarm(event.target.value); openMonitor(); }}><option value="" disabled>No locations yet</option>{farm.orchards.map((orchard) => <option key={orchard.id} value={orchard.id}>{orchard.name}{orchard.demo_location ? " · demo" : ""}</option>)}</select></label><button className="open-file" onClick={openMonitor}><Icon name="location" size={16} /><span>Open Tara</span><Icon name="chevron" size={12} /></button></div>}<label htmlFor="assessment-example" className="source-label">Saved assessments</label><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()}><Icon name="upload" size={16} /><span>Open assessment JSON</span><span className="file-extension">.json</span></button><p className="preview-note">{previewNote}</p></div>}
         {view === "monitor" ? <>
           <div className="tara-compose-row"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Choose assessment source"><Icon name="plus" size={19} /></button><TaraComposer conversation={tara} replyTo={selectedMessage} onClearReply={() => setSelectedMessage(null)} /><button ref={queryTrigger} className="icon-button" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query" aria-label="Check a location"><Icon name="location" size={17} /></button></div>
           <div className="tara-plan-status"><button className="tara-text-button" type="button" onClick={() => setConnectionRequest((value) => value + 1)}>{usingPlan ? "Using ChatGPT plan" : connectionStatus?.writer?.usage_paused ? "ChatGPT writing paused" : "Local replies · connect ChatGPT"}</button>{usingPlan && <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>}</div>
@@ -522,6 +528,6 @@ export function App() {
         <input ref={fileInput} type="file" accept=".json,application/json" onChange={openFile} className="sr-only" tabIndex={-1} aria-label="Open local assessment JSON" />
       </footer>
     </section>
-    {panelMounted && panelReady && <EvidencePanel packet={panelPacket} record={panelRecord} overview={view === "monitor" ? monitorOverview : null} primaryLabel={primaryLabel} sourceKind={view === "monitor" ? "monitor" : resultSource?.kind} finding={view === "monitor" ? null : evidenceFinding} comparison={view === "monitor" ? null : evidenceComparison} tab={panelTab} onTab={setPanelTab} mobile={mobile} onClose={closeJson} closeRef={closeButton} jsonRef={jsonPre} open={showPanel} />}
+    {panelMounted && panelReady && <EvidencePanel packet={panelPacket} record={panelRecord} contextTime={view === "monitor" ? publicationTime(currentFarmDetails?.message) : undefined} overview={view === "monitor" ? monitorOverview : null} primaryLabel={primaryLabel} sourceKind={view === "monitor" ? "monitor" : resultSource?.kind} finding={view === "monitor" ? null : evidenceFinding} comparison={view === "monitor" ? null : evidenceComparison} tab={panelTab} onTab={setPanelTab} mobile={mobile} onClose={closeJson} closeRef={closeButton} jsonRef={jsonPre} open={showPanel} />}
   </main>;
 }

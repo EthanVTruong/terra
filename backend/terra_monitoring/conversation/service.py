@@ -9,6 +9,26 @@ from .routing import ACK, THANKS, PROMPT, QUESTIONS, LOCAL_INTENTS, crops_from, 
 from .ownership import active, current_owner, owner_status
 
 
+_FACT_CONTEXTS = {"temperature", "freshness", "station_findings", "temperature_normal", "weather_history_unavailable"}
+
+
+def _weather_context(data):
+    facts = data.get("local_facts", {})
+    return {"weather_reference": data.get("intent") in _FACT_CONTEXTS - {"weather_history_unavailable"},
+            "weather_evidence_ids": [facts["evidence_id"]] if facts.get("evidence_id") else [],
+            "temperature_evidence_id": facts.get("temperature_evidence_id")}
+
+
+def _publication_time(item):
+    value = item.get("published_at")
+    if not isinstance(value, str):
+        return None
+    try:
+        return utc(value)
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
 class RequestInProgress(ValueError):
     """A reserved request cannot safely be inferred again, even after restart."""
 
@@ -80,12 +100,19 @@ class ConversationService:
         monitoring = {"status": "not_configured", "reason": "Confirm your farm location first.", "details": status}
         if status:
             worker = status.get("worker", {}).get("heartbeat_status")
-            if status.get("comparison_available") and worker == "fresh":
+            if status["orchard"]["mode"] != "current":
+                monitoring.update(status="pending", reason="Saved replay readings aren't live monitoring; the live monitor is off for this farm.")
+            elif status.get("comparison_available") and worker == "fresh":
                 monitoring.update(status="ready", reason="Current estimates and the monitor are available.")
+            elif status.get("comparison_available"):
+                monitoring.update(status="unavailable" if worker == "stale_or_stopped" else "pending",
+                                  reason="Saved weather data is usable, but the monitor isn't running.")
             elif worker == "stale_or_stopped":
                 monitoring.update(status="unavailable", reason="The monitor is stopped or its heartbeat is stale.")
             elif status.get("source_error") or status.get("last_checked") and not status.get("comparison_available"):
                 monitoring.update(status="unavailable", reason="Weather data is unavailable or incomplete.")
+            elif worker == "fresh":
+                monitoring.update(status="pending", reason="Waiting for usable weather data.")
             else:
                 monitoring.update(status="pending", reason="Waiting for usable weather data and the monitor.")
         with self.store.connect() as db:
@@ -102,6 +129,7 @@ class ConversationService:
 
     def _context(self, orchard_id, reply_to):
         context, event_ids = None, []
+        weather = _weather_context({})
         if reply_to:
             with self.store.connect() as db:
                 row = db.execute("SELECT thread,payload FROM tara_turns WHERE id=?", (reply_to,)).fetchone()
@@ -110,6 +138,7 @@ class ConversationService:
                     raise ValueError("The referenced message belongs to another farm")
                 data = json.loads(row["payload"]).get("data", {})
                 context, event_ids = data.get("intent"), data.get("source_event_ids", [])
+                weather = _weather_context(data)
             else:
                 note = self.store.message(reply_to)
                 if not note or note["orchard_id"] != orchard_id:
@@ -117,16 +146,47 @@ class ConversationService:
                 kinds = [e["type"] for e in note.get("llm_input", {}).get("events", [])]
                 context = "explain_alert" if any(k not in {"welcome", "chill_total", "history", "station_health"} for k in kinds) else "history" if "history" in kinds else "station_health" if "station_health" in kinds else "chill_total"
                 event_ids = note.get("event_ids", [])
+                events = self.store.events_by_ids(orchard_id, event_ids)
+                weather = {"weather_reference": True,
+                           "weather_evidence_ids": list(dict.fromkeys(e["evidence_id"] for e in events if e.get("evidence_id"))),
+                           "temperature_evidence_id": None}
         elif orchard_id:
+            assistant = None
             for turn in reversed(self._turns(orchard_id)):
                 if turn.get("role") == "assistant":
+                    assistant = turn
                     intent = turn.get("data", {}).get("intent")
-                    context = intent if intent in QUESTIONS or intent in LOCAL_INTENTS else "farm"
+                    context = intent if intent in QUESTIONS or intent in LOCAL_INTENTS or intent in _FACT_CONTEXTS else "farm"
                     event_ids = turn.get("data", {}).get("source_event_ids", []) if intent in QUESTIONS else []
+                    weather = _weather_context(turn.get("data", {}))
                     break
+            # Match the latest visible proactive note when actual publication
+            # metadata establishes recency. Never guess from a replay clock or
+            # let a stored question-answer duplicate replace its Tara context.
+            notes = [note for note in self.store.messages(orchard_id)
+                     if note.get("kind") == "proactive" and _publication_time(note) is not None]
+            if notes:
+                newest = max(notes, key=_publication_time)
+                previous = _publication_time(assistant) if assistant else None
+                if assistant is None or previous is not None and _publication_time(newest) > previous:
+                    return self._context(orchard_id, newest["id"])
             # A farm supplies history's subject, not a fictitious earlier reply.
             context = context or "farm"
-        return {"intent": context, "event_ids": event_ids}
+        return {"intent": context, "event_ids": event_ids, **weather}
+
+    def _weather_reply(self, intent, text, selected, context, reply_to):
+        from .local_facts import weather_answer
+        if intent == "weather_history_unavailable":
+            return weather_answer(intent, self.monitor, selected)
+        current = re.search(r"\b(now|currently|current|latest|newest|updated)\b", text, re.I)
+        elliptical = intent in {"temperature_normal", "freshness"} or re.search(r"\b(that|this|those|these|them)\b", text, re.I)
+        referenced = bool(context["weather_reference"] and not current and (reply_to or elliptical))
+        ids = context["weather_evidence_ids"]
+        if referenced and intent in {"temperature", "temperature_normal"} and context["temperature_evidence_id"]:
+            ids = [context["temperature_evidence_id"]]
+        if referenced and len(ids) > 1:
+            return "Which reading in that note do you mean?", {"referenced_snapshot": True, "evidence_ids": ids}
+        return weather_answer(intent, self.monitor, selected, evidence_id=ids[0] if referenced and ids else None, referenced=referenced)
 
     @staticmethod
     def _identifier(value):
@@ -171,10 +231,19 @@ class ConversationService:
     @staticmethod
     def _turn(identifier, role, text, created, *, kind="text", reply_to=None, data=None):
         return {"id": identifier, "role": role, "kind": kind, "text": text, "created_at": created,
+                "published_at": utc().isoformat(),
                 "reply_to": reply_to, "reactions": [], "delivery": "local_saved", "data": data or {}}
 
     @staticmethod
     def _put(db, thread, turn):
+        existing = db.execute("SELECT payload FROM tara_turns WHERE id=?", (turn["id"],)).fetchone()
+        if existing:
+            turn.clear()
+            turn.update(json.loads(existing[0]))
+            return
+        # Serialize publication with native notes in the shared SQLite journal,
+        # rather than timestamping a reply while it waits for the write lock.
+        turn["published_at"] = utc().isoformat()
         db.execute("INSERT OR IGNORE INTO tara_turns VALUES(?,?,?,?)", (turn["id"], thread, turn["created_at"], encoded(turn)))
 
     def _finish(self, request_id, thread, user, *, text=None, reaction=False, event=None, data=None, setup=None, preference=None, migrate=None):
@@ -267,6 +336,9 @@ class ConversationService:
         profile = self.store.orchard(selected) if selected else {}
         known_subjects = [profile.get("name"), profile.get("crop"), profile.get("variety"), *profile.get("crops", [])]
         intent = route(text, context["intent"], known_subjects)
+        # Resolve and validate an immutable reference before reserving a turn;
+        # a bad cross-farm or unavailable reference must not strand a request.
+        weather_reply = self._weather_reply(intent, text, selected, context, reply_to) if selected and intent in _FACT_CONTEXTS else None
         supplied = None
         if not selected and setup["stage"] == "crop" and intent not in {
                 "thanks", "ack", "correction", "preference_unchanged", "notification_status",
@@ -315,6 +387,9 @@ class ConversationService:
             return finish(text=PROMPT)
         if not selected:
             return finish(text="Confirm your farm location to start monitoring.", data={"action": "location_choice"})
+        if intent in _FACT_CONTEXTS:
+            answer, facts = weather_reply
+            return finish(text=answer, data={"intent": intent, "local_facts": facts})
         if intent in {"off_topic"}:
             return finish(reaction=True)
         if intent in {"needs_context", "clarify"}:
@@ -431,8 +506,19 @@ class ConversationService:
                 event=event, setup={**setup, "orchard_id": p["id"], "location": location, "stage": "notifications"}, migrate=p["id"], data={"action": "notification_choice"})
         event = self._turn(request_id + ":event", "event", "Browser notifications enabled" if notifications["enabled"] else "In-chat updates only", now,
                            kind="notification", data={**notifications, "saved": True, "scope": "while_open"})
-        status = self.state(setup["orchard_id"])["monitoring"]["status"]
-        text = "You're set. I'll flag meaningful changes here." if status == "ready" else "Your farm is saved. I'm waiting for usable weather data and the monitor."
+        monitoring = self.state(setup["orchard_id"])["monitoring"]
+        details = monitoring.get("details") or {}
+        if details.get("orchard", {}).get("mode") != "current":
+            text = "Your farm is saved. These saved replay readings aren't live monitoring."
+        elif monitoring["status"] == "ready":
+            text = "You're set. I'll flag meaningful changes here."
+        elif details.get("comparison_available"):
+            text = "Your farm is saved. Saved weather data is usable, but the monitor isn't running."
+        elif details.get("worker", {}).get("heartbeat_status") == "fresh":
+            text = "Your farm is saved. I'm waiting for usable weather data."
+        else:
+            reason = monitoring["reason"]
+            text = "Your farm is saved. " + ("I'm " + reason[0].lower() + reason[1:] if reason.startswith("Waiting ") else reason)
         return self._finish(request_id, thread, None, text=text, event=event, preference=notifications,
                             setup=({**setup, "stage": "complete", "notification_preference": notifications}
                                    if saved_setup.get("orchard_id") == thread else None))

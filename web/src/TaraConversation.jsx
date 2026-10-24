@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { timestamp } from "./presentation";
-import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
+import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 
 const EMPTY_PRESETS = [];
@@ -17,6 +17,7 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
   const [pending, setPending] = useState(() => restoreTaraOperation(readTaraStorage(`${scope}.pending`)));
   const request = useRef({ version: 0, controller: null }), mutation = useRef(null), currentScope = useRef(scope), hasSnapshot = useRef(false);
   const callbacks = useRef({ onFarmCreated, onSelectOrchard });
+  const latestRefresh = useRef(null);
   callbacks.current = { onFarmCreated, onSelectOrchard };
 
   const setDraft = useCallback((value) => {
@@ -36,7 +37,11 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
       if (request.current.version === task.version && !task.controller.signal.aborted) {
         hasSnapshot.current = true; setState(value); setStale(false); setError("");
         const operation = mutation.current;
-        if (operation?.status === "in_progress" && !value.pending_requests.some((item) => (typeof item === "string" ? item : item?.request_id) === operation.body.request_id)) {
+        const serverPending = operation && value.pending_requests.some((item) => item.request_id === operation.body.request_id);
+        if (operation && operation.status !== "sending" && serverPending) {
+          const stillPending = { ...operation, status: "in_progress" };
+          mutation.current = stillPending; setPending(stillPending); writeTaraStorage(`${currentScope.current}.pending`, stillPending);
+        } else if (operation?.status === "in_progress" && !serverPending) {
           const confirmedFinished = { ...operation, status: "unconfirmed" };
           mutation.current = confirmedFinished; setPending(confirmedFinished); writeTaraStorage(`${currentScope.current}.pending`, confirmedFinished);
         }
@@ -45,6 +50,7 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
       if (!task.controller.signal.aborted && request.current.version === task.version) { setStale(true); setError(reason instanceof SyntaxError || reason instanceof TypeError ? "The conversation could not be reached. Your draft is retained." : reason.message); }
     } finally { if (request.current.version === task.version) setLoading(false); }
   }, [active, orchardId]);
+  latestRefresh.current = refresh;
 
   useEffect(() => {
     currentScope.current = scope;
@@ -78,9 +84,12 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
       const value = validateTaraResult(body, next);
       writeTaraStorage(`${operationScope}.pending`, null);
       if (next.kind === "message") writeTaraStorage(`${operationScope}.draft`, "");
+      const discardRecoveredDraft = next.kind === "reconcile" && typeof next.recoveredMessage === "string" && readTaraDraft(`${operationScope}.draft`).trim() === next.recoveredMessage;
+      if (discardRecoveredDraft) writeTaraStorage(`${operationScope}.draft`, "");
       if (currentScope.current !== operationScope) return;
       mutation.current = null; hasSnapshot.current = true; setPending(null); setState(value.state); setStale(false); setError("");
       if (next.kind === "message") updateDraft("");
+      if (discardRecoveredDraft) updateDraft("");
       if (next.body.action === "restart") {
         writeTaraStorage("terra.tara.v1.location", null); writeTaraStorage(`${storageScope("")}.draft`, "");
         callbacks.current.onSelectOrchard?.("");
@@ -91,11 +100,15 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
       }
       return value;
     } catch (reason) {
-      const retained = reason.rejected ? null : { ...next, status: reason.inProgress ? "in_progress" : "unconfirmed" };
+      const completedRace = reason.alreadyCompleted && next.kind === "reconcile";
+      const original = completedRace && next.originalOperation?.kind !== "reconcile" ? restoreTaraOperation(next.originalOperation) : null;
+      let retained = reason.rejected ? null : { ...next, status: reason.inProgress ? "in_progress" : "unconfirmed" };
+      if (completedRace) retained = original && original.body.request_id === next.body.target_request_id ? { ...original, status: "result_available" } : null;
       writeTaraStorage(`${operationScope}.pending`, retained);
       if (currentScope.current === operationScope) {
         mutation.current = retained; setPending(retained);
         setError(reason.name === "AbortError" ? "No confirmation has arrived yet. Refresh the status or retry this same request." : reason instanceof TypeError ? "The local service could not be reached. Your draft is retained; retry the same request." : reason.message);
+        if (completedRace) await latestRefresh.current?.();
       }
     } finally { clearTimeout(timer); }
   }, []);
@@ -106,7 +119,15 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
   }, [draft, loading, run, state]);
   const setup = useCallback((action, body = {}) => {
     if (mutation.current || !state || loading) return;
-    return run(createTaraOperation("setup", { action, ...body }, newId()));
+    return run(createTaraOperation("setup", { action, ...body, ...(action === "notifications" ? { orchard_id: state.orchard_id } : {}) }, newId()));
+  }, [loading, run, state]);
+  const reconcile = useCallback((targetRequestId) => {
+    if (!state || loading || mutation.current?.status === "sending" || !reconcilableTaraRequests(state).some((item) => item.request_id === targetRequestId)) return;
+    if (mutation.current && mutation.current.body.request_id !== targetRequestId) return;
+    const operation = createTaraOperation("reconcile", { target_request_id: targetRequestId, confirm_uncertain: true, orchard_id: state.orchard_id }, newId());
+    if (mutation.current) operation.originalOperation = { ...mutation.current };
+    if (mutation.current?.kind === "message") operation.recoveredMessage = mutation.current.body.text;
+    return run(operation);
   }, [loading, run, state]);
   const retry = useCallback(() => {
     const previous = mutation.current;
@@ -114,7 +135,7 @@ export function useTaraConversation({ orchardId = "", active = true, onFarmCreat
     return run(previous);
   }, [run]);
   const locked = loading || Boolean(pending) || Boolean(state?.pending_requests.length);
-  return { state, loading, stale, error, draft, setDraft, pending, locked, send, setup, retry, refresh };
+  return { state, loading, stale, error, draft, setDraft, pending, locked, send, setup, reconcile, retry, refresh };
 }
 
 function FarmLocation({ conversation, stationPresets }) {
@@ -234,7 +255,7 @@ export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS,
       {timeline.map((entry, index) => {
         if (entry.type === "note") return <React.Fragment key={entry.key}>{renderFieldNote(entry.value)}</React.Fragment>;
         const turn = entry.value;
-        return turn.role === "event" ? <div className="tara-saved-event" key={entry.key}><Icon name={turn.kind === "location" ? "location" : "phone"} size={15} /><span>{turn.text}</span><Icon name="check" size={14} /></div> : <article className={`tara-turn tara-${turn.role}`} key={entry.key}>
+        return turn.role === "event" ? <div className={`tara-saved-event${turn.kind === "notice" ? " tara-notice-event" : ""}`} key={entry.key}><Icon name={turn.kind === "location" ? "location" : turn.kind === "notice" ? "file" : "phone"} size={15} /><span>{turn.text}</span>{turn.kind !== "notice" ? <Icon name="check" size={14} /> : null}</div> : <article className={`tara-turn tara-${turn.role}`} key={entry.key}>
         <div className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"}><span>{turn.text}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Tara reacted with a thumbs up">👍</span> : null}</div>
         <div className="tara-turn-meta"><time dateTime={turn.created_at} title={timestamp(turn.created_at)} className={index === 0 || shortDate(turn.created_at) !== shortDate(timeline[index - 1].value.created_at) ? undefined : "sr-only"}>{shortDate(turn.created_at)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}{turn.data?.message_id && onDetails ? <button className="tara-text-button" onClick={(event) => onDetails(event, { id: turn.data.message_id, text: turn.text, kind: "answer", created_at: turn.created_at })}>Details</button> : null}</div>
       </article>; })}
@@ -243,6 +264,17 @@ export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS,
     {state.setup.stage === "complete" ? <div className={`tara-monitoring tara-monitoring-${conversation.stale ? "unavailable" : state.monitoring.status}`} role="status"><Icon name="location" size={14} /><span>{conversation.stale ? "Monitoring status couldn’t be refreshed" : state.monitoring.status === "ready" ? "Monitoring" : state.monitoring.status === "pending" ? "Farm saved · connecting monitoring data" : state.monitoring.status === "unavailable" ? "Farm saved · monitoring unavailable" : "Monitoring not configured"}</span></div> : null}
     {state.notifications.enabled ? <p className="tara-alert-scope">{state.notifications.capability === "browser_open" && typeof window.Notification === "function" && Notification.permission === "granted" ? "Browser alerts for this farm while Terra is open" : "Browser alerts need permission · updates stay in chat"}</p> : null}
     {alertsError ? <p className="query-error" role="status">{alertsError}</p> : null}
+  </div>;
+}
+
+function PendingReplyChoice({ conversation, request }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const busy = conversation.pending?.status === "sending" || (conversation.pending && conversation.pending.body.request_id !== request.request_id);
+  const warningId = `tara-reconcile-${request.request_id}`;
+  return <div className="tara-pending-recovery">
+    <p id={warningId}>The earlier request may have used ChatGPT allowance. Continuing won’t retry it.</p>
+    <label className="tara-confirm"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} disabled={Boolean(busy)} /><span>I understand the reply will remain unfinished.</span></label>
+    <button type="button" className="tara-text-button" aria-describedby={warningId} disabled={!confirmed || Boolean(busy)} onClick={() => conversation.reconcile(request.request_id)}>Continue without this reply</button>
   </div>;
 }
 
@@ -264,8 +296,10 @@ export function TaraComposer({ conversation, replyTo = null, onClearReply }) {
   return <div className="tara-compose-area">
     {replyTo ? <div className="tara-reply-context"><span>Replying to the selected note</span><button className="icon-button" type="button" aria-label="Clear reply context" onClick={onClearReply}><Icon name="close" size={13} /></button></div> : null}
     {conversation.error ? <div className="tara-request-error" role="alert"><p>{conversation.error}</p></div> : null}
-    {conversation.pending ? <p className="tara-request-status" role="status">{sending ? "Sending…" : conversation.pending.status === "in_progress" ? "Request still processing" : "Delivery not confirmed"}</p> : null}
-    {conversation.error || (conversation.pending && !sending) ? <div className="tara-actions tara-retry-actions">{conversation.pending && conversation.pending.status !== "in_progress" ? <button type="button" className="tara-text-button" onClick={conversation.retry} disabled={sending}>Retry same request</button> : null}<button type="button" className="tara-text-button" onClick={conversation.refresh} disabled={sending}>Refresh status</button></div> : null}
+    {conversation.pending ? <p className="tara-request-status" role="status">{sending ? "Sending…" : conversation.pending.status === "in_progress" ? "Request still processing" : conversation.pending.status === "result_available" ? "Earlier reply saved · recover its receipt" : "Delivery not confirmed"}</p> : null}
+    {!conversation.pending && conversation.state?.pending_requests.length ? <p className="tara-request-status" role="status">An earlier request is unfinished. Refresh its status before continuing.</p> : null}
+    {reconcilableTaraRequests(conversation.state).map((request) => <PendingReplyChoice key={request.request_id} conversation={conversation} request={request} />)}
+    {conversation.error || (conversation.pending && !sending) || conversation.state?.pending_requests.length ? <div className="tara-actions tara-retry-actions">{conversation.pending && conversation.pending.status !== "in_progress" ? <button type="button" className="tara-text-button" onClick={conversation.retry} disabled={sending}>{conversation.pending.status === "result_available" ? "Recover saved reply" : conversation.pending.kind === "reconcile" ? "Confirm saved continuation" : "Retry same request"}</button> : null}<button type="button" className="tara-text-button" onClick={conversation.refresh} disabled={sending}>Refresh status</button></div> : null}
     <form className="composer tara-composer" onSubmit={submit} aria-label="Message Tara"><label className="sr-only" htmlFor="tara-message">Message Tara</label><input ref={field} id="tara-message" type="text" maxLength={1000} value={typeof conversation.draft === "string" ? conversation.draft : ""} onChange={(event) => conversation.setDraft(event.target.value)} placeholder={stage === "crop" ? "What are you growing?" : "Message Tara"} disabled={!conversation.state || Boolean(conversation.pending)} autoComplete="off" /><button type="submit" className="composer-send" aria-label="Send message" disabled={conversation.locked || !conversation.draft.trim()}><Icon name="send" size={15} /></button></form>
   </div>;
 }

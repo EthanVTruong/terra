@@ -12,8 +12,9 @@ function validateReaction(value, target) {
 }
 
 export function validateTaraTurn(value) {
-  if (!object(value) || !identifier(value.id) || !["user", "assistant", "event"].includes(value.role) || !["text", "location", "notification"].includes(value.kind) || typeof value.text !== "string" || value.text.length > 12000 || !date(value.created_at) || !nullableId(value.reply_to) || !Array.isArray(value.reactions) || value.delivery !== "local_saved") throw new Error("A conversation message could not be read. Your previous messages are retained.");
+  if (!object(value) || !identifier(value.id) || !["user", "assistant", "event"].includes(value.role) || !["text", "location", "notification", "notice"].includes(value.kind) || typeof value.text !== "string" || value.text.length > 12000 || !date(value.created_at) || !nullableId(value.reply_to) || !Array.isArray(value.reactions) || value.delivery !== "local_saved") throw new Error("A conversation message could not be read. Your previous messages are retained.");
   if (value.data !== undefined && value.data !== null && !object(value.data)) throw new Error("A conversation event could not be read.");
+  if (value.kind === "notice" && (value.role !== "event" || value.data?.type !== "usage_uncertain" || !identifier(value.data?.target_request_id))) throw new Error("The request notice could not be read.");
   for (const reaction of value.reactions) validateReaction(reaction, value.id);
   return value;
 }
@@ -33,6 +34,9 @@ export function validateTaraSnapshot(value, expectedOrchard) {
     if (turnIds.has(turn.id)) throw new Error("The conversation contains a repeated message. Your previous messages are retained.");
     turnIds.add(turn.id);
   }
+  for (const pending of value.pending_requests) {
+    if (!object(pending) || !identifier(pending.request_id) || !date(pending.created_at) || (pending.owner_status !== undefined && !["exited", "active", "unknown"].includes(pending.owner_status)) || (pending.reconcilable !== undefined && typeof pending.reconcilable !== "boolean")) throw new Error("An unfinished request could not be read. Refresh its status before continuing.");
+  }
   return value;
 }
 
@@ -40,6 +44,7 @@ export function validateTaraResult(value, operation) {
   if (!object(value) || value.request_id !== operation.body.request_id || !outcomes.has(value.outcome)) throw new Error("The response could not be confirmed. Retry the same request.");
   const state = validateTaraSnapshot(value.state);
   if (operation.kind === "message" && operation.body.orchard_id && state.orchard_id !== operation.body.orchard_id) throw new Error("The response returned a different farm. Your previous messages are retained.");
+  if (operation.kind === "reconcile" && state.orchard_id !== operation.body.orchard_id) throw new Error("The request notice returned a different farm. Your previous messages are retained.");
   if (value.user_turn !== null && value.user_turn !== undefined) validateTaraTurn(value.user_turn);
   if (value.assistant_turn !== null && value.assistant_turn !== undefined) {
     validateTaraTurn(value.assistant_turn);
@@ -53,19 +58,29 @@ export function validateTaraResult(value, operation) {
   }
   if (value.outcome === "none" && (value.assistant_turn || value.reaction)) throw new Error("A quiet response contained an unexpected reply.");
   if (operation.kind === "message" && (!value.user_turn || value.user_turn.role !== "user" || value.user_turn.text !== operation.body.text || !state.turns.some((turn) => turn.id === value.user_turn.id))) throw new Error("The sent message could not be confirmed. Retry the same request.");
+  if (operation.kind === "reconcile") {
+    const notice = validateTaraTurn(value.event);
+    if (value.outcome !== "none" || value.user_turn || notice.kind !== "notice" || notice.data.target_request_id !== operation.body.target_request_id || !state.turns.some((turn) => turn.id === notice.id && turn.text === notice.text && turn.data?.target_request_id === operation.body.target_request_id) || state.pending_requests.some((item) => item.request_id === operation.body.target_request_id)) throw new Error("The unfinished request could not be reconciled. Refresh its status before continuing.");
+  }
   return value;
 }
 
 export function createTaraOperation(kind, body, requestId) {
-  if (!["message", "setup"].includes(kind) || !identifier(requestId)) throw new Error("The request could not be prepared.");
-  return { version: 1, kind, path: kind === "message" ? "/api/tara/messages" : "/api/tara/setup", body: { ...body, request_id: requestId }, status: "sending" };
+  if (!["message", "setup", "reconcile"].includes(kind) || !identifier(requestId)) throw new Error("The request could not be prepared.");
+  const path = kind === "message" ? "/api/tara/messages" : kind === "reconcile" ? "/api/tara/reconcile" : "/api/tara/setup";
+  return { version: 1, kind, path, body: { ...body, request_id: requestId }, status: "sending" };
 }
 
 export function restoreTaraOperation(value) {
-  if (!object(value) || value.version !== 1 || !["message", "setup"].includes(value.kind) || value.path !== (value.kind === "message" ? "/api/tara/messages" : "/api/tara/setup") || !object(value.body) || !identifier(value.body.request_id)) return null;
+  if (!object(value) || value.version !== 1 || !["message", "setup", "reconcile"].includes(value.kind) || value.path !== (value.kind === "message" ? "/api/tara/messages" : value.kind === "reconcile" ? "/api/tara/reconcile" : "/api/tara/setup") || !object(value.body) || !identifier(value.body.request_id)) return null;
   if (value.kind === "message" && (typeof value.body.text !== "string" || !value.body.text.trim() || value.body.text.length > 1000)) return null;
   if (value.kind === "setup" && !["location", "notifications", "restart"].includes(value.body.action)) return null;
-  return { ...value, status: value.status === "in_progress" ? "in_progress" : "unconfirmed" };
+  if (value.kind === "reconcile" && (!identifier(value.body.target_request_id) || value.body.confirm_uncertain !== true || !nullableId(value.body.orchard_id))) return null;
+  return { ...value, status: ["in_progress", "result_available"].includes(value.status) ? value.status : "unconfirmed" };
+}
+
+export function reconcilableTaraRequests(snapshot) {
+  return (snapshot?.pending_requests || []).filter((item) => object(item) && identifier(item.request_id) && item.reconcilable === true && item.owner_status === "exited");
 }
 
 export function readTaraStorage(key, fallback = null) {
@@ -108,6 +123,7 @@ export function validateFarmLocation(draft) {
 
 export function taraError(body, status) {
   const code = body?.error?.code || body?.detail?.code;
+  if (status === 409 && code === "request_already_completed") return Object.assign(new Error("The earlier reply finished. Recover its saved result without retrying generation."), { alreadyCompleted: true });
   if (status === 409 && code === "request_in_progress") return Object.assign(new Error("Terra is still handling this request. Refresh its status before sending another."), { inProgress: true });
   if (status === 403) return new Error("Reconnect to the local Terra page, then retry this request.");
   if (status === 422) return Object.assign(new Error("That request could not be saved. Check the fields and retry."), { rejected: true });

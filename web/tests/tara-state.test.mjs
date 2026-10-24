@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTaraOperation, mergeTaraTimeline, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
+import { createTaraOperation, mergeTaraTimeline, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, validateFarmLocation, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
 
 const turn = (extra = {}) => ({ id: "turn-1", role: "user", kind: "text", text: "Thanks", created_at: "2026-10-24T16:00:00Z", reply_to: null, reactions: [], delivery: "local_saved", ...extra });
 const snapshot = (extra = {}) => ({ schema_version: "terra-conversation-v1", setup: { stage: "complete", crops: ["almond"], orchard_id: "farm-1" }, orchard_id: "farm-1", orchards: [{ id: "farm-1", name: "West Orchard" }], turns: [], monitoring: { status: "pending" }, notifications: { enabled: false, capability: "browser_open" }, pending_requests: [], ...extra });
@@ -40,6 +40,8 @@ test("restored or retried operations preserve request identity and exact payload
   assert.equal(restoreTaraOperation({ ...operation, body: { ...operation.body, text: "" } }), null);
   assert.equal(restoreTaraOperation({ ...operation, body: { ...operation.body, text: "x".repeat(1001) } }), null);
   assert.equal(taraError({ error: { code: "request_in_progress" } }, 409).inProgress, true);
+  assert.equal(taraError({ error: { code: "request_already_completed" } }, 409).alreadyCompleted, true);
+  assert.equal(restoreTaraOperation({ ...operation, status: "result_available" }).status, "result_available");
 });
 
 test("message outcomes require the actual persisted assistant reply", () => {
@@ -67,4 +69,30 @@ test("field notes and conversation remain chronological, with stable saved-event
   assert.deepEqual(mergeTaraTimeline(turns, notes).map((entry) => entry.value.id), ["alert-first", "saved-location", "next-question", "answer-turn", "alert-later"]);
   assert.equal(mergeTaraTimeline(turns, [...notes, notes[0]]).filter((entry) => entry.value.id === "alert-later").length, 1);
   assert.equal(mergeTaraTimeline(turns, [{ id: "bad", created_at: "unknown" }]).length, turns.length);
+});
+
+test("recovery is available only for a demonstrably exited owner with explicit server permission", () => {
+  const pending = { request_id: "old-request", created_at: "2026-10-24T16:00:00Z" };
+  assert.equal(reconcilableTaraRequests(snapshot({ pending_requests: [pending] })).length, 0);
+  for (const owner_status of ["active", "unknown"]) assert.equal(reconcilableTaraRequests(snapshot({ pending_requests: [{ ...pending, owner_status, reconcilable: true }] })).length, 0);
+  assert.equal(reconcilableTaraRequests(snapshot({ pending_requests: [{ ...pending, owner_status: "exited", reconcilable: false }] })).length, 0);
+  assert.equal(reconcilableTaraRequests(snapshot({ pending_requests: [{ ...pending, owner_status: "exited", reconcilable: true }] })).length, 1);
+  assert.throws(() => validateTaraSnapshot(snapshot({ pending_requests: [{ ...pending, owner_status: "maybe", reconcilable: true }] })), /unfinished request/);
+});
+
+test("a recovery acknowledgment has a new durable identity and requires the matching saved uncertainty notice", () => {
+  const operation = createTaraOperation("reconcile", { target_request_id: "old-request", confirm_uncertain: true, orchard_id: "farm-1" }, "ack-request");
+  const restored = restoreTaraOperation(JSON.parse(JSON.stringify(operation)));
+  assert.equal(restored.path, "/api/tara/reconcile");
+  assert.equal(restored.body.request_id, "ack-request");
+  assert.equal(restored.body.target_request_id, "old-request");
+  assert.equal(restoreTaraOperation({ ...operation, body: { ...operation.body, confirm_uncertain: false } }), null);
+  assert.equal(restoreTaraOperation({ ...operation, path: "/api/tara/messages" }), null);
+  const notice = turn({ id: "ack:notice", role: "event", kind: "notice", text: "Earlier request may have used ChatGPT allowance. Continuing will not retry it.", data: { type: "usage_uncertain", target_request_id: "old-request" } });
+  const result = { request_id: "ack-request", outcome: "none", user_turn: null, assistant_turn: null, reaction: null, event: notice, state: snapshot({ turns: [notice] }) };
+  assert.equal(validateTaraResult(result, operation).event.id, notice.id);
+  assert.throws(() => validateTaraResult({ ...result, state: snapshot({ turns: [] }) }, operation), /reconciled/);
+  assert.throws(() => validateTaraResult({ ...result, state: snapshot({ turns: [notice], orchard_id: "other-farm" }) }, operation), /different farm/);
+  assert.throws(() => validateTaraResult({ ...result, state: snapshot({ turns: [notice], pending_requests: [{ request_id: "old-request", created_at: notice.created_at, owner_status: "exited", reconcilable: true }] }) }, operation), /reconciled/);
+  assert.throws(() => validateTaraResult({ ...result, event: { ...notice, data: { ...notice.data, target_request_id: "other-request" } } }, operation), /reconciled/);
 });

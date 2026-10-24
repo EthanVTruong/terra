@@ -15,7 +15,7 @@ $pythonPath = (Resolve-Path -LiteralPath $PythonExe).Path
 if (-not $StateDir) { $StateDir = Join-Path $repoRoot '.terra-local/runtime' }
 if (-not [IO.Path]::IsPathRooted($StateDir)) { $StateDir = Join-Path (Get-Location).Path $StateDir }
 $runtimeDir = [IO.Path]::GetFullPath($StateDir)
-$webRoot = Join-Path $repoRoot 'web/dist'
+$webRoot = Join-Path $repoRoot 'web/dist/client'
 if (-not (Test-Path -LiteralPath (Join-Path $webRoot 'index.html'))) {
     throw 'Build the web client first: pnpm --dir web install --frozen-lockfile; pnpm --dir web build'
 }

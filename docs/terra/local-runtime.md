@@ -4,6 +4,16 @@ One process serves the built interface and API on loopback port 8512 and runs
 the existing farm monitor every five minutes. Close the browser to leave it
 working; keep the computer awake. This is a local service, not a hosted service.
 
+For a first install on Windows, macOS or Linux, use `python run_terra.py` from the
+repository. It prepares the runtime and client, then runs a saved-example preview
+without providers or monitoring. Add `--live --env-file /absolute/path/to/cimis.env`
+to start normal monitoring, and `--sms-env-file` only when configuring phone alerts.
+See [setup and hosting](setup-and-hosting.md).
+
+`python run_terra.py --setup-only` prepares `.venv` and the client for the service
+helper below. `--doctor` checks local prerequisites and build state without
+installing or validating provider credentials. For manual setup:
+
 Install `requirements-terra.txt` into `.venv`, then build the client:
 
 ```powershell

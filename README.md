@@ -1,6 +1,53 @@
 # terra
 Orchard chill and weather updates in a compact inbox, with optional SMS.
 
+## Run locally
+
+Install **Python 3.12**, **Node.js 24 LTS** and **pnpm 11.25.0**. Python 3.12 is the CI baseline; the launcher accepts newer Python and Node.js 22.13 or newer. If pnpm is missing, run `npm install --global pnpm@11.25.0` after installing Node.js.
+
+```sh
+git clone https://github.com/EthanVTruong/terra.git
+cd terra
+python run_terra.py
+```
+
+Use `python3` if that is your platform's Python command. Visit **http://127.0.0.1:8512** once the server starts. Stop with Ctrl+C.
+
+The launcher creates `.venv`, installs the pinned product runtime, builds the web client and serves the UI and API together. No shell activation, database server or API key is needed for this preview. The first setup needs internet access to download dependencies; later runs reuse matching dependencies and an unchanged build.
+
+The preview shows **saved historical assessments and controlled examples**, not current weather. It disables weather credentials, ChatGPT and SMS, skips the background worker, and uses separate state in `.terra-local/preview`. These examples exercise the frozen QC reference and existing temperature estimator; launching Terra does not train a model.
+
+```sh
+python run_terra.py --doctor
+python run_terra.py --setup-only
+```
+
+`--doctor` reports missing tools, dependencies, stale builds and occupied ports without installing or checking provider credentials. If port 8512 is busy, use `--port 8520`.
+
+## Connect current weather
+
+Create a private environment file outside the repository containing `CIMIS_APP_KEY=<your key>`, then run:
+
+```sh
+python run_terra.py --live --env-file /absolute/path/to/cimis.env
+```
+
+On Windows, a path such as `C:/private/cimis.env` works. Existing process variables take precedence. Omit `--env-file` if the key is already in the process environment. Confirm your actual location in Terra; the initial West Orchard pin is a labelled demonstration location.
+
+Live mode enables the five-minute monitor and retains journals in `.terra-local/runtime`. Keep that directory across restarts. Leave the process and computer running to continue monitoring with the browser closed. Add `--no-worker` for on-demand queries only. A running server alone does not prove weather coverage or phone readiness.
+
+- **Message writing:** explicitly sign in to an eligible ChatGPT plan and choose a returned model. Without a usable connection, notes use a factual template. See [ChatGPT connection](docs/terra/chatgpt-plan.md).
+- **Phone alerts:** add `--sms-env-file /absolute/path/to/twilio.env` in live mode, complete sender/verified-recipient setup and opt in for the orchard. SMS stays disabled until explicitly configured. See [Twilio setup](docs/terra/twilio-sms.md).
+- **Operator controls:** the [local runtime guide](docs/terra/local-runtime.md) covers private state paths, Windows background service helpers and shutdown.
+
+## Hosting
+
+Terra currently runs as a **local single-user application**. A static Vercel build can show saved examples. The full live product needs durable shared storage, hosted user authorization, API routing and a reliable worker. Current Vercel supports FastAPI and background Daemons; Terra's local SQLite journals and loopback authentication still need adaptation. See the [setup and hosting assessment](docs/terra/setup-and-hosting.md). The launcher creates no cloud resources or public deployment.
+
+## Development
+
+For frontend iteration, see [web/README.md](web/README.md). The launcher uses `requirements-terra.txt`; test tooling is in `requirements-terra-dev.txt`. The broader native scientific workflow below has separate heavier dependencies in `pyproject.toml` and is not required for the product preview.
+
 ## ChillWatch data / ML layer
 
 Station ingestion (CIMIS, grower DIY uploads, PRISM), physics and LightGBM neighbor model,
@@ -25,17 +72,6 @@ CIMIS snapshot, applies the same frozen QC and Nathan estimator, and returns
 JSON to the web UI. It needs a CIMIS key in the server process environment.
 The browser sends coordinates and optional station identity; it cannot supply
 observations, clocks, data mode or credentials.
-
-```powershell
-python -m pip install -r requirements-terra-dev.txt
-$env:PYTHONPATH = "backend"
-$env:CIMIS_APP_KEY = "<your CIMIS AppKey>"
-python -m terra_monitoring.server --host 127.0.0.1 --port 8512
-```
-
-After building the web preview, open <http://127.0.0.1:8512>. For frontend
-iteration, Vite proxies `/api` to that same local service. Follow the linked
-runbook for the build, development commands, cache/freshness behavior and tests.
 
 Queries are on demand, with a 120-second response-cache window. Use the combined
 runtime below for persistent monitoring. Real current weather, retained cached

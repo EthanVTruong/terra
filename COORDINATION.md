@@ -1067,3 +1067,46 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   ]
 }
 ```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-sim-visual",
+  "owner": "et",
+  "status": "done",
+  "intent": "User requests the next visual polish of the local simulation after merging setup/polished ordinary UI. First review slice is the station/map operator presentation using the approved quiet Terra/Grok direction and cube identity. Keep all numerical, map interpolation, scenario, conversation, notification and source/retention behavior intact. Root/demo owner continues functional verification separately. No shared runtime, credential, sender or provider actions.",
+  "branch": "codex/terra-sim-visual",
+  "base": "853336a",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/demo/src/**",
+    "web/demo/public/**",
+    "web/demo/AGENTS.md",
+    "docs/terra/sim-visual.md",
+    "docs/terra/sim-visual/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "853336a",
+    "summary": "First station-operator visual slice implemented on frozen853336a: reused cube identity, reduced selected-station/header repetition, clearer selected station and raw/filtered controls, readable scenario buttons and consistent comparison hierarchy. User explicitly selected Keep this balance after the actual preview. No broader redesign selected.",
+    "evidence": [
+      "Existing demo AGENTS and source-grounded QA read; preserve real heatmaps, fixed historical clock and local-only phone semantics.",
+      "No new presentation edits yet; current target is station/map controls, with a user checkpoint after the first coherent slice.",
+      "Owner explicitly confirmed frozen853336a and presentation ownership on web/demo/src. Visual runtime pins to that committed head; no owner checkout or8520 state changes.",
+      "Build and4 packaging checks pass. WeatherMap source is byte-identical to853336a; backend/config/immutable data have no diff. Logo bytes match the approved ordinary UI asset. Baseline stations/assessment/heatmap/messages/notifications/clock matched before any action.",
+      "Actual browser spike yielded Davis71.6F / expected46.5F / departure25.1F and Flagged, with4/5 orchard support and no phone notification. Filtered view shows excluded-from-field while preserving the flagged reading.",
+      "320px QA found the inherited body min-width caused15px horizontal overflow with classic scrollbars; scoped Station lab body min-width fix yields305px client and305px scroll. 390px had no horizontal overflow. Current preview journal and replay time are retained; all provider/SMS/LLM/training/live-state side-effect flags remain false.",
+      "All10 scoped groups plus coordination/filesystem pass against exact853336a. Four packaging tests and whitespace pass. User accepted the actual first layout balance. Before/after captures and a source/verification note are retained in docs/terra/sim-visual; no additional creative direction was silently chosen."
+    ],
+    "uncertainty": "Further visual refinement is limited to the accepted balance; no claim of final conversation acceptance or exact native motion. Ordinary approved UI integration is owned by consolidation via root, independently reviewed here; sim visual slice remains outside that release checkpoint.",
+    "next": "Hand the frozen presentation-only commit to root/consolidation for a suitable release checkpoint; independently recheck their final ordinary UI pin/publication delta. Preview18522 remains available with retained state; no owner services/state touched."
+  }
+}
+```

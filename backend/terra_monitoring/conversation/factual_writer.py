@@ -280,8 +280,6 @@ def write_factual(intent, facts, local_text, writer, *, mode="current"):
         text = text[0].upper() + text[1:] + "."
         if suffix:
             text += " " + " ".join(suffix)
-        if mode != "current":
-            text = "Replay only: " + text
         return {"text": text, "provider": "chatgpt_plan", "outcome": "completed"}
     except Exception:
         return {**fallback, "outcome": "llm_failed_or_invalid"}

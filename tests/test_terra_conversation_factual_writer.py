@@ -289,7 +289,8 @@ def test_actual_injected_farm_temperature_remains_replay_and_source_dated(factua
     monitor.apply(profile["id"], {"latest": packet(profile, clock[0], temperature=43.25)}, now=clock[0])
     answer = service.message(request_id="replay-temperature", text="What is the temperature?", orchard_id=profile["id"])["assistant_turn"]
     assert answer["data"]["generation"] == "chatgpt_plan"
-    assert answer["text"].startswith("Replay only:") and "43.25°F" in answer["text"]
+    assert not answer["text"].startswith("Replay only:") and "43.25°F" in answer["text"]
+    assert answer["data"]["local_facts"]["data_mode"] == "injected"
     assert "Jan 11, 2026" in answer["text"] and not answer["data"]["local_facts"]["current_conditions_verified"]
     assert len(generator.calls) == 1 and "PRIVATE REPLAY NAME" not in json.dumps(generator.calls)
 

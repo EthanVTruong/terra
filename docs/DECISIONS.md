@@ -64,6 +64,55 @@ Experiments in `/tmp/claude-0/ablation` during the build; all variants scored on
 - ASOS (`asos-v1`, 83 airport stations, leave-stations-out): model 2.71 F vs physics 2.49 F on their own (not identical) rows,
   consistent with the CIMIS finding.
 
+## Terra integration, hourly offsets, year-round data (2026-10-24)
+
+See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below come from
+`bench/terra_compat/` and `bench/experiments/`.
+
+- **`estimate_location`** (`backend/chillwatch/estimate.py`) is the Terra-facing estimate for a place with no station.
+  - Inputs: observations, findings and geometry.
+  - Output per hour:
+    - the estimate, its method and a parameter-hash version;
+    - used and excluded station ids with reasons;
+    - lapse stations, data-through and as-of times;
+    - status: `ok`, `stale` or `insufficient_data`.
+  - Eligibility follows Terra's rule by default (usable, blank CIMIS flag). Findings and readings respect `as_of` and `visible_at`.
+  - The lapse is fitted only from stations within 80 km, and only when they span 500 ft or more. On Terra's 129 ft network it
+    is off: there it sat at the ±10 °F/kft clip half the time and added nothing.
+  - It reproduces the evaluated method exactly (`bench/terra_compat/estimate_check.json`).
+- **Hour-of-day offsets**: 24 PST bins, each pulled toward its night/day median with weight n/(n+14).
+  - Held-out 2023-25 with weekly 28-day learning: MAE 1.734 → 1.678 °F and chill-hour net error 104 → 97 h vs night/day
+    (`bench/experiments/offset_bins.json`).
+  - In the mock pipeline they recover an injected pattern exactly.
+- **Year-round seasons**: seasons are Sep 1 – Aug 31; April–September 2006–2026 is now ingested (17.3M rows).
+  - Season labels follow the configured start.
+  - Chill counts Nov 1 – Mar 31.
+  - The benchmark, chill map and demo scenario use the Oct–Mar focus window.
+  - `cimis-v2`:
+    - Training data: Sep–Aug seasons 2005-06..2022-23, 10M sampled rows. Seasons are built one at a time and subsampled as
+      they arrive; building them all at once ran out of memory.
+    - It is active.
+    - Held-out 2023-25, known stations, hour-of-day offsets: Oct–Mar 1.987 → 1.931 °F and Apr–Sep 2.618 → 2.020 °F vs
+      `cimis-v1`; chill net error median 69.5 → 60.5 h.
+- **Physics refit year-round**: shrink 0.75 with 600 ft weighting (the Oct–Mar fit chose 0.5).
+  - Held-out 2023-25: 2.384 → 2.333 °F vs the spec physics.
+  - The no-station path now uses p10/p90 bins fitted on its own leave-one-station-out residuals: 79.9% coverage of the
+    nominal 80% on held-out hours.
+  - On Terra's network they hold 77–93% pooled, but 54–96% at single sites, so the Terra-facing intervals stay off by default.
+- **Detection of drifts and offsets**:
+  - **Why recall was low:** the spec gate (24 h mean residual > 3 hourly sigma) cannot fire at noisy stations. Station 193
+    has an hourly sigma of 2.8 °F, so a 5.3 °F offset's 24 h mean never reaches 8.4 °F.
+  - **Offset absorption is not the cause:** a 14-day lag on offset learning changed nothing (drift 25%, offset 38%).
+  - **Option added:** `residual.mean24_basis: daily` judges the 24 h mean against the spread of 24 h means.
+  - **Causal snapshot harness** (`bench/experiments/drift_offset_snapshots.json`), tuned on 2023-24 and checked on 2024-25:
+    the 4× daily gate raises drift recall 31 → 59% and offset recall 23 → 46%; drift/offset false alarms rise 0.07 → 0.24
+    per station-month. The full-replay confirmation is in progress.
+- **Tests**: the SQL tests default to a separate `chillwatch_test` database. The end-to-end test deletes and rewrites rows
+  for synthetic ids that are real CIMIS ids (6 Davis, 70, 71, ...).
+- **Mock pipeline** (`bench/experiments/mock_pipeline.py`): the whole pipeline on synthetic data with known truth passes
+  10 of 10 checks. It covers interpolation vs baselines, lapse at a foothill site, coverage, offsets, detection, the
+  findings handoff and gap filling.
+
 ## Design decisions
 
 - **Station ids**: CIMIS stations keep their CIMIS number as `station_id`; other sources get ids from 100000 up (`store.assign_station_id`).

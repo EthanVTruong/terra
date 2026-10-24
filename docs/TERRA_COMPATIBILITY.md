@@ -10,6 +10,27 @@ Checked 2026-10-24 against `terra-nathan-agent-handoff.md` (dated 2026-10-23). C
 
 Cross-owner changes are **proposals only**. Nothing on ET's side was changed.
 
+## Status after the follow-up work (later on 2026-10-24)
+
+The ChillWatch-side changes proposed below are now built in `backend/chillwatch/estimate.py` (`estimate_location`).
+Details and numbers are in `docs/DECISIONS.md` ("Terra integration, hourly offsets, year-round data").
+
+| Gap below | Now |
+|---|---|
+| 1. Output fields | **Done.** Location id (`TEST-…` when no orchard is given), geometry source, hour, °F, method, a parameter-hash version, used and excluded station ids with reasons (held-out target, Terra finding, quality, source flag, missing, out of range), lapse stations, data-through, as-of and status. |
+| 2. Terra findings | **Done.** Findings exclude readings in a single pass. A finding with an unknown visibility time still counts. |
+| 3. `Y` flags | Terra's rule (blank flags only) is the default; `usable_flags` can keep `Y`. The decision is still ET's. |
+| 4. Unapproved predictors | Unchanged: the Terra path uses air temperature only, and LightGBM stays out. |
+| 5. Intervals | **Calibrated**, on their own estimator's residuals: 79.9% of held-out hours fall inside the nominal 80%. On Terra's network: 77–93% pooled, 54–96% at single sites. **Off by default** (`estimate.intervals`). |
+| 6. As-of / freshness | **Done.** `as_of` and `visible_at` are respected. A reading not yet visible is treated as absent. There is no forecast past `as_of`, and `stale` is returned past `max_age_hours`. |
+| 7. October–March only | **Done.** April–September 2006–2026 is ingested and seasons are September–August years. On Terra's stations, each estimated from the other four: 1.78 °F Oct–Mar 2024-25 and 2.34 °F Apr–Aug 2025 (peer median 1.86 / 2.29 °F). The Delta site runs 3.3 °F warm in summer. |
+
+Other items:
+- **Lapse correction:** off on Terra's network. It applies only when the stations within 80 km span 500 ft or more.
+- **Peer minimum:** `insufficient_data` below 3 usable peers.
+- **Known-station offsets:** now by hour of day.
+- **The note below that March 2026 is "untouched"** still holds for the comparisons it describes; none of the follow-up work was fit on it.
+
 ## Verdict
 
 **The estimator can be adapted to Terra. It is not compatible yet.**

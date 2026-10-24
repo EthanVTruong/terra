@@ -217,18 +217,31 @@ def test_lapse_ignores_stations_beyond_max_km():
 
 def test_intervals_only_when_enabled_and_calibrated(monkeypatch):
     import json
+    import os
 
     from chillwatch import config
 
     assert _at_davis()[["p10", "p90"]].isna().all().all()  # off by default
     v_off = method_version()
     monkeypatch.setitem(config.thresholds()["estimate"], "intervals", True)
-    assert _at_davis()[["p10", "p90"]].isna().all().all()  # on, but no calibrated bins yet
-    st = {"sd": 1.0, "q10": -2.0, "q90": 1.5, "n": 1000, "bias": 0.0}
+    no_bins = _at_davis()
+    assert no_bins[["p10", "p90"]].isna().all().all()  # on, but no calibrated bins yet
     d = config.data_dir() / "models"
     d.mkdir(parents=True, exist_ok=True)
-    (d / "physics_fit.json").write_text(json.dumps({"uncertainty": {
-        "_all": st, "_pooled_n": st, "_pooled_d": st, "_widest": st}}))
+
+    def write_bins(q10, q90, mtime):
+        st = {"sd": 1.0, "q10": q10, "q90": q90, "n": 1000, "bias": 0.0}
+        f = d / "physics_fit.json"
+        f.write_text(json.dumps({"uncertainty": {"_all": st, "_pooled_n": st, "_pooled_d": st, "_widest": st}}))
+        os.utime(f, (mtime, mtime))  # the bins cache is keyed by mtime
+
+    write_bins(-2.0, 1.5, 1_000_000)
     out = _at_davis()
     assert np.allclose(out["p10"], out["temperature"] - 2.0) and np.allclose(out["p90"], out["temperature"] + 1.5)
     assert out["method_version"].iloc[0] != v_off  # the interval switch is part of the version
+    assert out["method_version"].iloc[0] != no_bins["method_version"].iloc[0]  # so is the bin table
+    assert out["method_version"].iloc[0] == method_version()
+    write_bins(-3.0, 2.5, 2_000_000)  # a refit
+    refit = _at_davis()
+    assert np.allclose(refit["p10"], refit["temperature"] - 3.0)
+    assert refit["method_version"].iloc[0] != out["method_version"].iloc[0]

@@ -31,12 +31,14 @@ estimate:
   # Months (PST) with data and validation behind them; other months return insufficient_data.
   # Year-round since April-September data was added. Terra stations held out, estimated from the
   # other four (bench/terra_compat/intervals.json): MAE 1.78 F Oct-Mar 2024-25, 2.34 F Apr-Aug 2025
-  # (peer median 1.86 / 2.29 F); the Delta site (212) runs 3.3 F warm in summer.
+  # (peer median 1.86 / 2.29 F); in summer the Delta site (212) reads 3.3 F cooler than its
+  # peers predict (estimate - truth = +3.3 F).
   validated_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-  # p10/p90 from the physics' own calibrated bins (fit-physics). Coverage of the nominal 80%:
-  # 79.9% on held-out 2023-25 at all region stations; 77-93% pooled on Terra's network and the
-  # ASOS sites, but 54-96% at single sites (a site unlike all its peers, e.g. the Delta in
-  # summer, is under-covered). Off by default: whether to show them is Terra's call.
+  # p10/p90 from the physics fit's calibrated bins (fit-physics). Coverage of the nominal 80%:
+  # 79.9% on held-out 2023-25 at all region stations (the fit's own estimator); with
+  # estimate_location 78-86% pooled on Terra's network and 83-93% at the ASOS sites, but 54-98%
+  # at single sites (a site unlike all its peers, e.g. the Delta in summer, is under-covered).
+  # The bin table is part of method_version. Off by default: whether to show them is Terra's call.
   intervals: false
 
 normalize:
@@ -97,8 +99,9 @@ offsets:
   window_days: 28         # spec
   recompute_days: 7       # spec (weekly)
   # Offsets are kept per PST hour of day (24 bins), each pulled toward its night/day median
-  # with weight n / (n + hour_shrink_k). Held-out 2023-25, weekly 28-day learning: MAE
-  # 1.734 -> 1.678 F, chill-hour net error 104 -> 97 h vs night/day (bench/experiments/offset_bins.json).
+  # with weight n / (n + hour_shrink_k). Held-out 2023-25 (cimis-v1, Nov-Mar scoring), weekly
+  # 28-day learning: MAE 1.734 -> 1.678 F, chill-hour net error per station (both seasons summed)
+  # 104 -> 97 h vs night/day (bench/experiments/offset_bins.json).
   hour_shrink_k: 14       # TODO source: chosen, not fitted (~half the samples a 28-day bin has)
   # Weekly learning can absorb a new drift/offset fault as "station bias" before detection
   # flags it. lag_days ends the 28-day window this many days before the update; a learned
@@ -139,7 +142,8 @@ model:
   num_threads: 0          # 0 = all cores; set lower (or CHILLWATCH_LGB_THREADS) when sharing the machine
   prism_mask_fraction: 0.3  # spec
   seed: 42
-  build_workers: 3        # processes building per-season training frames (each needs ~1-2 GB on CIMIS)
+  build_workers: 1        # seasons built at once for training; a year-round CIMIS season needs ~3.5 GB
+                          # (3 ran out of memory on a 15 GB machine)
   blind_max_train_rows: 1500000  # TODO source: subsample when retraining for blind_test
 
 uncertainty:

@@ -72,7 +72,19 @@ def _params(usable_flags: Iterable[str] = ("",)) -> dict[str, Any]:
         "range_f": [float(th["range"]["min_f"]), float(th["range"]["max_f"])],
         "usable_flags": sorted({str(f).strip() for f in usable_flags}),
         "intervals": bool(e.get("intervals", False)),
+        "interval_bins": _bins_hash() if e.get("intervals", False) else None,
     }
+
+
+def _bins_hash() -> str | None:
+    """Short hash of the p10/p90 bin table and its bin edges (None when not fitted yet)."""
+    bins = unc.physics_bins()
+    if bins is None:
+        return None
+    u = config.thresholds()["uncertainty"]
+    blob = json.dumps({"table": bins, "distance_bins_km": u["distance_bins_km"], "dz_bins_ft": u["dz_bins_ft"]},
+                      sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()[:12]
 
 
 def method_version(params: dict[str, Any] | None = None) -> str:

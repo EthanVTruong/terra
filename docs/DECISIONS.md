@@ -81,32 +81,44 @@ See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below com
     is off: there it sat at the ±10 °F/kft clip half the time and added nothing.
   - It reproduces the evaluated method exactly (`bench/terra_compat/estimate_check.json`).
 - **Hour-of-day offsets**: 24 PST bins, each pulled toward its night/day median with weight n/(n+14).
-  - Held-out 2023-25 with weekly 28-day learning: MAE 1.734 → 1.678 °F and chill-hour net error 104 → 97 h vs night/day
-    (`bench/experiments/offset_bins.json`).
-  - In the mock pipeline they recover an injected pattern exactly.
-- **Year-round seasons**: seasons are Sep 1 – Aug 31; April–September 2006–2026 is now ingested (17.3M rows).
+  - Held-out 2023-24 + 2024-25 with `cimis-v1`, weekly 28-day learning, scored Nov 1 – Mar 31 (run before the year-round
+    change), vs night/day offsets: MAE 1.734 → 1.678 °F; chill-hour net error 104 → 97 h, where net error is per station
+    with both seasons summed, averaged over stations (`bench/experiments/offset_bins.json`).
+  - In the mock pipeline, on an injected pattern that varies within the night and within the day, they land within
+    0.29 °F on average vs 0.86 °F for the night/day pair. As designed, they recover two-thirds of each hour's departure
+    from its half's mean after 28 days, so a within-night pattern is not recovered exactly.
+- **Year-round seasons**: seasons are Sep 1 – Aug 31; April–September 2006–2026 is now ingested (8.66M rows; the readings table holds 17.3M).
   - Season labels follow the configured start.
   - Chill counts Nov 1 – Mar 31.
   - The benchmark, chill map and demo scenario use the Oct–Mar focus window.
   - `cimis-v2`:
-    - Training data: Sep–Aug seasons 2005-06..2022-23, 10M sampled rows. Seasons are built one at a time and subsampled as
-      they arrive; building them all at once ran out of memory.
+    - Training data: Sep–Aug seasons 2005-06..2022-23 (through 2023-09-01), 10M sampled rows. Seasons are built
+      `model.build_workers` at a time and subsampled as they arrive. Building them all at once ran out of memory, and so
+      did three at a time, so `cimis-v2` was built one at a time (`build_workers: 1`, now the default).
     - It is active.
     - Held-out 2023-25, known stations, hour-of-day offsets: Oct–Mar 1.987 → 1.931 °F and Apr–Sep 2.618 → 2.020 °F vs
       `cimis-v1`; chill net error median 69.5 → 60.5 h.
 - **Physics refit year-round**: shrink 0.75 with 600 ft weighting (the Oct–Mar fit chose 0.5).
   - Held-out 2023-25: 2.384 → 2.333 °F vs the spec physics.
-  - The no-station path now uses p10/p90 bins fitted on its own leave-one-station-out residuals: 79.9% coverage of the
-    nominal 80% on held-out hours.
-  - On Terra's network they hold 77–93% pooled, but 54–96% at single sites, so the Terra-facing intervals stay off by default.
+  - The no-station path now uses p10/p90 bins fitted on the physics fit's leave-one-station-out residuals: 79.9% coverage
+    of the nominal 80% on held-out 2023-25 hours at all region stations. That estimator uses the region-wide lapse, not
+    `estimate_location`'s local, span-gated lapse.
+  - With `estimate_location` (`bench/terra_compat/intervals.json`):
+    - Terra's network, each station estimated from the other four: 78–86% pooled (Oct–Mar 2024-25, Apr–Aug 2025, Mar 2026).
+    - Six ASOS sites near Davis: 83–93% pooled.
+    - Single sites: 54–98%.
+    - So the Terra-facing intervals stay off by default.
+    - When they are on, `method_version` includes a hash of the bin table, so a refit changes the version.
 - **Detection of drifts and offsets**:
   - **Why recall was low:** the spec gate (24 h mean residual > 3 hourly sigma) cannot fire at noisy stations. Station 193
     has an hourly sigma of 2.8 °F, so a 5.3 °F offset's 24 h mean never reaches 8.4 °F.
-  - **Offset absorption is not the cause:** a 14-day lag on offset learning changed nothing (drift 25%, offset 38%).
+  - **Offset absorption is not the main cause:** a 14-day lag on offset learning did not help. Drift went 5 → 4 of 16
+    and offset stayed at 6 of 16 (`bench/results/20261024-064834` without the lag, `20261024-064930` with it; only the
+    JSON records `thresholds.offsets.lag_days`).
   - **Option added:** `residual.mean24_basis: daily` judges the 24 h mean against the spread of 24 h means.
-  - **Causal snapshot harness** (`bench/experiments/drift_offset_snapshots.json`), tuned on 2023-24 and checked on 2024-25:
-    the 4× daily gate raises drift recall 31 → 59% and offset recall 23 → 46%; drift/offset false alarms rise 0.07 → 0.24
-    per station-month. The full-replay confirmation is in progress.
+  - **Causal snapshot harness** (`bench/experiments/drift_offset_snapshots.json`, `cimis-v1` expected values), tuned on
+    2023-24, numbers from 2024-25: the 4× daily gate raises drift recall 31 → 59% and offset recall 23 → 46%; drift/offset
+    false alarms rise 0.07 → 0.24 per station-month. The full-replay confirmation is in progress.
 - **Tests**: the SQL tests default to a separate `chillwatch_test` database. The end-to-end test deletes and rewrites rows
   for synthetic ids that are real CIMIS ids (6 Davis, 70, 71, ...).
 - **Mock pipeline** (`bench/experiments/mock_pipeline.py`): the whole pipeline on synthetic data with known truth passes

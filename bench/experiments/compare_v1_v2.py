@@ -1,8 +1,11 @@
 """cimis-v1 (Oct-Mar training) vs cimis-v2 (year-round training) on the held-out 2023-24 / 2024-25.
 
 Known-station accuracy (target excluded from its own features), raw and with hour-of-day offsets
-learned from 2022-23 residuals of the same model, split into the Oct-Mar focus window and
-Apr-Sep. Chill-hour error per station-season from Nov 1 to Mar 31.
+learned from 2022-23 residuals of the same model (a training season for both models), split into
+the Oct-Mar focus window and Apr-Sep. Offsets either pooled over all 12 months of 2022-23 or
+matched to the half-year (Oct-Mar offsets for Oct-Mar hours, Apr-Sep offsets for Apr-Sep hours);
+the pooled table mixes cimis-v1's out-of-sample summer residuals into its winter offsets, so the
+matched one is the fair comparison. Chill-hour error per station-season from Nov 1 to Mar 31.
 """
 
 from __future__ import annotations
@@ -58,10 +61,14 @@ for v, bm in models.items():
                 df[f] = np.nan
     src["resid"] = src["y"] - bm.booster.predict(src[feats].to_numpy(dtype="float32"))
     pred = bm.booster.predict(test[feats].to_numpy(dtype="float32"))
-    tab = hourly_table(src)
-    off = tab.reindex(pd.MultiIndex.from_frame(test[["station_id", "hour"]])).fillna(0).to_numpy()
+    key = pd.MultiIndex.from_frame(test[["station_id", "hour"]])
+    off = hourly_table(src).reindex(key).fillna(0).to_numpy()
+    focus = test["focus"].to_numpy()
+    off_m = np.where(focus, hourly_table(src[src["focus"]]).reindex(key).fillna(0).to_numpy(),
+                     hourly_table(src[~src["focus"]]).reindex(key).fillna(0).to_numpy())
     res = {}
-    for name, p in (("model", pred), ("model_plus_hourly_offset", pred + off)):
+    for name, p in (("model", pred), ("model_plus_hourly_offset", pred + off),
+                    ("model_plus_matched_hourly_offset", pred + off_m)):
         e = p - test["y"].to_numpy()
         part = {}
         for w, m in (("oct_mar", test["focus"].to_numpy()), ("apr_sep", ~test["focus"].to_numpy())):

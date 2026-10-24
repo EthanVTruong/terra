@@ -1,9 +1,9 @@
 """Drift/offset detector settings, scored the way the daily replay runs them, but cheaply.
 
 Detection runs on 60-day windows that end at an as-of time (causal sigma, as in
-run_detection), on cached expected values (bench/experiments/drift_offset_harness.py builds
-them). Faults: bench parameter ranges, one per run; checked at as-of = start + 2, 4, 7, 10 days
-and end + 2 days. False alarms: every clean station, weekly as-of over the season, counting
+run_detection), on cached expected values of the active model (bench/experiments/
+drift_offset_harness.py builds them; the committed results used cimis-v1). Faults: bench
+parameter ranges, one per run; checked at as-of = start + 2, 4, 7, 10 days and end + 2 days. False alarms: every clean station, weekly as-of over the season, counting
 alarms that fall in that week. Learned offsets are left out (bench_lag14 showed they are not
 what limits recall).
 """
@@ -56,9 +56,10 @@ def main(out_path: str) -> None:
     ctx = get_context()
     st = ctx.region_stations()
     results: dict = {n: {} for n in CONFIGS}
+    results["model"] = ctx.model.version
     for si, season in enumerate(SEASONS):
         a, b = focus_bounds(season)
-        exp_all = pd.read_parquet(CACHE / f"expected_{season}.parquet")
+        exp_all = pd.read_parquet(CACHE / f"expected_{ctx.model.version}_{season}.parquet")
         r = ctx.store.readings(a, b, st["station_id"].tolist())
         hours = pd.date_range(a, b, freq="h")
         cov = r.groupby("station_id")["temp_f"].apply(lambda s: s.notna().mean())

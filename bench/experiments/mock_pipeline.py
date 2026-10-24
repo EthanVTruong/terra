@@ -8,7 +8,8 @@ their series is the truth. Season A (2021-22) trains the model and fits the phys
 1. interpolation at the held-out sites (estimate_location, Terra interface) vs nearest-station
    and plain-average baselines; lapse on/off at the foothill site; chill-hour error
 2. calibrated p10-p90 coverage (fit-physics bins) at the held-out sites
-3. hour-of-day offsets recover an injected night/day bias pattern
+3. hour-of-day offsets follow an injected pattern that varies within the night and within the day,
+   compared with what the night/day pair alone would give
 4. detection in a day-by-day replay with injected spike / stuck / offset / drift / outage
 5. Terra handoff: findings from detection keep a faulty neighbor out of the estimate
 6. gap filling of the outage vs truth
@@ -141,7 +142,9 @@ check("chill hours at held-out sites within 15% of truth",
 
 # ------------------------------------------------------------------ 3. hour-of-day offsets recover a known pattern
 sid = int(net["station_id"].iloc[10])
-pattern = np.array([2.5 if (h >= 19 or h <= 6) else 0.5 for h in range(24)])  # by PST hour
+# by PST hour: 0.5-3.5 F, varying inside both the night (19-6) and the day half (a step would be
+# recovered exactly by the night/day pair too, so it would not test the 24 bins)
+pattern = 2.0 + 1.5 * np.cos(2 * np.pi * (np.arange(24) - 4) / 24)
 w = (B0, B0 + pd.Timedelta(days=28))
 clean = Context(MemoryStore(net, netB), model)
 base_off = set_offset_from_window(sid, *w, ctx=clean, kind="learned")
@@ -151,9 +154,19 @@ pst_h = (pd.DatetimeIndex(shifted.loc[m, "ts"]).tz_convert("UTC").tz_localize(No
 shifted.loc[m, "temp_f"] = shifted.loc[m, "temp_f"].to_numpy() + pattern[pst_h]
 off = set_offset_from_window(sid, *w, ctx=Context(MemoryStore(net, shifted), model), kind="learned")
 rec = np.array(json.loads(off["hourly_f"])) - np.array(json.loads(base_off["hourly_f"]))
-err = float(np.abs(rec - pattern).max())
-check("hour-of-day offsets recover an injected bias pattern", err < 0.3, max_abs_error_f=round(err, 3),
-      recovered_night=round(float(rec[[0, 3, 22]].mean()), 2), recovered_day=round(float(rec[[10, 13, 16]].mean()), 2))
+night_h = np.array([(h >= 19) or (h <= 6) for h in range(24)])
+pair = np.where(night_h, off["night_f"] - base_off["night_f"], off["day_f"] - base_off["day_f"])
+err, err_pair = float(np.abs(rec - pattern).max()), float(np.abs(pair - pattern).max())
+mae, mae_pair = float(np.abs(rec - pattern).mean()), float(np.abs(pair - pattern).mean())
+# share of each hour's departure from its half's mean that the 24 bins pick up (n/(n+k) shrink: ~0.67 at 28 days)
+dev = pattern - np.where(night_h, pattern[night_h].mean(), pattern[~night_h].mean())
+got = rec - np.where(night_h, rec[night_h].mean(), rec[~night_h].mean())
+share = float(np.dot(got, dev) / np.dot(dev, dev))
+check("hour-of-day offsets follow a within-night/within-day pattern better than night/day offsets",
+      mae < 0.6 * mae_pair and err < err_pair, max_abs_error_f=round(err, 3), mean_abs_error_f=round(mae, 3),
+      night_day_pair_max_abs_error_f=round(err_pair, 3), night_day_pair_mean_abs_error_f=round(mae_pair, 3),
+      within_half_share_recovered=round(share, 3), pattern_f=np.round(pattern, 2).tolist(),
+      recovered_f=np.round(rec, 2).tolist())
 
 # ------------------------------------------------------------------ 4. detection replay with injected faults
 ids = net["station_id"].astype(int).tolist()
@@ -180,7 +193,7 @@ report["detection"] = det
 faulted = {f["station"] for f in faults}
 fa = {(d.station_id, d.type, str(pd.Timestamp(d.start_ts).date())) for _, ds in res.runs for d in ds
       if d.station_id not in faulted and d.station_id != 0}
-months = len(ids) * (last_day - first_day).days / 30.44
+months = len(set(ids) - faulted) * (last_day - first_day).days / 30.44  # station-months of the clean stations only
 check("spike, stuck and outage detected", all(det[k]["detected"] for k in ("spike", "stuck", "outage")),
       **{k: det[k]["detected"] for k in ("spike", "stuck", "outage")})
 check("4 F offset and 5 F drift detected", det["offset"]["detected"] and det["drift"]["detected"],

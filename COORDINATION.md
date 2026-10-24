@@ -9,17 +9,36 @@
   "intent": "User requested holding custom SMS/webhook work and, if supported, sending predefined trial templates as placeholders when discrepancies select a meaningful alert. Add an explicitly configured template mode to the existing dispatcher with honest persisted receipts/UI labels. Preserve event selection, opt-in, ledger, retry, frozen QC and Nathan models. No paid account changes; automatic sends stay disabled until private credential readiness is resolved.",
   "branch": "codex/twilio-trial-placeholder",
   "base": "a9dcc6c06b872890cf86adda22b207251fb50b5e",
-  "domains": ["terra-coordination", "terra-qc-json"],
-  "paths": ["COORDINATION.md", "backend/terra_monitoring/sms.py", "backend/terra_monitoring/farm_ops/service.py", "tests/test_terra_sms.py", "tests/test_farm_chill_ops.py", "web/src/delivery.js", "web/src/SmsControls.jsx", "web/tests/delivery.test.mjs", "docs/terra/twilio-sms.md", ".env.example"],
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/sms.py",
+    "backend/terra_monitoring/farm_ops/service.py",
+    "tests/test_terra_sms.py",
+    "tests/test_farm_chill_ops.py",
+    "web/src/delivery.js",
+    "web/src/SmsControls.jsx",
+    "web/tests/delivery.test.mjs",
+    "docs/terra/twilio-sms.md",
+    ".env.example"
+  ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
     "revision": "0c28839c626087c099702345064c59b62f4f1e82",
     "summary": "Placeholder branch reconciled with cleanup PR6 and accepted conversation documentation, pushed and opened as reviewable PR8. One focused source repair preserves shared parser/runtime journal selection/schema-once behavior and trial metadata; service differs only by four receipt fields. Both prior branches/history are preserved. Root retains final merge and activation.",
-    "evidence": ["Final terra.py check against latest documentation maina9dcc6c passed terra-farm-tests,terra-harness,terra-json-tests,terra-pipeline-tests,terra-runtime-tests,terra-sms-tests plus coordination/filesystem. Earlier cleanup-basee4292b2 check also passed; overlap explicitly coordinated with root/cleanup owners.", "Five UI semantics and four packaging cases pass. Frontend/dependency tree is identical to the production build already verified on the original source. Independent review found no concrete P1/P2 regressions; both cleanup and trial test sets retained.", "PR8 diff is limited to10 placeholder-related files. No writer/runtime/configuration module change againstmain; service change is exactly content_mode/template_name/transport/data_mode passthrough. Priorhead d0b44a9 is preserved at codex/twilio-trial-placeholder-pre-cleanup.", "Trial payload exactly To plus fixed Body=sms_internal_alerts; persisted source/provider/content/data-mode correlation keeps actual orchard text immutable inapp. No real SMS, runtime, private credential or enabled-flag changes during integration preparation. Prior Console handset proof remains separate."],
+    "evidence": [
+      "Final terra.py check against latest documentation maina9dcc6c passed terra-farm-tests,terra-harness,terra-json-tests,terra-pipeline-tests,terra-runtime-tests,terra-sms-tests plus coordination/filesystem. Earlier cleanup-basee4292b2 check also passed; overlap explicitly coordinated with root/cleanup owners.",
+      "Five UI semantics and four packaging cases pass. Frontend/dependency tree is identical to the production build already verified on the original source. Independent review found no concrete P1/P2 regressions; both cleanup and trial test sets retained.",
+      "PR8 diff is limited to10 placeholder-related files. No writer/runtime/configuration module change againstmain; service change is exactly content_mode/template_name/transport/data_mode passthrough. Priorhead d0b44a9 is preserved at codex/twilio-trial-placeholder-pre-cleanup.",
+      "Trial payload exactly To plus fixed Body=sms_internal_alerts; persisted source/provider/content/data-mode correlation keeps actual orchard text immutable inapp. No real SMS, runtime, private credential or enabled-flag changes during integration preparation. Prior Console handset proof remains separate."
+    ],
     "uncertainty": "PR8 remains unmerged and exact-head CI must be checked by the integration owner. Automatic trial API delivery remains unverified/disabled pending private credential rotation and an explicit delivery test. Trial omits provider queue ValidityPeriod; local submission freshness is still enforced.",
-    "next": "Root reviews https://github.com/EthanVTruong/terra/pull/8 and its exact-head checks, owns merge and any later private activation. Do not independently change main/runtime/credentials/flags or send texts. Keep actual in-app message and placeholder phone receipt distinct."
+    "next": "PR8mergedat9c3d64c afterall4exactheadCIjobs40113058734success. Rootownscombinedauth/runtime integration. AutomaticAPIremainsdisabledpendingcredentialrotation; priorConsoleplaceholderhandsetreceiptisseparate."
   }
 }
 ```
@@ -821,7 +840,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "status": "active",
   "intent": "Implement user-approved local-first open-source ChatGPT plan connection and concise fact-checked grower wording. Root integrates auth/provider/UI/runtime and isolated replay verification; preserve deterministic QC/Nathan math, immutable notes and original staged files. Cleanup and placeholder owners retain their scopes.",
   "branch": "codex/terra-chatgpt-plan",
-  "base": "a9dcc6c",
+  "base": "9c3d64cb036faeb080eccfe3fd773907a43a0ae3",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -865,7 +884,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
       "Newcropneutralweather-onlyfullsavedweatherQC/Nathan/watch/writer replayproduced2validatedChatGPTnotes,2requests758reportedtokens. Nonecrop/variety/target; noSMS. Quietreplaybannernowdistinguishesoldreadingsfromcurrentavailability; currentmodeunavailablebannerpreserved.",
       "GitHubcontributorsAPI200nowlists onlyEthanVTruong andNathan-W123; publishedmainshortlog has64Ethan/39Nathancommits, noassistantauthors. Originalnine stagedentriesunchanged."
     ],
-    "uncertainty": "Latest-head integratedchecks/CI and finalmain merge/restartpending. Awaiting usertonefeedback. AutomaticTwilioAPI stilldisabledpendingcredentialrotation; priorConsoleplaceholder wasdeliveredandhandsetconfirmed.",
+    "uncertainty": "CombinedlatestheadCI/mainmerge/restartpending. Naturalcoveragevoiceapprovedandactualweatheronlypreviewverified. Othernotevoice/conversationalextensionsremainseparate; automaticTwilioAPIstilldisabledpendingrotation.",
     "next": "Merge latestmaincontract, reconcileplaceholderPR, completechecks/CI and controlledruntime replacement preservingstate. Keepfutureconversationacceptance separate."
   }
 }

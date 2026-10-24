@@ -6,11 +6,16 @@ radius_km: 150
 include_stations: [12]              # Durham, closed July 2025 ("rescued station" demo)
 # "recently closed": stations disconnected on/after this date are kept.
 recently_closed_since: "2005-10-01" # TODO source: spec says "recently closed" without a cutoff; using the backfill start
+# Seasons are Sep 1 - Aug 31 years (data and models are year-round; Sep 1 is where FNRIC and
+# Terra start chill accumulation). The benchmark and the chill map work on the Oct 1 - Mar 31
+# focus window, which is what the seasons covered before April-September data was added.
 seasons:
   first: "2005-06"
   last: "2025-26"
-  start_mmdd: "10-01"
-  end_mmdd: "03-31"
+  start_mmdd: "09-01"
+  end_mmdd: "08-31"
+  focus_start_mmdd: "10-01"
+  focus_end_mmdd: "03-31"
 # Never trained on; used only by `chillwatch bench`.
 holdout_seasons: ["2023-24", "2024-25"]
 # Also kept out of training so the demo scenario never runs on training data.

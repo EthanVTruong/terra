@@ -14,3 +14,4 @@ bench/results/*.json
 data_asos/
 .env
 data/grid/
+data/experiments/

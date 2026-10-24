@@ -91,6 +91,11 @@ offsets:
   # with weight n / (n + hour_shrink_k). Held-out 2023-25, weekly 28-day learning: MAE
   # 1.734 -> 1.678 F, chill-hour net error 104 -> 97 h vs night/day (bench/experiments/offset_bins.json).
   hour_shrink_k: 14       # TODO source: chosen, not fitted (~half the samples a 28-day bin has)
+  # Weekly learning can absorb a new drift/offset fault as "station bias" before detection
+  # flags it. lag_days ends the 28-day window this many days before the update; a learned
+  # offset may also move at most max_weekly_change_f per update (null = no limit).
+  lag_days: 0             # spec (no lag)
+  max_weekly_change_f: null
 
 repair:
   long_gap_days: 14       # spec
@@ -105,6 +110,7 @@ chill:
   min_f: 32.0             # spec
   max_f: 45.0             # spec
   start_mmdd: "11-01"     # spec
+  end_mmdd: "03-31"       # the window the spec's Oct-Mar seasons covered (data is now year-round)
 
 model:
   objective: huber        # spec

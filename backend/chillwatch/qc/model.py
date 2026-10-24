@@ -222,11 +222,12 @@ def chill_hours(temps: np.ndarray) -> float:
 
 
 def chill_mask(ts: pd.Series | pd.DatetimeIndex) -> np.ndarray:
-    """Hours counted for chill: from Nov 1 (PST) within the season."""
-    start = config.thresholds()["chill"]["start_mmdd"]
+    """Hours counted for chill: PST dates from chill.start_mmdd (Nov 1) through chill.end_mmdd (Mar 31)."""
+    c = config.thresholds()["chill"]
+    start, end = c["start_mmdd"], c.get("end_mmdd", "06-30")
     local = pd.DatetimeIndex(ts).tz_convert("UTC").tz_localize(None) - pd.Timedelta(hours=8, seconds=1)
     mmdd = local.strftime("%m-%d")
-    return np.asarray((mmdd >= start) | (local.month < 7))
+    return np.asarray((mmdd >= start) | (mmdd <= end)) if start > end else np.asarray((mmdd >= start) & (mmdd <= end))
 
 
 def error_report(df: pd.DataFrame, pred_col: str = "pred") -> dict[str, Any]:
@@ -716,16 +717,30 @@ def set_offset_from_window(
 
 
 def update_learned_offsets(as_of: datetime, ctx: Any | None = None, station_ids: list[int] | None = None) -> int:
-    """Weekly job: per-station night/day median residual over the last 28 days of ok readings."""
+    """Weekly job: per-station median residual (night/day and hour of day) over 28 days of ok readings.
+
+    ``offsets.lag_days`` ends the 28-day window that many days before ``as_of``, so detection has
+    that long to flag a new drift or offset before learning can absorb it as station bias;
+    ``offsets.max_weekly_change_f`` limits how far a learned offset may move from the previous
+    one. The offset takes effect at ``as_of`` (stored as ``window_end``; ``window_start`` is the
+    start of the data window).
+    """
     from ..context import get_context
 
     ctx = ctx or get_context()
-    days = int(config.thresholds()["offsets"]["window_days"])
-    end = utc(as_of)
+    o = config.thresholds()["offsets"]
+    days = int(o["window_days"])
+    lag = pd.Timedelta(days=int(o.get("lag_days", 0)))
+    cap = o.get("max_weekly_change_f")
+    effective = utc(as_of)
+    end = effective - lag
     start = end - pd.Timedelta(days=days)
-    ids = station_ids or ctx.active_station_ids(end)
+    ids = station_ids or ctx.active_station_ids(effective)
     exp = ctx.expected(start, end, ids, with_offsets=False)
     rd = ctx.store.readings(start, end, ids)
+    prev = ctx.store.offsets()
+    if len(prev):
+        prev = prev[(prev["kind"] == "learned") & (pd.to_datetime(prev["window_end"], utc=True) <= effective)]
     n_added = 0
     for sid in ids:
         e = exp[exp["station_id"] == sid]
@@ -735,10 +750,20 @@ def update_learned_offsets(as_of: datetime, ctx: Any | None = None, station_ids:
         n_f, d_f, n = compute_offset(r, e)
         if n < 24 * 7:
             continue
+        hourly = hourly_offsets(r, e, n_f, d_f)
+        last = prev[prev["station_id"] == sid] if len(prev) else prev
+        if cap is not None and len(last):
+            last = last.sort_values("window_end").iloc[-1]
+            c = float(cap)
+            lh = json.loads(last["hourly_f"]) if isinstance(last.get("hourly_f"), str) else None
+            n_f = float(np.clip(n_f, last["night_f"] - c, last["night_f"] + c))
+            d_f = float(np.clip(d_f, last["day_f"] - c, last["day_f"] + c))
+            if lh is not None:
+                hourly = [float(np.clip(v, lv - c, lv + c)) for v, lv in zip(hourly, lh, strict=True)]
         ctx.store.add_offset({
             "station_id": int(sid), "kind": "learned", "night_f": n_f, "day_f": d_f,
-            "hourly_f": json.dumps(hourly_offsets(r, e, n_f, d_f)),
-            "window_start": start, "window_end": end, "created_at": pd.Timestamp.now(tz="UTC"),
+            "hourly_f": json.dumps(hourly),
+            "window_start": start, "window_end": effective, "created_at": pd.Timestamp.now(tz="UTC"),
         })
         n_added += 1
     ctx.invalidate()

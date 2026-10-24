@@ -6,16 +6,22 @@ from typing import Any
 
 import pandas as pd
 
+from . import config
+
 
 def utc(x: Any) -> pd.Timestamp:
     t = pd.Timestamp(x)
     return t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
 
 
+def _season_start_mmdd() -> str:
+    return str(config.region().get("seasons", {}).get("start_mmdd", "10-01"))
+
+
 def season_of(ts: pd.Timestamp) -> str:
-    """Chill season label (``2023-24``) for a timestamp, by PST calendar month."""
+    """Season label (``2023-24``) for a timestamp: the season starting on or before its PST date."""
     local = utc(ts).tz_localize(None) - pd.Timedelta(hours=8, seconds=1)
-    y = local.year if local.month >= 7 else local.year - 1
+    y = local.year if local.strftime("%m-%d") >= _season_start_mmdd() else local.year - 1
     return f"{y}-{str(y + 1)[2:]}"
 
 
@@ -36,5 +42,13 @@ def seasons_between(first: str, last: str) -> list[str]:
 
 def season_labels(ts: pd.Series | pd.DatetimeIndex) -> pd.Series:
     t = pd.DatetimeIndex(ts).tz_convert("UTC").tz_localize(None) - pd.Timedelta(hours=8, seconds=1)
-    y = pd.Series(t.year.where(t.month >= 7, t.year - 1), index=getattr(ts, "index", None))
+    y = pd.Series(t.year.where(t.strftime("%m-%d") >= _season_start_mmdd(), t.year - 1),
+                  index=getattr(ts, "index", None))
     return y.astype(str) + "-" + (y + 1).astype(str).str[2:]
+
+
+def focus_bounds(season: str) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """The Oct-Mar part of a season that the benchmark and the chill map work on."""
+    s = config.region().get("seasons", {})
+    return season_bounds(season, str(s.get("focus_start_mmdd", s.get("start_mmdd", "10-01"))),
+                         str(s.get("focus_end_mmdd", s.get("end_mmdd", "03-31"))))

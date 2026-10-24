@@ -20,7 +20,7 @@ import pandas as pd
 from .. import config
 from ..qc.model import chill_mask, predict_location_frame, unseen_uses_model
 from ..qc.neighbors import build_field, haversine_km
-from ..timeutil import season_bounds, utc
+from ..timeutil import focus_bounds, utc
 
 log = logging.getLogger(__name__)
 KM_PER_DEG_LAT = 111.195
@@ -57,8 +57,7 @@ def predict_grid(ctx: Any, season: str, km: float = 5.0, end: Any | None = None,
     estimate; ``noise_shift_hours`` is how far the traces' median sits from it.
     """
     g = config.thresholds()["grid"]
-    reg = config.region()
-    start, s_end = season_bounds(season, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
+    start, s_end = focus_bounds(season)  # the Oct-Mar part of the season
     end_ts = min(utc(end), s_end) if end is not None else s_end
     st = ctx.region_stations()
     rd = ctx.store.readings(start, end_ts, st["station_id"].tolist())

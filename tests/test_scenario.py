@@ -8,13 +8,14 @@ from chillwatch.context import Context
 from chillwatch.demo.scenario import run_scenario
 from chillwatch.demo.synthetic import make_readings
 from chillwatch.store import MemoryStore
-from chillwatch.timeutil import season_bounds
+from chillwatch.timeutil import focus_bounds
 
 
 @pytest.mark.slow
 def test_demo_scenario_all_detected(syn_stations, syn_model):
-    seasons = config.region()["seasons"]
-    start, end = season_bounds("2025-26", seasons["start_mmdd"], seasons["end_mmdd"])
+    # synthetic readings over the window run_scenario replays: the Oct-Mar focus window, whose
+    # first day is the scenario's day 0 (syn_model still trains from the configured season start)
+    start, end = focus_bounds("2025-26")
     end = min(end, start + pd.Timedelta(days=75) - pd.Timedelta(hours=1))
     r = make_readings(syn_stations, start.tz_localize(None), end.tz_localize(None), seed=2025)
     ctx = Context(MemoryStore(syn_stations, r), syn_model)

@@ -19,6 +19,7 @@ data/experiments/
 # Terra local build, test and private runtime files.
 .terra-local/
 node_modules/
+web/.vite/
 dist/
 .env.*
 !.env.example

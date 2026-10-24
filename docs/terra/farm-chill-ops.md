@@ -2,7 +2,7 @@
 
 This is the persistent seasonal-watch layer over the existing live CIMIS query,
 frozen e1 statistical QC and Nathan's location estimator. Those numerical
-modules are unchanged. The first profile is Nonpareil almond at a configured
+formulas and calibration are unchanged. The first profile is Nonpareil almond at a configured
 Davis-area **demonstration** pin, not an independently verified real orchard.
 
 The backend now saves orchard profiles, hourly estimates and revisions, full
@@ -61,18 +61,24 @@ conversation are sent to the writer. Only relevant fields are present.
 - [Actual API feed fixture](farm-chill-ops/feed-fixture.json)
 
 Python decides detection, severity, lifecycle, grouping, thresholds and delivery
-eligibility. The LLM returns message text only, normally one or two sentences,
-at most 420 characters, with no em dash. Supplied observation/display times stay
-visible. Neighbor measurements and the full assessment remain under Details.
+eligibility. It also renders a small set of complete factual message candidates,
+normally one or two sentences and at most 420 characters. The optional LLM selects
+one candidate's wording; quantities, lifecycle claims and display times cannot be
+rewritten. Neighbor measurements and the full assessment remain under Details.
 
 By default the same facts use deterministic templates. An optional OpenAI
 Responses writer requires both `OPENAI_API_KEY` and an explicitly selected
 `TERRA_LLM_MODEL`; no model, account, key or billing is created here. It sends
-the fixed instructions and compact input without stored provider conversation.
-Provider failure, invalid text or an invented numeric fact falls back to the
-template and cannot stop ingestion or lose the event. The text/style checks
-are safeguards, not a proof that arbitrary generated language is correct.
-[Official API documentation](https://developers.openai.com/api/docs/guides/text).
+the fixed instructions, compact facts and vetted candidates without stored
+provider conversation. A strict `text.format` JSON schema limits the response to
+`{"message": <one exact candidate>}`. Local validation independently checks exact
+membership, including with a mocked, incompatible or nonconforming provider.
+Provider failure, refusal, incomplete output, extra fields or unapproved wording
+falls back to the local template and cannot stop ingestion or lose the event.
+Timestamp numbers cannot become chill totals, and a limited-coverage event cannot
+be paraphrased into a recovery. The saved `llm_input` remains the compact factual
+packet; the HTTP writer request adds a separate candidate list.
+[Official Structured Outputs documentation](https://developers.openai.com/api/docs/guides/structured-outputs).
 
 ## Run
 

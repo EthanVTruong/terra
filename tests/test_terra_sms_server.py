@@ -43,8 +43,6 @@ class FakeSMS:
             return {"transport": "twilio", "configured": True, "enabled": True,
                     "demo_enabled": True, "suppressed": False,
                     "recipient": "***4567", "sender": "***1111"}
-        if operation == "dispatch":
-            return [{"event_id": "live-event", "status": "queued"}]
         if operation == "disable":
             return {"suppressed": True}
         return {"event_id": args[0], "status": "queued", "mode": "demo"}
@@ -60,10 +58,6 @@ class FakeSMS:
 
     def disable(self):
         return self._result("disable")
-
-    def dispatch_assessment(self, packet):
-        return self._result("dispatch", packet)
-
 
 @pytest.fixture
 def setup(tmp_path):
@@ -87,6 +81,16 @@ def test_status_exposes_only_masked_dispatcher_configuration_and_ephemeral_token
     assert body["recipient"] == "***4567" and body["sender"] == "***1111"
     assert len(body["control_token"]) >= 32 and PRIVATE not in response.text
     assert sms.calls == [("status", ())] and query.calls == []
+
+
+@pytest.mark.parametrize("path", ["/", "/api/health", "/api/sms/status", "/api/sms/unknown"])
+def test_local_page_and_api_block_framing_and_content_type_sniffing(setup, path):
+    client, _, _ = setup
+    response = client.get(path)
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert "base-uri 'self'" in response.headers["content-security-policy"]
+    assert response.headers["x-content-type-options"] == "nosniff"
 
 
 @pytest.mark.parametrize("headers", [
@@ -115,7 +119,6 @@ def test_status_allows_literal_loopback_hosts(setup, host):
     ("POST", "/api/sms/demo", {"event_id": "demo-one"}),
     ("GET", "/api/sms/receipt/demo-one", None),
     ("POST", "/api/sms/disable", None),
-    ("POST", "/api/sms/check", QUERY),
 ])
 def test_sms_operations_require_current_token_and_local_origin(setup, method, path, body):
     client, query, sms = setup
@@ -194,32 +197,23 @@ def test_demo_rejects_invalid_ids_arbitrary_phone_body_and_packet(setup, body):
     assert sms.calls == [] and query.calls == []
 
 
-def test_pure_assess_never_dispatches_even_with_sms_enabled(setup):
+@pytest.mark.parametrize("include_sms_authorization", [False, True])
+def test_pure_assess_never_dispatches_even_with_sms_enabled(setup, include_sms_authorization):
     client, query, sms = setup
-    response = client.post("/api/assess", json=QUERY)
+    headers = authorize(client) if include_sms_authorization else {}
+    sms.calls.clear()
+    response = client.post("/api/assess", json=QUERY, headers=headers)
     assert response.status_code == 200 and response.json() == PACKET
     assert query.calls == [{**QUERY, "refresh": False}] and sms.calls == []
 
 
-def test_live_check_dispatches_only_server_assessment(setup):
+@pytest.mark.parametrize("headers_present", [False, True])
+def test_raw_live_dispatch_route_does_not_exist_or_bypass_farm_policy(setup, headers_present):
     client, query, sms = setup
-    headers = authorize(client)
+    headers = authorize(client) if headers_present else {}
     sms.calls.clear()
     response = client.post("/api/sms/check", json=QUERY, headers=headers)
-    assert response.status_code == 200
-    assert response.json() == {"assessment": PACKET, "deliveries": [{"event_id": "live-event", "status": "queued"}]}
-    assert query.calls == [{**QUERY, "refresh": False}]
-    assert sms.calls == [("dispatch", (query.packet,))]
-
-
-@pytest.mark.parametrize("extra", [{"observations": []}, {"data_mode": "synthetic"},
-                                   {"to": "+15551234567"}, {"assessment": PACKET}])
-def test_live_check_rejects_client_source_packet_and_recipient(setup, extra):
-    client, query, sms = setup
-    headers = authorize(client)
-    sms.calls.clear()
-    response = client.post("/api/sms/check", json={**QUERY, **extra}, headers=headers)
-    assert response.status_code == 422
+    assert response.status_code == 404 and response.json()["error"]["code"] == "not_found"
     assert query.calls == [] and sms.calls == []
 
 
@@ -228,7 +222,7 @@ def test_source_error_returns_safe_error_and_never_dispatches(setup):
     headers = authorize(client)
     sms.calls.clear()
     query.error = RuntimeError(PRIVATE)
-    response = client.post("/api/sms/check", json=QUERY, headers=headers)
+    response = client.post("/api/assess", json=QUERY, headers=headers)
     assert response.status_code == 500
     assert response.json()["error"]["code"] == "internal_error"
     assert PRIVATE not in response.text and sms.calls == []
@@ -240,20 +234,21 @@ def test_invalid_service_response_is_safe_json_without_dispatch(setup, packet):
     headers = authorize(client)
     sms.calls.clear()
     query.packet = packet
-    response = client.post("/api/sms/check", json=QUERY, headers=headers)
+    response = client.post("/api/assess", json=QUERY, headers=headers)
     assert response.status_code == 502
     assert response.json()["error"]["code"] == "invalid_service_response"
     assert sms.calls == []
 
 
-def test_dispatcher_error_retains_assessment_and_redacts_provider_details(setup):
+def test_sms_transport_failure_cannot_break_pure_assessment(setup):
     client, query, sms = setup
     headers = authorize(client)
+    sms.calls.clear()
     sms.error = RuntimeError(PRIVATE)
-    response = client.post("/api/sms/check", json=QUERY, headers=headers)
+    response = client.post("/api/assess", json=QUERY, headers=headers)
     assert response.status_code == 200
-    assert response.json()["assessment"] == PACKET and response.json()["deliveries"] == []
-    assert "sms_error" in response.json() and PRIVATE not in response.text
+    assert response.json() == PACKET and sms.calls == []
+    assert PRIVATE not in response.text
 
 
 @pytest.mark.parametrize("method,path,body", [
@@ -273,7 +268,7 @@ def test_provider_or_storage_errors_never_echo_sensitive_exception(setup, method
 
 
 @pytest.mark.parametrize("method,path", [("GET", "/api/sms/demo"), ("POST", "/api/sms/status"),
-                                        ("GET", "/api/sms/disable"), ("GET", "/api/sms/check"),
+                                        ("GET", "/api/sms/disable"),
                                         ("POST", "/api/sms/receipt/demo-one")])
 def test_wrong_sms_methods_are_json_405_and_unknown_route_is_404(setup, method, path):
     client, _, sms = setup

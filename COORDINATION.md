@@ -6,7 +6,7 @@
   "id": "terra-ui-quiet",
   "owner": "et",
   "status": "done",
-  "intent": "User requests removing repeated Local inbox /Demo orchard /Orchard updates /Monitoring subtext and replacing the wordmark with the approved square character. Follow-up: group notes by Pacific calendar day, show clocks below bubbles, and collapse the evidence heading/date stack. Presentation only: preserve exact stored messages/JSON, real delivery states, demo/replay context in Details and source controls, and visible data warnings.",
+  "intent": "User requests removing repeated Local inbox /Demo orchard /Orchard updates /Monitoring subtext and replacing the wordmark with the approved square character. Follow-up: group notes by Pacific calendar day, show clocks below bubbles, and collapse the evidence heading/date stack. Presentation only: preserve exact stored messages/JSON, real delivery states, demo/replay context in Details and source controls, and visible data warnings. Current follow-up: give the square character more room and polish its header alignment at desktop and phone widths.",
   "branch": "codex/terra-ui-quiet",
   "base": "78e835d",
   "domains": [
@@ -19,18 +19,17 @@
   ],
   "depends_on": [],
   "contracts": [],
-  "artifacts": [
-    "web/design-qa.md"
-  ],
+  "artifacts": [],
   "handoff": {
-    "revision": "d2d6ea6cad0f7f7410f9c9295203149499f6cfc9",
-    "summary": "Approved cube character replaces the wordmark and favicon. Repeated orchard/local-inbox/monitoring labels are trimmed; Pacific day dividers and clock-only note footers replace repeated full dates. Evidence uses one compact heading/time row. Exact messages, JSON, numeric evidence, source warnings and actual delivery states are preserved.",
+    "revision": "3244802164356e12ca18a2ab55ee2d87982846d4",
+    "summary": "Approved cube character replaces the wordmark and favicon. Repeated orchard/local-inbox/monitoring labels are trimmed; Pacific day dividers and clock-only note footers replace repeated full dates. Evidence uses one compact heading/time row. Exact messages, JSON, numeric evidence, source warnings and actual delivery states are preserved. Follow-up character placement uses a shared 52px header, 28px icon and 24px left inset (20px below 370px), with about 12px vertical clearance and a 6px header-popover gap.",
     "evidence": [
       "Production build; seven UI and four packaging tests pass. Configured scoped checks pass against origin/main 78e835d: farm, harness, JSON, pipeline, runtime and SMS.",
-      "Actual unified API on 8512 and preview on 8504 verified at 1280x900, 390x844 and 320x568. No horizontal overflow; mobile focus wrap/Escape/opener return, raw JSON preservation and historical mode/date verified. Screenshots: .terra-local/ui-quiet/desktop.png, mobile.png and mobile-evidence.png. Exact Grok article centered timestamp inspected; Terra multi-day behavior is an adaptation."
+      "Actual unified API on 8512 and preview on 8504 verified at 1280x900, 390x844 and 320x568. No horizontal overflow; mobile focus wrap/Escape/opener return, raw JSON preservation and historical mode/date verified. Screenshots: .terra-local/ui-quiet/desktop.png, mobile.png and mobile-evidence.png. Exact Grok article centered timestamp inspected; Terra multi-day behavior is an adaptation.",
+      "Logo follow-up: production build, diff whitespace check and coordination/scope/filesystem validation pass. Actual desktop 1280x900, mobile 390x844 and 320x568 checked; matching header borders and no overflow. Screenshots: .terra-local/ui-logo-spacing/. Backend checks were not repeated for this CSS-only follow-up. Corrected artifact field to declared IDs rather than file paths."
     ],
     "uncertainty": "Visual review is ready; branch is not integrated into main. Backend and external accounts were not changed by this refinement. Existing full-pipeline task owns final integration.",
-    "next": "Review the updated 8504 preview. Integration owner can consume codex/terra-ui-quiet as a small presentation change after review."
+    "next": "Review the polished header in the updated 8504 preview. Integration owner can consume codex/terra-ui-quiet; no main integration performed in this refinement."
   }
 }
 ```

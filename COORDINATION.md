@@ -722,16 +722,18 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "fdca265",
-    "summary": "Integrated independent farm, runtime/transport and native input repairs. Parent integration owner acknowledged overlap and froze main/service. Final generated-writer reconciliation follows explicit user wording direction; no auth implementation or phone activation in this scope.",
+    "revision": "cd34d60f1bf0873111df205e2f866606d429df3b",
+    "summary": "All audited source repairs integrated and independently reviewed. Native guards preserve valid numerical outputs; farm state, indexed Details, durable questions, runtime journals, bounded source caches/backoff and HTTP semantics repaired. Unused raw-station SMS dispatch removed. Final writer genuinely generates bounded event prose with field-bound quantities/source times and conservative validation; injectable plan generator shares validation without silent API-key fallback.",
     "evidence": [
-      "Native guard lane: 110 offline cases and exact-base parity over 960 estimator hours; six frozen import hashes and 22 protected QC/repair/pipeline file hashes remain unchanged.",
-      "Integrated farm/API/writer: 130 cases passed before generated-writer reconciliation. Independent farm, input and transport reviews found no remaining material issues after relative state-path and catalog cooldown corrections.",
-      "Built web production output; four packaging and three delivery-state tests passed. Isolated real HTTP/runtime process, guard/422/405, repeated question identity, old Details, pure query, restart heartbeat and persistent message identities passed with SMS disabled and private configuration removed.",
-      "Offline saved-weather demo exercised frozen QC and Nathan estimator through ok/unavailable/ok/ok/ok and published exactly welcome, limited and recovery messages, all labelled Demo replay."
+      "PASS final python -B terra.py check --base origin/main --task terra-backend-cleanup against actual 78e835d: all seven configured check groups, records and filesystem. Parent integration owner explicitly coordinated overlapping scope and froze main/service.",
+      "PASS full local non-PostgreSQL backend:715 cases plus8 subtests, including synthetic native training/repair/fault scenario. Final writer/API reconciliation subsequently passed205 focused farm/state/writer/API cases; full final-head PostgreSQL/backend checks are mandatory on CI before merge.",
+      "PASS web production build,4 packaging tests and3 delivery-state tests. Isolated real HTTP/runtime process checked static/API, loopback/session guards,422/405, question identity, owned Details, pure query, restart heartbeat and retained message IDs. SMS disabled; no private configuration or provider request used.",
+      "PASS offline saved-weather QC->Nathan->persistent-event demonstration: ok/unavailable/ok/ok/ok, exactly3 labelled welcome/limited/recovery messages.",
+      "PASS exact valid-input parity over960 estimator hours,48 CIMIS rows,72 legal timestamps and valid temperature aliases. All22 protected QC/repair/pipeline file hashes and6 frozen import manifest hashes unchanged.",
+      "Independent bounded generated-writer review rejected all8 reported quantity/status/temporal/incomplete-generation probes while accepting distinct generated wording. New-source lint and git diff --check pass."
     ],
-    "uncertainty": "Full native suite and final exact-head PostgreSQL/cross-platform CI remain pending. Optional generated wording uses conservative validation, not a proof about arbitrary language. Real Twilio activation remains separate; no provider requests, account changes or texts during cleanup.",
-    "next": "Finish the one coordinated writer reconciliation, run required scoped/full checks and final-head CI, then merge/push and hand off exact migration semantics to the parent runtime owner."
+    "uncertainty": "Actual Twilio activation/delivery remains separate; no account changes or texts were made. Generated prose uses conservative English/role checks, not a proof of arbitrary language. Journal path changes fail closed on retained attempts/deliveries/pause; existing files are never moved/dropped. PostgreSQL and portable final-head CI remain integration gates.",
+    "next": "Open PR, require every final-head CI job green, merge/push tested source, and hand exact PR/SHA plus migration rules to parent runtime owner before shared-main/service replacement. Parent follow-on coordination may close this cached task after verified merge."
   }
 }
 ```

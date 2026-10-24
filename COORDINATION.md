@@ -326,9 +326,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-authorship"
   ],
   "contracts": [],
-  "artifacts": [
-    "docs/terra/live-queries.md"
-  ],
+  "artifacts": [],
   "handoff": {
     "revision": "cfe3d5541b0496c2d4abd4685e64de945c4602b4",
     "summary": "Live-source/API/UI checkpoint complete and pushed as PR4. Exact source revision cfe3d55 passed all four CI jobs, including full native/PostgreSQL and portable pure runtime checks. Integration owner retains final main merge; no product-review approval is needed to consume this accepted interface.",

@@ -27,14 +27,16 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
-    "summary": "Claimed narrow location simplification in isolated copy; current service remains under primary runtime owner. Browser-approved coordinates will resolve actual ground elevation server-side, use default internal farm label, and retain existing automatic station selection.",
+    "revision": "90728f0a7743f39f84080931d610d7153017011a",
+    "summary": "Button-only location source is ready: one fresh native fix, server-verified ground elevation, automatic save and existing station selection. No coordinate, elevation, name, preset or confirmation form. Neutral Shared location profile label; explicit native approval supplies location consent. Existing human setup and raw messages remain unchanged; exact legacy app guidance is projected to current wording only.",
     "evidence": [
-      "Direct user explicitly requests no coordinate or farm-name entry; this supersedes earlier manual-form onboarding direction.",
-      "Existing onboarding requires altitude/name/confirmation; browser altitude may be absent, so ground elevation needs a bounded public provider lookup."
+      "30 new device API/resolver cases and all393 conversation cases pass on8f baseline.50 pure UI cases and11 explicit browser cases passed before the narrow legacy-prompt follow-up; its helper/resumed-draft proof also passed. Final assembled UI/native checks run after integration.",
+      "Actual guarded local API plus full App, simulated public Davis GPS and REAL official USGS EPQS lookup passed:76.8804387ft, source provenance, one native call, automatic notification-step advance, zero manual fields/extra confirmation, quiet reopen and320px without errors. No OS permission dialog was clicked.",
+      "Independent source audit cleared factory/SMS-off parity, real ground-value validation, no target station substitution, completed replay before lookup and atomic setup fingerprint/request-cursor guard against stale/ABA callbacks. Lookup failure saves no profile/reservation; exact-ID approved-position retry survives reload.",
+      "No startup/GET migration, nonce/version write, account/private runtime/SMS/ChatGPT change or inference was introduced. Manual API signatures remain compatible. Existing automatic six-peer regional/QC/elevation selection and monitoring readiness remain authoritative."
     ],
-    "uncertainty": "Ground-elevation lookup availability and final API/native permission/error/idempotency behavior need verification. Native permission responses are simulated during browser checks.",
-    "next": "Implement device_location action and button-only UI in isolated copies, verify actual elevation lookup and complete flow, then hand tested PR to exclusive runtime owner for coordinated merge/rollout."
+    "uncertainty": "Final canonical base reconciliation, configured checks/CI and owner-controlled live rollout remain. Native permission is the actual user action; tests simulate it. Ground-provider or native failure provides retry without forms.",
+    "next": "Hand exact ready source to sole consolidation owner, reconcile once with final quiet PR16/main while preserving its capsule/header/composer/name changes, then final combined checks. Exclusive runtime owner performs retained-state update. No independent main/runtime/account/SMS writes."
   }
 }
 ```
@@ -1179,6 +1181,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation.py",
     "tests/test_terra_conversation_api.py",
     "tests/test_terra_conversation_crops.py",
+    "tests/test_terra_conversation_device_location.py",
     "tests/test_terra_conversation_local_facts.py",
     "tests/test_terra_conversation_natural_language.py",
     "tests/test_terra_conversation_readiness.py",

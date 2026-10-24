@@ -8,9 +8,11 @@ Tara opens in the existing monitoring view. The implementation follows the
 
 1. Ask what the grower is growing. Save multiple crops and supplied varieties;
    do not assume an almond variety or a chill requirement.
-2. Confirm the farm coordinates and elevation. Device location is optional and
-   requested only after a click; denied permission leaves manual entry available.
-   Known CIMIS locations are explicitly station references, not address lookup.
+2. Show one **Use my location** button. Its explicit browser permission flow
+   supplies a fresh device position; the server resolves ground elevation and
+   saves the shared growing location automatically. No coordinate, elevation,
+   farm-name, station-picker or confirmation form appears in onboarding. A denied,
+   unavailable or failed lookup leaves a concise retry path.
 3. Offer browser notifications separately. They work while Terra is open;
    declining keeps in-chat updates. This preference does not enable SMS.
 
@@ -18,6 +20,16 @@ Saved location and notification choices appear as compact events. Readiness uses
 the actual monitor/data state. A saved farm with no usable weather stays pending.
 Reopening resumes setup or the saved conversation without generating a greeting,
 another model request, or a repeat browser notification.
+
+This button-only flow supersedes the original manual-location onboarding after
+ET's October 24 correction. Location is shared once for monitoring that point,
+so growers should use it where they grow. The internal label is **Shared location**,
+not an inferred farm name. Ground elevation comes from the official
+[USGS point-elevation service](https://epqs.nationalmap.gov/v1/docs); browser
+altitude and guessed station elevations are not substituted. Provider failures
+save no location profile. Existing regional peer selection, QC and coverage
+requirements remain authoritative and can leave monitoring unavailable.
+The legacy explicit-location API remains compatible for existing callers.
 
 ## Local decisions before model use
 

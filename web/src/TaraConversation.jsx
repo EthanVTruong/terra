@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { timestamp } from "./presentation";
-import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
+import { createTaraOperation, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreFarmLocation, restoreTaraOperation, taraError, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateFarmLocation, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 
 const EMPTY_PRESETS = [];
@@ -200,17 +200,21 @@ function FarmLocation({ conversation, stationPresets }) {
 
 function NotificationChoice({ conversation }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const permissionBusy = useRef(false);
+  const permissionBusy = useRef(false), alive = useRef(true), latestConversation = useRef(conversation);
+  latestConversation.current = conversation;
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const supported = typeof window.Notification === "function" && conversation.state.notifications.capability === "browser_open";
   async function choose(enabled) {
     if (permissionBusy.current || conversation.locked) return;
+    const orchardId = conversation.state.orchard_id;
     permissionBusy.current = true; setBusy(true); setError("");
     try {
       let permission = supported ? Notification.permission : "unsupported";
       if (enabled && supported && permission === "default") permission = await Notification.requestPermission();
-      await conversation.setup("notifications", { notifications: { enabled: Boolean(enabled && permission === "granted"), permission } });
-    } catch { setError("Browser alerts couldn’t be enabled. You can keep updates in chat."); }
-    finally { permissionBusy.current = false; setBusy(false); }
+      if (!alive.current || latestConversation.current.state?.orchard_id !== orchardId) return;
+      await latestConversation.current.setup("notifications", { notifications: { enabled: Boolean(enabled && permission === "granted"), permission } });
+    } catch { if (alive.current) setError("Browser alerts couldn’t be enabled. You can keep updates in chat."); }
+    finally { permissionBusy.current = false; if (alive.current) setBusy(false); }
   }
   return <div className="tara-setup-controls"><p className="tara-capability">Browser alerts work while Terra is open. Updates always stay in chat.</p><div className="tara-actions"><button className="query-submit" type="button" onClick={() => choose(true)} disabled={!supported || conversation.locked || busy}>{busy ? "Saving choice…" : "Enable browser alerts"}<Icon name="phone" size={14} /></button><button className="query-cancel" type="button" onClick={() => choose(false)} disabled={conversation.locked || busy}>Keep in chat</button></div>{!supported ? <p className="tara-capability">This browser doesn’t support alerts. In-chat updates are available.</p> : null}{error ? <p className="query-error" role="alert">{error}</p> : null}</div>;
 }
@@ -262,7 +266,7 @@ export function TaraConversation({ conversation, stationPresets = EMPTY_PRESETS,
         <div className="tara-turn-meta"><time dateTime={turn.created_at} title={timestamp(turn.created_at)} className={index === 0 || shortDate(turn.created_at) !== shortDate(timeline[index - 1].value.created_at) ? undefined : "sr-only"}>{shortDate(turn.created_at)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}{turn.data?.message_id && onDetails ? <button className="tara-text-button" onClick={(event) => onDetails(event, { id: turn.data.message_id, text: turn.text, kind: "answer", created_at: turn.created_at })}>Details</button> : null}</div>
       </article>; })}
     </div>
-    {state.setup.stage === "location" ? <FarmLocation conversation={conversation} stationPresets={stationPresets} /> : state.setup.stage === "notifications" ? <NotificationChoice conversation={conversation} /> : null}
+    {state.setup.stage === "location" ? <FarmLocation conversation={conversation} stationPresets={stationPresets} /> : taraNeedsNotificationChoice(state) ? <NotificationChoice key={state.orchard_id || "setup"} conversation={conversation} /> : null}
     {state.setup.stage === "complete" ? <div className={`tara-monitoring tara-monitoring-${conversation.stale ? "unavailable" : state.monitoring.status}`} role="status"><Icon name="location" size={14} /><span>{conversation.stale ? "Monitoring status couldn’t be refreshed" : state.monitoring.status === "ready" ? "Monitoring" : state.monitoring.status === "pending" ? "Farm saved · connecting monitoring data" : state.monitoring.status === "unavailable" ? "Farm saved · monitoring unavailable" : "Monitoring not configured"}</span></div> : null}
     {state.notifications.enabled ? <p className="tara-alert-scope">{state.notifications.capability === "browser_open" && typeof window.Notification === "function" && Notification.permission === "granted" ? "Browser alerts for this farm while Terra is open" : "Browser alerts need permission · updates stay in chat"}</p> : null}
     {alertsError ? <p className="query-error" role="status">{alertsError}</p> : null}

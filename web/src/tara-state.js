@@ -125,6 +125,19 @@ export function taraNotificationEnabledAt(snapshot) {
   return null;
 }
 
+export function taraNeedsNotificationChoice(snapshot) {
+  if (snapshot?.setup?.stage === "notifications") return true;
+  if (snapshot?.setup?.stage !== "complete" || !snapshot.orchard_id) return false;
+  const turns = snapshot.turns || [];
+  for (let index = turns.length - 1; index >= 0; index -= 1) {
+    const turn = turns[index];
+    if (turn.role === "event" && turn.kind === "notification" && turn.data?.saved === true) return false;
+    if (turn.role === "assistant" && turn.data?.action === "notifications_off") return false;
+    if (turn.role === "assistant" && turn.data?.action === "notification_choice") return true;
+  }
+  return false;
+}
+
 export function validateFarmLocation(draft) {
   const lat = Number(draft.lat), lon = Number(draft.lon), elevation = Number(draft.elevation);
   if (!draft.name.trim() || draft.name.trim().length > 80) throw new Error("Give this farm a short name.");

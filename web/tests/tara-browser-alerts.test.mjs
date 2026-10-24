@@ -83,3 +83,80 @@ test("enabling browser alerts excludes a delayed pre-consent note and alerts onc
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
+
+test("an existing completed farm can request explicit browser consent and retain a denied choice", { skip: !browserUrl }, async () => {
+  const url = new URL(browserUrl);
+  assert.ok(["127.0.0.1", "localhost", "::1"].includes(url.hostname));
+  const require = createRequire(import.meta.url);
+  const { chromium } = require(process.env.TERRA_PLAYWRIGHT_MODULE || "playwright");
+  const browser = await chromium.launch({ channel: process.env.TERRA_BROWSER_CHANNEL || "msedge", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.addInitScript(() => {
+      window.__permissionRequests = 0;
+      class TestNotification {
+        static permission = "default";
+        static async requestPermission() { window.__permissionRequests += 1; this.permission = "denied"; return "denied"; }
+      }
+      window.Notification = TestNotification;
+      localStorage.setItem("terra.tara.activeFarm", "existing-farm");
+    });
+    const profile = { id: "existing-farm", name: "Existing Orchard", mode: "current", crop: "almond" };
+    const turn = (id, role, text, data = {}, kind = "text") => ({ id, role, text, kind, data, created_at: "2026-10-24T16:00:00Z", reply_to: null, reactions: [], delivery: "local_saved" });
+    const snapshot = { schema_version: "terra-conversation-v1", setup: { stage: "complete", crops: ["almond"] }, orchard_id: profile.id, orchards: [profile], turns: [turn("prior-choice", "event", "In-chat updates only", { saved: true, enabled: false }, "notification")], pending_requests: [], initial_prompt: null, monitoring: { status: "pending" }, notifications: { enabled: false, permission: "default", capability: "browser_open", scope: "while_open" } };
+    const setupPosts = [];
+    await page.route("**/api/**", async (route) => {
+      const request = route.request(), path = new URL(request.url()).pathname;
+      if (request.method() === "POST" && path === "/api/tara/messages") {
+        const body = request.postDataJSON();
+        assert.equal(body.orchard_id, profile.id);
+        const user = turn(`${body.request_id}:user`, "user", body.text);
+        const assistant = turn(`${body.request_id}:assistant`, "assistant", "Use the notification choice to enable browser alerts while Terra is open.", { action: "notification_choice" });
+        snapshot.turns.push(user, assistant);
+        return route.fulfill({ json: { request_id: body.request_id, outcome: "message", user_turn: user, assistant_turn: assistant, reaction: null, state: snapshot } });
+      }
+      if (request.method() === "POST" && path === "/api/tara/setup") {
+        const body = request.postDataJSON();
+        setupPosts.push(body);
+        assert.equal(body.orchard_id, profile.id);
+        assert.equal(body.action, "notifications");
+        snapshot.notifications = { ...snapshot.notifications, ...body.notifications };
+        const event = turn(`${body.request_id}:event`, "event", "In-chat updates only", { ...body.notifications, saved: true }, "notification");
+        snapshot.turns.push(event);
+        return route.fulfill({ json: { request_id: body.request_id, outcome: "none", user_turn: null, assistant_turn: null, reaction: null, event, state: snapshot } });
+      }
+      if (path === "/api/tara/conversation") return route.fulfill({ json: snapshot });
+      if (path === "/api/orchards") return route.fulfill({ json: { orchards: [profile] } });
+      if (path === "/api/orchards/existing-farm/messages") return route.fulfill({ json: { schema_version: "terra-farm-feed-v1", orchard_id: profile.id, messages: [], monitor: { orchard: profile } } });
+      if (path === "/api/context") return route.fulfill({ json: { schema_version: "terra-live-context-v1", configured: false, source: "CIMIS", station_presets: [] } });
+      if (path === "/api/sms/status") return route.fulfill({ json: { configured: false, enabled: false, demo_enabled: false, control_token: "local-browser-proof" } });
+      return route.fulfill({ status: 404, json: { error: { code: "not_found" } } });
+    });
+    await page.goto(url.href);
+    const field = page.getByRole("textbox", { name: "Message Tara", exact: true });
+    await field.waitFor();
+    assert.equal(await page.getByRole("button", { name: "Enable browser alerts", exact: true }).count(), 0);
+    await field.fill("Enable browser alerts");
+    await page.getByRole("button", { name: "Send message", exact: true }).click();
+    const consent = page.getByRole("button", { name: "Enable browser alerts", exact: true });
+    await consent.waitFor();
+    assert.equal(await page.evaluate(() => window.__permissionRequests), 0);
+    assert.equal(setupPosts.length, 0);
+    assert.equal(snapshot.setup.stage, "complete");
+    const saved = page.waitForResponse((response) => response.url().endsWith("/api/tara/setup") && response.request().method() === "POST");
+    await consent.click();
+    assert.equal((await saved).status(), 200);
+    await page.waitForFunction(() => !document.querySelector("#tara-message")?.disabled);
+    assert.equal(await page.evaluate(() => window.__permissionRequests), 1);
+    assert.equal(setupPosts.length, 1);
+    assert.deepEqual(setupPosts[0].notifications, { enabled: false, permission: "denied" });
+    assert.equal(snapshot.notifications.enabled, false);
+    await page.reload();
+    await field.waitFor();
+    assert.equal(await page.getByRole("button", { name: "Enable browser alerts", exact: true }).count(), 0);
+    assert.equal(await page.evaluate(() => window.__permissionRequests), 0);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+});

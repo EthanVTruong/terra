@@ -156,7 +156,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
       "Actual61.0F/37.3F/+23.7F calibrated example and37.0F uninstrumented estimate retain separate meanings; peak time labelled separately."
     ],
     "uncertainty": "First slice renders saved JSON examples or files. Live location API, continuous monitoring, subscriptions, external SMS and new chill metrics are not implemented. Unknown measured sites have no calibrated fault threshold. External clipboard round-trip unverified. Natural fault labels absent.",
-    "next": "Publish a draft review branch, show the concrete JSON/UI to ET, and select the next live-query input/behavior before expanding. No merge or deployment in this checkpoint."
+    "next": "Review the concrete JSON/UI in draft PR3 with ET, then select the live location-query input/behavior before expanding. No merge or deployment in this checkpoint.",
+    "pull_request": "https://github.com/EthanVTruong/terra/pull/3"
   }
 }
 ```

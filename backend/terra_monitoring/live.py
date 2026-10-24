@@ -183,7 +183,8 @@ class LiveQueryService:
         self._catalog = None
         self._catalog_at = None
         self._cache: dict[tuple, _Snapshot] = {}
-        self._last_attempt = None
+        self._attempts: dict[tuple, pd.Timestamp] = {}
+        self._failed_keys: set[tuple] = set()
         self._seen: dict[str, str] = {}
         path = self.data_dir / "first-seen.json"
         if path.exists():
@@ -335,19 +336,21 @@ class LiveQueryService:
             start = end - timedelta(days=2)
             key = (tuple(ids), start, end)
             cached = self._cache.get(key)
-            status, warning, failed = "cached", None, []
+            status = "cached_after_error" if key in self._failed_keys else "cached"
             age = (started - cached.retrieved_at).total_seconds() if cached else float("inf")
             if query.get("refresh") or cached is None or age >= self.ttl_seconds:
-                self._last_attempt = started
+                self._attempts[key] = started
                 try:
                     cached = self._refresh(ids, start, end, catalog)
                     self._cache[key] = cached
+                    self._failed_keys.discard(key)
                     status = "refreshed"
                 except Exception as exc:
                     failure = self._as_source_error(exc)
                     if cached is None or failure.code != "provider_unavailable":
                         raise failure from None
-                    status, warning, failed = "cached_after_error", "The provider check failed. Retained observations are shown with their original times.", ids
+                    self._failed_keys.add(key)
+                    status = "cached_after_error"
             clock = self._now()
             eligible = cached.observations[cached.observations.timestamp.le(clock)]
             if eligible.empty:
@@ -361,11 +364,12 @@ class LiveQueryService:
                 geometry_source="current CIMIS catalog; caller-supplied query elevation")
             through = eligible.groupby("station_id").timestamp.max()
             live = {"provider": "CIMIS", "status": status, "checked_at_utc": clock,
-                "retrieved_at_utc": cached.retrieved_at, "last_attempt_at_utc": self._last_attempt,
+                "retrieved_at_utc": cached.retrieved_at, "last_attempt_at_utc": self._attempts.get(key),
                 "data_through_utc": valid, "per_station_data_through_utc": {sid: through.get(sid) for sid in ids},
                 "cache_age_seconds": max(0, (clock - cached.retrieved_at).total_seconds()),
                 "station_ids_requested": ids, "missing_station_ids": sorted(set(ids) - set(through.index)),
-                "failed_station_ids": failed, "warning": warning}
+                "failed_station_ids": ids if status == "cached_after_error" else [],
+                "warning": "The provider check failed. Retained observations are shown with their original times." if status == "cached_after_error" else None}
             packet["provenance"]["live_source"] = _json(live)
             packet["provenance"]["source_visibility_basis"] = "first observed by Terra; not original provider publication time"
             packet["provenance"]["qc_calibrated_station_ids"] = list(qc.STATIONS)

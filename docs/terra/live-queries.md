@@ -148,9 +148,12 @@ The packet's snapshot digest identifies the retained evidence.
 
 When a recheck fails and a usable in-process snapshot exists, the service may
 return it with `status: cached_after_error`, original times and a visible warning.
+The warning persists on cache hits until that candidate set has a successful
+acquisition. Each candidate set keeps its own last-attempt time.
 Freshness is still evaluated against the current server clock. Without a usable
-snapshot, return the explicit source error. Credential rejection and changed
-calibrated geometry are explicit errors rather than silent cached fallbacks.
+snapshot, return the explicit source error. Credential rejection, malformed
+provider evidence and changed calibrated geometry are explicit errors rather
+than silent cached fallbacks.
 A station appearing in the response does not establish that its temperature is
 usable; inspect its source quality, exclusions and data-health evidence.
 
@@ -187,4 +190,3 @@ health supervision, provider-rate control and an authenticated/TLS boundary if
 made reachable beyond loopback. A continuous monitoring worker, subscriptions,
 alert lifecycle/delivery queue and SMS are separate implementation work. No
 hosting, scheduled job, grower message or deployment is created by these commands.
-

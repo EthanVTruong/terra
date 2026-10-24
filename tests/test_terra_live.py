@@ -645,3 +645,74 @@ def test_service_restart_preserves_unchanged_revision_first_seen_and_immutable_s
     assert hashlib.sha256(second_path.read_bytes()).hexdigest() == second_digest
     assert len(list(snapshot_root.glob("*.json"))) == 2
 
+
+def test_failed_refresh_provenance_persists_on_ordinary_cache_hit_until_recovery(tmp_path):
+    live, source, clock = service(tmp_path)
+    first = live.assess(dict(SITE))
+    retrieved_at = first["provenance"]["live_source"]["retrieved_at_utc"]
+    source.hourly_error = RuntimeError("controlled transient acquisition failure")
+    clock.advance(seconds=30)
+    failed = live.assess({**SITE, "refresh": True})
+    failure_meta = failed["provenance"]["live_source"]
+    assert failure_meta["status"] == "cached_after_error"
+    assert failure_meta["warning"]
+    assert failure_meta["failed_station_ids"] == failure_meta["station_ids_requested"]
+    assert pd.Timestamp(failure_meta["last_attempt_at_utc"]) == clock.value
+    calls_after_failure = list(source.calls)
+
+    clock.advance(seconds=1)
+    cached = live.assess(dict(SITE))
+    cached_meta = cached["provenance"]["live_source"]
+    assert source.calls == calls_after_failure
+    assert cached_meta["status"] == "cached_after_error"
+    assert cached_meta["warning"] == failure_meta["warning"]
+    assert cached_meta["failed_station_ids"] == failure_meta["failed_station_ids"]
+    assert cached_meta["retrieved_at_utc"] == retrieved_at
+    assert cached_meta["last_attempt_at_utc"] == failure_meta["last_attempt_at_utc"]
+    assert pd.Timestamp(cached_meta["checked_at_utc"]) == clock.value
+    assert cached_meta["cache_age_seconds"] == pytest.approx(31)
+    assert cached["provenance"]["data_snapshot_id"] == first["provenance"]["data_snapshot_id"]
+
+    source.hourly_error = None
+    clock.advance(seconds=1)
+    recovered = live.assess({**SITE, "refresh": True})
+    recovery_meta = recovered["provenance"]["live_source"]
+    assert recovery_meta["status"] == "refreshed"
+    assert recovery_meta["warning"] is None
+    assert recovery_meta["failed_station_ids"] == []
+    assert pd.Timestamp(recovery_meta["retrieved_at_utc"]) == clock.value
+    assert pd.Timestamp(recovery_meta["last_attempt_at_utc"]) == clock.value
+
+
+def test_last_attempt_is_owned_by_candidate_cohort_not_other_location_queries(tmp_path):
+    live, source, clock = service(tmp_path)
+    extra = source.stations.iloc[[0]].copy()
+    extra.loc[:, "source_station_id"] = "999"
+    extra.loc[:, "name"] = "Controlled extra source"
+    extra.loc[:, "lat"] = 38.61
+    extra.loc[:, "lon"] = -121.84
+    extra.loc[:, "elevation_ft"] = 70.0
+    source.stations = pd.concat([source.stations, extra], ignore_index=True)
+    source.records.extend(raw_record(999, stamp) for stamp in HOURS)
+    first_a = live.assess(dict(SITE))
+    a_meta = first_a["provenance"]["live_source"]
+    assert 999 in a_meta["station_ids_requested"]
+    assert pd.Timestamp(a_meta["last_attempt_at_utc"]) == clock.value
+
+    clock.advance(seconds=30)
+    cohort_b = live.assess({"lat": 36.0, "lon": -120.0, "elevation_ft": 100.0})
+    b_meta = cohort_b["provenance"]["live_source"]
+    assert 999 not in b_meta["station_ids_requested"]
+    assert b_meta["station_ids_requested"] != a_meta["station_ids_requested"]
+    assert pd.Timestamp(b_meta["last_attempt_at_utc"]) == clock.value
+    assert b_meta["last_attempt_at_utc"] != a_meta["last_attempt_at_utc"]
+    calls_after_b = list(source.calls)
+
+    clock.advance(seconds=1)
+    second_a = live.assess(dict(SITE))
+    a_cached = second_a["provenance"]["live_source"]
+    assert source.calls == calls_after_b
+    assert a_cached["status"] == "cached"
+    assert a_cached["last_attempt_at_utc"] == a_meta["last_attempt_at_utc"]
+    assert a_cached["retrieved_at_utc"] == a_meta["retrieved_at_utc"]
+    assert pd.Timestamp(a_cached["checked_at_utc"]) == clock.value

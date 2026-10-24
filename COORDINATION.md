@@ -329,15 +329,15 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "artifacts": [],
   "handoff": {
     "revision": "0b1554930038d981881742d3a84b29e99dff595b",
-    "summary": "Live CIMIS source, strict raw normalization, loopback HTTP boundary and web query controls implemented on corrected main. Minimal integration checks pass. Completing browser failure/mobile verification and GitHub CI before review.",
+    "summary": "Live CIMIS source, strict raw normalization, loopback HTTP boundary and web query controls implemented on corrected main. Minimal integration checks pass. Browser live/custom/measured, mobile, connection failure, cancellation, supersession and malformed-file checks pass. Draft PR4 first CI green; final per-cohort cache-provenance repair is verified locally.",
     "evidence": [
-      "Scoped terra.py check passes against origin/main 0b155493: 31 harness and 187 pure JSON/reference/estimator/source/HTTP cases. New source/API coverage includes 123 cases, synthetic full HTTP composition, N5/extreme exclusions, malformed/future/unit/QC inputs, cache age/failure and restart visibility.",
+      "Scoped terra.py check passes against origin/main 0b155493: 31 harness and 189 pure JSON/reference/estimator/source/HTTP cases. New source/API coverage includes 125 cases, synthetic full HTTP composition, N5/extreme exclusions, malformed/future/unit/QC inputs, cache age/failure and restart visibility.",
       "Bounded actual CIMIS batch succeeded: custom 38.6,-121.84,70ft estimated 61.04305453536202F from six stations at valid 2026-10-24T07:00Z; first retrieval 07:53:42Z. A measured Winters query returned 65.2F observed /61.725F expected/no_alert. Outside coverage returns null/insufficient_data.",
       "Real hour transition also verified: at 08:01Z CIMIS reported the 08:00Z hour with missing M temperatures. UI withholds estimate and fault conclusion rather than selecting an older good hour. No natural fault truth is claimed.",
       "Browser custom query displayed current provenance and exactly matching JSON download. Production web build and four packaging tests pass. Cold import brings in no SQLAlchemy, psycopg, scipy, sklearn or LightGBM; original algorithms/calibration unchanged."
     ],
-    "uncertainty": "Local on-demand service only. Full native/PostgreSQL and portable CI still to run on this branch. Natural-fault accuracy is unverified; automatic numerical fault calibration remains limited to five stations. Always-on worker, SMS and hosting are future work.",
-    "next": "Finish mobile/failure/race browser checks, publish draft PR and inspect full native/PostgreSQL plus portable CI. Review working live path with ET before the continuous monitoring/delivery slice."
+    "uncertainty": "Local on-demand service only. Initial PR4 CI passed all four jobs including native/PostgreSQL with zero skips. The final cache repair still needs its exact-revision CI run. Natural-fault accuracy is unverified; automatic numerical fault calibration remains limited to five stations. Always-on worker, SMS and hosting are future work.",
+    "next": "Verify final cache-repair CI on draft PR4 and keep the loopback preview available. Review working live path with ET before the continuous monitoring/delivery slice."
   }
 }
 ```

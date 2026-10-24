@@ -747,7 +747,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "status": "active",
   "intent": "Implement user-approved local-first open-source ChatGPT plan connection and concise fact-checked grower wording. Root integrates auth/provider/UI/runtime and isolated replay verification; preserve deterministic QC/Nathan math, immutable notes and original staged files. Cleanup and placeholder owners retain their scopes.",
   "branch": "codex/terra-chatgpt-plan",
-  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "base": "e4292b21594d20b3983a62447e2f4632aac0f3bd",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -763,7 +763,13 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "web/src/chatgpt.css",
     "web/tests/chatgpt*.mjs",
     "web/src/chatgpt-state.js",
-    "web/src/App.jsx"
+    "web/src/App.jsx",
+    "backend/terra_monitoring/runtime.py",
+    "backend/terra_monitoring/farm_ops/writer.py",
+    "backend/terra_monitoring/farm_ops/demo.py",
+    "tests/test_terra_chatgpt_runtime.py",
+    "tests/test_terra_chatgpt_replay.py",
+    "web/package.json"
   ],
   "depends_on": [
     "terra-authorship"
@@ -772,13 +778,14 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "artifacts": [],
   "handoff": {
     "revision": "6761a77d2b5510590bcd6053fb876c15997226f2",
-    "summary": "User completed real OAuth consent; eligible plan connected. Catalog HTTP200 has seven visible models; increased bounded metadata catalog cap to1MiB after actual568400-byte response. Isolated connection preview8517 uses copied notes, no worker and disabledSMS. Genuine writer seam merged separately in cleanup PR6.",
+    "summary": "Genuine OAuth connected with planpermission and sevenvisiblemodels. Productionruntime wiring, guarded UI and stablevault integrated. ActualsavedweatherQC/Nathan/event/writer replay produced2validatedChatGPTnotes and1safe templatefallback; browserDetails verified exact input/evidence. Cleanup PR6 restart verified separately.",
     "evidence": [
-      "127 auth/provider/API tests pass, including large catalog and Windows DPAPI coverage; six UI helper tests and production build pass.",
-      "Real human sign-in completed with plan_enabled true. No inference requested yet. Fixed public account/attempt IDs and expiry format; preserve sanitized provider permission recovery. Independent provider readiness review found no blocker."
+      "Auth49/provider73/API16/runtime12/replay1 targeted tests pass; sixUIhelpers and productionbuild pass. Independentreview fixed stickyrefusal gap and one-shotAuthlifecycle.",
+      "ActualResponses stream completed; gateway missingMIME/emptyterminal handled only by crosschecked finalassistantitems/done/deltas. Replay3requests2026reportedtokens; prioradapterdiagnosticsalsoinferenced. NoSMS.",
+      "Maincleanup e4292b2 freshlycompletedworker8512 cycle; prior3noteIDs andSMSjournal/preferences preserved, attempts0/deliveries0. RootpreservesnewTara contractmaina9dcc6c; conversationalextensionsremainseparate."
     ],
-    "uncertainty": "Actual completed inference and rendered generated note pending. Placeholder automatic API remains disabled pending Twilio credential rotation.",
-    "next": "Merge cleanup main, wire provider to genuine writer and verify actual completed JSON-to-note request; then integrate placeholder PR, run latest-head checks and show reviewable note."
+    "uncertainty": "Latest-head integratedchecks/CI and finalmain merge/restartpending. Awaiting usertonefeedback. AutomaticTwilioAPI stilldisabledpendingcredentialrotation; priorConsoleplaceholder wasdeliveredandhandsetconfirmed.",
+    "next": "Merge latestmaincontract, reconcileplaceholderPR, completechecks/CI and controlledruntime replacement preservingstate. Keepfutureconversationacceptance separate."
   }
 }
 ```
@@ -798,6 +805,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_chatgpt_auth.py",
     "tests/test_terra_chatgpt_provider.py",
     "tests/test_terra_chatgpt_api.py",
+    "tests/test_terra_chatgpt_runtime.py",
+    "tests/test_terra_chatgpt_replay.py",
     "-q"
   ],
   "timeout": 120

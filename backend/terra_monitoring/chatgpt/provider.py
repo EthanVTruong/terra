@@ -475,15 +475,26 @@ class ChatGPTPlanClient:
             return result
 
     def _stream(self, response, model):
-        request_id = _request_id(response.headers.get("x-request-id"))
-        if response.headers.get("content-type", "").split(";", 1)[0].strip() != "text/event-stream":
+        request_id = _request_id(response.headers.get("x-request-id") or response.headers.get("x-oai-request-id"))
+        # The real plan gateway can omit Content-Type while returning SSE.
+        # Only that omission is tolerated: the bounded parser still requires a
+        # valid completed event, and explicit incompatible MIME types fail.
+        content_type = response.headers.get("content-type", "").split(";", 1)[0].strip()
+        if content_type not in {"", "text/event-stream"}:
             raise PlanError("invalid_stream", status=response.status_code, request_id=request_id)
-        started, count, deltas, done, delta_chars = self._now(), 0, {}, {}, 0
+        started, count, deltas, done, delta_chars, items = self._now(), 0, {}, {}, 0, {}
         for event in self._events(response, started, request_id):
             count += 1
             if count > MAX_STREAM_EVENTS:
                 raise PlanError("stream_limit_exceeded", request_id=request_id)
             kind = event.get("type")
+            part, item = event.get("part"), event.get("item")
+            if (kind in {"response.refusal.delta", "response.refusal.done"}
+                    or isinstance(part, dict) and part.get("type") == "refusal"
+                    or isinstance(item, dict) and isinstance(item.get("content"), list)
+                    and any(isinstance(value, dict) and value.get("type") == "refusal"
+                            for value in item["content"])):
+                raise PlanError("response_refused", request_id=request_id)
             if kind == "response.output_text.delta":
                 delta = event.get("delta")
                 key = (event.get("output_index"), event.get("content_index"))
@@ -502,6 +513,15 @@ class ChatGPTPlanClient:
                         or len(text) > MAX_OUTPUT_CHARS):
                     raise PlanError("invalid_stream", request_id=request_id)
                 done[key] = text
+            elif kind == "response.output_item.done":
+                index, item = event.get("output_index"), event.get("item")
+                if (not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < 64
+                        or not isinstance(item, dict) or index in items):
+                    raise PlanError("invalid_stream", request_id=request_id)
+                if item.get("type") == "message" and (item.get("role") != "assistant"
+                        or item.get("status") != "completed"):
+                    raise PlanError("invalid_stream", request_id=request_id)
+                items[index] = item
             elif kind in {"response.failed", "response.incomplete", "error"}:
                 nested = event.get("response")
                 error = nested.get("error") if isinstance(nested, dict) else event.get("error", event)
@@ -514,6 +534,27 @@ class ChatGPTPlanClient:
                 completed = event.get("response")
                 if not isinstance(completed, dict) or completed.get("status") != "completed":
                     raise PlanError("invalid_stream", request_id=request_id)
+                # The plan gateway's terminal envelope can omit the already
+                # completed output items. Recover only cross-checked final
+                # assistant text; a partial delta or empty envelope alone fails.
+                if completed.get("output") == [] and items:
+                    output, texts = [], {}
+                    for index, item in sorted(items.items()):
+                        if item.get("type") != "message":
+                            continue
+                        if item.get("role") != "assistant" or item.get("status") != "completed":
+                            raise PlanError("invalid_stream", request_id=request_id)
+                        content = item.get("content")
+                        if not isinstance(content, list):
+                            raise PlanError("invalid_stream", request_id=request_id)
+                        for part_index, part in enumerate(content):
+                            if not isinstance(part, dict) or part.get("type") != "output_text":
+                                raise PlanError("invalid_stream", request_id=request_id)
+                            texts[(index, part_index)] = part.get("text")
+                        output.append(item)
+                    if not deltas or set(texts) != set(deltas) or texts != done or texts != deltas:
+                        raise PlanError("invalid_stream", request_id=request_id)
+                    completed = {**completed, "output": output}
                 text = self._completed_text(completed, deltas, done, request_id)
                 return {"text": text, "model": model, "request_id": request_id,
                         "usage": self._usage(completed.get("usage"))}
@@ -571,6 +612,8 @@ class ChatGPTPlanClient:
                 for part in content:
                     if not isinstance(part, dict):
                         raise PlanError("invalid_stream", request_id=request_id)
+                    if part.get("type") == "refusal":
+                        raise PlanError("response_refused", request_id=request_id)
                     if part.get("type") == "output_text":
                         if not isinstance(part.get("text"), str):
                             raise PlanError("invalid_stream", request_id=request_id)

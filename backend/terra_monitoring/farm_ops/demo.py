@@ -13,14 +13,14 @@ from .store import utc
 from .writer import Writer
 
 
-def run_demo(store, orchard_id="demo-west"):
+def run_demo(store, orchard_id="demo-west", *, writer=None):
     root = Path(__file__).resolve().parents[3]
     saved = json.loads((root / "docs/terra/examples/location.request.json").read_text(encoding="utf-8"))
     # The committed case ends at its query hour. Replay its preceding hours,
     # rather than asking the estimator to invent observations after that cutoff.
     start = utc(saved["query"]["valid_utc"]) - timedelta(hours=4)
     clock = [start]
-    monitor = Monitor(store, writer=Writer(key="", model=""), clock=lambda: clock[0])
+    monitor = Monitor(store, writer=writer if writer is not None else Writer(key="", model=""), clock=lambda: clock[0])
     existing = next((p for p in store.orchards() if p["id"] == orchard_id), None)
     if existing:
         if existing["mode"] != "injected":
@@ -51,4 +51,5 @@ def run_demo(store, orchard_id="demo-west"):
     return {"mode": "injected", "status": "completed", "orchard_id": orchard_id,
             "source": "saved historical weather -> real frozen QC -> Nathan estimator -> persistent events -> local messages",
             "phases": phases, "messages": store.messages(orchard_id),
-            "note": "All messages are labelled demo replay. No provider, LLM, SMS or model-training request was made."}
+            "note": "All messages are labelled demo replay. No weather-provider, SMS or model-training request was made. "
+                    + ("The explicitly supplied writer was used." if writer is not None else "No LLM request was made.")}

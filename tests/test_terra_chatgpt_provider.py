@@ -208,6 +208,59 @@ def test_verified_deltas_only_fallback_after_completed(tmp_path):
         instance.generate("Write a note.", PACKET)
 
 
+def test_plan_gateway_sse_without_content_type_still_requires_completed(tmp_path):
+    wire = sse(completed()).content
+    response = httpx.Response(200, content=wire, headers={"x-oai-request-id": "req-gateway-1"})
+    instance, _, _, _ = setup_client(tmp_path, response)
+    result = instance.generate("Write a note.", PACKET)
+    assert result["text"] == TEXT
+    assert result["request_id"] == "req-gateway-1"
+
+
+def gateway_items(text=TEXT, **fields):
+    return event("response.output_item.done", output_index=0, item={"type": "message", "role": "assistant",
+        "status": "completed", "content": [{"type": "output_text", "text": text}], **fields})
+
+
+def test_gateway_empty_terminal_uses_only_cross_checked_completed_items(tmp_path):
+    final = event("response.completed", response={"status": "completed", "output": []})
+    done = event("response.output_text.done", output_index=0, content_index=0, text=TEXT)
+    instance, _, _, _ = setup_client(tmp_path, sse(delta(), done, gateway_items(), final))
+    assert instance.generate("Write a note.", PACKET)["text"] == TEXT
+
+
+@pytest.mark.parametrize("item", [gateway_items("changed"), gateway_items(role="user"),
+    gateway_items(status="in_progress")])
+def test_gateway_terminal_never_accepts_mismatch_refusal_or_incomplete_item(tmp_path, item):
+    final = event("response.completed", response={"status": "completed", "output": []})
+    done = event("response.output_text.done", output_index=0, content_index=0, text=TEXT)
+    instance, _, _, _ = setup_client(tmp_path, sse(delta(), done, item, final))
+    with pytest.raises(PlanError, match="invalid_stream"):
+        instance.generate("Write a note.", PACKET)
+
+
+@pytest.mark.parametrize("outcome", [
+    sse(event("response.refusal.done", refusal="No"), completed()),
+    sse(event("response.content_part.done", part={"type": "refusal", "refusal": "No"}), completed()),
+    sse(delta(), event("response.output_text.done", output_index=0, content_index=0, text=TEXT),
+        gateway_items(content=[{"type": "refusal", "refusal": "No"}]),
+        event("response.completed", response={"status": "completed"})),
+    sse(event("response.completed", response={"status": "completed", "output": [{"type": "message",
+        "content": [{"type": "output_text", "text": TEXT}, {"type": "refusal", "refusal": "No"}]}]})),
+])
+def test_refusal_is_sticky_across_all_completion_paths(tmp_path, outcome):
+    instance, _, _, _ = setup_client(tmp_path, outcome)
+    with pytest.raises(PlanError, match="response_refused"):
+        instance.generate("Write a note.", PACKET)
+
+
+@pytest.mark.parametrize("body", [b'{"text":"not an event"}', sse(delta()).content])
+def test_missing_content_type_never_accepts_json_or_partial_stream(tmp_path, body):
+    instance, _, _, _ = setup_client(tmp_path, httpx.Response(200, content=body))
+    with pytest.raises(PlanError, match="stream_interrupted"):
+        instance.generate("Write a note.", PACKET)
+
+
 @pytest.mark.parametrize("outcome,code", [
     (sse(delta()), "stream_interrupted"),
     (sse(event("response.incomplete", response={"status": "incomplete", "incomplete_details": {"reason": "max_output_tokens"}})), "response_incomplete"),

@@ -8,18 +8,34 @@
   "status": "active",
   "intent": "User explicitly requests a plan and active goal to implement Tara onboarding and actual in-app replies using the existing ChatGPT connection: brief grounded responses, attached thumbs-up acknowledgments, no reply to thanks/other no-op input, and local off-topic handling that consumes no model usage. Diagnose full behavior including relevant farm/chill/alert follow-ups, context, consent, failures and return. Implement, verify and integrate without changing scientific models or external SMS/account consent.",
   "branch": "codex/tara-conversation",
-  "base": "a9dcc6c06b872890cf86adda22b207251fb50b5e",
-  "domains": ["terra-coordination", "terra-qc-json"],
-  "paths": ["COORDINATION.md", "backend/terra_monitoring/**", "tests/test_terra_conversation*.py", "tests/test_farm_chill_ops*.py", "web/**", "docs/terra/**", "scripts/terra-service/**", "spec.md"],
+  "base": "cb580227851d6194dc6a001bbe51e3b615f4dba2",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra_conversation*.py",
+    "tests/test_farm_chill_ops*.py",
+    "web/**",
+    "docs/terra/**",
+    "scripts/terra-service/**",
+    "spec.md"
+  ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "a9dcc6c06b872890cf86adda22b207251fb50b5e",
-    "summary": "Goal active. Three isolated working copies prepared for root integration, conversation backend and UI. Existing ChatGPT connection is still a separate branch/preview; preserve its own credentials and live runtime ownership.",
-    "evidence": ["Accepted conversation contract merged in PR7; current source inspected at a9dcc6c. User now explicitly authorizes implementation and off-topic/no-usage behavior."],
-    "uncertainty": "Actual ChatGPT account/consent/model readiness must be checked through Terra's own controls, not this Codex account. Browser notifications must describe their real delivery capabilities. Existing demo/UI/ChatGPT branches must be reconciled before integration.",
-    "next": "Implement the linked plan with local intent gating before any model call, persistent conversation/onboarding state, actual reply UI and full behavior/call-count verification."
+    "revision": "f8f6a61",
+    "summary": "Conversation backend, UI and runtime adapter integrated in isolated root copy with current main ChatGPT/SMS commits. Crop/location/optional browser preference, real composer, attached reactions, silence and positive local scope gate implemented. Current production runtime has not yet been updated.",
+    "evidence": [
+      "Combined conversation tests pass on Windows, including actual spawned-process owner exit and strict no-duplicate recovery.20 web state/delivery/connection tests and production build pass.",
+      "Actual Terra plan weather-support reply passed factual validation in the integrated app. Edge verified onboarding/manual permission fallback, quiet outcomes/reopen, immutable Details lookup and320px layout. Missing totals now use the local unavailable response with zero generator calls; strict validator unchanged.",
+      "Actual combined Edge/HTTP recovery proof: real Windows owner active then exited, zero original request POSTs, one explicit acknowledgment/new uncertainty notice and one fresh question/reply. No account/provider requests, browser errors or320px overflow. Current main merged with both coordination task records retained; provider/auth/SMS contracts and original staged prototype preserved. Local gap arithmetic retains actual cutoff/source year and completed-season meaning."
+    ],
+    "uncertainty": "Exact-head full CI and retained-data main runtime rollout remain pending. Browser notification scope is while Terra is open; no closed-app push or external SMS activation.",
+    "next": "Finish actual browser and plan verification, scoped checks, PR/full CI, then merge and restart existing runtime with its journals/credentials and disabled SMS flags."
   }
 }
 ```
@@ -228,7 +244,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_farm_chill_ops.py",
     "tests/test_farm_chill_ops_api.py",
     "tests/test_farm_chill_ops*.py",
-    "tests/test_terra_chatgpt*.py"
+    "tests/test_terra_chatgpt*.py",
+    "tests/test_terra_conversation*.py"
   ],
   "depends_on": [],
   "checks": [
@@ -237,7 +254,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-farm-tests",
     "terra-runtime-tests",
     "terra-pipeline-tests",
-    "terra-chatgpt-tests"
+    "terra-chatgpt-tests",
+    "terra-conversation-tests"
   ]
 }
 ```
@@ -935,5 +953,27 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "-q"
   ],
   "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-conversation-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_conversation.py",
+    "tests/test_terra_conversation_api.py",
+    "tests/test_terra_conversation_local_facts.py",
+    "tests/test_terra_conversation_recovery.py",
+    "tests/test_terra_conversation_writer_integration.py",
+    "-q"
+  ]
 }
 ```

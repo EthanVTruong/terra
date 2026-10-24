@@ -74,8 +74,8 @@ def runtime_ready(root: Path) -> bool:
         return False
 
 
-def web_fingerprint(root: Path) -> str:
-    web = root / "web"
+def web_fingerprint(root: Path, client: str = "web") -> str:
+    web = root / client
     paths = [web / name for name in ("package.json", "pnpm-lock.yaml", "index.html", "vite.config.mjs")]
     for name in ("src", "public", "scripts", "worker", ".openai"):
         paths.extend(path for path in (web / name).rglob("*") if path.is_file())
@@ -86,10 +86,10 @@ def web_fingerprint(root: Path) -> str:
     return digest.hexdigest()
 
 
-def web_ready(root: Path) -> bool:
-    stamp = root / "web/dist/.terra-inputs.sha256"
-    return ((root / "web/dist/client/index.html").is_file() and stamp.is_file()
-            and stamp.read_text(encoding="utf-8").strip() == web_fingerprint(root))
+def web_ready(root: Path, client: str = "web") -> bool:
+    stamp = root / client / "dist/.terra-inputs.sha256"
+    return ((root / client / "dist/client/index.html").is_file() and stamp.is_file()
+            and stamp.read_text(encoding="utf-8").strip() == web_fingerprint(root, client))
 
 
 def port_available(port: int) -> bool:
@@ -121,11 +121,12 @@ def prepare(root: Path, pnpm: str) -> None:
     if not runtime_ready(root):
         run_step([str(python), "-m", "pip", "install", "--disable-pip-version-check", "-r",
                   str(root / "requirements-terra.txt")], root, "Installing Terra runtime dependencies...")
-    if not web_ready(root):
-        run_step([pnpm, "--dir", str(root / "web"), "install", "--frozen-lockfile"], root,
-                 "Installing web dependencies...")
-        run_step([pnpm, "--dir", str(root / "web"), "build"], root, "Building the web client...")
-        (root / "web/dist/.terra-inputs.sha256").write_text(web_fingerprint(root), encoding="utf-8")
+    for client, label in (("web", "Terra"), ("web/demo", "Station lab")):
+        if not web_ready(root, client):
+            run_step([pnpm, "--dir", str(root / client), "install", "--frozen-lockfile"], root,
+                     f"Installing {label} dependencies...")
+            run_step([pnpm, "--dir", str(root / client), "build"], root, f"Building {label}...")
+            (root / client / "dist/.terra-inputs.sha256").write_text(web_fingerprint(root, client), encoding="utf-8")
 
 
 def runtime_environment(root: Path, state: Path, *, live: bool) -> dict[str, str]:
@@ -193,6 +194,7 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         checks.extend([
             ("Runtime dependencies", runtime_ready(root), "Run python run_terra.py --setup-only."),
             ("Web build", web_ready(root), "Run python run_terra.py --setup-only."),
+            ("Station lab build", web_ready(root, "web/demo"), "Run python run_terra.py --setup-only."),
             (f"Port {args.port}", port_available(args.port), "Already in use; choose --port 8520 or use the existing server."),
         ])
         for label, ok, advice in checks:

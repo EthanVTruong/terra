@@ -1,5 +1,49 @@
 # Terra integration coordination
 
+## Grower chat simplification
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chat-simplify",
+  "owner": "et",
+  "status": "done",
+  "intent": "Remove redundant chat header/footer controls, clean composer focus, add a bean-shaped Terra read receipt, and connect Station lab through + with chat fed by simulation instead of live CIMIS. Verify and incorporate into main, as explicitly requested by ET.",
+  "branch": "codex/terra-chat-simplify",
+  "base": "db0a57e",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "web/**",
+    "backend/terra_monitoring/**",
+    "tests/test_terra_full_flow.py",
+    "tests/test_terra_runtime.py",
+    "tests/test_terra_server.py",
+    "run_terra.py",
+    "tests/test_terra_bootstrap.py",
+    "docs/terra/**",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "b746d8b",
+    "summary": "Requested UI and functional simulator connection implemented. Removed redundant farm/setup/writing header and plan/usage footer; green outgoing bubbles retain Grok Bot geometry, single accessible composer focus and bean-cropped existing Terra receipt. + connects browser session to isolated station readings, opens lab and restores live selection on disconnect. Source changes lock chat briefly; setup builds both clients.",
+    "evidence": [
+      "82 runtime/full-flow/demo backend tests pass; 47 UI helper tests and 4 packaging checks pass (2 pre-existing browser tests skipped). Both client production builds pass.",
+      "Actual browser on isolated 8540: saved walnut farm and chat preserved through connect; /stations opened; Support loss generated a new native grower note; disconnect restored original live conversation without simulated notes.",
+      "Independent UI review findings fixed and rechecked: transition lock, stable menu focus and composer focus contrast. Preview .terra-local/ui-qa/chat-preview.png.",
+      "Required terra.py check --base origin/main --task terra-chat-simplify running; final results retained by integration owner."
+    ],
+    "uncertainty": "Live provider inference/SMS not invoked by verification. Simulation is historical, retains isolated journals and requires reconnection after server restart. Required scoped checks and remote CI/main integration pending at this source checkpoint.",
+    "next": "Root completes required checks, merges the reviewed candidate to main and refreshes local main build/runtime while preserving operator journals and account configuration."
+  }
+}
+```
+
 ```json
 {
   "kind": "task",

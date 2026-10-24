@@ -129,18 +129,21 @@ print(json.dumps([bool(os.getenv('CIMIS_APP_KEY')), bool(os.getenv('OPENAI_API_K
             self.assertIn("configuration file is unavailable", output.getvalue())
 
     def test_source_change_invalidates_cached_web_build(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            for name in ("package.json", "pnpm-lock.yaml", "index.html", "vite.config.mjs",
-                         "src/main.jsx", "public/assessments/example.json", "dist/client/index.html"):
-                path = root / "web" / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("initial", encoding="utf-8")
-            stamp = root / "web/dist/.terra-inputs.sha256"
-            stamp.write_text(bootstrap.web_fingerprint(root), encoding="utf-8")
-            self.assertTrue(bootstrap.web_ready(root))
-            (root / "web/public/assessments/example.json").write_text("new evidence", encoding="utf-8")
-            self.assertFalse(bootstrap.web_ready(root))
+        for client in ("web", "web/demo"):
+            with self.subTest(client=client), tempfile.TemporaryDirectory() as folder:
+                self.check_build_cache(Path(folder), client)
+
+    def check_build_cache(self, root, client):
+        for name in ("package.json", "pnpm-lock.yaml", "index.html", "vite.config.mjs",
+                     "src/main.jsx", "public/assessments/example.json", "dist/client/index.html"):
+            path = root / client / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("initial", encoding="utf-8")
+        stamp = root / client / "dist/.terra-inputs.sha256"
+        stamp.write_text(bootstrap.web_fingerprint(root, client), encoding="utf-8")
+        self.assertTrue(bootstrap.web_ready(root, client))
+        (root / client / "public/assessments/example.json").write_text("new evidence", encoding="utf-8")
+        self.assertFalse(bootstrap.web_ready(root, client))
 
 
 if __name__ == "__main__":

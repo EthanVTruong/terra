@@ -7,6 +7,7 @@ import { TaraComposer, TaraConversation, useTaraBrowserAlerts, useTaraConversati
 import { writeTaraStorage } from "./tara-state";
 import SmsControls from "./SmsControls";
 import ChatGPTConnection from "./ChatGPTConnection";
+import SimulationConnection from "./SimulationConnection";
 import { usePresence } from "./usePresence";
 import { farmNoteDetailsPath, farmNoteTarget } from "./notification-return";
 import "./tara-integration.css";
@@ -159,7 +160,7 @@ export function App() {
     catch { return ""; }
   });
   const [notificationNote, setNotificationNote] = useState(null);
-  const [connectionRequest, setConnectionRequest] = useState(0), [connectionStatus, setConnectionStatus] = useState(null);
+  const [sourceChanging, setSourceChanging] = useState(false);
   const farmRef = useRef(null);
   const chooseTaraFarm = useCallback((id) => {
     setNotificationNote(null);
@@ -168,7 +169,8 @@ export function App() {
     farmRef.current?.selectOrchard(id);
   }, []);
   const addTaraFarm = useCallback((profile) => { farmRef.current?.addOrchard(profile); farmRef.current?.refreshProfiles(); chooseTaraFarm(profile.id); }, [chooseTaraFarm]);
-  const tara = useTaraConversation({ orchardId: taraFarmId, active: true, onFarmCreated: addTaraFarm, onSelectOrchard: chooseTaraFarm });
+  const nativeTara = useTaraConversation({ orchardId: taraFarmId, active: true, onFarmCreated: addTaraFarm, onSelectOrchard: chooseTaraFarm });
+  const tara = { ...nativeTara, locked: nativeTara.locked || sourceChanging };
   const browserAlerts = Boolean(tara.state?.notifications.enabled && tara.state.notifications.capability === "browser_open");
   const [smsStatus, setSmsStatus] = useState(null);
   const [farmDetails, setFarmDetails] = useState(null);
@@ -337,15 +339,17 @@ export function App() {
     });
   }, [farm.feed?.messages, tara.state?.turns, view]);
   useEffect(() => { if (queryOpen) latitudeInput.current?.focus(); }, [queryOpen]);
-  useEffect(() => { if (controlsOpen) controlsForm.current?.querySelector("select")?.focus(); }, [controlsOpen]);
+  useEffect(() => { if (controlsOpen) controlsForm.current?.querySelector(".query-heading button")?.focus(); }, [controlsOpen]);
   useEffect(() => { setSelectedEvidence(null); messageScroll.current?.scrollTo(0, 0); }, [packet]);
   useEffect(() => {
     if (!queryOpen && !controlsOpen) return;
     function dismiss(event) {
+      if (sourceChanging) return;
       if (queryForm.current?.contains(event.target) || queryTrigger.current?.contains(event.target) || controlsForm.current?.contains(event.target) || controlsTrigger.current?.contains(event.target)) return;
       setQueryOpen(false); setControlsOpen(false);
     }
     function escape(event) {
+      if (sourceChanging) return;
       if (event.key !== "Escape") return;
       event.preventDefault();
       if (queryOpen) { setQueryOpen(false); queryTrigger.current?.focus(); }
@@ -354,7 +358,7 @@ export function App() {
     document.addEventListener("pointerdown", dismiss);
     document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", escape); };
-  }, [queryOpen, controlsOpen]);
+  }, [queryOpen, controlsOpen, sourceChanging]);
 
   function showEvidence(event, finding = null, comparison = null) {
     const matching = comparison && packet.station_findings.find((item) => item.station_id === comparison.station_id && Array.isArray(item.evidence) && item.evidence.some((row) => Date.parse(row?.timestamp) === Date.parse(packet.query.valid_utc)));
@@ -494,15 +498,14 @@ export function App() {
   const previewNote = resultSource?.kind === "query" ? "Provider query · checked on demand" : resultSource?.kind === "file" ? `Local file · ${resultSource.label}` : resultSource?.description || "Saved assessment · no message delivery";
   const fieldNotes = matchingFarm ? farm.feed.messages : [];
   const latestReplyId = tara.state?.turns.filter((turn) => turn.role === "assistant").at(-1)?.id || null;
-  const usingPlan = connectionStatus?.plan_enabled && connectionStatus?.writer?.connected && !connectionStatus?.writer?.usage_paused && connectionStatus?.writer?.selected_model;
   return <main className={`app-window${showPanel ? " with-artifacts" : ""}${panelMounted ? " panel-mounted" : ""}`}>
     <section className="conversation" inert={mobile && mobileJson ? true : undefined} aria-hidden={mobile && mobileJson ? true : undefined}>
-      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(context?.replay_only === true || querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{context?.replay_only === true ? "Replay" : querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} onStatus={setConnectionStatus} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { if (mobile) setMobileJson(true); else setPanelOpen(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
+      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(context?.replay_only === true || querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{context?.replay_only === true ? "Replay" : querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection refreshRequest={latestReplyId} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { if (mobile) setMobileJson(true); else setPanelOpen(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
       <div ref={messageScroll} className="message-scroll" aria-busy={view === "monitor" ? farm.loading : loading} onScroll={(event) => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}>
         {view === "monitor" ? <>
           {notice && <p className="request-notice" role="status">{notice}</p>}
           {matchingFarm && <FarmAvailability farm={farm} />}
-          <TaraConversation conversation={tara} stationPresets={context?.station_presets || []} farm={farm} onSelectOrchard={(id) => { chooseTaraFarm(id); openMonitor(); }} onDetails={openFarmDetails} onOpenConnection={() => setConnectionRequest((value) => value + 1)} fieldNotes={fieldNotes} renderFieldNote={(message) => <FarmNote message={message} orchard={farm.orchard} onDetails={openFarmDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} />} alertsManaged notificationError={browserAlertError} />
+          <TaraConversation conversation={tara} stationPresets={context?.station_presets || []} farm={farm} onSelectOrchard={(id) => { chooseTaraFarm(id); openMonitor(); }} onDetails={openFarmDetails} fieldNotes={fieldNotes} renderFieldNote={(message) => <FarmNote message={message} orchard={farm.orchard} onDetails={openFarmDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} />} alertsManaged notificationError={browserAlertError} />
           {detailsError && <p className="query-error" role="alert">{detailsError}</p>}
         </> : <>
         {error && <div className="load-error" role="alert"><p>{error}</p>{retryable && <button onClick={retry}><Icon name="refresh" size={14} />{lastAttempt.current?.kind === "query" ? "Retry query" : "Retry"}</button>}</div>}
@@ -520,11 +523,10 @@ export function App() {
           {contextLoading ? <p className="query-connection" role="status">Checking weather connection…</p> : contextError || !context?.configured ? <div className="query-connection"><p>{contextError || "Current weather isn’t connected yet. Saved assessments remain available."}</p><button type="button" onClick={() => setContextRetry((value) => value + 1)}>Retry connection</button></div> : <p className="query-connection">CIMIS hourly readings · checked on demand</p>}
           <div className="query-actions">{farm.available && <button type="button" className="setup-link" onClick={startTaraFromLocation}>Monitor this location</button>}{querying && <button type="button" className="query-cancel" onClick={cancel}>Cancel</button>}<button className="query-submit" type="submit" disabled={querying || contextLoading || !context?.configured}>{querying ? "Checking…" : "Check location"}<Icon name="location" size={14} /></button></div>
         </form>}
-        {controlsMounted && <div ref={controlsForm} className="source-panel" data-open={controlsOpen} inert={!controlsOpen ? true : undefined} aria-label="Assessment sources"><div className="query-heading"><strong>Sources</strong><button className="icon-button" onClick={() => { setControlsOpen(false); controlsTrigger.current?.focus(); }} aria-label="Close saved assessments"><Icon name="close" size={15} /></button></div>{farm.available && <div className="monitor-source"><label>Locations<select value={farm.orchardId} onChange={(event) => { chooseTaraFarm(event.target.value); openMonitor(); }}><option value="" disabled>No locations yet</option>{farm.orchards.map((orchard) => <option key={orchard.id} value={orchard.id}>{orchard.name}{orchard.demo_location ? " · demo" : ""}</option>)}</select></label><button className="open-file" onClick={openMonitor}><Icon name="location" size={16} /><span>Open Tara</span><Icon name="chevron" size={12} /></button></div>}<label htmlFor="assessment-example" className="source-label">Saved assessments</label><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()}><Icon name="upload" size={16} /><span>Open assessment JSON</span><span className="file-extension">.json</span></button><p className="preview-note">{previewNote}</p></div>}
+        {(controlsMounted || sourceChanging) && <div ref={controlsForm} id="chat-add-menu" className="source-panel" data-open={controlsOpen} inert={!controlsOpen ? true : undefined} aria-label="Add to chat"><div className="query-heading"><strong>Add to chat</strong><button className="icon-button" onClick={() => { setControlsOpen(false); controlsTrigger.current?.focus(); }} aria-label="Close add menu" disabled={sourceChanging}><Icon name="close" size={15} /></button></div><SimulationConnection orchardId={tara.state?.orchard_id} locked={tara.locked} onBusy={setSourceChanging} /><details className="source-advanced" inert={sourceChanging ? true : undefined}><summary>Saved assessments</summary>{farm.available && <div className="monitor-source"><label>Locations<select value={farm.orchardId} onChange={(event) => { chooseTaraFarm(event.target.value); openMonitor(); }}><option value="" disabled>No locations yet</option>{farm.orchards.map((orchard) => <option key={orchard.id} value={orchard.id}>{orchard.name}{orchard.demo_location ? " · demo" : ""}</option>)}</select></label><button className="open-file" onClick={openMonitor}><Icon name="location" size={16} /><span>Open Tara</span><Icon name="chevron" size={12} /></button></div>}<label htmlFor="assessment-example" className="source-label">Saved assessments</label><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()}><Icon name="upload" size={16} /><span>Open assessment JSON</span><span className="file-extension">.json</span></button><p className="preview-note">{previewNote}</p></details>{view === "monitor" && tara.state?.setup.stage === "complete" ? <button className="tara-text-button source-new-farm" type="button" disabled={tara.locked} onClick={async () => { if (await tara.setup("restart")) openMonitor(); }}>Set up another farm</button> : null}</div>}
         {view === "monitor" ? <>
-          <div className="tara-compose-row"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Choose assessment source"><Icon name="plus" size={19} /></button><TaraComposer conversation={tara} replyTo={selectedMessage} onClearReply={() => setSelectedMessage(null)} /><button ref={queryTrigger} className="icon-button" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query" aria-label="Check a location"><Icon name="location" size={17} /></button></div>
-          <div className="tara-plan-status"><button className="tara-text-button" type="button" onClick={() => setConnectionRequest((value) => value + 1)}>{usingPlan ? "Using ChatGPT plan" : connectionStatus?.writer?.usage_paused ? "ChatGPT writing paused" : "Local replies · connect ChatGPT"}</button>{usingPlan && <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>}</div>
-        </> : <><div className="composer"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Choose assessment source" title="Saved assessments and local JSON"><Icon name="plus" size={19} /></button><button ref={queryTrigger} className="query-toggle" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query"><span>Check a location</span><span className="composer-send"><Icon name="send" size={15} /></span></button></div><button className="tara-text-button tara-view-return" type="button" onClick={openMonitor}>Back to Tara</button></>}
+          <div className="tara-compose-row"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Add to chat" aria-controls="chat-add-menu" disabled={sourceChanging}><Icon name="plus" size={19} /></button><TaraComposer conversation={tara} replyTo={selectedMessage} onClearReply={() => setSelectedMessage(null)} /><button ref={queryTrigger} className="icon-button" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query" aria-label="Check a location" disabled={sourceChanging}><Icon name="location" size={17} /></button></div>
+        </> : <><div className="composer"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Add to chat" aria-controls="chat-add-menu" disabled={sourceChanging} title="Add to chat"><Icon name="plus" size={19} /></button><button ref={queryTrigger} className="query-toggle" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query"><span>Check a location</span><span className="composer-send"><Icon name="send" size={15} /></span></button></div><button className="tara-text-button tara-view-return" type="button" onClick={openMonitor}>Back to Tara</button></>}
         <input ref={fileInput} type="file" accept=".json,application/json" onChange={openFile} className="sr-only" tabIndex={-1} aria-label="Open local assessment JSON" />
       </footer>
     </section>

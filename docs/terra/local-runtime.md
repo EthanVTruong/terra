@@ -39,6 +39,11 @@ The CLI defaults to loopback only. `--no-worker` serves the UI/API without
 background polling. Importing the module or using its app factory does not poll.
 
 The state directory contains independent farm, transport and source journals.
+Runtime and SMS/farm operator commands share these defaults. An explicit
+`TERRA_SMS_DB_PATH` takes precedence over the state directory; pass the same
+`--state-dir` to operator commands when using a custom directory. Startup fails
+closed if a changed path would abandon delivery history or a saved pause.
+Existing journal files are retained; see [migration details](backend-cleanup.md).
 Retain it across restarts and branch changes. Startup creates neither an orchard
 nor a subscription. Explicitly create a location in the interface; the initial
 West Orchard location is a clearly labelled demonstration pin, not a known farm.

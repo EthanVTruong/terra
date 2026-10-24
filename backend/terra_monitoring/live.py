@@ -5,6 +5,7 @@ Terra's observation of a revision, never a claimed provider publication time.
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 import hashlib
@@ -166,15 +167,29 @@ class _Snapshot:
     data_mode: str
 
 
+@dataclass
+class _Cohort:
+    snapshot: _Snapshot | None = None
+    last_attempt: pd.Timestamp | None = None
+    failure: LiveQueryError | None = None
+
+
 class LiveQueryService:
     """One shared, throttled source and immutable recent snapshots per process."""
-    def __init__(self, app_key=None, data_dir=None, clock=None, source=None, ttl_seconds=120):
+    def __init__(self, app_key=None, data_dir=None, clock=None, source=None, ttl_seconds=120,
+                 max_cache_entries=32, failure_cooldown_seconds=120):
         self.reference = load_reference()
         self.data_dir = Path(data_dir or config.repo_root() / ".terra-local" / "live")
         self.clock = clock or (lambda: pd.Timestamp.now(tz="UTC"))
         self.ttl_seconds = float(ttl_seconds)
         if not math.isfinite(self.ttl_seconds) or self.ttl_seconds < 0:
             raise ValueError("Cache duration must be finite and nonnegative")
+        if isinstance(max_cache_entries, bool) or not isinstance(max_cache_entries, int) or max_cache_entries < 1:
+            raise ValueError("Cache capacity must be a positive integer")
+        self.max_cache_entries = max_cache_entries
+        self.failure_cooldown_seconds = float(failure_cooldown_seconds)
+        if not math.isfinite(self.failure_cooldown_seconds) or self.failure_cooldown_seconds < 0:
+            raise ValueError("Failure cooldown must be finite and nonnegative")
         key = app_key if app_key is not None else (os.environ.get("CIMIS_APP_KEY") or os.environ.get("CIMIS_API_KEY"))
         self.configured = source is not None or bool(key)
         self.source = source or CimisSource(app_key=key or "", api="new", hourly_items=["hly-air-tmp"],
@@ -182,9 +197,9 @@ class LiveQueryService:
         self._lock = RLock()
         self._catalog = None
         self._catalog_at = None
-        self._cache: dict[tuple, _Snapshot] = {}
-        self._attempts: dict[tuple, pd.Timestamp] = {}
-        self._failed_keys: set[tuple] = set()
+        self._catalog_attempt_at = None
+        self._catalog_failure = None
+        self._cohorts: OrderedDict[tuple, _Cohort] = OrderedDict()
         self._seen: dict[str, str] = {}
         path = self.data_dir / "first-seen.json"
         if path.exists():
@@ -196,6 +211,18 @@ class LiveQueryService:
     def _now(self):
         return _utc(self.clock())
 
+    def _cohort(self, key):
+        # Date keys from earlier days cannot serve a current query. Discard only
+        # process caches; immutable snapshots and first-seen evidence stay intact.
+        for old in list(self._cohorts):
+            if old[2] != key[2]:
+                del self._cohorts[old]
+        cohort = self._cohorts.pop(key, None) or _Cohort()
+        self._cohorts[key] = cohort
+        while len(self._cohorts) > self.max_cache_entries:
+            self._cohorts.popitem(last=False)
+        return cohort
+
     def context(self) -> dict:
         geometry = self.reference.manifest["station_geometry"]["stations"]
         return {"schema_version": "terra-live-context-v1", "configured": self.configured, "source": "CIMIS",
@@ -204,8 +231,22 @@ class LiveQueryService:
                 for s, row in geometry.items()]}
 
     def _load_catalog(self, now, force=False):
-        if self._catalog is not None and not force and (now - self._catalog_at).total_seconds() < 3600:
+        if (not force and self._catalog_failure is not None and self._catalog_attempt_at is not None
+                and (now - self._catalog_attempt_at).total_seconds() < self.failure_cooldown_seconds):
+            raise self._catalog_failure from None
+        if self._catalog is not None and self._catalog_failure is None and not force and (now - self._catalog_at).total_seconds() < 3600:
             return self._catalog.copy()
+        self._catalog_attempt_at = now
+        try:
+            raw = self._refresh_catalog()
+        except Exception as exc:
+            self._catalog_failure = self._as_source_error(exc)
+            raise self._catalog_failure from None
+        self._catalog_failure = None
+        self._catalog, self._catalog_at = raw.copy(), self._now()
+        return raw
+
+    def _refresh_catalog(self):
         raw = self.source.list_stations(refresh=True).copy()
         if "station_id" not in raw:
             if "source_station_id" not in raw:
@@ -227,7 +268,6 @@ class LiveQueryService:
             if not all(math.isclose(row[key], before[old], rel_tol=0, abs_tol=1e-6) for key, old in
                        (("lat", "latitude"), ("lon", "longitude"), ("elevation_ft", "elevation_ft"))):
                 raise LiveQueryError("source_geometry_changed", "A calibrated station's location metadata changed and needs review.", retryable=False)
-        self._catalog, self._catalog_at = raw.copy(), self._now()
         return raw
 
     def _candidates(self, query, catalog, now):
@@ -335,22 +375,30 @@ class LiveQueryService:
             end = started.tz_convert(PST).date()
             start = end - timedelta(days=2)
             key = (tuple(ids), start, end)
-            cached = self._cache.get(key)
-            status = "cached_after_error" if key in self._failed_keys else "cached"
+            cohort = self._cohort(key)
+            cached = cohort.snapshot
+            status = "cached_after_error" if cohort.failure else "cached"
             age = (started - cached.retrieved_at).total_seconds() if cached else float("inf")
-            if query.get("refresh") or cached is None or age >= self.ttl_seconds:
-                self._attempts[key] = started
+            forced = bool(query.get("refresh"))
+            cooling = (cohort.failure is not None and cohort.last_attempt is not None
+                       and (started - cohort.last_attempt).total_seconds() < self.failure_cooldown_seconds)
+            refresh_due = forced or cached is None or age >= self.ttl_seconds
+            if refresh_due and (forced or not cooling):
+                cohort.last_attempt = started
                 try:
                     cached = self._refresh(ids, start, end, catalog)
-                    self._cache[key] = cached
-                    self._failed_keys.discard(key)
+                    cohort.snapshot = cached
+                    cohort.failure = None
                     status = "refreshed"
                 except Exception as exc:
                     failure = self._as_source_error(exc)
+                    cohort.failure = failure
                     if cached is None or failure.code != "provider_unavailable":
                         raise failure from None
-                    self._failed_keys.add(key)
                     status = "cached_after_error"
+            elif cohort.failure and (cached is None or cohort.failure.code != "provider_unavailable"):
+                # Cooldown never turns a malformed/auth response into success.
+                raise cohort.failure from None
             clock = self._now()
             eligible = cached.observations[cached.observations.timestamp.le(clock)]
             if eligible.empty:
@@ -364,7 +412,7 @@ class LiveQueryService:
                 geometry_source="current CIMIS catalog; caller-supplied query elevation")
             through = eligible.groupby("station_id").timestamp.max()
             live = {"provider": "CIMIS", "status": status, "checked_at_utc": clock,
-                "retrieved_at_utc": cached.retrieved_at, "last_attempt_at_utc": self._attempts.get(key),
+                "retrieved_at_utc": cached.retrieved_at, "last_attempt_at_utc": cohort.last_attempt,
                 "data_through_utc": valid, "per_station_data_through_utc": {sid: through.get(sid) for sid in ids},
                 "cache_age_seconds": max(0, (clock - cached.retrieved_at).total_seconds()),
                 "station_ids_requested": ids, "missing_station_ids": sorted(set(ids) - set(through.index)),

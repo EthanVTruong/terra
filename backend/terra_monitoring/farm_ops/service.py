@@ -54,6 +54,27 @@ def _event(profile, kind, transition, severity, occurred_at, facts, key, evidenc
             "occurred_at": utc(occurred_at).isoformat(), "facts": facts, "evidence_id": evidence_id}
 
 
+def _recovery_streak(rows, reading, unavailable_through):
+    """Count the latest causal, same-contract run; revisions and gaps break it."""
+    stamp = utc(reading["valid_utc"])
+    boundary = utc(unavailable_through) if unavailable_through else None
+    count = 0
+    # Store.hours_in supplies unique ascending hours. The common case reads
+    # only the final three rows, rather than re-indexing full seasonal history.
+    for row in reversed(rows):
+        candidate = utc(row["valid_utc"])
+        if candidate > stamp:
+            continue
+        if (candidate != stamp or (boundary is not None and stamp <= boundary) or not eligible(row)
+                or any(row.get(key) != reading.get(key) for key in ("geometry_key", "method_version", "qc_reference"))):
+            break
+        count += 1
+        if count == 3:
+            break
+        stamp -= timedelta(hours=1)
+    return count
+
+
 class Monitor:
     def __init__(self, store=None, *, source=None, writer=None, clock=None, delivery=None):
         self.store = store or Store()
@@ -151,6 +172,8 @@ class Monitor:
         incident = state.get("health_incident")
         if not available:
             state["health_good_count"], state["health_good_since"] = 0, None
+            old_boundary = utc(state["health_unavailable_through"]) if state.get("health_unavailable_through") else stamp
+            state["health_unavailable_through"] = max(old_boundary, stamp).isoformat()
             if incident is None:
                 incident = {"id": fingerprint({"time": now.isoformat(), "orchard": profile["id"]}),
                             "opened_at": now.isoformat(), "escalated": False}
@@ -162,16 +185,23 @@ class Monitor:
                 events.append(_event(profile, "monitoring_limited", "escalation", "strong", now,
                     {"reason": "unavailable_for_six_hours", "data_through": reading["valid_utc"]}, incident["id"], evidence_id))
         elif incident is not None:
-            last_good = state.get("health_good_since")
-            if last_good is None or stamp > utc(last_good):
-                count = state.get("health_good_count", 0) + 1 if last_good and stamp - utc(last_good) == timedelta(hours=1) else 1
-                state["health_good_since"], state["health_good_count"] = stamp.isoformat(), count
-                if count >= 3:
-                    recovered = _event(profile, "monitoring_recovered", "recovery", "info", stamp,
-                        {"consecutive_valid_readings": 3, "data_through": reading["valid_utc"]}, incident["id"], evidence_id)
-                    events.append(recovered)
-                    state["last_health_recovery"] = recovered["id"]
-                    state["health_incident"] = None
+            boundary = state.get("health_unavailable_through")
+            if boundary is None:
+                # Existing journals predate the explicit outage boundary. Retain
+                # their last counted run, or start after the last unavailable hour.
+                last_good = state.get("health_good_since")
+                boundary = ((utc(last_good) - timedelta(hours=state.get("health_good_count", 0))).isoformat()
+                            if last_good else state.get("last_observation"))
+                state["health_unavailable_through"] = boundary
+            count = _recovery_streak(rows, reading, boundary)
+            state["health_good_since"], state["health_good_count"] = stamp.isoformat() if count else None, count
+            if count >= 3:
+                recovered = _event(profile, "monitoring_recovered", "recovery", "info", stamp,
+                    {"consecutive_valid_readings": 3, "data_through": reading["valid_utc"]}, incident["id"], evidence_id)
+                events.append(recovered)
+                state["last_health_recovery"] = recovered["id"]
+                state["health_incident"] = None
+                state.pop("health_unavailable_through", None)
         # A station's original anomaly stays in evidence if the orchard estimate is usable.
         events.extend(self._season_events(profile, state, rows, summary, reading, available, now, evidence_id))
         return events
@@ -219,6 +249,9 @@ class Monitor:
             latest = state.get("last_observation")
             usable_cache = latest and now - utc(latest) <= timedelta(hours=6) and state.get("comparison_available")
             if not usable_cache:
+                if latest:
+                    old_boundary = utc(state["health_unavailable_through"]) if state.get("health_unavailable_through") else utc(latest)
+                    state["health_unavailable_through"] = max(old_boundary, utc(latest)).isoformat()
                 incident = state.get("health_incident")
                 if incident is None:
                     incident = {"id": fingerprint({"orchard": orchard_id, "time": now.isoformat()}),
@@ -336,10 +369,8 @@ class Monitor:
             if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", request_id):
                 raise ValueError("Invalid question request identity")
             message_id = fingerprint({"orchard": orchard_id, "events": [], "question": request_id})
-            existing = self.store.message(message_id)
+            existing = self.store.reserve_question(orchard_id, message_id, question.strip(), now)
             if existing:
-                if existing["llm_input"]["question"]["text"] != question.strip():
-                    raise ValueError("A request identity cannot be reused for another question")
                 return existing
         text = question.lower()
         status = self.status(orchard_id, now=now)
@@ -383,7 +414,7 @@ class Monitor:
 
     def _notification(self, message, profile, state, now):
         """Trusted immutable text plus freshly rechecked eligibility for one transport boundary."""
-        events = [e for e in self.store.events(profile["id"]) if e["id"] in message["event_ids"]]
+        events = self.store.events_by_ids(profile["id"], message["event_ids"])
         events.sort(key=lambda e: {"strong": 0, "moderate": 1, "info": 2}[e["severity"]])
         subscription = self.store.get("sms-opt-in:" + profile["id"], {})
         created, checked = utc(message["created_at"]), utc(state.get("last_check", message["created_at"]))
@@ -418,8 +449,6 @@ class Monitor:
         primary = events[0] if events else None
         category = "data_health" if primary and primary["category"] == "data_health" else "chill"
         observation = state.get("last_observation")
-        if reason == "eligible" and category == "temperature" and (not observation or now - utc(observation) > timedelta(hours=6)):
-            reason = "observation_not_fresh"
         seasonal = [e for e in events if e["type"] in {"chill_pace", "chill_pace_recovered", "chill_reference"}]
         if reason == "eligible" and seasonal:
             method = state.get("method_version", "unknown")

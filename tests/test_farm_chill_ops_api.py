@@ -15,7 +15,7 @@ from terra_monitoring.farm_ops.api import create_app
 from terra_monitoring.farm_ops.__main__ import run_loop
 from terra_monitoring.farm_ops.demo import run_demo
 from terra_monitoring.farm_ops.service import Monitor
-from terra_monitoring.farm_ops.store import Store
+from terra_monitoring.farm_ops.store import Store, fingerprint
 from terra_monitoring.farm_ops.writer import Writer
 from test_farm_chill_ops import HOUR, Transport, packet
 
@@ -53,6 +53,38 @@ def test_create_status_question_and_evidence_across_api_restart(api):
     restarted = TestClient(create_app(Monitor(Store(monitor.store.path), clock=lambda: HOUR), mutation_guard=guard))
     assert len(restarted.get("/api/orchards").json()["orchards"]) == 1
     assert len(restarted.get("/api/orchards/west/messages").json()["messages"]) == 2
+
+
+def test_reserved_question_returns_safe_typed_error_without_generation_after_restart(api):
+    monitor, _ = api
+    monitor.create_orchard(orchard_id="west")
+    question, request_id = "How much chill? private-question", "reserved-question"
+    message_id = fingerprint({"orchard": "west", "events": [], "question": request_id})
+    assert monitor.store.reserve_question("west", message_id, question, HOUR) is None
+
+    class NoWriter:
+        calls = 0
+
+        def write(self, packet):
+            self.calls += 1
+            raise AssertionError("An unfinished question reservation cannot generate again")
+
+    writer = NoWriter()
+    restarted = Monitor(Store(monitor.store.path), writer=writer, clock=lambda: HOUR)
+    client = TestClient(create_app(restarted, mutation_guard=guard))
+    client.headers["x-test-session"] = "authorized-test"
+    for _ in range(2):
+        response = client.post("/api/orchards/west/questions", json={"question": question, "request_id": request_id})
+        assert response.status_code == 422
+        assert response.json()["error"] == {
+            "code": "question_in_progress",
+            "message": "This question is already in progress or needs reconciliation.",
+            "retryable": False,
+        }
+        assert question not in response.text and request_id not in response.text
+    assert writer.calls == 0
+    assert restarted.store.messages("west") == []
+    assert restarted.store.get("question-request:" + message_id)["question"] == question
 
 
 @pytest.mark.parametrize("path,method,body", [

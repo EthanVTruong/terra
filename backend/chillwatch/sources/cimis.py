@@ -144,9 +144,14 @@ def _value(rec: dict[str, Any], key: str) -> tuple[float, str | None, str | None
 
 
 def _convert(col: str, v: float, unit: str | None) -> float:
-    u = (unit or "").upper()
-    if col in ("temp_f", "dewpoint_f", "tmax_f", "tmin_f") and "C" in u and "F" not in u:
-        return v * 9.0 / 5.0 + 32.0
+    u = str(unit or "").strip().upper()
+    if col in ("temp_f", "dewpoint_f", "tmax_f", "tmin_f"):
+        temperature_unit = u.replace("°", "").replace(" ", "")
+        if temperature_unit in {"C", "(C)", "DEGC", "CELSIUS"}:
+            return v * 9.0 / 5.0 + 32.0
+        if temperature_unit in {"F", "(F)", "DEGF", "FAHRENHEIT"}:
+            return v
+        return float("nan")  # unknown temperature units follow the missing-data path
     if col == "solar_wm2" and "LY" in u:
         return v * LY_PER_DAY_TO_WM2
     if col == "wind_mph" and ("M/S" in u or "MPS" in u):

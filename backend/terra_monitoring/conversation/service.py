@@ -499,9 +499,9 @@ class ConversationService:
             from ..farm_ops.service import orchard_profile
             device_profile = orchard_profile("Shared location", orchard_id="farm-" + fingerprint(request_id)[:20],
                 lat=resolved["lat"], lon=resolved["lon"], elevation_ft=resolved["elevation_ft"], crops=setup["crops"],
-                variety=setup.get("variety"), crop_description=setup.get("crop_description"))
-            device_profile.update(location_source="device geolocation; ground elevation from USGS EPQS",
-                                  location_accuracy_m=resolved["accuracy_m"], elevation_source=resolved["elevation_source"])
+                variety=setup.get("variety"), crop_description=setup.get("crop_description"),
+                location_metadata={"location_source": "device geolocation; ground elevation from USGS EPQS",
+                                   "location_accuracy_m": resolved["accuracy_m"], "elevation_source": resolved["elevation_source"]})
         if action == "location":
             if not isinstance(location, dict) or location.get("confirmed") is not True:
                 raise ValueError("Confirm the farm location before saving it")
@@ -535,9 +535,11 @@ class ConversationService:
             return self._finish(request_id, thread, None, setup=empty_setup())
         now = utc(self.monitor.clock()).isoformat()
         if action in {"location", "device_location"}:
-            p = self.store.save_orchard(device_profile, now=self.monitor.clock()) if device_profile else self.monitor.create_orchard(location.get("name", "My farm"), orchard_id="farm-" + fingerprint(request_id)[:20],
+            p = self.monitor.create_orchard(location.get("name", "My farm"), orchard_id="farm-" + fingerprint(request_id)[:20],
                 lat=location["lat"], lon=location["lon"], elevation_ft=location["elevation_ft"], crops=setup["crops"], variety=setup.get("variety"),
-                crop_description=setup.get("crop_description"))
+                crop_description=setup.get("crop_description"),
+                **({"location_metadata": {key: device_profile[key] for key in
+                    ("location_source", "location_accuracy_m", "elevation_source")}} if device_profile else {}))
             event = self._turn(request_id + ":event", "event", "Location shared" if device_profile else p["name"], now, kind="location", data={**location, "orchard_id": p["id"], "saved": True})
             return self._finish(request_id, thread, None, text="Want a heads-up when something needs attention? Browser notifications work while Terra is open.",
                 event=event, setup={**setup, "orchard_id": p["id"], "location": location, "stage": "notifications"}, migrate=p["id"], data={"action": "notification_choice"})

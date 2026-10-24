@@ -69,6 +69,36 @@ class FullFlowTests(unittest.TestCase):
         self.assertIn("60 mph", answer["text"])
         self.assertFalse(self.engine.monitor.delivery)
 
+    def test_device_setup_uses_replay_factory_before_weather_and_restart(self):
+        service = self.app.state.tara_conversation
+        crop = self.client.post("/api/tara/messages", headers=self.headers,
+            json={"request_id": "device-crops", "text": "Walnuts"})
+        self.assertEqual(crop.status_code, 200, crop.text)
+        resolved = {"lat": 38.55, "lon": -121.78, "accuracy_m": 10.0, "elevation_ft": 60.0,
+                    "elevation_source": {"provider": "USGS EPQS", "units": "Feet"}}
+        body = {"request_id": "device-replay-farm", "action": "device_location",
+                "device_location": {"lat": 38.55, "lon": -121.78, "accuracy_m": 10.0}}
+        with patch.object(service.location_resolver, "resolve", return_value=resolved) as resolver:
+            result = self.client.post("/api/tara/setup", headers=self.headers, json=body)
+            self.assertEqual(result.status_code, 200, result.text)
+            state = result.json()["state"]
+            identity = state["orchard_id"]
+            profile = self.bridge.store.orchard(identity)
+            self.assertEqual(profile["mode"], "injected")
+            self.assertEqual(profile["elevation_source"], resolved["elevation_source"])
+            self.assertEqual(profile["crops"], ["walnut"])
+            self.assertFalse(self.engine.store.get("sms-opt-in:" + identity)["enabled"])
+            self.assertTrue(self.feed(identity)["monitor"]["comparison_available"])
+            self.assertEqual(self.client.post("/api/tara/setup", headers=self.headers, json=body).status_code, 200)
+            self.assertEqual(resolver.call_count, 1)
+        self.action({"type": "weather", "station_id": 6, "variable": "wind_speed_mph", "value": 60, "source_flag": ""})
+        events = self.bridge.store.events(identity)
+        self.assertTrue(any(event["type"] == "weather_discrepancy" for event in events))
+        restored = DemoSimulation(state_dir=self.root / "qa", grid_size=2)
+        self.assertEqual(restored.store.orchard(identity), profile)
+        self.assertEqual(restored.session, self.engine.session)
+        self.assertFalse(restored.monitor.delivery)
+
     def test_production_and_lab_assets_are_separate_and_terra_is_actual_production(self):
         self.assertIn("production", self.client.get("/").text)
         self.assertEqual(self.client.get("/").content, self.client.get("/terra").content)

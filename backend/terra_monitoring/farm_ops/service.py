@@ -12,7 +12,8 @@ from .writer import Writer, message_input
 
 
 def orchard_profile(name="West Orchard", *, orchard_id=None, lat=38.6, lon=-121.84,
-                    elevation_ft=70.0, mode="current", crops=None, crop=None, variety=None, crop_description=None):
+                    elevation_ft=70.0, mode="current", crops=None, crop=None, variety=None, crop_description=None,
+                    location_metadata=None):
     if not isinstance(name, str) or not name.strip() or len(name) > 80 or any(ord(c) < 32 for c in name):
         raise ValueError("Provide a short orchard name")
     for value, low, high in ((lat, -90, 90), (lon, -180, 180), (elevation_ft, -1500, 20000)):
@@ -56,6 +57,20 @@ def orchard_profile(name="West Orchard", *, orchard_id=None, lat=38.6, lon=-121.
                              "source": None, "note": "No crop-specific reference has been configured."}
         if crop_description is not None:
             profile["crop_description"] = crop_description.strip()
+    if location_metadata is not None:
+        keys = {"location_source", "location_accuracy_m", "elevation_source"}
+        if not isinstance(location_metadata, dict) or set(location_metadata) != keys:
+            raise ValueError("Provide only verified device provenance")
+        accuracy = location_metadata["location_accuracy_m"]
+        source = location_metadata["elevation_source"]
+        if (location_metadata["location_source"] != "device geolocation; ground elevation from USGS EPQS"
+                or (accuracy is not None and (isinstance(accuracy, bool) or not isinstance(accuracy, (int, float))
+                    or not math.isfinite(accuracy) or accuracy < 0))
+                or not isinstance(source, dict) or source.get("provider") != "USGS EPQS" or source.get("units") != "Feet"):
+            raise ValueError("Provide verified ground elevation provenance and usable accuracy")
+        # These fields cannot override identity, geometry, mode or delivery.
+        # Attach them before the immutable profile is first saved by its factory.
+        profile.update({**location_metadata, "elevation_source": dict(source)})
     return profile
 
 

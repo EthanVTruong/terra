@@ -98,6 +98,9 @@ function useDemo() {
   }, [accept]);
   const act = useCallback((action, endpoint = '/api/demo/action') => {
     unlockAudio();
+    if (endpoint === '/api/demo/action' && action.type !== 'temperature') {
+      window.dispatchEvent(new Event('terra-demo-command'));
+    }
     const execute = async () => {
       if (alive.current) setBusy(true);
       const id = ++seq.current;
@@ -381,17 +384,30 @@ function StationControl({
   layer
 }) {
   const s = state.stations.find(s => s.id === selected) || state.stations[0],
-    [draft, setDraft] = useState(s.value_f ?? 50),
-    timer = useRef(null);
+    [draft, setDraft] = useState(String(s.value_f ?? 50)),
+    timer = useRef(null),
+    latestStation = useRef(s);
+  latestStation.current = s;
+  const pending = s.online && String(draft).trim() !== '' && Number(draft) !== s.value_f;
   useEffect(() => {
-    setDraft(s.value_f ?? s.original_f ?? 50);
-  }, [s.id, s.value_f, s.original_f]);
-  useEffect(() => () => clearTimeout(timer.current), []);
+    setDraft(String(s.value_f ?? s.original_f ?? 50));
+  }, [s.id, s.value_f, s.original_f, state.run_id]);
+  useEffect(() => {
+    const cancel = () => {
+      clearTimeout(timer.current);
+      setDraft(String(latestStation.current.value_f ?? latestStation.current.original_f ?? 50));
+    };
+    window.addEventListener('terra-demo-command', cancel);
+    return () => {
+      cancel();
+      window.removeEventListener('terra-demo-command', cancel);
+    };
+  }, []);
   function change(v) {
     const n = Number(v);
-    setDraft(n);
+    setDraft(v);
     clearTimeout(timer.current);
-    if (Number.isFinite(n) && n >= -10 && n <= 125) {
+    if (String(v).trim() && Number.isFinite(n) && n >= -10 && n <= 125) {
       const id = s.id;
       timer.current = setTimeout(() => act({
         type: 'temperature',
@@ -400,15 +416,14 @@ function StationControl({
       }), 350);
     }
   }
-  return <aside className="station-controls"><div className="control-heading"><span>Selected station</span><SlidersHorizontal size={15} /></div><div className="selected-station-heading"><h2>{s.name}</h2><StationLabel station={s} /></div><div className="temperature-control"><label htmlFor="temperature-value">Temperature <span>°F</span></label><div className="temperature-value"><input id="temperature-value" aria-label={`${s.name} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={number(draft)} disabled={!s.online} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${s.name} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} disabled={!s.online} onChange={e => change(e.target.value)} /><div className="slider-context"><span>Recorded {degrees(s.original_f)}</span><button disabled={s.override === null || s.override === undefined || busy} onClick={() => {
+  return <aside className="station-controls"><div className="control-heading"><span>Selected station</span><SlidersHorizontal size={15} /></div><div className="selected-station-heading"><h2>{s.name}</h2>{pending ? <span className="station-state">Checking…</span> : <StationLabel station={s} />}</div><div className="temperature-control"><label htmlFor="temperature-value">Temperature <span>°F</span></label><div className="temperature-value"><input id="temperature-value" aria-label={`${s.name} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onBlur={() => { if (!String(draft).trim()) setDraft(String(s.value_f ?? s.original_f)); }} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${s.name} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onChange={e => change(e.target.value)} /><div className="slider-context"><span>Recorded {degrees(s.original_f)}</span><button disabled={s.override === null || s.override === undefined || busy} onClick={() => {
           clearTimeout(timer.current);
           act({
             type: 'temperature',
             station_id: s.id,
             value_f: s.original_f
           });
-        }}><ArrowClockwise size={12} />Restore</button></div></div><div className="station-comparison"><div><span>Expected</span><strong>{degrees(s.assessment.expected_f)}</strong></div><div><span>Departure</span><strong>{signed(s.assessment.residual_f)}</strong></div></div><div className="reading-state" aria-live="polite">{!s.online ? 'Reading withheld from the simulation.' : flagged(s) ? layer === 'filtered' ? 'Flagged · excluded from temperature field.' : 'Terra flagged this departure.' : !s.assessment.available ? 'Comparison unavailable.' : s.assessment.level === 'moderate' ? `Departure · awaiting ${s.assessment.required_readings} consecutive readings` : 'Within the current comparison.'}</div><div className="station-list-heading">Station reporting</div><div className="station-list">{state.stations.map(row => <div className={`station-row${row.id === selected ? ' active' : ''}`} key={row.id}><button className="station-select" onClick={() => {
-          clearTimeout(timer.current);
+        }}><ArrowClockwise size={12} />Restore</button></div></div><div className="station-comparison"><div><span>Expected</span><strong>{pending ? '—' : degrees(s.assessment.expected_f)}</strong></div><div><span>Departure</span><strong>{pending ? '—' : signed(s.assessment.residual_f)}</strong></div></div><div className="reading-state" aria-live="polite">{!s.online ? 'Reading withheld from the simulation.' : pending ? 'Evaluating this reading…' : flagged(s) ? layer === 'filtered' ? 'Flagged · excluded from temperature field.' : 'Terra flagged this departure.' : !s.assessment.available ? 'Comparison unavailable.' : s.assessment.level === 'moderate' ? `Departure · awaiting ${s.assessment.required_readings} consecutive readings` : 'Within the current comparison.'}</div><div className="station-list-heading">Station reporting</div><div className="station-list">{state.stations.map(row => <div className={`station-row${row.id === selected ? ' active' : ''}`} key={row.id}><button className="station-select" onClick={() => {
           setSelected(row.id);
         }}><span className={`row-dot${!row.online ? ' off' : flagged(row) ? ' warn' : ''}`} /><span>{row.name}</span><span>{row.online ? degrees(row.value_f) : '—'}</span></button><button className="reporting-toggle" aria-label={`${row.online ? 'Take' : 'Bring'} ${row.name} ${row.online ? 'offline' : 'online'}`} aria-pressed={row.online} disabled={busy} onClick={() => {
           clearTimeout(timer.current);
@@ -430,8 +445,9 @@ function StationApp({
     [selected, setSelected] = useState(6),
     [layer, setLayer] = useState('raw'),
     phone = usePhone(state, 'stations'),
-    available = supported(state.assessment);
-  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div><MapTrifold size={19} /><h1>Station lab</h1><span className="header-separator" /><span>Sacramento Valley</span></div><div className="lab-header-actions"><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div><StationControl state={state} selected={selected} setSelected={setSelected} act={act} busy={busy} layer={layer} /></div><footer className="lab-footer"><div className="scenario-controls"><span>Try</span>{[['normal', 'Original'], ['minor', 'Small change'], ['spike', 'Station spike'], ['support_loss', 'Support loss']].map(([name, label]) => <button key={name} disabled={busy} onClick={() => act({
+    available = supported(state.assessment),
+    health = state.monitor.demo_health;
+  return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div><MapTrifold size={19} /><h1>Station lab</h1><span className="header-separator" /><span>Sacramento Valley</span></div><div className="lab-header-actions"><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div><StationControl state={state} selected={selected} setSelected={setSelected} act={act} busy={busy} layer={layer} /></div><footer className="lab-footer"><div className="scenario-controls"><span>Try</span>{[['normal', 'Original'], ['minor', 'Small change'], ['spike', 'Station spike'], [health.incident_active ? 'recover' : 'support_loss', health.incident_active ? 'Restore +3h' : 'Support loss']].map(([name, label]) => <button key={name} disabled={busy || name === 'recover' && state.controls.remaining_hours < 3} onClick={() => act({
             type: 'preset',
             name
           })}>{label}</button>)}</div><div className="time-controls"><span>{clock(state.clock.current_utc, true)}</span><button className="quiet-button" disabled={busy || state.controls.remaining_hours < 1} onClick={() => act({
@@ -439,10 +455,7 @@ function StationApp({
             hours: 1
           })}>+1 hour <ArrowRight size={13} /></button><button className="icon-button" disabled={busy} title="Reset entire demo" aria-label="Reset entire demo" onClick={() => act({
             type: 'reset'
-          })}><ArrowClockwise size={15} /></button></div></footer>{(!available || state.monitor?.demo_health?.incident_active) && <div className="recovery-strip"><span>{available ? `Recovery · ${state.monitor.demo_health?.consecutive_good_readings || 0} of 3 hourly readings` : 'Terra recorded a support interruption.'}</span><button disabled={busy || state.controls.remaining_hours < 3} onClick={() => act({
-          type: 'preset',
-          name: 'recover'
-        })}>Restore support + 3 hours <ArrowRight size={13} /></button></div>}</main><div className="below-app"><span>Historical replay · modified readings are isolated</span><span>Phone notifications are simulated</span></div>{phone.notice && <Notification notification={phone.notice} onClose={() => phone.setNotice(null)} />}</>;
+          })}><ArrowClockwise size={15} /></button></div></footer></main><div className="below-app"><span>Historical replay · modified readings are isolated</span><span>Phone notifications are simulated</span></div>{phone.notice && <Notification notification={phone.notice} onClose={() => phone.setNotice(null)} />}</>;
 }
 function useNoteDetails(id, runId) {
   const [details, setDetails] = useState(null),
@@ -654,7 +667,7 @@ function TerraApp({
             }}><SidebarSimple size={17} /></button></div></header><div className="thread-scroll" ref={scroll} onScroll={event => {
           const el = event.currentTarget;
           nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-        }}><div className="thread-date">{clock(state.clock.current_utc, true)}</div><div className="thread-context">Demo orchard · historical replay</div>{!available && <div className="quiet-availability"><span className="status-dot limited" />Weather support limited</div>}{state.messages.some(m => !m.event_types?.includes('welcome')) ? <div className="grower-notes" role="log" aria-label="Grower alerts" aria-live="polite" aria-relevant="additions text">{state.messages.filter(m => !m.event_types?.includes('welcome')).map(m => <article key={m.id} className="grower-note"><time dateTime={m.created_at}>{clock(m.created_at)} PST</time>{(sent[m.id] || m.llm_input?.question?.text) && <div className="outgoing-bubble">{sent[m.id] || m.llm_input?.question?.text}</div>}<button className={`incoming-bubble${selectedNote === m.id ? ' selected-note' : ''}`} onClick={e => openNote(m, e)} aria-label={`Open grower note: ${m.text}`}>{m.text}</button><button className="note-attachment" onClick={e => openNote(m, e)}><MapTrifold size={20} /><span><strong>{m.event_types?.includes('monitoring_recovered') ? 'Weather support restored' : m.event_types?.includes('monitoring_limited') ? 'Weather support' : 'Field note'}</strong><small>{m.kind === 'answer' ? 'Supporting facts' : 'View station evidence'}</small></span><ArrowUpRight size={13} /></button><span className="note-delivery">{m.kind === 'answer' ? 'Reply in Terra' : m.event_types?.includes('welcome') ? 'Monitoring started' : 'Demo phone · simulated'}</span></article>)}</div> : <div className="quiet-state"><span className="quiet-orbit"><Check size={19} /></span><h2>All quiet.</h2><p>Weather support is usable.</p><a href="/stations" target="_blank" rel="noreferrer">Open station lab <ArrowUpRight size={12} /></a></div>}</div><div className="chat-bottom"><form className="composer" onSubmit={ask}><span className="composer-icon"><Plus size={14} /></span><input aria-label="Ask Terra about this orchard" value={question} onChange={e => setQuestion(e.target.value)} placeholder="Ask about your orchard…" disabled={asking} maxLength={500} /><button type="submit" disabled={!question.trim() || asking} aria-label="Send question">{asking ? <CircleNotch size={15} className="spin" /> : <ArrowUp size={16} />}</button></form><span className="chat-footnote">Simulation · no texts sent</span></div>{phoneOpen && <div className="phone-popover"><div className="popover-title"><strong>Simulated phone</strong><button className="icon-button" onClick={() => setPhoneOpen(false)} aria-label="Close simulated phone"><X size={14} /></button></div>{latest ? <><span className="phone-meta">terra · {clock(latest.created_at)} PST</span><p>{latest.text}</p><button className="text-button" onClick={() => {
+        }}><div className="thread-date">{clock(state.clock.current_utc, true)}</div><div className="thread-context">Demo orchard · historical replay</div>{!available && <div className="quiet-availability"><span className="status-dot limited" />Weather support limited</div>}{state.messages.some(m => !m.event_types?.includes('welcome')) ? <div className="grower-notes" role="log" aria-label="Grower alerts" aria-live="polite" aria-relevant="additions text">{state.messages.filter(m => !m.event_types?.includes('welcome')).map(m => <article key={m.id} className="grower-note"><time dateTime={m.created_at}>{clock(m.created_at)} PST</time>{(sent[m.id] || m.llm_input?.question?.text) && <div className="outgoing-bubble">{sent[m.id] || m.llm_input?.question?.text}</div>}<button className={`incoming-bubble${selectedNote === m.id ? ' selected-note' : ''}`} onClick={e => openNote(m, e)} aria-label={`Open grower note: ${m.text}`}>{m.text}</button><button className="note-attachment" onClick={e => openNote(m, e)}><MapTrifold size={20} /><span><strong>{m.event_types?.includes('monitoring_recovered') ? 'Weather support restored' : m.event_types?.includes('monitoring_limited') ? 'Weather support' : 'Field note'}</strong><small>{m.kind === 'answer' ? 'Supporting facts' : 'View station evidence'}</small></span><ArrowUpRight size={13} /></button><span className="note-delivery">{m.kind === 'answer' ? 'Reply in Terra' : m.event_types?.includes('welcome') ? 'Monitoring started' : 'Demo phone · simulated'}</span></article>)}</div> : <div className="quiet-state"><span className="quiet-orbit"><Check size={19} /></span><h2>All quiet.</h2><p>Weather support is usable.</p><a href="/stations" target="_blank" rel="noreferrer">Open station lab <ArrowUpRight size={12} /></a></div>}</div><div className="chat-bottom"><form className="composer" onSubmit={ask}><span className="composer-icon"><Plus size={14} /></span><input aria-label="Ask Terra about this orchard" value={question} onChange={e => setQuestion(e.target.value)} placeholder="Ask about your orchard…" disabled={asking} maxLength={500} /><button type="submit" disabled={!question.trim() || asking} aria-label="Send question">{asking ? <CircleNotch size={15} className="spin" /> : <ArrowUp size={16} />}</button></form></div>{phoneOpen && <div className="phone-popover"><div className="popover-title"><strong>Simulated phone</strong><button className="icon-button" onClick={() => setPhoneOpen(false)} aria-label="Close simulated phone"><X size={14} /></button></div>{latest ? <><span className="phone-meta">terra · {clock(latest.created_at)} PST</span><p>{latest.text}</p><button className="text-button" onClick={() => {
               setSelectedNote(latest.id);
               setPanel(true);
               setPhoneOpen(false);

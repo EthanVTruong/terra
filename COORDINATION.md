@@ -19,7 +19,7 @@
   "status": "active",
   "intent": "Build a separate local two-view simulation: real held-out weather with manual station controls and Nathan-estimator heatmap; exact source-grounded Grok Bot style grower chat showing actual frozen QC and orchard-support events, evidence and simulated phone ping. No live-system changes, external messages, refit or provider calls.",
   "branch": "codex/terra-demo-simulation",
-  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "base": "e4292b21594d20b3983a62447e2f4632aac0f3bd",
   "domains": ["terra-coordination", "terra-qc-json"],
   "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/**", "web/demo/**", "tests/test_terra_demo_simulation.py", "docs/terra/demo-simulation.md", "docs/terra/demo-simulation/**"],
   "depends_on": [],

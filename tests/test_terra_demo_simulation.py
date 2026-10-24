@@ -71,16 +71,21 @@ class DemoSimulationTests(unittest.TestCase):
         for _ in range(3):
             same_hour = self.demo.action({"type": "preset", "name": "normal"})
         self.assertFalse(any(e["type"] == "monitoring_recovered" for e in same_hour["events"]))
-        self.assertEqual(same_hour["monitor"]["demo_health"]["consecutive_good_readings"], 1)
+        # The current monitor excludes the last unavailable hour even after a
+        # same-hour revision. Only subsequent distinct hours prove recovery.
+        self.assertEqual(same_hour["monitor"]["demo_health"]["consecutive_good_readings"], 0)
         self.assertTrue(same_hour["monitor"]["demo_health"]["incident_active"])
         next_hour = self.demo.action({"type": "advance", "hours": 1})
         self.assertFalse(any(e["type"] == "monitoring_recovered" for e in next_hour["events"]))
-        self.assertEqual(next_hour["monitor"]["demo_health"]["consecutive_good_readings"], 2)
+        self.assertEqual(next_hour["monitor"]["demo_health"]["consecutive_good_readings"], 1)
         self.assertTrue(next_hour["monitor"]["demo_health"]["incident_active"])
+        second_hour = self.demo.action({"type": "advance", "hours": 1})
+        self.assertFalse(any(e["type"] == "monitoring_recovered" for e in second_hour["events"]))
+        self.assertEqual(second_hour["monitor"]["demo_health"]["consecutive_good_readings"], 2)
         third = self.demo.action({"type": "advance", "hours": 1})
         self.assertEqual(sum(e["type"] == "monitoring_recovered" for e in third["events"]), 1)
         self.assertEqual(len(third["notifications"]), 2)
-        self.assertEqual(utc(third["clock"]["current_utc"]), utc(START) + timedelta(hours=2))
+        self.assertEqual(utc(third["clock"]["current_utc"]), utc(START) + timedelta(hours=3))
         self.assertEqual(third["monitor"]["demo_health"], {
             "incident_active": False, "consecutive_good_readings": 3, "required_good_readings": 3})
 

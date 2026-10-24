@@ -12,7 +12,7 @@ Both use the same isolated server on loopback port 8520. No changes enter the or
 Use an environment containing `requirements-terra-dev.txt` and the existing Node/pnpm setup:
 
 ```powershell
-pnpm --dir web/demo install --ignore-workspace
+pnpm --dir web/demo install --frozen-lockfile
 pnpm --dir web/demo build
 $env:PYTHONPATH = 'backend'
 python -m terra_monitoring.demo_simulation --host 127.0.0.1 --port 8520 --state-dir .terra-local/demo-session
@@ -26,7 +26,7 @@ The two browser URLs use the same origin and session. The application persists t
 2. **Temperature slider / Station spike:** actual frozen station QC detects the injected departure. The raw heatmap changes; the filtered map uses Nathan's estimator with Terra's exclusions. Adequate peers can preserve a usable orchard estimate, correctly producing no orchard alert.
 3. **Reporting toggles / Support loss:** insufficient usable inputs make the actual orchard Monitor record `monitoring_limited`. The same persisted note ID and original text appear in the grower chat and local simulated phone toast. Repeating an unchanged incident does not create another notification.
 4. **Select the note:** retained support, station values and chart come from first publication. Later changes do not rewrite them. Ask “Why did I get this alert?” for the Monitor's factual explanation; answers do not create proactive phone notifications.
-5. **Restore:** Original restores readings in the current hour. The recovery strip counts actual distinct usable hourly estimates. Advance twice after the first restored reading, or use **Restore support + 3 hours**. The backend records one recovery note only after its actual rule is satisfied.
+5. **Restore:** Original restores readings in the current hour. The last unavailable hour remains the incident boundary; revising it does not count toward recovery. Advance through three subsequent usable hourly estimates, or use **Restore +3h**. The backend records one recovery note only after its actual rule is satisfied.
 
 Temperature overrides apply to one hourly frame. Reporting interruptions persist until restored. Time advances only through the controls, using actual next observations; the active slice has a finite endpoint. The clock is fixed PST, matching the detector's convention. A changed hour remains historical replay, never current weather.
 

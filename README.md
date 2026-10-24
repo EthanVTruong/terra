@@ -36,5 +36,15 @@ iteration, Vite proxies `/api` to that same local service. Follow the linked
 runbook for the build, development commands, cache/freshness behavior and tests.
 
 Queries are on demand, with a 120-second response-cache window. This is not a
-continuous monitoring worker, deployed service or SMS transport. Real current
+continuous monitoring worker or deployed service. Real current
 weather, retained cached data and controlled examples remain explicitly labelled.
+
+## Phone alerts with Twilio
+
+The optional [Twilio integration](docs/terra/twilio-sms.md) delivers selected,
+persisted orchard notifications to one configured phone through a shared transport. The
+**Phone alerts** panel can also run a controlled temperature spike through the
+frozen detector and send its clearly labelled demo text. Saved examples and
+uploaded JSON and ordinary location queries never send messages. SMS stays disabled until explicitly configured.
+Delivery records survive restarts; uncertain sends are withheld from automatic
+resending. Real phone delivery requires a working Twilio account and approved sender.

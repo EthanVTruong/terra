@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import SmsControls from "./SmsControls.jsx";
 
 const SCHEMA = "terra-location-assessment-v1";
 const ESTIMATE_STATUSES = new Set(["ok", "stale", "insufficient_data"]);
@@ -398,6 +399,16 @@ export function App() {
     } catch (reason) { setQueryError(reason.message); }
   }
 
+  const showSmsAssessment = useCallback((value) => {
+    try {
+      const checked = validateAssessment(value);
+      request.current.controller?.abort(); request.current.version += 1;
+      userSelection.current = true; setLoading(false); setPendingKind(null); setError("");
+      setPacket(checked); setSelectedId(""); setQueryOpen(false);
+      setResultSource({ kind: "demo", label: "Simulated flag", description: "SMS demo · simulated observations" });
+    } catch { setNotice("Demo delivery was recorded, but its assessment could not be displayed."); }
+  }, []);
+
   const showPanel = Boolean(packet) && (!mobile || mobileJson);
   const querying = loading && pendingKind === "query";
   const previewNote = resultSource?.kind === "query" ? "Provider query · checked on demand" : resultSource?.kind === "file" ? `Local file · ${resultSource.label}` : resultSource?.description || "Saved assessment · no message delivery";
@@ -420,6 +431,7 @@ export function App() {
           <div className="query-actions">{querying && <button type="button" className="query-cancel" onClick={cancel}>Cancel</button>}<button className="query-submit" type="submit" disabled={querying || contextLoading || !context?.configured}>{querying ? "Checking…" : "Check location"}<Icon name="location" size={14} /></button></div>
         </form>}
         <button ref={queryTrigger} className="query-toggle" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query"><Icon name="location" size={15} /><span>Query location</span><Icon name="chevron" size={12} /></button>
+        <SmsControls onAssessment={showSmsAssessment} />
         <label htmlFor="assessment-example">Saved assessments</label><div className="controls-row"><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()} title="Open a local assessment JSON"><Icon name="upload" size={15} /><span>Open JSON</span></button><input ref={fileInput} type="file" accept=".json,application/json" onChange={openFile} className="sr-only" tabIndex={-1} aria-label="Open local assessment JSON" /></div><p className="preview-note">{previewNote}</p>
       </footer>
     </section>

@@ -1,5 +1,29 @@
 # Terra integration coordination
 
+```json
+{
+  "kind": "task",
+  "id": "terra-twilio-sms",
+  "owner": "et",
+  "status": "active",
+  "intent": "User requests comprehensive Twilio setup and actual phone delivery when Terra flags a reading, with simulated flags for the demo. Add an explicitly enabled fixed-recipient transport, controlled detector demo, durable duplicate suppression and delivery evidence. Configure the account using computer control where permitted; keep authentication and regulated/paid submissions with the user. Preserve frozen QC, Nathan algorithms and current on-demand query semantics.",
+  "branch": "codex/terra-twilio-sms",
+  "base": "22d4594a768af930b655118959942ae06567b768",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/**", "tests/test_terra_sms.py", "tests/test_terra_sms_server.py", "docs/terra/**", "web/**", ".env.example", ".github/workflows/terra.yml", "README.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "2ac2beb96eb2f324f3b2fc78fa8248072d664ce8",
+    "summary": "SMS software handoff ready: fixed-recipient transport, explicit real-detector simulated demo, immutable farm-message delivery, durable attempt/retry/receipt journal and shared guarded server assembly. Ordinary queries remain pure. Integration owner owns combined farm worker/UI merge; no second worker or message queue added.",
+    "evidence": ["145 transport/envelope tests and58 HTTP/composition tests pass. Full configured scoped check passes on the transport source against actual upstream22d4594; final assembly-hook cases separately pass. Production build and4packaging cases pass; browser disabled-send/setup/focus-return verified; preview8513 healthok and removed raw-send route404.", "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTP→MockTransport→receipt→pause→restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.", "Actual read-only Twilio account and owned-number APIs both HTTP200: accountactiveTrial, ownedSMSsenders0. Console shows100freeSMS, predefined templates and a trialsharedsender. Requested recipient absent from verified tester list. Recipient entered in Add a verified tester; Verify not pressed; zero OTPs, real SMS or paid actions.", "Existing account credentials plus opted-in recipient saved only in ignored private runtime configuration; shared CIMIS environment preserved. Redacted local readiness record available to integration owner. Original Terra staged checkout, Nathan implementation and frozen reference preserved."],
+    "uncertainty": "Actual custom Terra phone delivery remains unverified: requested tester needs phone verification; trial custom-body restriction and approved sender readiness remain. No spending approval, purchase or upgrade. One automatic browser accessibility snapshot included the existing token in this private tool trace; no source/public Git/handoff contains it, and owner credential rotation was not performed silently.",
+    "next": "Root integration owner consumes this branch and shared private SMS env path, mounts optional farm router once, drains immutable outbox on startup/ticks and reconciles pending receipts. User completes Verify on prepared Twilio tester screen and reviews sender/custom-messaging upgrade requirements and budget before any real test. Keep SMS disabled until ready."
+  }
+}
+```
+
 This record covers ET's additive statistical QC/JSON work. Existing `backend/chillwatch`,
 configuration, ingestion, repair and model code remain Nathan-owned; they are not
 replaced by this checkpoint. Source facts live in the modules. This is a shared
@@ -61,6 +85,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "spec.md",
     "tests/test_terra_live.py",
     "tests/test_terra_server.py",
+    "tests/test_terra_sms.py",
+    "tests/test_terra_sms_server.py",
     "tests/fixtures/terra_live/**",
     ".env.example",
     "tests/test_terra_pipeline.py",
@@ -130,6 +156,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_estimate.py",
     "tests/test_terra_live.py",
     "tests/test_terra_server.py",
+    "tests/test_terra_sms.py",
+    "tests/test_terra_sms_server.py",
     "-q"
   ],
   "timeout": 120

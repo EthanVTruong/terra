@@ -6,7 +6,7 @@
   "id": "terra-ui-quiet",
   "owner": "et",
   "status": "done",
-  "intent": "User requests removing repeated Local inbox /Demo orchard /Orchard updates /Monitoring subtext and replacing the wordmark with the approved square character. Follow-up: group notes by Pacific calendar day, show clocks below bubbles, and collapse the evidence heading/date stack. Presentation only: preserve exact stored messages/JSON, real delivery states, demo/replay context in Details and source controls, and visible data warnings. Current follow-up: give the square character more room and polish its header alignment at desktop and phone widths.",
+  "intent": "Presentation refinement requested by the user: approved square character with polished spacing, quieter context labels, Pacific day dividers and clock footers. Latest follow-up removes generated As of suffixes from displayed bubbles, condenses Phone Alerts, and removes redundant Details links/panels. Preserve exact stored messages/JSON, numeric evidence, meaningful source/availability warnings, explicit simulated-test identity and truthful delivery states. No backend or external-account changes.",
   "branch": "codex/terra-ui-quiet",
   "base": "78e835d",
   "domains": [
@@ -21,15 +21,14 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "3244802164356e12ca18a2ab55ee2d87982846d4",
-    "summary": "Approved cube character replaces the wordmark and favicon. Repeated orchard/local-inbox/monitoring labels are trimmed; Pacific day dividers and clock-only note footers replace repeated full dates. Evidence uses one compact heading/time row. Exact messages, JSON, numeric evidence, source warnings and actual delivery states are preserved. Follow-up character placement uses a shared 52px header, 28px icon and 24px left inset (20px below 370px), with about 12px vertical clearance and a 6px header-popover gap.",
+    "revision": "7bcbd20f8257c891442f0ec782b3178e41172864",
+    "summary": "Quiet UI refinement completed: approved cube with polished header spacing, Pacific day dividers and clock footers. Generated As of suffixes and duplicate note Details buttons are removed from display. Phone Alerts is concise and reveals testing controls only for configured connections. Redundant technical disclosures/attachments are consolidated into the evidence pane JSON tab. Exact messages, source/availability warnings, numeric evidence and delivery semantics remain intact.",
     "evidence": [
-      "Production build; seven UI and four packaging tests pass. Configured scoped checks pass against origin/main 78e835d: farm, harness, JSON, pipeline, runtime and SMS.",
-      "Actual unified API on 8512 and preview on 8504 verified at 1280x900, 390x844 and 320x568. No horizontal overflow; mobile focus wrap/Escape/opener return, raw JSON preservation and historical mode/date verified. Screenshots: .terra-local/ui-quiet/desktop.png, mobile.png and mobile-evidence.png. Exact Grok article centered timestamp inspected; Terra multi-day behavior is an adaptation.",
-      "Logo follow-up: production build, diff whitespace check and coordination/scope/filesystem validation pass. Actual desktop 1280x900, mobile 390x844 and 320x568 checked; matching header borders and no overflow. Screenshots: .terra-local/ui-logo-spacing/. Backend checks were not repeated for this CSS-only follow-up. Corrected artifact field to declared IDs rather than file paths."
+      "Latest production build, nine UI tests, four packaging tests, whitespace check and coordination/scope/filesystem validation pass against origin/main 78e835d. Earlier full configured checks passed before these frontend-only follow-ups; no model/backend changes.",
+      "Actual browser: note tap opens matching evidence; mobile Escape restores the note; footers show only clocks/local delivery states. Raw JSON retains original prefixes and As of dates. Historical injected assessment retains date/mode and full provenance/exclusions through JSON. Desktop/mobile views have no horizontal overflow. Screenshots: .terra-local/ui-lean-copy/, earlier logo-spacing and quiet-ui evidence referenced in web/design-qa.md."
     ],
-    "uncertainty": "Visual review is ready; branch is not integrated into main. Backend and external accounts were not changed by this refinement. Existing full-pipeline task owns final integration.",
-    "next": "Review the polished header in the updated 8504 preview. Integration owner can consume codex/terra-ui-quiet; no main integration performed in this refinement."
+    "uncertainty": "Actual Phone Alerts disconnected state was verified; configured testing branches reviewed without enabling SMS, changing account settings or sending any message. Branch is pushed for review; full-pipeline owner retains main integration.",
+    "next": "Review the updated 8504 preview; integration owner can consume codex/terra-ui-quiet as the small UI refinement branch."
   }
 }
 ```

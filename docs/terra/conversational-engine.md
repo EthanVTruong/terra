@@ -46,6 +46,11 @@ application-owned placeholders for quantities. Python inserts exact values after
 checking citation and placeholder ownership. Output checks reject malformed or
 incomplete responses, invented numbers, unknown references, explicit unsupported
 actions, false delivery claims and several state/availability contradictions.
+Emitted numeric placeholders must also retain a locally recognized source role,
+unit and sign; native date, clock and range groups retain their numeric order.
+Ambiguous numerical wording falls back locally. Individual assertion checks keep
+uncertainty or negation about a cause from excusing later positive advice or
+delivery claims, including after coordinating, causal and colon separators.
 Qualitative interpretation uses model instruction-following plus these checks;
 it is not a formal semantic proof of every sentence.
 
@@ -89,6 +94,14 @@ group originally rejected one mock reply that described historical evidence in
 the present tense; the fixture was corrected and all 147 cases passed again.
 That original command's exit status remains failed; the integration owner must
 repeat the combined gate on the corrected source. No product guard was weakened.
+
+The integrator subsequently reported all 16 groups passing on its merged
+`aa91ead` candidate. A final independent review then reproduced unit/role swaps
+and uncertainty masking later advice or delivery. The single bounded repair
+`3fd9090` passed 183 affected tests, including 107 core cases. Independent probes
+reject the four original attacks and causal/colon variants while preserving
+correct Fahrenheit and genuine scoped negation. Final integrated-source and
+real-account verification remain the integration owner's responsibility.
 
 Focused tests exercise contextual follow-ups, focused questions, unfamiliar crop
 answers, no default crop, source separation, grounding rejection, guarded HTTP

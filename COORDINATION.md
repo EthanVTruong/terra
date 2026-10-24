@@ -1,5 +1,60 @@
 # Terra integration coordination
 
+## ChatGPT entry UI
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chatgpt-entry-ui",
+  "owner": "et",
+  "status": "done",
+  "intent": "Build the user-selected Granola-style Terra opening gate with only Sign in with ChatGPT, using one shared existing OAuth/status/model controller. Preserve popup consent, real account catalog, usage controls and settings; no fabricated readiness, inference on render, provider login or private-vault access. Root and existing integration owner own backend/default-launch setup and main integration.",
+  "branch": "codex/terra-chatgpt-entry-ui",
+  "base": "4449d8c0a063947d81e1625ed7e81e48c2f6d2fb",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/src/App.jsx",
+    "web/src/ChatGPTConnection.jsx",
+    "web/src/useChatGPTConnection.js",
+    "web/src/chatgpt-entry.js",
+    "web/src/Welcome.jsx",
+    "web/src/welcome.css",
+    "web/src/chatgpt-state.js",
+    "web/tests/chatgpt-state.test.mjs",
+    "web/tests/chatgpt-entry.test.mjs",
+    "web/tests/chatgpt-entry-browser.test.mjs",
+    "web/tests/chatgpt-fixture.mjs",
+    "web/tests/tara-browser-alerts.test.mjs",
+    "web/tests/tara-device-location.test.mjs",
+    "web/package.json",
+    "docs/terra/chatgpt-entry-design-qa.md",
+    "design-qa.md",
+    "README.md",
+    "docs/terra/setup-and-hosting.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "4449d8c0a063947d81e1625ed7e81e48c2f6d2fb",
+    "summary": "Finite ChatGPT opening gate implemented from the supplied reference, then tightened after ET requested less whitespace. Final560×450desktop and compact mobile cards accepted by root. One extracted original controller serves entry and settings; exact existing PKCE popup/consent/catalog/model/usage actions retained. Expired source offers only explicit guarded Return to Terra and a fresh document. No simulation menu or backend behavior changed.",
+    "evidence": [
+      "Final compact1325×927,390×844,320×740 captures and normalized combined comparison retained only in ignored shared handoff; root accepted the compact desktop/mobile. Root design-qa.md records five surfaces, intentional compact departure, earlier fixes and limitations.",
+      "Targeted11readiness/recovery tests pass including same-account writer readiness, UNIX-second cooldown, returned-catalog invalidation and guarded expired-source disconnect. Final production build and4packaging tests pass.",
+      "Broader UI suite61pass/3optional native skipped before last focused repair; native skips not counted as passes. Existing browser-alert/device-location tests retain all assertions with explicit eligible ChatGPT/source fixture. New optional native entry regression added.",
+      "Controlled native CUA proof: initial zero writes/inference, real connect route/invalid URL failure, cancel focus return, explicit catalog model PUT, chat entry, single settings dialog/focus return, expired source guarded DELETE and fresh authstatus200. No actual OAuth, inference, permissions, private vault, credential, live process or numerical change.",
+      "README/setup preview wording now describes enabled ChatGPT entry with weather/worker/SMS disabled. design-qa.md registered under the existing UI/documentation domain."
+    ],
+    "uncertainty": "Native test runner was not configured in this slice. Source integrator owns combined backend/CI and genuine connected runtime proof. Local saved status is not a promise of provider availability; first-call failures remain governed by backend recovery.",
+    "next": "Sole source integrator consumes the frozen commit once and reconciles its App wrapper with the owner menu slice; run combined gates. Root/runtime owner supplies final connected proof. Stop only this task fixture and created tabs; preserve ignored evidence."
+  }
+}
+```
+
 ## Trusted conversational factual answers
 
 ```json
@@ -465,7 +520,8 @@
     "config/terra/**",
     "spec.md",
     "pyproject.toml",
-    "run_terra.py"
+    "run_terra.py",
+    "design-qa.md"
   ],
   "depends_on": [],
   "contracts": [],
@@ -878,6 +934,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "backend/terra_monitoring/**",
     "config/terra/**",
     "docs/terra/**",
+    "design-qa.md",
     "tests/test_terra_json.py",
     "tests/test_terra_demo_simulation.py",
     "tests/test_terra_full_flow.py",

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
+import { eligibleChatGPTFixture } from "./chatgpt-fixture.mjs";
 
 const browserUrl = process.env.TERRA_BROWSER_URL;
 const require = createRequire(import.meta.url);
@@ -30,6 +31,8 @@ async function fixture({ native = "deferred", errorCode = 1, firstResponse = "su
   const snapshotCopy = () => structuredClone(snapshot);
   await page.route("**/api/**", async (route) => {
     const request = route.request(), path = new URL(request.url()).pathname;
+      const connection = eligibleChatGPTFixture(path);
+      if (connection) return route.fulfill({ json: connection });
     if (path === "/api/tara/setup" && request.method() === "POST") {
       const body = request.postDataJSON(); posts.push(body);
       assert.equal(body.action, "device_location");

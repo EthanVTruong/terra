@@ -12,7 +12,7 @@
     "build": "vite build && node scripts/prepare-sites-build.mjs",
     "preview": "vite preview",
     "test:sites": "node --test tests/sites-worker.test.mjs",
-    "test:ui": "node --test tests/delivery.test.mjs tests/chatgpt-state.test.mjs tests/tara-state.test.mjs tests/presentation.test.mjs tests/phone-connection.test.mjs tests/notification-return.test.mjs tests/tara-browser-alerts.test.mjs tests/source-fetch.test.mjs"
+    "test:ui": "node --test tests/delivery.test.mjs tests/chatgpt-state.test.mjs tests/chatgpt-entry.test.mjs tests/tara-state.test.mjs tests/presentation.test.mjs tests/phone-connection.test.mjs tests/notification-return.test.mjs tests/tara-browser-alerts.test.mjs tests/source-fetch.test.mjs tests/chatgpt-entry-browser.test.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "2.1.10",

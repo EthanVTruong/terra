@@ -8,6 +8,8 @@ import { TaraComposer, TaraConversation, useTaraBrowserAlerts, useTaraConversati
 import { writeTaraStorage } from "./tara-state";
 import SmsControls from "./SmsControls";
 import ChatGPTConnection from "./ChatGPTConnection";
+import { useChatGPTConnection } from "./useChatGPTConnection";
+import Welcome from "./Welcome";
 import SimulationConnection from "./SimulationConnection";
 import { usePresence } from "./usePresence";
 import { farmNoteDetailsPath, farmNoteTarget } from "./notification-return";
@@ -155,6 +157,13 @@ function AssessmentFacts({ packet, sourceKind, onOpenEvidence }) {
 }
 
 export function App() {
+  const connection = useChatGPTConnection();
+  return connection.ready ? <ConnectedApp connection={connection} /> : <Welcome connection={connection} />;
+}
+
+function ConnectedApp({ connection }) {
+  const entryFocus = useRef(null);
+  useEffect(() => { entryFocus.current?.focus({ preventScroll: true }); }, []);
   const [view, setView] = useState("monitor");
   const [taraFarmId, setTaraFarmId] = useState(() => {
     try { const value = localStorage.getItem("terra.tara.activeFarm"); return value && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : ""; }
@@ -500,9 +509,9 @@ export function App() {
   const previewNote = resultSource?.kind === "query" ? "Provider query · checked on demand" : resultSource?.kind === "file" ? `Local file · ${resultSource.label}` : resultSource?.description || "Saved assessment · no message delivery";
   const fieldNotes = matchingFarm ? farm.feed.messages : [];
   const latestReplyId = tara.state?.turns.filter((turn) => turn.role === "assistant").at(-1)?.id || null;
-  return <main className={`app-window${showPanel ? " with-artifacts" : ""}${panelMounted ? " panel-mounted" : ""}`}>
+  return <main ref={entryFocus} tabIndex={-1} aria-label="Terra conversation" className={`app-window${showPanel ? " with-artifacts" : ""}${panelMounted ? " panel-mounted" : ""}`}>
     <section className="conversation" inert={mobile && mobileJson ? true : undefined} aria-hidden={mobile && mobileJson ? true : undefined}>
-      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection openRequest={connectionRequest} refreshRequest={latestReplyId} showTrigger={false} returnFocusRef={controlsTrigger} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { if (mobile) setMobileJson(true); else setPanelOpen(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
+      <header className="thread-header"><h1 className="brand-character"><img src={`${import.meta.env.BASE_URL}brand/terra-cube-1080.png`} alt="terra" /></h1><div className="thread-actions">{(querying || (view === "monitor" && tara.state?.setup.stage === "complete" && tara.state?.monitoring.status === "unavailable")) && <span className="presence" role="status">{querying ? "Checking…" : "Updates unavailable"}</span>}<ChatGPTConnection connection={connection} openRequest={connectionRequest} refreshRequest={latestReplyId} returnFocusRef={controlsTrigger} /><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { if (mobile) setMobileJson(true); else setPanelOpen(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
       <div ref={messageScroll} className="message-scroll" aria-busy={view === "monitor" ? farm.loading : loading} onScroll={(event) => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}>
         {view === "monitor" ? <>
           {notice && <p className="request-notice" role="status">{notice}</p>}

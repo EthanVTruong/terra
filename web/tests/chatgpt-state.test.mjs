@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { authorizationUrl, connectionError, connectionPhase, connectionPollDelay, connectionStatus, modelCatalog } from "../src/chatgpt-state.js";
+import { authorizationUrl, connectionError, connectionPhase, connectionPollDelay, connectionStatus, modelCatalog, writerReady, entryStage } from "../src/chatgpt-state.js";
 
 const NOW = Date.parse("2026-10-24T12:00:00Z");
 const status = (change = {}) => ({ schema_version: "terra-chatgpt-connection-v1", state: "disconnected", plan_enabled: false, active_account_id: null, accounts: [], writer: { connected: false, selected_model: null, usage_paused: false }, ...change });
@@ -52,4 +52,34 @@ test("invalid status cannot appear as a connected or empty account state", () =>
   assert.throws(() => connectionStatus({ state: "connected" }));
   assert.throws(() => connectionStatus(status({ state: "unexpected" })));
   assert.throws(() => connectionStatus(status({ accounts: [{ id: "one", label: "Account" }, { id: "one", label: "Duplicate" }] })));
+});
+
+const ready = (change = {}) => status({ state: "connected", plan_enabled: true, active_account_id: "active",
+  writer: { connected: true, active_account_id: "active", selected_model: "saved-model", usage_paused: false, cooldown_until: null }, ...change });
+
+test("entry requires the same real account, plan permission, writer and explicitly selected model", () => {
+  assert.equal(writerReady(ready(), NOW), true);
+  for (const state of ["disconnected", "connecting", "plan_disabled", "reauth_required", "error"]) assert.equal(writerReady(ready({ state }), NOW), false);
+  for (const change of [{ plan_enabled: false }, { active_account_id: null }, { active_account_id: "other" }]) assert.equal(writerReady(ready(change), NOW), false);
+  for (const change of [{ connected: false }, { active_account_id: "other" }, { selected_model: null }, { selected_model: " " }, { usage_paused: true }, { cooldown_until: NOW / 1000 + 1 }]) {
+    assert.equal(writerReady(ready({ writer: { ...ready().writer, ...change } }), NOW), false);
+  }
+  assert.equal(writerReady(ready({ writer: { ...ready().writer, cooldown_until: NOW / 1000 - 1 } }), NOW), true);
+});
+
+test("the entry never treats a checking or failed status as usable and fresh consent requires model choice", () => {
+  assert.equal(entryStage({ status: null, verified: false, loading: true }), "checking");
+  assert.equal(entryStage({ status: ready(), verified: false, loading: false }), "unavailable");
+  assert.equal(entryStage({ status: ready({ writer: { ...ready().writer, selected_model: null } }), verified: true, loading: false }), "model");
+  assert.equal(entryStage({ status: ready(), verified: true, loading: false }), "ready");
+  assert.equal(entryStage({ status: ready({ writer: { ...ready().writer, usage_paused: true } }), verified: true, loading: false }), "paused");
+  assert.equal(entryStage({ status: ready({ writer: { ...ready().writer, cooldown_until: Date.now()/1000+60 } }), verified: true, loading: false }), "cooldown");
+});
+
+test("a returned catalog invalidating a saved model closes entry until a real model is selected", () => {
+  const saved = ready();
+  const catalog = modelCatalog({ models: [{ slug: "available-model", display_name: "Available account model" }], selected_model: null });
+  assert.equal(writerReady(saved, NOW, catalog), false);
+  assert.equal(entryStage({ status: saved, catalog, verified: true, loading: false }), "model");
+  assert.equal(writerReady(saved, NOW, modelCatalog({ models: [{ slug: "saved-model", display_name: "Saved account model" }], selected_model: "saved-model" })), true);
 });

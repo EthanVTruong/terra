@@ -18,9 +18,9 @@ Run `python run_terra.py` from a clone (`python3` where appropriate), then visit
 4. Installs the frozen pnpm lockfile and builds the client. Matching Python dependencies and an unchanged web build are reused. Changes to the client, public examples, package metadata or build inputs invalidate the build cache.
 5. Runs the canonical UI/API process with absolute paths and internal `PYTHONPATH`; shell activation is unnecessary.
 
-The default is a saved-example preview: historical/controlled packets, no source credentials, worker, ChatGPT or SMS. Keys inherited from the shell or the legacy root `.env` cannot activate those preview capabilities. Its state is separate in `.terra-local/preview`.
+The default is a saved-example preview: historical/controlled packets, without weather credentials, a worker or SMS. The opening screen enables the existing ChatGPT plan connection; sign in explicitly and choose a returned model before the conversation opens. Saved eligible connections reuse their explicitly selected model. Opening, reconnecting status and loading the model catalog do not make inference requests. Keys inherited from the shell or the legacy root `.env` cannot activate weather, API-key writing or SMS. State is separate in `.terra-local/preview`.
 
-`python run_terra.py --live --env-file /absolute/path/to/cimis.env` enables normal operator configuration, ChatGPT controls and the five-minute monitor. Supply `CIMIS_APP_KEY` in that file or the process environment. `--sms-env-file` preserves explicit SMS configuration rules. `--no-worker` gives on-demand live queries; `--no-chatgpt` disables plan controls. `--chatgpt-state-dir` selects a stable protected local connection directory. These commands cannot grant provider consent or verify a recipient automatically.
+`python run_terra.py --live --env-file /absolute/path/to/cimis.env` enables normal operator configuration, ChatGPT controls and the five-minute monitor. Supply `CIMIS_APP_KEY` in that file or the process environment. `--sms-env-file` preserves explicit SMS configuration rules. `--no-worker` gives on-demand live queries; `--no-chatgpt` disables plan controls for operator/API-only runs, so the ChatGPT-gated conversation stays unavailable. `--chatgpt-state-dir` selects a stable protected local connection directory. These commands cannot grant provider consent or verify a recipient automatically.
 
 Live state defaults to `.terra-local/runtime`; use `--state-dir /absolute/private/path` to keep it outside a checkout. Back up farm, source, ChatGPT and SMS records privately. Explicit existing `TERRA_SMS_DB_PATH` still takes precedence in live mode. Startup keeps the existing fail-closed journal migration rules; never delete delivery history or a saved pause to bypass a startup problem.
 
@@ -99,7 +99,7 @@ A single always-on host with a persistent volume is closer to the existing full 
 
 ## Open-source distribution follow-ups
 
-Actual `.env*`, `.terra-local`, SQLite, environments and build/dependency directories are ignored; `.env.example` is only a tracked template. No private configuration is needed for a fresh preview.
+Actual `.env*`, `.terra-local`, SQLite, environments and build/dependency directories are ignored; `.env.example` is only a tracked template. No private weather/SMS configuration is needed for a fresh preview. The conversational entry requires the user’s own eligible ChatGPT plan connection.
 
 Package metadata now agrees with the root MIT license. The two reference-font binaries were removed because the repository recorded their source but no redistribution grant. Product and station-lab typography now use their existing system-font fallback; layout sizes and spacing are retained. Historical screenshots and exact-font comparisons describe the earlier reviewed build, not a font included in the release. See [typography provenance](../../web/public/fonts/README.md).
 

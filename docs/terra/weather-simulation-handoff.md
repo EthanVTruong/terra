@@ -43,7 +43,7 @@ validators preserve supplied entities, quantity roles, units, uncertainty and
 recovery meaning; code inserts exact source clocks. Invalid/refused wording uses
 a truthful grounded fallback. Referenced weather-alert follow-ups retain their
 saved station facts and can use the same writer; raw questions stay local. Direct
-variable questions remain factual without requiring paid inference.
+variable questions retain a factual local fallback; eligible saved facts may use the selected ChatGPT plan for validated wording.
 
 Device-location setup uses the same farm-creation factory as other setup paths,
 so live profiles remain current and replay profiles remain injected. Verified

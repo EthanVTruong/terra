@@ -40,13 +40,15 @@ Mixed input retains a supported farm question and discards unrelated clauses.
 The legacy orchard-question route applies the same scope boundary.
 
 Saved crop/location/preferences, monitor status, the supported chill-method FAQ,
-and comparable historical gap arithmetic are answered locally. Unavailable totals
-also stay local. A gap requires actual matching method, cutoff, adequate coverage
+and weather facts are computed locally. Representable saved facts can use the
+selected ChatGPT plan for one brief factual reply; private crop/variety values
+and coordinates are inserted locally after validation. Comparable historical
+gap arithmetic, unavailable totals and unsupported states stay local. A gap requires actual matching method, cutoff, adequate coverage
 and enough reference seasons; fixture values such as 180/220 are never defaults.
 Old comparisons retain their year and completed-season meaning.
 
 Humidity, wind speed and solar radiation questions use the saved assessment's
-versioned `weather` section locally, with station IDs, %, mph or W/m² and the
+versioned `weather` section as their factual source, with station IDs, %, mph or W/m² and the
 observation time. These are station observations; the temperature estimator does
 not supply orchard estimates for these variables. Numerical discrepancies use
 explicitly provisional station-to-neighbor rules. Missing readings, source QC
@@ -96,3 +98,21 @@ The first live unavailable-total attempt completed at the provider but failed
 the factual wording validator. The final path answers that absence locally with
 zero generator calls; the separate eligible weather reply passed validation.
 Runtime deployment evidence and final CI belong to the integration handoff.
+
+## Current product interface
+
+The common interface starts with Terra's ChatGPT sign-in screen and reuses the
+existing connection, consent, model selection and usage controls. Onboarding
+keeps the opening greeting in order, follows the crop reply with a short location
+message and one **Use my location** button, then saves the explicit alert choice.
+The quiet chat uses green outgoing bubbles, the full-head Terra receipt and one
+plus/input/send capsule. The plus menu contains **Open simulation**, which
+connects the isolated Station lab feed and opens its controls. Station lab can
+return to the original live chat. Saved assessments are absent from this main
+flow; exact JSON, source modes, dates and evidence remain available on demand.
+Persistent replay labels are omitted from the chat chrome. Source-bound requests,
+private journals and disabled real SMS in simulation retain their safeguards.
+
+`main` is the shared product implementation. Use the normal launcher and
+`python terra.py brief` from the canonical `TechProjects/Terra` folder; do not
+reintroduce older prototype interfaces or sibling working folders.

@@ -67,6 +67,17 @@ publication time, not at an earlier retrospective onset. Missing publication
 history remains explicitly snapshot-only. Future readings and revisions are
 not used before their visibility clock.
 
+The adapter separately applies caller-supplied station connect/disconnect dates
+before QC and interpolation, using Nathan's fixed-PST hour-ending calendar day.
+Both dates are inclusive; midnight belongs to the preceding operating day.
+Missing dates retain permissive eligibility. Out-of-operation observations are
+unavailable, not sensor faults, with `station_not_operating` evidence. Filtering
+the interpolation geometry also keeps those stations out of the lapse fit.
+Provenance names this adapter gate and its query-day interpretation separately
+from Nathan's estimator method version. The standalone preexisting estimator is
+unchanged and does not itself apply operating dates to every lapse contributor;
+consumers needing this gate should use the assessment adapter.
+
 A request can name any coordinate. A usable estimate still requires at least
 three eligible peers in Nathan's configured region/radius and validated months.
 Shared storage is year-round, while the current pure estimator remains gated

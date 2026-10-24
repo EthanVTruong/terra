@@ -208,6 +208,77 @@ def test_missing_peers_yield_strict_json_nulls_not_anomaly(observations, station
     json.dumps(result, allow_nan=False)
 
 
+@pytest.mark.parametrize("date_field,date_value", [
+    ("disconnect_date", "2026-01-10"), ("connect_date", "2026-01-12")])
+def test_inactive_high_elevation_stations_cannot_influence_interpolation_or_lapse(
+        observations, stations, date_field, date_value):
+    baseline = packet(observations, stations)["location_estimate"]
+    extra, geometry = [], []
+    for offset in range(10):
+        sid, elevation = 900 + offset, 1000.0 + 200 * offset
+        peer = observations[observations.station_id.eq(226)].copy()
+        peer["station_id"], peer["temperature_f"] = sid, 40.0 + elevation * .01
+        extra.append(peer)
+        geometry.append({"station_id": sid, "lat": 38.6, "lon": -121.8,
+                         "elevation_ft": elevation, date_field: date_value})
+    result = packet(pd.concat([observations, *extra], ignore_index=True),
+                    pd.concat([stations, pd.DataFrame(geometry)], ignore_index=True))
+    actual = result["location_estimate"]
+    for field in ("temperature", "method", "method_version", "used_station_ids", "lapse_station_ids"):
+        assert actual[field] == baseline[field]
+    for sid in range(900, 910):
+        assert {"station_id": sid, "reason": "station_not_operating"} in actual["excluded"]
+        health = next(row for row in result["data_health"] if row["station_id"] == sid)
+        assert health["reason"] == "station_not_operating" and health["source_quality"] == "usable"
+    assert result["provenance"]["adapter_operation_gate_version"] == "terra-station-operation-v1"
+    assert result["provenance"]["operation_day_pst"] == "2026-01-11"
+
+
+@pytest.mark.parametrize("date_field,date_value,active_at_midnight", [
+    ("connect_date", "2026-01-11", False), ("disconnect_date", "2026-01-10", True)])
+def test_operating_dates_are_inclusive_on_fixed_pst_hour_ending_day(
+        observations, stations, date_field, date_value, active_at_midnight):
+    midnight = pd.Timestamp("2026-01-11T08:00:00Z")  # Jan 10's 2400 PST reading
+    previous = observations[observations.timestamp.eq(HOURS[0])].copy()
+    previous["timestamp"] = midnight
+    observations = pd.concat([previous, observations], ignore_index=True)
+    extra = observations[observations.station_id.eq(226)].copy()
+    extra["station_id"], extra["temperature_f"] = 999, 70.0
+    observations = pd.concat([observations, extra], ignore_index=True)
+    stations = pd.concat([stations, pd.DataFrame([{"station_id": 999, "lat": 38.6, "lon": -121.8,
+        "elevation_ft": 2000.0, date_field: date_value}])], ignore_index=True)
+    for stamp, active in ((midnight, active_at_midnight), (HOURS[0], not active_at_midnight)):
+        result = packet(observations, stations, valid_utc=stamp, as_of=HOURS[0])
+        estimate = result["location_estimate"]
+        assert (999 in estimate["used_station_ids"]) is active
+        assert (999 in estimate["lapse_station_ids"]) is active
+        assert ({"station_id": 999, "reason": "station_not_operating"} in estimate["excluded"]) is not active
+
+
+def test_inactive_known_peer_is_unavailable_for_calibrated_expectation(observations, stations):
+    observations = observations[observations.station_id.isin([6, 226, 139, 235])]
+    assert at_davis(observations, stations)["target_comparison"]["status"] == "assessable"
+    stations.loc[stations.station_id.eq(235), "disconnect_date"] = "2026-01-10"
+    result = at_davis(observations, stations)
+    comparison = result["target_comparison"]
+    assert comparison["status"] == "unavailable" and comparison["reason"] == "insufficient_neighbors"
+    assert comparison["expected_f"] is None and comparison["typical_low_f"] is None
+    assert comparison["classification"] is None
+    assert result["station_findings"] == []
+    health = next(row for row in result["data_health"] if row["station_id"] == 235)
+    assert health["reason"] == "station_not_operating" and health["source_quality"] == "usable"
+
+
+def test_inactive_target_is_unavailable_rather_than_a_sensor_fault(observations, stations):
+    observations.loc[observations.station_id.eq(6), "temperature_f"] = 120.0
+    stations.loc[stations.station_id.eq(6), "disconnect_date"] = "2026-01-10"
+    result = at_davis(observations, stations)
+    comparison = result["target_comparison"]
+    assert comparison["status"] == "unavailable" and comparison["reason"] == "station_not_operating"
+    assert comparison["classification"] is None and comparison["typical_low_f"] is None
+    assert not any(row["station_id"] == 6 for row in result["station_findings"])
+
+
 def test_source_warning_is_health_evidence_not_numeric_fault_truth(observations, stations):
     observations.loc[observations.station_id.eq(6), "source_flag"] = "Y"
     result = at_davis(observations, stations)

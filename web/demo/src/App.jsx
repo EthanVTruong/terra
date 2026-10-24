@@ -303,20 +303,61 @@ function BaseMap({
       height: `${t.height}%`
     }} />)}</div>;
 }
-function fitMapBounds(bounds, aspect) {
-  const cx = (bounds.west + bounds.east) / 720 + .5,
-    cy = (mercatorY(bounds.north) + mercatorY(bounds.south)) / 2;
+const latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI;
+// Panning keeps the view centre over the estimated field.
+function clampPan(bounds, [x, y]) {
+  const limitX = (bounds.east - bounds.west) / 720,
+    limitY = (mercatorY(bounds.south) - mercatorY(bounds.north)) / 2;
+  return [Math.max(-limitX, Math.min(limitX, x)), Math.max(-limitY, Math.min(limitY, y))];
+}
+function fitMapBounds(bounds, aspect, pan = [0, 0]) {
+  const cx = (bounds.west + bounds.east) / 720 + .5 + pan[0],
+    cy = (mercatorY(bounds.north) + mercatorY(bounds.south)) / 2 + pan[1];
   let dx = (bounds.east - bounds.west) / 360,
     dy = mercatorY(bounds.south) - mercatorY(bounds.north);
   // Cover rather than contain, so the estimated field fills the whole map.
   if (dx / dy > aspect) dx = dy * aspect;else dy = dx / aspect;
-  const latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI;
   return {
     west: (cx - dx / 2 - .5) * 360,
     east: (cx + dx / 2 - .5) * 360,
     north: latitude(cy - dy / 2),
-    south: latitude(cy + dy / 2)
+    south: latitude(cy + dy / 2),
+    dx,
+    dy
   };
+}
+function pointAt(b, fx, fy) {
+  return {
+    lat: latitude(mercatorY(b.north) + fy * (mercatorY(b.south) - mercatorY(b.north))),
+    lon: b.west + fx * (b.east - b.west)
+  };
+}
+const MAX_SPOTS = 6;
+// Map spots that are not stations: read-only estimates from the same estimator as the heatmap.
+function useSpotReadings(spots, fingerprint) {
+  const [readings, setReadings] = useState({});
+  useEffect(() => {
+    let disposed = false;
+    spots.forEach(spot => fetch('/api/demo/point', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        lat: spot.lat,
+        lon: spot.lon
+      })
+    }).then(r => r.ok ? r.json() : null).then(v => {
+      if (!disposed) setReadings(current => ({
+        ...current,
+        [spot.id]: v
+      }));
+    }).catch(() => {}));
+    return () => {
+      disposed = true;
+    };
+  }, [spots, fingerprint]);
+  return readings;
 }
 function WeatherMap({
   state,
@@ -325,12 +366,55 @@ function WeatherMap({
   layer
 }) {
   const ref = useRef(null),
+    drag = useRef(null),
+    dragged = useRef(false),
     [aspect, setAspect] = useState(1.8),
+    [pan, setPan] = useState([0, 0]),
+    [spots, setSpots] = useState([]),
     domain = state.heatmap.bounds,
-    b = fitMapBounds(domain, aspect),
+    b = fitMapBounds(domain, aspect, pan),
     cells = state.heatmap.layers?.[layer] || state.heatmap.cells || [],
     [lo, hi] = heatRange(cells),
-    available = cells.some(c => Number.isFinite(c.temperature_f) && c.status === 'ok');
+    available = cells.some(c => Number.isFinite(c.temperature_f) && c.status === 'ok'),
+    readings = useSpotReadings(spots, state.heatmap.fingerprint);
+  function pointerDown(e) {
+    if (e.button !== 0) return;
+    drag.current = {
+      x: e.clientX,
+      y: e.clientY,
+      pan,
+      moved: false
+    };
+  }
+  function pointerMove(e) {
+    const start = drag.current;
+    if (!start) return;
+    const dx = e.clientX - start.x,
+      dy = e.clientY - start.y;
+    if (!start.moved && Math.hypot(dx, dy) < 4) return;
+    if (!start.moved) ref.current.setPointerCapture(e.pointerId);
+    start.moved = true;
+    const box = ref.current.getBoundingClientRect();
+    setPan(clampPan(domain, [start.pan[0] - dx / box.width * b.dx, start.pan[1] - dy / box.height * b.dy]));
+  }
+  function pointerUp() {
+    dragged.current = Boolean(drag.current?.moved);
+    drag.current = null;
+  }
+  function toggleSpot(e) {
+    if (e.target.closest('button, a, .map-legend')) return;
+    const box = ref.current.getBoundingClientRect(),
+      {
+        lat,
+        lon
+      } = pointAt(b, (e.clientX - box.left) / box.width, (e.clientY - box.top) / box.height);
+    if (lat < domain.south || lat > domain.north || lon < domain.west || lon > domain.east) return;
+    setSpots(current => [...current, {
+      id: `${lat.toFixed(4)},${lon.toFixed(4)}`,
+      lat,
+      lon
+    }].slice(-MAX_SPOTS));
+  }
   useEffect(() => {
     const observer = new ResizeObserver(entries => {
       const box = entries[0].contentRect;
@@ -347,12 +431,21 @@ function WeatherMap({
     width: `${parseFloat(opposite.left) - parseFloat(corner.left)}%`,
     height: `${parseFloat(opposite.top) - parseFloat(corner.top)}%`
   };
-  return <div className="weather-map" ref={ref} role="group" aria-label={`${layer === 'raw' ? 'Raw' : 'Terra filtered'} estimated temperature heatmap`}><BaseMap bounds={b} /><div className="heat-domain" style={fieldStyle}><HeatField cells={cells} lo={lo} hi={hi} /></div><BaseMap bounds={b} layer="Reference" /><div className="map-region">SACRAMENTO VALLEY</div>{state.stations.map(station => {
+  return <div className="weather-map" ref={ref} role="group" aria-label={`${layer === 'raw' ? 'Raw' : 'Terra filtered'} estimated temperature heatmap. Drag to move; click to check a spot.`} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onClickCapture={e => {
+      if (dragged.current) {
+        e.stopPropagation();
+        dragged.current = false;
+      }
+    }} onClick={toggleSpot}><BaseMap bounds={b} /><div className="heat-domain" style={fieldStyle}><HeatField cells={cells} lo={lo} hi={hi} /></div><BaseMap bounds={b} layer="Reference" /><div className="map-region">SACRAMENTO VALLEY</div>{state.stations.map(station => {
       const pos = position(station.lat, station.lon, b),
         right = parseFloat(pos.left) > 70,
         bottom = parseFloat(pos.top) > 82;
       return <button key={station.id} className={`map-station${selected === station.id ? ' selected' : ''}${!station.online ? ' is-offline' : flagged(station) ? ' is-flagged' : ''}${right ? ' caption-left' : ''}${bottom ? ' caption-up' : ''}`} style={pos} onClick={() => onSelect(station.id)} aria-label={`Select ${station.name}, ${station.online ? degrees(station.value_f) + ' Fahrenheit' : 'offline'}`} aria-pressed={selected === station.id}><span className="map-point" /><span className="map-station-caption"><strong>{station.name}</strong><span>{station.online ? degrees(station.value_f) : 'Offline'}{station.online && flagged(station) && <WarningCircle size={12} />}</span>{layer === 'filtered' && state.assessment.estimator_qc_exclusions.some(row => row.station_id === station.id) && <small>Excluded from field</small>}</span></button>;
-    })}<div className="orchard-pin" style={position(state.orchard.lat, state.orchard.lon, b)}><MapPin size={22} weight="fill" /><span>Demo orchard</span></div>{!available && <div className="map-no-support"><WarningCircle size={18} /><strong>No supported temperature surface</strong><span>Not enough usable station readings</span></div>}<div className="map-legend"><strong>Temperature (°F)</strong><div>{Array.from({
+    })}{spots.map(spot => {
+      const estimate = readings[spot.id]?.layers?.[layer],
+        value = estimate?.status === 'ok' ? degrees(estimate.temperature_f) : estimate ? 'No estimate' : '…';
+      return <button key={spot.id} className="map-spot" style={position(spot.lat, spot.lon, b)} onClick={() => setSpots(current => current.filter(s => s.id !== spot.id))} aria-label={`Remove spot, ${value}`} title="Remove spot"><span className="map-spot-point" /><span className="map-spot-caption">{value}<X size={10} /></span></button>;
+    })}{(pan[0] !== 0 || pan[1] !== 0) && <button className="map-recenter" onClick={() => setPan([0, 0])}><ArrowClockwise size={12} />Recenter</button>}<div className="orchard-pin" style={position(state.orchard.lat, state.orchard.lon, b)}><MapPin size={22} weight="fill" /><span>Demo orchard</span></div>{!available && <div className="map-no-support"><WarningCircle size={18} /><strong>No supported temperature surface</strong><span>Not enough usable station readings</span></div>}<div className="map-legend"><strong>Temperature (°F)</strong><div>{Array.from({
           length: 32
         }, (_, i) => <i key={i} style={{
           background: `rgb(${heatColor(i / 31, 0, 1).join(',')})`
@@ -435,7 +528,7 @@ function StationControl({
             station_id: s.id,
             value_f: s.original_f
           });
-        }}><ArrowClockwise size={12} />Restore</button></div></div><div className="station-comparison"><div><span>Expected</span><strong>{pending ? '—' : degrees(s.assessment.expected_f)}</strong></div><div><span>Departure</span><strong>{pending ? '—' : signed(s.assessment.residual_f)}</strong></div></div><div className="reading-state" aria-live="polite">{!s.online ? 'Reading withheld from the simulation.' : pending ? 'Evaluating this reading…' : flagged(s) ? layer === 'filtered' ? 'Flagged · excluded from temperature field.' : 'Terra flagged this departure.' : !s.assessment.available ? 'Comparison unavailable.' : s.assessment.level === 'moderate' ? `Departure · awaiting ${s.assessment.required_readings} consecutive readings` : 'Within the current comparison.'}</div><div className="station-list-heading">Station reporting</div><div className="station-list">{state.stations.map(row => <div className={`station-row${row.id === selected ? ' active' : ''}`} key={row.id}><button className="station-select" onClick={() => {
+        }}><ArrowClockwise size={12} />Restore</button></div></div><div className="station-comparison"><div><span>Expected</span><strong>{pending ? '—' : degrees(s.assessment.expected_f)}</strong></div><div><span>Difference</span><strong>{pending ? '—' : signed(s.assessment.residual_f)}</strong></div></div><div className="reading-state" aria-live="polite">{!s.online ? 'Reading withheld from the simulation.' : pending ? 'Evaluating this reading…' : flagged(s) ? layer === 'filtered' ? 'Flagged · excluded from temperature field.' : 'Terra flagged this difference from expected.' : !s.assessment.available ? 'Comparison unavailable.' : s.assessment.level === 'moderate' ? `Unusual difference · awaiting ${s.assessment.required_readings} consecutive readings` : 'Within the current comparison.'}</div><div className="station-list-heading">Station reporting</div><div className="station-list">{state.stations.map(row => <div className={`station-row${row.id === selected ? ' active' : ''}`} key={row.id}><button className="station-select" onClick={() => {
           setSelected(row.id);
         }}><span className={`row-dot${!row.online ? ' off' : flagged(row) ? ' warn' : ''}`} /><span>{row.name}</span><span>{row.online ? degrees(row.value_f) : '—'}</span></button><button className="reporting-toggle" aria-label={`${row.online ? 'Take' : 'Bring'} ${row.name} ${row.online ? 'offline' : 'online'}`} aria-pressed={row.online} disabled={busy} onClick={() => {
           clearTimeout(timer.current);
@@ -462,7 +555,9 @@ function StationApp({
   return <><PageNav view="stations" state={state} /><main className="lab-window"><header className="lab-header"><div className="station-app-brand"><img src="/terra-cube-1080.png" alt="terra" width="30" height="30" /><h1>Station lab</h1></div><div className="lab-header-actions"><button className="icon-button" onClick={phone.toggleSound} aria-label={phone.sound ? 'Mute demo ping' : 'Enable demo ping'} title={phone.sound ? 'Demo ping on' : 'Demo ping muted'}>{phone.sound ? <SpeakerHigh size={16} /> : <SpeakerSlash size={16} />}</button><a className="quiet-button" href="/terra" target="_blank" rel="noreferrer">Open Terra <ArrowUpRight size={14} /></a></div></header><div className="lab-toolbar"><div className="segmented" aria-label="Heatmap layer"><button aria-pressed={layer === 'raw'} onClick={() => setLayer('raw')}>Raw readings</button><button aria-pressed={layer === 'filtered'} onClick={() => setLayer('filtered')}>Terra filtered</button></div><span className="evaluation-state" role="status">{busy ? <><CircleNotch className="spin" size={12} />Evaluating…</> : <><span className={`status-dot${available ? '' : ' limited'}`} />{available ? health.incident_active ? `Recovery · ${health.consecutive_good_readings}/3 hours` : 'Orchard support usable' : 'Orchard support limited'}</>}</span></div><div className="lab-body"><div className="map-column"><WeatherMap state={state} selected={selected} onSelect={setSelected} layer={layer} /><div className="map-bottom"><span>{layer === 'raw' ? 'Estimated field before Terra QC' : 'Estimated field after Terra QC'}<span className="muted"> · 60 ft</span></span><span>{clock(state.clock.current_utc)} PST</span></div></div><StationControl state={state} selected={selected} setSelected={setSelected} act={act} busy={busy} layer={layer} /></div><footer className="lab-footer"><div className="scenario-controls"><span>Try</span>{[['normal', 'Original'], ['minor', 'Small change'], ['spike', 'Station spike'], [health.incident_active ? 'recover' : 'support_loss', health.incident_active ? 'Restore +3h' : 'Support loss']].map(([name, label]) => <button key={name} disabled={busy || name === 'recover' && state.controls.remaining_hours < 3} onClick={() => act({
             type: 'preset',
             name
-          })}>{label}</button>)}</div><div className="time-controls"><span>{clock(state.clock.current_utc, true)}</span><button className="quiet-button" disabled={busy || state.controls.remaining_hours < 1} onClick={() => act({
+          })}>{label}</button>)}<button disabled={busy || !state.stations.some(s => s.override !== null && s.override !== undefined)} onClick={() => act({
+            type: 'reset_temperatures'
+          })}><ArrowClockwise size={12} />Reset temperatures</button></div><div className="time-controls"><span>{clock(state.clock.current_utc, true)}</span><button className="quiet-button" disabled={busy || state.controls.remaining_hours < 1} onClick={() => act({
             type: 'advance',
             hours: 1
           })}>+1 hour <ArrowRight size={13} /></button><button className="icon-button" disabled={busy} title="Reset entire demo" aria-label="Reset entire demo" onClick={() => act({
@@ -547,7 +642,7 @@ function Evidence({
  <label className="evidence-station-select"><select aria-label="Station evidence" value={selected} onChange={e => setSelected(Number(e.target.value))}>{state.stations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select><CaretDown size={12} /></label>
  <span className="evidence-time">{clock(at)} PST · {historical ? 'Note evidence' : 'Latest replay reading'}</span>
  <div className="evidence-numbers"><div><span>Observed</span><strong>{degrees(observed)}</strong></div><div><span>Expected</span><strong>{degrees(expected)}</strong></div></div>
- <div className="departure-row"><span>Departure</span><strong>{signed(residual)}</strong></div>
+ <div className="departure-row"><span>Difference from expected</span><strong>{signed(residual)}</strong></div>
  {(!historical || snapshot) && <Comparison state={state} stationId={selected} history={snapshot?.history} cutoff={historical ? at : null} />}
  <details className="disclosure"><summary><Info size={15} /><span>Details</span><CaretRight size={12} /></summary><div><p>{finding ? 'This station departed from its calibrated comparison. This is a finding, not confirmed sensor failure.' : station?.online === false ? 'This station’s reading was withheld.' : !station?.assessment?.available ? 'Comparison unavailable with the retained inputs.' : 'No station finding is present in this assessment.'}</p><dl><div><dt>Recorded</dt><dd>{degrees(station?.original_f)}F</dd></div><div><dt>Assessment</dt><dd>{(finding?.reason || station?.assessment?.reason || 'Unavailable').replaceAll('_', ' ')}</dd></div></dl></div></details>
  </> : <><h2>Orchard weather support</h2><span className="evidence-time">{clock(at)} PST · {historical ? 'Note evidence' : 'Latest replay reading'}</span><div className="support-count"><strong>{support(packet)}<span> / {state.stations.length}</span></strong><span>usable stations</span></div><p className="support-explanation">{supported(packet) ? 'Independent station readings support the orchard estimate.' : 'The available readings do not support a reliable orchard estimate.'}</p><div className="evidence-stations">{state.stations.map(row => {

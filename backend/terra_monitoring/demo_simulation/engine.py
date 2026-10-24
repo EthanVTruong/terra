@@ -34,6 +34,7 @@ WARMUP = "2026-03-10T11:00:00+00:00"
 ORCHARD = {"lat": 38.55, "lon": -121.78, "elevation_ft": 60.0}
 SESSION_KEY = "demo-simulation:session-v1"
 PRESETS = ("normal", "minor", "spike", "support_loss", "recover")
+MAP_BOUNDS = {"south": 38.22, "north": 38.86, "west": -122.45, "east": -121.14}
 
 
 class DemoSimulation:
@@ -166,11 +167,15 @@ class DemoSimulation:
             kind = action.get("type")
             fields = {"temperature": {"type", "station_id", "value_f"},
                       "online": {"type", "station_id", "online"}, "advance": {"type", "hours"},
-                      "preset": {"type", "name"}, "reset": {"type"}}
+                      "preset": {"type", "name"}, "reset": {"type"}, "reset_temperatures": {"type"}}
             if kind not in fields or set(action) != fields[kind]:
                 raise ValueError("Unknown action or unexpected action fields")
             if kind == "reset":
                 self._reset()
+            elif kind == "reset_temperatures":
+                # Recorded readings return for this hour; reporting interruptions stay.
+                self._frame()["temperatures"] = {}
+                self._evaluate()
             elif kind == "temperature":
                 station, value = self._station_id(action["station_id"]), action["value_f"]
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not -10 <= value <= 125:
@@ -225,30 +230,54 @@ class DemoSimulation:
             self._save()
             return {"message": message, "state": self.state()}
 
+    def _layer_findings(self):
+        current = self.session["clock"]
+        exclusions = pd.DataFrame([
+            {"station_id": row["station_id"], "timestamp": current, "reason": row["reason"]}
+            for row in self.packet["estimator_qc_exclusions"]
+        ], columns=["station_id", "timestamp", "reason"])
+        return (("raw", None), ("filtered", exclusions))
+
+    def _estimate(self, lat, lon, findings, location_id, geometry_source):
+        # Nathan's public function, with identical geometry and source eligibility
+        # for every map point. The only layer difference is real QC findings.
+        current = self.session["clock"]
+        return estimate_location(lat, lon, ORCHARD["elevation_ft"], [current], current,
+            self.cleaned[self.cleaned.operation_available], self.stations, findings,
+            location_id=location_id, geometry_source=geometry_source, max_age_hours=6).iloc[0].to_dict()
+
+    def point(self, lat, lon):
+        """Read-only estimate at one map spot; it never changes the session."""
+        for value in (lat, lon):
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise ValueError("Latitude and longitude must be finite numbers")
+        if not (MAP_BOUNDS["south"] <= lat <= MAP_BOUNDS["north"] and MAP_BOUNDS["west"] <= lon <= MAP_BOUNDS["east"]):
+            raise ValueError("Choose a spot inside the demonstration map")
+        with self._lock:
+            layers = {}
+            for layer, findings in self._layer_findings():
+                estimate = self._estimate(lat, lon, findings, "demo-spot",
+                                          "selected demonstration map spot; configured 60 ft elevation")
+                layers[layer] = _json({"temperature_f": estimate["temperature"], "status": estimate["status"],
+                                       "n_used": estimate["n_used"], "used_station_ids": estimate["used_station_ids"]})
+            return {"lat": lat, "lon": lon, "clock": self.session["clock"], "elevation_ft": ORCHARD["elevation_ft"],
+                    "layers": layers}
+
     def _heatmap(self):
         current = self.session["clock"]
         key = fingerprint({"current": current, "frames": self.session["frames"], "grid": self._grid_size})
         if key in self._map_cache:
             return self._map_cache[key]
-        bounds = {"south": 38.22, "north": 38.86, "west": -122.45, "east": -121.14}
+        bounds = MAP_BOUNDS
         size = self._grid_size
-        exclusions = pd.DataFrame([
-            {"station_id": row["station_id"], "timestamp": current, "reason": row["reason"]}
-            for row in self.packet["estimator_qc_exclusions"]
-        ], columns=["station_id", "timestamp", "reason"])
-        observations = self.cleaned[self.cleaned.operation_available]
         layers = {"raw": [], "filtered": []}
-        # Each cell comes from Nathan's public function, with identical geometry
-        # and source eligibility. The only layer difference is real QC findings.
         for row in range(size):
             lat = bounds["south"] + (bounds["north"] - bounds["south"]) * row / (size - 1)
             for column in range(size):
                 lon = bounds["west"] + (bounds["east"] - bounds["west"]) * column / (size - 1)
-                for layer, findings in (("raw", None), ("filtered", exclusions)):
-                    estimate = estimate_location(lat, lon, ORCHARD["elevation_ft"], [current], current,
-                        observations, self.stations, findings, location_id="demo-grid",
-                        geometry_source="regular demonstration grid; configured 60 ft elevation",
-                        max_age_hours=6).iloc[0].to_dict()
+                for layer, findings in self._layer_findings():
+                    estimate = self._estimate(lat, lon, findings, "demo-grid",
+                                              "regular demonstration grid; configured 60 ft elevation")
                     layers[layer].append(_json({"lat": lat, "lon": lon, "row": row, "column": column,
                         "temperature_f": estimate["temperature"], "status": estimate["status"],
                         "n_used": estimate["n_used"], "used_station_ids": estimate["used_station_ids"]}))

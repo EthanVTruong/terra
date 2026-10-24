@@ -144,6 +144,30 @@ class DemoSimulationTests(unittest.TestCase):
         self.assertFalse(winters["assessment"]["available"])
         self.assertIsNotNone(winters["original_f"])
 
+    def test_reset_temperatures_restores_recorded_readings_but_keeps_reporting(self):
+        self.demo.action({"type": "temperature", "station_id": 6, "value_f": 75})
+        self.demo.action({"type": "online", "station_id": 139, "online": False})
+        state = self.demo.action({"type": "reset_temperatures"})
+        davis = next(s for s in state["stations"] if s["id"] == 6)
+        self.assertEqual(davis["value_f"], davis["original_f"])
+        self.assertIsNone(davis["override"])
+        self.assertFalse(next(s for s in state["stations"] if s["id"] == 139)["online"])
+        with self.assertRaises(ValueError):
+            self.demo.action({"type": "reset_temperatures", "station_id": 6})
+
+    def test_spot_estimate_is_native_estimator_and_read_only(self):
+        spiked = self.demo.action({"type": "preset", "name": "spike"})
+        spot = self.demo.point(38.6, -121.9)
+        expected = estimate_location(38.6, -121.9, 60, [START], START,
+            self.demo.cleaned, self.demo.stations, None, location_id="comparison",
+            geometry_source="test", max_age_hours=6).iloc[0]
+        self.assertAlmostEqual(spot["layers"]["raw"]["temperature_f"], expected.temperature)
+        self.assertNotIn(6, spot["layers"]["filtered"]["used_station_ids"])
+        self.assertEqual(self.demo.state(), spiked)
+        for lat, lon in ((40.0, -121.9), (38.6, float("nan")), (True, -121.9)):
+            with self.subTest(lat=lat, lon=lon), self.assertRaises(ValueError):
+                self.demo.point(lat, lon)
+
     def test_heatmap_layers_are_exact_native_estimates_and_cache_on_poll(self):
         state = self.demo.action({"type": "preset", "name": "spike"})
         raw = state["heatmap"]["layers"]["raw"][0]
@@ -228,6 +252,11 @@ class DemoSimulationTests(unittest.TestCase):
             self.assertEqual(client.post("/api/demo/action", json={"type": "reset"},
                                         headers={"Origin": "https://unrelated.example"}).status_code, 403)
             self.assertEqual(client.post("/api/demo/action", json={"type": "oops"}).status_code, 422)
+            spot = client.post("/api/demo/point", json={"lat": 38.6, "lon": -121.9})
+            self.assertEqual(spot.status_code, 200)
+            self.assertEqual(set(spot.json()["layers"]), {"raw", "filtered"})
+            self.assertEqual(client.post("/api/demo/point", json={"lat": 38.6}).status_code, 422)
+            self.assertEqual(client.post("/api/demo/point", json={"lat": 50, "lon": -121.9}).status_code, 422)
             self.assertEqual(client.get("/api/demo/missing").status_code, 404)
             self.assertEqual(client.get("/api/demo/messages/unknown/details").status_code, 404)
 

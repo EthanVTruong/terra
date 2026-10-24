@@ -287,9 +287,10 @@
       "Actual referenced-weather ConversationService to ConversationalWriter regression preserves original event/note/date/station/60mph/6mph/+54mph and exact retry with one configured fake generator call; all14 writer integration cases pass. No actual paid provider call was used for these source checks.",
       "Combined browser and guarded API proof verified a real crop message, one location button, public Davis terrain lookup, saved location, separate in-chat notification choice and local saved-profile reply. This exposed the factory mismatch before merge; the final repaired-source smoke and exact-head gates remain required.",
       "Final combined-source production and Station lab builds,51 pure/helper UI cases and8 packaging cases pass;2 existing optional browser cases skipped. All51 demo/full-flow/weather integration cases pass after the final native map merge. Native point sensors are included in both lab and grower data-snapshot fingerprints.",
-      "Actual final guarded API flow preserved injected factory mode, real public Davis terrain provenance and usable comparison; map spot query and wind60mph action returned200 and the production feed retained the station note. A transient terrain503 retained clean setup and the same-ID retry succeeded. No native permission, SMS, worker or paid generation was used."
+      "Actual final guarded API flow preserved injected factory mode, real public Davis terrain provenance and usable comparison; map spot query and wind60mph action returned200 and the production feed retained the station note. A transient terrain503 retained clean setup and the same-ID retry succeeded. No native permission, SMS, worker or paid generation was used.",
+      "Hosted Windowsbd gate passed11 groups but the combined412-case conversation command exceeded its legacy60s default at152 completed cases. No assertion failed; full backend andmacOS passed, and local exactbd passedall12. The focused verification repair partitions the identical12 conversation files into three bounded120s checks, with unchanged assertions, backend-matching2-thread limits and15min outer portable job budget. No product code changes."
     ],
-    "uncertainty": "Final exact-head CI and actualdb0-base scoped checks must pass before merge. Fresh public-clone owner independently verifies setup/browser acceptance after merge; the exclusive runtime owner then activates canonical paths with retained-state backups. Historical replay journals are preserved with compatible source rather than silently migrated.",
+    "uncertainty": "Final configuration-only Windows repair must pass exact-head CI and actualdb0-base scoped groups before merge. Product source and independent fresh-clone acceptance remain unchanged frombd71502; private cutover/archives still require runtime-owner quiesce.",
     "next": "Run one combined exact-head gate cycle, publish through PR16, then coordinate private/runtime quiesce, consistent backups and canonical TechProjects/Terra migration. Remove verified inactive worktrees and rebuildable copies only after preservation; retain two to three core chats without waiting loops."
   }
 }
@@ -681,6 +682,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-pipeline-tests",
     "terra-chatgpt-tests",
     "terra-conversation-tests",
+    "terra-conversation-crops-tests",
+    "terra-conversation-context-tests",
     "terra-setup-tests",
     "terra-weather-tests"
   ]
@@ -1400,10 +1403,46 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "pythonpath=backend",
     "tests/test_terra_conversation.py",
     "tests/test_terra_conversation_api.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-conversation-crops-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
     "tests/test_terra_conversation_crops.py",
     "tests/test_terra_conversation_device_location.py",
-    "tests/test_terra_conversation_local_facts.py",
     "tests/test_terra_conversation_natural_language.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-conversation-context-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_conversation_local_facts.py",
     "tests/test_terra_conversation_readiness.py",
     "tests/test_terra_conversation_recovery.py",
     "tests/test_terra_conversation_reference_times.py",
@@ -1411,7 +1450,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_weather.py",
     "tests/test_terra_conversation_writer_integration.py",
     "-q"
-  ]
+  ],
+  "timeout": 120
 }
 ```
 

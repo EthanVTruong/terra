@@ -79,8 +79,11 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
+      CHILLWATCH_LGB_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
       PYTHONDONTWRITEBYTECODE: '1'
       TERRA_BRANCH: ${{ github.head_ref || github.ref_name }}
       TERRA_BASE: ${{ github.event.pull_request.base.sha || github.sha }}

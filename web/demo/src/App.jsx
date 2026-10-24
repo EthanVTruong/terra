@@ -558,11 +558,32 @@ function VariableControl({ station, field, label, unit, max, busy, act }) {
     <p className="small-note" role="status">{reading?.classification === 'suspected_discrepancy' ? 'Station discrepancy' : reading?.status === 'assessable' ? reading?.level === 'moderate' ? 'Departure · awaiting sustained readings' : 'Within comparison policy' : reading?.status === 'low_daylight' ? 'Solar comparisons resume in daylight' : (reading?.reason || 'Unavailable').replaceAll('_',' ')}{reading?.expected != null ? ` · Peers ${number(reading.expected)} ${unit}` : ''}</p>
   </form>;
 }
-function WeatherControls({station,busy,act}) {
-  return <details className="disclosure"><summary><span>Humidity, wind & solar</span><CaretDown size={12}/></summary><div style={{display:'grid',gap:14,padding:'10px 0'}}>
+// A test sensor's humidity/wind/solar reading, judged by the same peer-discrepancy policy as stations.
+function SensorWeatherControl({ sensor, field, label, unit, max, busy, act }) {
+  const set = sensor.weather?.[field],
+    reading = sensor.weather_checks?.[field],
+    [value, setValue] = useState(set == null ? '' : String(set));
+  useEffect(() => { setValue(set == null ? '' : String(set)); }, [sensor.id, set]);
+  const valid = value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= max;
+  const status = set == null ? 'Not reported' : reading?.classification === 'suspected_discrepancy' ? 'Flagged · far from nearby stations'
+    : reading?.status === 'assessable' ? reading.level === 'moderate' ? 'Departure · awaiting sustained readings' : 'Within comparison policy'
+    : reading?.status === 'low_daylight' ? 'Solar comparisons resume in daylight' : (reading?.reason || 'Unavailable').replaceAll('_', ' ');
+  return <form onSubmit={event => { event.preventDefault(); if (valid) act({type: 'sensor_weather', sensor_id: sensor.id, variable: field, value: Number(value)}); }}>
+    <label htmlFor={`sensor-weather-${field}`}>{label} <span>{unit}</span></label>
+    <div style={{display: 'flex', gap: 6, margin: '6px 0'}}>
+      <input id={`sensor-weather-${field}`} aria-label={`Test sensor ${label}`} type="number" min="0" max={max} step="0.1" placeholder="Not reported" value={value} onChange={e => setValue(e.target.value)} disabled={busy} style={{minWidth: 0, flex: 1}} />
+      <button className="quiet-button" type="submit" disabled={busy || !valid}>Apply</button>
+      <button className="quiet-button" type="button" disabled={busy || set == null} onClick={() => act({type: 'sensor_weather', sensor_id: sensor.id, variable: field, value: null})}>Clear</button>
+    </div>
+    <p className={`small-note${reading?.classification === 'suspected_discrepancy' && set != null ? ' is-flagged-text' : ''}`} role="status">{status}{set != null && reading?.expected != null ? ` · Peers ${number(reading.expected)} ${unit}` : ''}</p>
+  </form>;
+}
+// Takes the station list's place in the panel while open, so the controls need no scrolling.
+function WeatherControls({station,busy,act,onClose}) {
+  return <section className="weather-panel" aria-label={`${station.name} humidity, wind and solar`}><button className="weather-back" onClick={onClose}><ArrowRight size={12} className="flip" />Humidity, wind & solar</button><div style={{display:'grid',gap:14,padding:'10px 0'}}>
     <p className="small-note">Controlled readings persist as hours advance. Source quality and missing readings stay separate from discrepancies.</p>
     {weatherVariables.map(([field,label,unit,max])=><VariableControl key={`${station.id}:${field}`} station={station} field={field} label={label} unit={unit} max={max} busy={busy} act={act}/>)}
-  </div></details>;
+  </div></section>;
 }
 function StationControl({
   state,
@@ -575,9 +596,20 @@ function StationControl({
   const s = state.stations.find(s => s.id === selected) || state.stations[0],
     [draft, setDraft] = useState(String(s.value_f ?? 50)),
     timer = useRef(null),
+    panel = useRef(null),
+    [weatherOpen, setWeatherOpen] = useState(false),
     latestStation = useRef(s);
   latestStation.current = s;
   const pending = s.online && String(draft).trim() !== '' && Number(draft) !== s.value_f;
+  useEffect(() => {
+    if (!weatherOpen) return;
+    // A click anywhere outside the panel returns it to the station list.
+    const away = e => {
+      if (panel.current && !panel.current.contains(e.target)) setWeatherOpen(false);
+    };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [weatherOpen]);
   useEffect(() => {
     setDraft(String(s.value_f ?? s.original_f ?? 50));
   }, [s.id, s.value_f, s.original_f, state.run_id]);
@@ -605,14 +637,14 @@ function StationControl({
       }), 350);
     }
   }
-  return <aside className="station-controls" aria-label="Selected station controls"><div className="selected-station-heading"><h2>{s.name}</h2>{pending ? <span className="station-state">Checking…</span> : <StationLabel station={s} />}</div><div className="temperature-control"><label htmlFor="temperature-value">Temperature <span>°F</span></label><div className="temperature-value"><input id="temperature-value" aria-label={`${s.name} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onBlur={() => { if (!String(draft).trim()) setDraft(String(s.value_f ?? s.original_f)); }} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${s.name} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onChange={e => change(e.target.value)} /><div className="slider-context"><span>Recorded {degrees(s.original_f)}</span><button disabled={s.override === null || s.override === undefined || busy} onClick={() => {
+  return <aside className="station-controls" ref={panel} aria-label="Selected station controls"><div className="selected-station-heading"><h2>{s.name}</h2>{pending ? <span className="station-state">Checking…</span> : <StationLabel station={s} />}</div><div className="temperature-control"><label htmlFor="temperature-value">Temperature <span>°F</span></label><div className="temperature-value"><input id="temperature-value" aria-label={`${s.name} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onBlur={() => { if (!String(draft).trim()) setDraft(String(s.value_f ?? s.original_f)); }} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${s.name} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} disabled={!s.online || busy} onChange={e => change(e.target.value)} /><div className="slider-context"><span>Recorded {degrees(s.original_f)}</span><button disabled={s.override === null || s.override === undefined || busy} onClick={() => {
           clearTimeout(timer.current);
           act({
             type: 'temperature',
             station_id: s.id,
             value_f: s.original_f
           });
-        }}><ArrowClockwise size={12} />Restore</button></div></div><div className="station-comparison"><div><span>Expected</span><strong>{pending ? '—' : degrees(s.assessment.expected_f)}</strong></div><div><span>Difference</span><strong>{pending ? '—' : signed(s.assessment.residual_f)}</strong></div></div><div className="reading-state" aria-live="polite">{!s.online ? 'Reading withheld from the simulation.' : pending ? 'Evaluating this reading…' : flagged(s) ? layer === 'filtered' ? 'Flagged · excluded from temperature field.' : 'Terra flagged this difference from expected.' : !s.assessment.available ? 'Comparison unavailable.' : s.assessment.level === 'moderate' ? `Unusual difference · awaiting ${s.assessment.required_readings} consecutive readings` : 'Within the current comparison.'}</div><div className="station-list-heading">Station reporting</div><div className="station-list">{state.stations.map(row => <div className={`station-row${row.id === selected ? ' active' : ''}`} key={row.id}><button className="station-select" onClick={() => {
+        }}><ArrowClockwise size={12} />Restore</button></div></div><div className="station-comparison"><div><span>Expected</span><strong>{pending ? '—' : degrees(s.assessment.expected_f)}</strong></div><div><span>Difference</span><strong>{pending ? '—' : signed(s.assessment.residual_f)}</strong></div></div><div className="reading-state" aria-live="polite">{!s.online ? 'Reading withheld from the simulation.' : pending ? 'Evaluating this reading…' : flagged(s) ? layer === 'filtered' ? 'Flagged · excluded from temperature field.' : 'Terra flagged this difference from expected.' : !s.assessment.available ? 'Comparison unavailable.' : s.assessment.level === 'moderate' ? `Unusual difference · awaiting ${s.assessment.required_readings} consecutive readings` : 'Within the current comparison.'}</div>{weatherOpen ? <WeatherControls station={s} busy={busy} act={act} onClose={() => setWeatherOpen(false)} /> : <><button className="weather-open" onClick={() => setWeatherOpen(true)}><span>Humidity, wind & solar</span><CaretRight size={12} /></button><div className="station-list-heading">Station reporting</div><div className="station-list">{state.stations.map(row => <div className={`station-row${row.id === selected ? ' active' : ''}`} key={row.id}><button className="station-select" onClick={() => {
           setSelected(row.id);
         }}><span className={`row-dot${!row.online ? ' off' : flagged(row) ? ' warn' : ''}`} /><span>{row.name}</span><span>{row.online ? degrees(row.value_f) : '—'}</span></button><button className="reporting-toggle" aria-label={`${row.online ? 'Take' : 'Bring'} ${row.name} ${row.online ? 'offline' : 'online'}`} aria-pressed={row.online} disabled={busy} onClick={() => {
           clearTimeout(timer.current);
@@ -621,7 +653,7 @@ function StationControl({
             station_id: row.id,
             online: !row.online
           });
-        }}><span /></button></div>)}</div><div className="support-summary"><span>Orchard support</span><strong>{support(state.assessment)} of {state.stations.length}</strong></div><p className="control-footnote">Temperature changes apply to this hour only.</p><WeatherControls station={s} busy={busy} act={act}/></aside>;
+        }}><span /></button></div>)}</div><div className="support-summary"><span>Orchard support</span><strong>{support(state.assessment)} of {state.stations.length}</strong></div><p className="control-footnote">Temperature changes apply to this hour only.</p></>}</aside>;
 }
 // Controls for a map spot or test sensor. Setting a spot's temperature places a test sensor there.
 function SpotControl({
@@ -670,7 +702,7 @@ function SpotControl({
       if (placed) onPlaced(target.id, placed.id);
     }, 350);
   }
-  return <aside className="station-controls" aria-label={sensor ? 'Selected test sensor controls' : 'Selected map spot controls'}><div className="selected-station-heading"><h2>{sensor ? 'Test sensor' : 'Map spot'}</h2><span className={`station-state${flaggedSensor ? ' is-flagged' : ''}`}>{flaggedSensor ? 'Flagged' : sensor ? 'Uncalibrated' : 'Estimate'}</span></div><p className="spot-coordinates">{target.lat.toFixed(3)}, {target.lon.toFixed(3)} · 60 ft</p><div className="temperature-control"><label htmlFor="spot-temperature">{sensor ? 'Sensor reading' : 'Set a test reading'} <span>°F</span></label><div className="temperature-value"><input id="spot-temperature" aria-label={`${sensor ? 'Test sensor' : 'Map spot'} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={busy && !sensor} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${sensor ? 'test sensor' : 'map spot'} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} onChange={e => change(e.target.value)} /></div>{sensor ? <div className="station-comparison"><div><span>Expected</span><strong>{check?.expected_f == null ? '—' : degrees(check.expected_f)}</strong></div><div><span>Difference</span><strong>{check?.deviation_f == null ? '—' : signed(check.deviation_f)}</strong></div></div> : <div className="station-comparison"><div><span>Estimated here</span><strong>{spotValue(reading, layer)}</strong></div><div><span>Layer</span><strong>{layer === 'raw' ? 'Raw' : 'Filtered'}</strong></div></div>}<p className="reading-state" aria-live="polite">{!sensor ? 'Changing the temperature places a test sensor here.' : flaggedSensor ? `Flagged · ${check.level === 'strong' ? `more than ${check.extreme_f.toFixed(1)}° from` : `${check.sustained_readings} hours outside`} what nearby stations predict. The grower gets a text.` : check?.expected_f == null ? 'No comparison: not enough nearby station readings.' : 'Within the range nearby stations predict.'}</p>{sensor && <p className="control-footnote">Expected comes from the calibrated stations with this sensor left out. The sensor also feeds the heatmap and orchard estimate.</p>}<div className="spot-actions"><button className="quiet-button" disabled={busy} onClick={() => act({
+  return <aside className="station-controls" aria-label={sensor ? 'Selected test sensor controls' : 'Selected map spot controls'}><div className="selected-station-heading"><h2>{sensor ? 'Test sensor' : 'Map spot'}</h2><span className={`station-state${flaggedSensor ? ' is-flagged' : ''}`}>{flaggedSensor ? 'Flagged' : sensor ? 'Uncalibrated' : 'Estimate'}</span></div><p className="spot-coordinates">{target.lat.toFixed(3)}, {target.lon.toFixed(3)} · 60 ft</p><div className="temperature-control"><label htmlFor="spot-temperature">{sensor ? 'Sensor reading' : 'Set a test reading'} <span>°F</span></label><div className="temperature-value"><input id="spot-temperature" aria-label={`${sensor ? 'Test sensor' : 'Map spot'} temperature Fahrenheit`} type="number" min="-10" max="125" step="0.1" value={draft} disabled={busy && !sensor} onChange={e => change(e.target.value)} /><span>°</span></div><input className="temperature-slider" aria-label={`Adjust ${sensor ? 'test sensor' : 'map spot'} temperature`} type="range" min="-10" max="125" step="0.1" value={draft} onChange={e => change(e.target.value)} /></div>{sensor ? <div className="station-comparison"><div><span>Expected</span><strong>{check?.expected_f == null ? '—' : degrees(check.expected_f)}</strong></div><div><span>Difference</span><strong>{check?.deviation_f == null ? '—' : signed(check.deviation_f)}</strong></div></div> : <div className="station-comparison"><div><span>Estimated here</span><strong>{spotValue(reading, layer)}</strong></div><div><span>Layer</span><strong>{layer === 'raw' ? 'Raw' : 'Filtered'}</strong></div></div>}<p className="reading-state" aria-live="polite">{!sensor ? 'Changing the temperature places a test sensor here.' : flaggedSensor ? `Flagged · ${check.level === 'strong' ? `more than ${check.extreme_f.toFixed(1)}° from` : `${check.sustained_readings} hours outside`} what nearby stations predict. The grower gets a text.` : check?.expected_f == null ? 'No comparison: not enough nearby station readings.' : 'Within the range nearby stations predict.'}</p>{sensor && <p className="control-footnote">Expected comes from the calibrated stations with this sensor left out. The sensor also feeds the heatmap and orchard estimate.</p>}{sensor && <section className="sensor-weather" aria-label="Test sensor humidity, wind and solar"><div className="station-list-heading">Humidity, wind & solar <span className="muted">· sensor {target.id}</span></div><div style={{display: 'grid', gap: 10}}>{weatherVariables.map(([field, label, unit, max]) => <SensorWeatherControl key={`${target.id}:${field}`} sensor={target} field={field} label={label} unit={unit} max={max} busy={busy} act={act} />)}</div></section>}<div className="spot-actions"><button className="quiet-button" disabled={busy} onClick={() => act({
       type: 'orchard',
       lat: target.lat,
       lon: target.lon

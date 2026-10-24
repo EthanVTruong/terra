@@ -25,7 +25,7 @@ from terra_monitoring.assessment import (
 from terra_monitoring.farm_ops.service import Monitor
 from terra_monitoring.farm_ops.store import Store, fingerprint, utc
 from terra_monitoring.farm_ops.writer import Writer
-from terra_monitoring.weather import VARIABLES
+from terra_monitoring.weather import VARIABLES, _physical_reason
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "docs/terra/demo-simulation/data"
@@ -168,10 +168,18 @@ class DemoSimulation:
         # A test sensor reports its set value every source hour in the replay window.
         hours = sorted({r["timestamp"] for r in rows})
         for sensor in self.session["sensors"]:
+            # Set humidity/wind/solar readings use the same canonical fields as station weather,
+            # so the existing peer-discrepancy policy judges them; unset variables are simply absent.
+            weather = {}
+            for field, value in sensor.get("weather", {}).items():
+                unit = {"relative_humidity_pct": "%", "wind_speed_mph": "mph", "solar_radiation_w_m2": "W/m2"}[field]
+                weather.update({field: value, field + "_unit": unit, field + "_source_unit": unit, field + "_source_value": value,
+                                field + "_source_flag": "", field + "_quality": "usable", field + "_available": True,
+                                field + "_availability_reason": "available", field + "_availability_reasons": []})
             rows.extend({"station_id": sensor["id"], "timestamp": hour, "temperature_f": sensor["value_f"],
                          "temperature_unit": "F", "quality": "usable", "source_flag": "", "timestamp_verified": True,
                          "timestamp_basis": "fixed_pst_hour_ending", "availability_reason": None,
-                         "source": "demo_test_sensor", "demo_override": {"kind": "test_sensor"}} for hour in hours)
+                         "source": "demo_test_sensor", "demo_override": {"kind": "test_sensor"}, **weather} for hour in hours)
         return pd.DataFrame(rows)
 
     def _sensor_limits(self):
@@ -293,7 +301,8 @@ class DemoSimulation:
                       "online": {"type", "station_id", "online"}, "advance": {"type", "hours"},
                       "preset": {"type", "name"}, "reset": {"type"}, "reset_temperatures": {"type"},
                       "sensor": {"type", "lat", "lon", "value_f"}, "sensor_value": {"type", "sensor_id", "value_f"},
-                      "sensor_remove": {"type", "sensor_id"}, "orchard": {"type", "lat", "lon"}}
+                      "sensor_remove": {"type", "sensor_id"}, "orchard": {"type", "lat", "lon"},
+                      "sensor_weather": {"type", "sensor_id", "variable", "value"}}
             if kind not in fields or set(action) != fields[kind]:
                 raise ValueError("Unknown action or unexpected action fields")
             if kind == "reset":
@@ -322,6 +331,18 @@ class DemoSimulation:
             elif kind == "sensor_remove":
                 sensor = self._sensor(action["sensor_id"])
                 self.session["sensors"] = [s for s in self.session["sensors"] if s is not sensor]
+                self._evaluate()
+            elif kind == "sensor_weather":
+                sensor, variable, value = self._sensor(action["sensor_id"]), action["variable"], action["value"]
+                if variable not in VARIABLES:
+                    raise ValueError("Choose humidity, wind speed or solar radiation")
+                if value is None:
+                    sensor.setdefault("weather", {}).pop(variable, None)
+                else:
+                    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) \
+                            or _physical_reason(variable, float(value)):
+                        raise ValueError("That reading is outside the physical range for this variable")
+                    sensor.setdefault("weather", {})[variable] = float(value)
                 self._evaluate()
             elif kind == "orchard":
                 self._move_orchard(*self._spot(action["lat"], action["lon"]))
@@ -549,7 +570,10 @@ class DemoSimulation:
                            "weather_variables": self.weather_provenance},
                 "stations": stations, "assessment": self.packet, "heatmap": self._heatmap(),
                 "sensors": [{**s, "elevation_ft": ORCHARD["elevation_ft"], "calibrated": False,
-                             "check": self.sensor_checks.get(s["id"])} for s in self.session["sensors"]],
+                             "check": self.sensor_checks.get(s["id"]),
+                             "weather_checks": {variable["variable"]: next((r for r in variable["stations"] if r["station_id"] == s["id"]), None)
+                                                for variable in self.packet.get("weather", {}).get("variables", [])}}
+                            for s in self.session["sensors"]],
                 "orchard": self.store.orchard(orchard_id), "monitor": monitor,
                 "messages": messages, "notifications": notifications, "events": events, "history": history,
                 "actions": self.session["actions"], "controls": {"presets": list(PRESETS),

@@ -219,20 +219,27 @@ function position(lat, lon, b) {
     top: `${(mercatorY(lat) - mercatorY(b.north)) / (mercatorY(b.south) - mercatorY(b.north)) * 100}%`
   };
 }
-const palette = [[35, [89, 148, 190]], [50, [128, 179, 173]], [65, [218, 204, 137]], [80, [225, 155, 105]], [100, [194, 90, 71]], [125, [133, 52, 50]]];
-function heatColor(v) {
-  for (let i = 1; i < palette.length; i++) {
-    if (v <= palette[i][0]) {
-      const [a, ca] = palette[i - 1],
-        [b, cb] = palette[i],
-        t = Math.max(0, Math.min(1, (v - a) / (b - a)));
-      return ca.map((n, j) => Math.round(n + (cb[j] - n) * t));
-    }
-  }
-  return palette.at(-1)[1];
+// Same viridis-like ramp as the ChillWatch Valley Chill Map (perceptual, colour-blind safe).
+const palette = [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]];
+function heatColor(v, lo, hi) {
+  const t = Math.max(0, Math.min(1, (v - lo) / (hi - lo || 1))),
+    x = t * (palette.length - 1),
+    i = Math.min(Math.floor(x), palette.length - 2),
+    f = x - i;
+  return palette[i].map((n, j) => Math.round(n + (palette[i + 1][j] - n) * f));
+}
+// Stretch the ramp to the shown layer's values, as each chill-map layer does.
+function heatRange(cells) {
+  const values = cells.filter(c => Number.isFinite(c.temperature_f) && c.status === 'ok').map(c => c.temperature_f);
+  if (!values.length) return [35, 125];
+  const lo = Math.floor(Math.min(...values)),
+    hi = Math.ceil(Math.max(...values));
+  return hi - lo < 4 ? [lo - 2, hi + 2] : [lo, hi];
 }
 function HeatField({
-  cells
+  cells,
+  lo,
+  hi
 }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -254,18 +261,18 @@ function HeatField({
       const i = (lats.indexOf(c.lat) * lons.length + lons.indexOf(c.lon)) * 4,
         v = c.temperature_f;
       if (Number.isFinite(v) && c.status === 'ok') {
-        const color = heatColor(v);
+        const color = heatColor(v, lo, hi);
         pixels.data[i] = color[0];
         pixels.data[i + 1] = color[1];
         pixels.data[i + 2] = color[2];
-        pixels.data[i + 3] = 174;
+        pixels.data[i + 3] = 255;
       }
     });
     sc.putImageData(pixels, 0, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(small, 0, 0, 600, 600);
-  }, [cells]);
+  }, [cells, lo, hi]);
   return <canvas ref={ref} className="heat-field" aria-hidden="true" />;
 }
 function BaseMap({
@@ -318,6 +325,7 @@ function WeatherMap({
     domain = state.heatmap.bounds,
     b = fitMapBounds(domain, aspect),
     cells = state.heatmap.layers?.[layer] || state.heatmap.cells || [],
+    [lo, hi] = heatRange(cells),
     available = cells.some(c => Number.isFinite(c.temperature_f) && c.status === 'ok');
   useEffect(() => {
     const observer = new ResizeObserver(entries => {
@@ -335,16 +343,16 @@ function WeatherMap({
     width: `${parseFloat(opposite.left) - parseFloat(corner.left)}%`,
     height: `${parseFloat(opposite.top) - parseFloat(corner.top)}%`
   };
-  return <div className="weather-map" ref={ref} role="group" aria-label={`${layer === 'raw' ? 'Raw' : 'Terra filtered'} estimated temperature heatmap`}><BaseMap bounds={b} /><div className="heat-domain" style={fieldStyle}><HeatField cells={cells} /></div><div className="map-region">SACRAMENTO VALLEY</div>{state.stations.map(station => {
+  return <div className="weather-map" ref={ref} role="group" aria-label={`${layer === 'raw' ? 'Raw' : 'Terra filtered'} estimated temperature heatmap`}><BaseMap bounds={b} /><div className="heat-domain" style={fieldStyle}><HeatField cells={cells} lo={lo} hi={hi} /></div><div className="map-region">SACRAMENTO VALLEY</div>{state.stations.map(station => {
       const pos = position(station.lat, station.lon, b),
         right = parseFloat(pos.left) > 70,
         bottom = parseFloat(pos.top) > 82;
       return <button key={station.id} className={`map-station${selected === station.id ? ' selected' : ''}${!station.online ? ' is-offline' : flagged(station) ? ' is-flagged' : ''}${right ? ' caption-left' : ''}${bottom ? ' caption-up' : ''}`} style={pos} onClick={() => onSelect(station.id)} aria-label={`Select ${station.name}, ${station.online ? degrees(station.value_f) + ' Fahrenheit' : 'offline'}`} aria-pressed={selected === station.id}><span className="map-point" /><span className="map-station-caption"><strong>{station.name}</strong><span>{station.online ? degrees(station.value_f) : 'Offline'}{station.online && flagged(station) && <WarningCircle size={12} />}</span>{layer === 'filtered' && state.assessment.estimator_qc_exclusions.some(row => row.station_id === station.id) && <small>Excluded from field</small>}</span></button>;
-    })}<div className="orchard-pin" style={position(state.orchard.lat, state.orchard.lon, b)}><MapPin size={22} weight="fill" /><span>Demo orchard</span></div>{!available && <div className="map-no-support"><WarningCircle size={18} /><strong>No supported temperature surface</strong><span>Not enough usable station readings</span></div>}<div className="map-legend"><span>35°</span><div>{Array.from({
+    })}<div className="orchard-pin" style={position(state.orchard.lat, state.orchard.lon, b)}><MapPin size={22} weight="fill" /><span>Demo orchard</span></div>{!available && <div className="map-no-support"><WarningCircle size={18} /><strong>No supported temperature surface</strong><span>Not enough usable station readings</span></div>}<div className="map-legend"><strong>Temperature (°F)</strong><div>{Array.from({
           length: 32
         }, (_, i) => <i key={i} style={{
-          background: `rgb(${heatColor(35 + i / 31 * 90).join(',')})`
-        }} />)}</div><span>125°F</span></div><div className="map-attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors</div></div>;
+          background: `rgb(${heatColor(i / 31, 0, 1).join(',')})`
+        }} />)}</div><p><span>{lo}°</span><span>{Math.round((lo + hi) / 2)}°</span><span>{hi}°</span></p></div><div className="map-attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors</div></div>;
 }
 function Comparison({
   state,

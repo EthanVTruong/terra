@@ -1,5 +1,7 @@
 # Terra
 
+*Made with <3*
+
 **A local-first assistant for orchard weather, winter chill, and the data behind them.**
 
 Tell Terra what you grow and where. It checks nearby weather stations, estimates temperature at your orchard, and keeps a quiet inbox of meaningful updates. Ask follow-up questions, inspect the evidence, or receive selected notes by SMS.

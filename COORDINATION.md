@@ -22,15 +22,16 @@
   "artifacts": [],
   "handoff": {
     "revision": "011a99757e005f9204ff69024a0661f1a952756a",
-    "summary": "Completed the concise final-submission README on an isolated branch: 607 words versus 1079, clear product capabilities, one-command historical preview, explicit live-weather/ChatGPT/notification setup, controlled replay demonstration, short agent instructions and a four-area code map. Product claims are grounded in current main; all implementation and private state are preserved.",
+    "summary": "Completed the concise final-submission README on an isolated branch: 610 words versus 1079, clear product capabilities, one-command historical preview, explicit live-weather/ChatGPT/notification setup, controlled replay demonstration, short agent instructions and a four-area code map. User follow-up adds an italic Made with <3 immediately below the title. Product claims are grounded in the reviewed main revision; all implementation and private state are preserved.",
     "evidence": [
       "README source commit 011a99757e005f9204ff69024a0661f1a952756a; comparison base 8f028a8320661c4a59344f1e3067e8af2bb79a74.",
       "All 14 relative links resolve. UTF-8/LF, git diff --check and actual run_terra.py --help pass. Read-only independent review found no material correction.",
       "Required terra.py check --base origin/main --task terra-submission-readme passes coordination/filesystem and all 11 configured groups: chatgpt, conversation, demo, farm, full-flow, harness, JSON, pipeline, runtime, setup and SMS.",
-      "Reviewed current main source/runbooks plus read-only existing location-onboarding, multivariable and consolidation records. No existing chats messaged; no provider, SMS, runtime, credential or scientific changes."
+      "Reviewed current main source/runbooks plus read-only existing location-onboarding, multivariable and consolidation records. No existing chats messaged; no provider, SMS, runtime, credential or scientific changes.",
+      "User-requested Made with <3 follow-up changes only README presentation and this record; checked exact placement, diff whitespace and task scope. The prior 11-group runtime check remains evidence for the underlying unchanged implementation."
     ],
     "uncertainty": "Checked against current main 8f028a8. Location simplification and multivariable extensions are still independent work; this README uses stable product wording and does not advertise their unmerged behavior. Scientific acceptance and full native/PostgreSQL CI are separate from the passing scoped checks.",
-    "next": "Publish the two documentation commits as a small reviewable PR for the sole consolidation owner. Scope is frozen; no additional research, QA loop, application edits or live actions."
+    "next": "PR18 is open at https://github.com/EthanVTruong/terra/pull/18 for the sole consolidation owner, now including the user-requested Made with <3 credit. No additional research, QA loop, application edits or live actions."
   }
 }
 ```

@@ -639,3 +639,96 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   }
 }
 ```
+
+```json
+{
+  "kind": "domain",
+  "id": "terra-input-guards",
+  "owner": "et",
+  "purpose": "User-authorized audited boundary repairs only: strict native CIMIS decoding and operating-date eligibility. Preserve Nathan numerical formulas, training/repair algorithms and frozen Terra reference. No training, ingestion or parameter changes.",
+  "paths": [
+    "backend/chillwatch/estimate.py",
+    "backend/chillwatch/normalize.py",
+    "backend/chillwatch/sources/cimis.py",
+    "tests/test_backend_input_guards.py",
+    "tests/test_estimate.py",
+    "tests/test_normalize.py"
+  ],
+  "depends_on": [],
+  "checks": [
+    "terra-input-guard-tests"
+  ]
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-input-guard-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "-p",
+    "no:cacheprovider",
+    "tests/test_backend_input_guards.py",
+    "tests/test_estimate.py",
+    "tests/test_normalize.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-backend-cleanup",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly authorizes fixing audited backend issues, removing unused code, preserving QC math and Nathan pipeline, running full operational checks and merging/pushing GitHub. Correct state/config journal consistency, fact-safe optional writer, recovery catch-up, cache retention/backoff, question idempotency, indexed Details lookup, HTTP errors and bounded native decoder/eligibility guards. Retire only proven unused raw-station SMS adapter; preserve supported training/repair functions, frozen reference and all data.",
+  "branch": "codex/backend-cleanup",
+  "base": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json",
+    "terra-input-guards"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "backend/chillwatch/estimate.py",
+    "backend/chillwatch/normalize.py",
+    "backend/chillwatch/sources/cimis.py",
+    "tests/test_backend_input_guards.py",
+    "tests/test_estimate.py",
+    "tests/test_normalize.py",
+    "tests/test_terra*.py",
+    "tests/test_farm_chill_ops*.py",
+    "docs/terra/**",
+    "requirements-terra*.txt",
+    ".github/workflows/terra.yml",
+    "README.md",
+    ".env.example",
+    "scripts/terra-service/**"
+  ],
+  "depends_on": [
+    "terra-full-pipeline"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "78e835dbe43f5ce972b7d321a96190a8bc79e7e5",
+    "summary": "Isolated cleanup branch from clean current shared main. Three implementation lanes own disjoint farm, transport/runtime and native input boundary files; root owns writer, integration, full validation and merge.",
+    "evidence": [
+      "Read-only audit recorded reproducible gaps at78e835d;499production-path cases passed baseline. User authorizes source repairs and final merge/push."
+    ],
+    "uncertainty": "Real Twilio account activation remains separately blocked. Full native/PostgreSQL checks will execute on CI before merge; no real messages, new model training or provider ingestion in this cleanup.",
+    "next": "Implement focused regressions/repairs in isolated working copies, integrate once, run full suite and frozen-reference checks, then merge only green exact head."
+  }
+}
+```

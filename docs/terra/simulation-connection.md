@@ -1,6 +1,6 @@
 # Simulator connection
 
-The chat's **+ → Connect simulator** connects the current browser session to an
+The chat's **+ → Open simulation** connects the current browser session to an
 isolated historical replay and opens `/stations`. The station controls and the
 ordinary Terra conversation then share the same injected observations, frozen
 QC and estimator. Station changes update native farm notes and retained evidence.
@@ -14,7 +14,7 @@ disabled for simulation.
 
 `GET /api/simulation/connection` reads connection state.
 `POST /api/simulation/connect` accepts `{ "orchard_id": "optional-existing-id" }`.
-`DELETE /api/simulation/connection` returns this browser to the live API. Both
+Station lab’s **Return to live chat** control uses `DELETE /api/simulation/connection` to restore this browser’s live selection. Both
 mutations require the existing local-session control token. The same-origin
 HttpOnly session cookie is shared by the chat and station tabs. Other browsers,
 the live monitor worker and its journal keep their normal source.

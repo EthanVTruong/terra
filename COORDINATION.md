@@ -1018,3 +1018,38 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   }
 }
 ```
+
+
+```json
+{
+  "kind": "task",
+  "id": "terra-ui-quiet",
+  "owner": "et",
+  "status": "done",
+  "intent": "UI design refinement: approved square character and header spacing, quiet context/copy, Pacific day dividers and clock-only note footers, central evidence JSON, and clear phone setup. User selected the existing verified number for the demo. Phone connection checks remain read-only, orchard opt-in is separate, and source/availability warnings plus delivery semantics remain truthful. No writer, auth, backend, recipient or provider configuration changes in the phone refinement.",
+  "branch": "codex/terra-ui-quiet",
+  "base": "78e835d",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "22072a6f19c2e3c3bc8df98e68773c3445180704",
+    "summary": "Fixed-phone UI implemented: explicit Connect phone action; Connecting, Setup required, Ready, Sending paused and Unavailable states. Ready shows masked number and a separate field-note alert switch. Ten-second deadlines, stale-status guards and focus restoration handle async checks. Trial-template mode says notification only; receipt checks appear for existing test events and survive paused sending. Earlier quiet UI refinements remain on this branch.",
+    "evidence": [
+      "Production build, 14 UI tests, four packaging tests and whitespace check pass. Scope/coordination/filesystem validation passes against declared task base 78e835d. Current origin/main advanced to a9dcc6c during the pass; no web changes in that upstream delta. Current-main integration is deliberately left to the integration owner.",
+      "Actual 8504/8512 path: Connect phone performs status/preference GETs, returns Setup required and restores focus. Isolated React fixture: Ready, controlled 1.4-second Connecting state, preference on/off without losing readiness, 34x20 switch, focus restoration and mobile no-overflow verified. Fixture rejects sends and has no real provider/API connection. No real SMS or actual orchard preference change made.",
+      "Sources: current Apple HIG toggles, GOV.UK phone confirmation and Twilio Verify/trial docs. User chose fixed verified phone; full enrollment remains a future reference. web/phone-connection-design.md documents logistics. Screenshots .terra-local/phone-connection/; selected inline preview terra-verified-phone.html in thread visualization root."
+    ],
+    "uncertainty": "The live SMS server still needs delivery setup; frontend checks do not configure credentials, enable sending or prove handset delivery. Main has backend/contract updates and separate ChatGPT/placeholder transport work; reconcile this UI branch once with current main and the transport owner, preserving trial content_mode and existing writer/auth work. No App.jsx or writer/auth changes in this phone refinement.",
+    "next": "Integration owner consumes codex/terra-ui-quiet, reconciles current main and incoming trial-placeholder transport labels, then runs current integration checks. Operator completes SMS delivery configuration; UI will show Ready for its fixed verified phone. User can then opt this orchard in explicitly. Preserve the integration owner\u2019s announced FarmFeed.jsx fix: non-current stale saved readings get a quiet Replay only / saved readings do not describe current conditions banner; actual current-data unavailable behavior stays unchanged. This incoming fix is an announced intent, not a revision verified on this branch."
+  }
+}
+```

@@ -108,7 +108,8 @@ def client_for(pipeline):
 
 def controls(client):
     token = client.get("/api/sms/status", headers=HEADERS).json()["control_token"]
-    return {**HEADERS, "x-terra-sms-control": token}
+    return {**HEADERS, "x-terra-sms-control": token,
+            "X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]}
 
 
 def setup(client, *, consent=True):
@@ -145,7 +146,7 @@ def test_read_only_assess_and_suspect_station_do_not_create_orchard_alert(tmp_pa
         if row["Station"] == "6" and row["Hour"] == "0800":
             row["HlyAirTmp"]["Value"] = "90.0"
     with client_for(p) as client:
-        response = client.post("/api/assess", json=SITE)
+        response = client.post("/api/assess", json=SITE, headers=controls(client))
         assert response.status_code == 200, response.text
         assessment = response.json()
         assert any(f["station_id"] == 6 for f in assessment["station_findings"])

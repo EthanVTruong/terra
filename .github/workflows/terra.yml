@@ -1,4 +1,4 @@
-name: Terra statistical JSON checks
+name: Terra integration checks
 
 on:
   pull_request:
@@ -96,7 +96,14 @@ jobs:
           import subprocess
           import sys
           subprocess.run([sys.executable, '-B', 'terra.py', 'check',
-                          '--base', os.environ['TERRA_BASE'], '--task', 'terra-qc-json'], check=True)
+                          '--base', os.environ['TERRA_BASE'], '--task', 'terra-main-consolidation'], check=True)
+          if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
+              # A manual run may have no diff; still exercise the pure runtime.
+              subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests',
+                              '-p', 'test_terra_harness.py', '-q'], check=True)
+              subprocess.run([sys.executable, '-m', 'pytest', '--noconftest', '-o',
+                              'pythonpath=backend', 'tests/test_terra_json.py',
+                              'tests/test_terra_qc_reference.py', 'tests/test_estimate.py', '-q'], check=True)
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 5

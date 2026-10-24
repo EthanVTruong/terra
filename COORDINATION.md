@@ -72,10 +72,13 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "domain",
   "id": "terra-portability",
   "owner": "et",
-  "purpose": "Narrow consolidation verification repair: Windows grid-export date label and declared plotting dependency; Nathan retains the grid/interpolation/model algorithms; configured fast check validates scoped coordination, while mandatory full backend CI tests actual export with PostgreSQL and plotting installed",
+  "purpose": "Narrow consolidation repairs: portable Windows grid label, declared plotting dependency, synthetic demo/test season bounds aligned to configured September start. Nathan retains numeric algorithms/configuration. Fast check validates coordination; mandatory complete backend CI validates grid and replay. Synthetic model fixture receives September training coverage for configured September replay, with unchanged seed/folds/December end/assertions; no real-data model refit.",
   "paths": [
     "backend/chillwatch/repair/grid.py",
-    "pyproject.toml"
+    "pyproject.toml",
+    "backend/chillwatch/demo/scenario.py",
+    "tests/test_scenario.py",
+    "tests/conftest.py"
   ],
   "depends_on": [],
   "checks": [
@@ -215,7 +218,10 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "spec.md",
     ".gitattributes",
     "backend/chillwatch/repair/grid.py",
-    "pyproject.toml"
+    "pyproject.toml",
+    "backend/chillwatch/demo/scenario.py",
+    "tests/test_scenario.py",
+    "tests/conftest.py"
   ],
   "depends_on": [
     "terra-qc-json"
@@ -223,14 +229,19 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "38a7ea6e4e271275731a4e6cce1d2f5df3eeff16",
-    "summary": "Root owns verification, repairs and guarded merge. Independent review confirms worker content is integrated. Restore lost calibrated range and numeric unavailable JSON, apply operation-date eligibility at adapter boundary, and repair existing Windows grid label/missing plotting dependency; Nathan calculation algorithms and frozen QC remain unchanged.",
+    "revision": "17ed40f6b9e24a8c209f77e11ba7a748d0c6f967",
+    "summary": "All intended worker functionality is integrated. Verification repairs restore calibrated range, strict unavailable JSON and operation-date eligibility; existing Windows grid and synthetic-calendar compatibility defects are repaired. Nathan numerical algorithms/configuration and frozen QC imports/reference remain unchanged. Final exact-head CI and authorized main merge are pending.",
     "evidence": [
-      "53 original pure checks and scoped harness pass; updated adapter repair passes58 cases. Browser downloads match CLI and calibrated range is visible; source missing/stale/unknown states remain explicit.",
-      "Full fresh backend environment exposed existing Windows %-d formatting and missing matplotlib packaging defects. These narrow portability repairs are assigned to the isolated backend worker; full Ubuntu/PostgreSQL CI has been added."
+      "64 targeted estimator/adapter/reference cases and31harness checks pass; independent reviewer reran15focused regressions and all6source-import hashes/reference SHA match.",
+      "Browser/CLI: all3generated packets match;61.0F observed,37.3F expected,35.1-41.5F typical,+23.7F departure. Uninstrumented/unknown/stale/unavailable/file-error/mobile/exact-download checks pass; frontend build+4packaging cases pass.",
+      "Full original local suite158passed/2failed/2SQLskips exposed genuine Windows export and synthetic calendar/coverage defects. Post-repair grid2passed, model/scenario8passed with original fault/latency assertions, seeds, folds and thresholds unchanged; pipcheck clean.",
+      "Original winter-only diagnostic caught outage/stuck/offset but missed drift after September calendar correction. September-covered synthetic fixture resolves all4faults without tuning detector math. This is synthetic software evidence, not natural-fault accuracy.",
+      "PostgreSQL16 CI on prior combined source executed all173cases:172passed/1obsolete-scenario failure, zero SQLskips. Final173case suite must pass exact repaired head before merge.",
+      "Worker snapshot branches d10c53e and0091b78 have no unique missing intended behavior; preserve refs rather than merge superseded snapshots. Original Terra nine staged entries preserved."
     ],
-    "uncertainty": "PriorCI intentionally ran53puretests/31harness anddidnotprove fulloriginalbackend. LiveAPI/always-on/SMSremain documentedfuturefeatures. Actualremotehead andfreshCI mustberechecked beforemerge.",
-    "next": "Complete fullbackend+UI+independent review, recordresults andminimalrepairs, run requiredcheckagainstactualorigin/main, mergewith expected-head guard andverify main."
+    "uncertainty": "Live provider credentials, natural sensor-fault accuracy, external clipboard fidelity and future live API/continuous worker/SMS remain unverified or unimplemented. Standalone Nathan estimator lacks operation-date filtering for every lapse contributor; assessment adapter applies explicit gate. Final exact-head CI still pending.",
+    "next": "Run required scoped check against actual main, push final source/docs, require all four exact-head CI jobs green, refresh reviews/base/head, guarded-merge PR3, synchronize shared main and record completion.",
+    "pull_request": "https://github.com/EthanVTruong/terra/pull/3"
   }
 }
 ```

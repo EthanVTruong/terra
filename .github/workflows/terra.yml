@@ -11,6 +11,12 @@ on:
       - tests/fixtures/terra/**
       - web/**
       - requirements-terra*.txt
+      - backend/chillwatch/**
+      - config/**
+      - migrations/**
+      - alembic.ini
+      - pyproject.toml
+      - tests/**
       - terra.py
       - COORDINATION.md
       - spec.md
@@ -21,6 +27,48 @@ permissions:
   contents: read
 
 jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: chillwatch
+          POSTGRES_PASSWORD: chillwatch
+          POSTGRES_DB: chillwatch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chillwatch -d chillwatch"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CHILLWATCH_DB_URL: postgresql+psycopg://chillwatch:chillwatch@localhost:5432/chillwatch
+      CHILLWATCH_TEST_DB_URL: postgresql+psycopg://chillwatch:chillwatch@localhost:5432/chillwatch
+      CHILLWATCH_LGB_THREADS: '2'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pip check
+      - run: python -m alembic upgrade head
+      - name: Complete backend suite including PostgreSQL
+        run: python -m pytest --junitxml=backend-results.xml
+      - name: Require database tests to execute
+        shell: python
+        run: |
+          import xml.etree.ElementTree as ET
+          root = ET.parse('backend-results.xml').getroot()
+          skipped = [case.attrib.get('name') for case in root.iter('testcase')
+                     if case.find('skipped') is not None]
+          if skipped:
+              raise SystemExit(f'Unexpected skipped backend tests: {skipped}')
   statistical-json:
     strategy:
       fail-fast: false

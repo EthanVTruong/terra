@@ -73,7 +73,7 @@ def test_actual_cimis_units_are_normalized_once_and_originals_retained():
     ("relative_humidity_pct", -1, "physical_bounds"),
     ("relative_humidity_pct", 101, "physical_bounds"),
     ("wind_speed_mph", -0.1, "physical_bounds"),
-    ("solar_radiation_w_m2", -1, "physical_bounds"),
+    ("solar_radiation_w_m2", -1, "below_policy_minimum"),
     ("wind_speed_mph", float("inf"), "nonfinite_value"),
     ("relative_humidity_pct", True, "invalid_numeric"),
     ("solar_radiation_w_m2", "bad", "invalid_numeric"),

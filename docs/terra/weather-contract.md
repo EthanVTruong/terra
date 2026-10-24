@@ -105,9 +105,12 @@ regional change shared by peers does not create a station-departure finding.
 Solar classification additionally requires a peer median of at least 100 W/m².
 Zero at night remains a valid observation with `low_daylight` context; it is not
 missing data and does not prove recovery from a daytime discrepancy. Relative
-humidity outside 0–100%, negative wind and negative solar become data-quality
-issues rather than numerical anomalies. Very high nonnegative wind/solar alone
-is not declared physically invalid.
+humidity outside 0–100% and negative wind become data-quality issues rather than
+numerical anomalies. Negative solar also becomes unavailable, with the distinct
+reason `below_policy_minimum`: small negative solar noise is possible, so this
+is a conservative application eligibility rule, not a claim that every negative
+source value is physically impossible. Very high nonnegative wind/solar alone is
+not declared physically invalid.
 
 Current assessments older than the configured age limit retain historical values
 with `stale` status and no new numerical findings. Historical replay should use
@@ -146,3 +149,20 @@ observations, timestamp trust, temperature independence and finite JSON.
 
 These are deterministic software and synthetic controls. They do not establish
 field precision/recall, absence of all false positives, or crop-risk accuracy.
+
+## Primary source references
+
+- [CIMIS current REST API](https://cimis.water.ca.gov/web-api/rest-api/latest):
+  current data-item names include `hly-rel-hum`, `hly-wind-spd` and `hly-sol-rad`.
+- [CIMIS data overview](https://cimis.water.ca.gov/resources/data-overview) and
+  [current QC flags](https://cimis.water.ca.gov/docs/CurrentFlags.pdf): general
+  missing/not-collected/pending codes are separate from variable-specific tests.
+  The same QC letter can describe different checks for different parameters;
+  Terra retains the code rather than inventing a precise cause. Humidity QC may
+  inherit air-temperature/vapor-pressure warnings; low or constant wind and
+  solar tests must not be reinterpreted as proven failed sensors. Solar provider
+  QC accounts for daylight and the sun, supporting the explicit daylight gate
+  and caution about small negative values here.
+
+These sources were checked on October 24, 2026. Provider codes remain evidence,
+not natural fault labels for validating the new detector.

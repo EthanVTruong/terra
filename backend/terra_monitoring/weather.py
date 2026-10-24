@@ -91,8 +91,10 @@ def _physical_reason(variable: str, value: float | None) -> str | None:
         return None
     if variable == "relative_humidity_pct" and not 0 <= value <= 100:
         return "physical_bounds"
-    if variable in {"wind_speed_mph", "solar_radiation_w_m2"} and value < 0:
+    if variable == "wind_speed_mph" and value < 0:
         return "physical_bounds"
+    if variable == "solar_radiation_w_m2" and value < 0:
+        return "below_policy_minimum"
     return None
 
 

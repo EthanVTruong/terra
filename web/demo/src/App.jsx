@@ -275,8 +275,11 @@ function HeatField({
   }, [cells, lo, hi]);
   return <canvas ref={ref} className="heat-field" aria-hidden="true" />;
 }
+// Esri Light Gray Canvas: plain base, with place names as a separate layer drawn above the heatmap.
+const BASEMAP_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_';
 function BaseMap({
-  bounds: b
+  bounds: b,
+  layer = 'Base'
 }) {
   const z = 10,
     n = 2 ** z,
@@ -293,7 +296,7 @@ function BaseMap({
     width: 100 / (right - left),
     height: 100 / (bottom - top)
   });
-  return <div className="basemap" aria-hidden="true">{tiles.map(t => <img key={`${t.x}-${t.y}`} alt="" draggable="false" src={`https://tile.openstreetmap.org/${z}/${t.x}/${t.y}.png`} style={{
+  return <div className={layer === 'Base' ? 'basemap' : 'basemap-labels'} aria-hidden="true">{tiles.map(t => <img key={`${t.x}-${t.y}`} alt="" draggable="false" src={`${BASEMAP_TILES}${layer}/MapServer/tile/${z}/${t.y}/${t.x}`} style={{
       left: `${t.left}%`,
       top: `${t.top}%`,
       width: `${t.width}%`,
@@ -305,7 +308,8 @@ function fitMapBounds(bounds, aspect) {
     cy = (mercatorY(bounds.north) + mercatorY(bounds.south)) / 2;
   let dx = (bounds.east - bounds.west) / 360,
     dy = mercatorY(bounds.south) - mercatorY(bounds.north);
-  if (dx / dy < aspect) dx = dy * aspect;else dy = dx / aspect;
+  // Cover rather than contain, so the estimated field fills the whole map.
+  if (dx / dy > aspect) dx = dy * aspect;else dy = dx / aspect;
   const latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI;
   return {
     west: (cx - dx / 2 - .5) * 360,
@@ -343,7 +347,7 @@ function WeatherMap({
     width: `${parseFloat(opposite.left) - parseFloat(corner.left)}%`,
     height: `${parseFloat(opposite.top) - parseFloat(corner.top)}%`
   };
-  return <div className="weather-map" ref={ref} role="group" aria-label={`${layer === 'raw' ? 'Raw' : 'Terra filtered'} estimated temperature heatmap`}><BaseMap bounds={b} /><div className="heat-domain" style={fieldStyle}><HeatField cells={cells} lo={lo} hi={hi} /></div><div className="map-region">SACRAMENTO VALLEY</div>{state.stations.map(station => {
+  return <div className="weather-map" ref={ref} role="group" aria-label={`${layer === 'raw' ? 'Raw' : 'Terra filtered'} estimated temperature heatmap`}><BaseMap bounds={b} /><div className="heat-domain" style={fieldStyle}><HeatField cells={cells} lo={lo} hi={hi} /></div><BaseMap bounds={b} layer="Reference" /><div className="map-region">SACRAMENTO VALLEY</div>{state.stations.map(station => {
       const pos = position(station.lat, station.lon, b),
         right = parseFloat(pos.left) > 70,
         bottom = parseFloat(pos.top) > 82;
@@ -352,7 +356,7 @@ function WeatherMap({
           length: 32
         }, (_, i) => <i key={i} style={{
           background: `rgb(${heatColor(i / 31, 0, 1).join(',')})`
-        }} />)}</div><p><span>{lo}°</span><span>{Math.round((lo + hi) / 2)}°</span><span>{hi}°</span></p></div><div className="map-attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors</div></div>;
+        }} />)}</div><p><span>{lo}°</span><span>{Math.round((lo + hi) / 2)}°</span><span>{hi}°</span></p></div><div className="map-attribution">Powered by <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a> · Esri, HERE, Garmin, © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors</div></div>;
 }
 function Comparison({
   state,

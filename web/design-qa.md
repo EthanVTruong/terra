@@ -96,3 +96,34 @@ second orchard was created merely to stress multi-location races; those guards
 were reviewed. Source/native window timings remain unknown where previously
 noted. Actual phone account activation/delivery is a separate readiness gate.
 No unresolved P0/P1/P2 issue remains in this UI scope.
+
+## Quiet metadata refinement — 2026-10-24
+
+User direction: keep the accepted tight proportions and three readings; remove
+repeated context labels, use the approved square character, and group field notes
+by day with small times below each bubble.
+
+The header and favicon now use the existing approved cube asset. Normal local
+publication captions and repeated orchard/monitoring headings are omitted from
+the conversation; location, crop, demo context and transport remain in Details or
+Sources. Exact stored message text and JSON are unchanged. Actual delivery states,
+worker failures, unavailable weather and non-current data indicators remain visible.
+
+The exact Grok article shows a centered 12px/16px clock above its demonstration
+transcript. Terra adapts that restraint into one Pacific calendar-day divider and
+clock-only note footers. This multi-day behavior is Terra's implementation, not a
+claim about Grok's unobserved native app. The evidence heading is one row: Estimate
+(or the station name) and its reading time. Different-day readings keep a compact
+date, and historical/injected evidence retains its mode and date on mobile. Full
+timestamps are available through time labels/tooltips and the exact record.
+
+Verified at 1280×900, 390×844 and 320×568: no horizontal overflow, one Today divider
+for three same-day notes, clocks below bubbles, mobile Escape/opener restoration,
+focus wrap, compact estimate heading, historical mode/date and untouched raw JSON.
+Evidence: `../.terra-local/ui-quiet/desktop.png`, `mobile.png`,
+`mobile-evidence.png`. Calendar tests cover Pacific midnight, both daylight-saving
+transitions, different-day/year evidence and invalid timestamps.
+
+Final verification: production build, seven UI tests, four packaging tests, and
+all configured scoped checks pass against origin/main at 78e835d. The live API
+remains on 8512; this refinement changes no backend, data or notification behavior.

@@ -1,10 +1,10 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Icon } from "./Icon";
-import { dataModeLabel, stationName as nameOf, temperature as temp, timestamp } from "./presentation";
+import { dataModeLabel, evidenceTime, stationName as nameOf, temperature as temp, timestamp } from "./presentation";
 
 const EvidenceChart = lazy(() => import("./EvidenceChart"));
 
-function TemperatureView({ packet, sourceKind, finding, comparison }) {
+function TemperatureView({ packet, sourceKind, finding, comparison, contextTime }) {
   const summary = comparison || finding?.summary;
   const evidence = Array.isArray(finding?.evidence) ? finding.evidence.filter((row) => row && Number.isFinite(Date.parse(row.timestamp))).sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp)) : [];
   const peak = comparison ? packet.query.valid_utc : finding?.evidence_peak_utc || summary?.peak_timestamp || summary?.peak_utc;
@@ -12,9 +12,10 @@ function TemperatureView({ packet, sourceKind, finding, comparison }) {
   const peers = Array.isArray(row?.peer_evidence) ? row.peer_evidence.filter((peer) => peer && Number.isInteger(peer.station_id)) : [];
   const hasComparison = Boolean(comparison || finding);
   const estimate = packet.location_estimate;
+  const readingTime = comparison ? packet.query.valid_utc : peak || packet.query.valid_utc;
   return <div className="temperature-view">
-    <div className="evidence-title"><h2>{comparison ? nameOf(comparison.station_id) : finding ? nameOf(finding.station_id) : "At this location"}</h2><span>{hasComparison ? "Temperature comparison" : "Temperature estimate"}</span></div>
-    <p className="evidence-context">{dataModeLabel(packet, sourceKind)}<br />{timestamp(comparison ? packet.query.valid_utc : peak || packet.query.valid_utc)}</p>
+    <div className="evidence-title"><h2>{comparison ? nameOf(comparison.station_id) : finding ? nameOf(finding.station_id) : "Estimate"}</h2><time dateTime={readingTime} title={timestamp(readingTime)} aria-label={`Reading at ${timestamp(readingTime)}`}>{evidenceTime(readingTime, contextTime)}</time></div>
+    {packet.data_mode !== "current" && <p className="evidence-context">{dataModeLabel(packet, sourceKind)}</p>}
     {comparison && comparison.status !== "assessable" && <p className="evidence-availability">{comparison.status === "comparison_only" ? "Comparison only · no calibrated alert policy" : "Comparison unavailable"}</p>}
     <div className="evidence-reading"><strong>{temp(hasComparison ? summary?.observed_f : estimate.temperature)}</strong>{hasComparison && <span>{Number.isFinite(summary?.departure_f) ? `${summary?.departure_f < 0 ? "−" : "+"}${Math.abs(summary?.departure_f).toFixed(1)}°` : "Unavailable"}<small>departure</small></span>}</div>
     {finding ? <Suspense fallback={<div className="chart-skeleton" role="status" aria-label="Loading temperature evidence"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span></div>}><EvidenceChart finding={finding} /></Suspense> : <div className="comparison-summary">{hasComparison ? <><span>Expected <strong>{temp(summary?.expected_f)}</strong></span>{[summary?.typical_low_f, summary?.typical_high_f].every(Number.isFinite) && <span>Typical range <strong>{summary?.typical_low_f.toFixed(1)}–{summary?.typical_high_f.toFixed(1)}°F</strong></span>}</> : <span>{estimate.n_used ?? estimate.used_station_ids.length} usable stations</span>}</div>}
@@ -23,7 +24,7 @@ function TemperatureView({ packet, sourceKind, finding, comparison }) {
   </div>;
 }
 
-export function EvidencePanel({ packet, record, overview, primaryLabel = "Temperature", sourceKind, finding, comparison, tab, onTab, mobile, onClose, closeRef, jsonRef, open }) {
+export function EvidencePanel({ packet, record, overview, primaryLabel = "Temperature", sourceKind, finding, comparison, contextTime, tab, onTab, mobile, onClose, closeRef, jsonRef, open }) {
   const [copyResult, setCopyResult] = useState(null);
   const json = JSON.stringify(record || packet, null, 2);
   const copyStatus = copyResult?.json === json ? copyResult.message : "";
@@ -71,7 +72,7 @@ export function EvidencePanel({ packet, record, overview, primaryLabel = "Temper
   return <aside className={`artifact-panel${record ? " record-evidence" : ""}`} data-open={open} inert={!open ? true : undefined} role={mobile ? "dialog" : undefined} aria-modal={mobile ? true : undefined} aria-label="Assessment evidence" onKeyDown={panelKeyDown}>
     <header className="artifact-header"><button ref={closeRef} className="icon-button" onClick={onClose} title={mobile ? "Back to field notes" : "Hide evidence"} aria-label={mobile ? "Back to field notes" : "Hide evidence"}><Icon name={mobile ? "back" : "close"} size={15} /></button><div className="artifact-tabs" role="tablist" aria-label="Evidence view">{[["temperature", primaryLabel], ["json", "JSON"]].map(([id, title]) => <button key={id} id={`tab-${id}`} data-tab={id} role="tab" disabled={id === "json" && !record && !packet} aria-selected={tab === id} aria-controls={`panel-${id}`} tabIndex={tab === id ? 0 : -1} onClick={() => onTab(id)} onKeyDown={tabKeyDown}>{title}</button>)}</div><div className="artifact-actions"><button className="icon-button" disabled={!record && !packet} onClick={copy} title={copyStatus === "Copied" ? "Copied" : "Copy JSON"} aria-label="Copy assessment JSON"><Icon name={copyStatus === "Copied" ? "check" : "copy"} size={15} /></button><button className="icon-button" disabled={!record && !packet} onClick={download} title="Download JSON" aria-label="Download assessment JSON"><Icon name="download" size={16} /></button></div></header>
     <div className="artifact-content" id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`} key={tab}>
-      {tab === "temperature" ? <>{packet && <TemperatureView packet={packet} sourceKind={sourceKind} finding={finding} comparison={comparison} />}{overview}</> : <><div className="json-caption">{record ? "Exact monitoring record" : "Exact assessment packet"}</div><pre ref={jsonRef} className="evidence-json" tabIndex={0} aria-label="Exact assessment packet">{json}</pre></>}
+      {tab === "temperature" ? <>{packet && <TemperatureView packet={packet} sourceKind={sourceKind} finding={finding} comparison={comparison} contextTime={contextTime} />}{overview}</> : <><div className="json-caption">{record ? "Exact monitoring record" : "Exact assessment packet"}</div><pre ref={jsonRef} className="evidence-json" tabIndex={0} aria-label="Exact assessment packet">{json}</pre></>}
     </div><span className={`copy-feedback${copyStatus ? " visible" : ""}`} role="status">{copyStatus}</span>
   </aside>;
 }

@@ -8,7 +8,7 @@
   "status": "active",
   "intent": "User requested holding custom SMS/webhook work and, if supported, sending predefined trial templates as placeholders when discrepancies select a meaningful alert. Add an explicitly configured template mode to the existing dispatcher with honest persisted receipts/UI labels. Preserve event selection, opt-in, ledger, retry, frozen QC and Nathan models. No paid account changes; automatic sends stay disabled until private credential readiness is resolved.",
   "branch": "codex/twilio-trial-placeholder",
-  "base": "e4292b21594d20b3983a62447e2f4632aac0f3bd",
+  "base": "a9dcc6c06b872890cf86adda22b207251fb50b5e",
   "domains": ["terra-coordination", "terra-qc-json"],
   "paths": ["COORDINATION.md", "backend/terra_monitoring/sms.py", "backend/terra_monitoring/farm_ops/service.py", "tests/test_terra_sms.py", "tests/test_farm_chill_ops.py", "web/src/delivery.js", "web/src/SmsControls.jsx", "web/tests/delivery.test.mjs", "docs/terra/twilio-sms.md", ".env.example"],
   "depends_on": [],
@@ -51,6 +51,30 @@
 ```json
 {
   "kind": "task",
+  "id": "terra-conversation-contract",
+  "owner": "et",
+  "status": "done",
+  "intent": "ET approved the Tara conversational draft and asks that its brevity, useful comparisons, optional reaction/no-reply behavior and grower setup become part of the current workflow. Record the accepted behavior and concrete integration acceptance in a canonical project contract. Preserve the active cleanup writer, ChatGPT connection, demo and UI owners; no runtime, provider, delivery, ingestion or training changes in this documentation slice.",
+  "branch": "codex/tara-conversation-contract",
+  "base": "e4292b21594d20b3983a62447e2f4632aac0f3bd",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "docs/terra/conversation-contract.md", "docs/terra/pipeline-contract.md", "spec.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "2db044f27a0d1fc6a09be7a828e5ce7083e722a2",
+    "summary": "Recorded accepted Tara conversation rules and concrete acceptance fixtures in docs/terra/conversation-contract.md, linked directly from the pipeline contract and product spec. Documentation only; existing code owners and immutable messages are preserved.",
+    "evidence": ["Direct ET correction and approval on October 24: brief natural copy, clock times only when relevant, useful comparisons, optional attached thumbs-up for benign acknowledgment and silence for simple thanks/feed reopening.", "Scoped terra.py check passed all six configured groups against78e835d, then this small documentation change rebased cleanly onto cleanup mergee4292b2. Current writer status independently refreshed; final refreshed-base check is recorded in the PR."],
+    "uncertainty": "Writer at e4292b2 still emits text and includes source times in prose. Reactions, conversational onboarding and date-only wording are requirements awaiting runtime implementation/verification. This documentation task does not claim those features shipped.",
+    "next": "Current writer/ChatGPT/UI integrations use the linked accepted contract and record shipped versus pending acceptance. Keep future executable prompt, reply/reaction/none persistence, consent and readiness work within their owned scopes."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
   "id": "terra-twilio-sms",
   "owner": "et",
   "status": "done",
@@ -80,7 +104,7 @@
     "summary": "SMS software handoff ready: fixed-recipient transport, explicit real-detector simulated demo, immutable farm-message delivery, durable attempt/retry/receipt journal and shared guarded server assembly. Ordinary queries remain pure. Integration owner owns combined farm worker/UI merge; no second worker or message queue added.",
     "evidence": [
       "145 transport/envelope tests and58 HTTP/composition tests pass. Full configured scoped check passes on the transport source against actual upstream22d4594; final assembly-hook cases separately pass. Production build and4packaging cases pass; browser disabled-send/setup/focus-return verified; preview8513 healthok and removed raw-send route404.",
-      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTP→MockTransport→receipt→pause→restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
+      "Real frozen detector synthetic spike yields station6 extreme_departure,120F observed/40.475F expected. HTTPâ†’MockTransportâ†’receiptâ†’pauseâ†’restart composition passes. Definite429-only bounded retry, unknown no-resend, category-aware expiry, batch receipt fairness and source-event correlation covered.",
       "Actual read-only Twilio account and owned-number APIs both HTTP200: accountactiveTrial, ownedSMSsenders0. Console shows100freeSMS, predefined templates and a trialsharedsender. Requested recipient absent from verified tester list. Recipient entered in Add a verified tester; Verify not pressed; zero OTPs, real SMS or paid actions.",
       "Existing account credentials plus opted-in recipient saved only in ignored private runtime configuration; shared CIMIS environment preserved. Redacted local readiness record available to integration owner. Original Terra staged checkout, Nathan implementation and frozen reference preserved."
     ],
@@ -342,7 +366,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "evidence": [
       "Final CI run 40073189344: 173 Python tests and eight subtests passed in 219.33 seconds. PostgreSQL 16 migrations and both database tests executed, with zero skipped tests; pip check passed.",
       "Windows and macOS minimal-runtime jobs each passed 64 targeted cases plus 31 harness cases. Production web build and four packaging cases passed. Independent review verified 15 focused regressions and all six source-import hashes plus the frozen reference SHA.",
-      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1–41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
+      "Browser and CLI examples agree: 61.0 F observed, 37.3 F expected, 35.1â€“41.5 F typical range, +23.7 F departure. Missing/stale/unknown inputs, malformed JSON, desktop/mobile focus and exact downloads verified.",
       "Two grid and eight synthetic model/scenario cases passed, including all four faults with original assertions, seeds, folds and thresholds. Calendar/fixture coverage needed repair; no numerical algorithm or real-data model refit changed.",
       "GitHub confirmed merged=true at 1d5caf7, containing reviewed head 5ffec23 and prior Nathan main 229106c. The merged tree matched tested source exactly. Original Terra still has the same nine staged entries and numstat counts.",
       "Completion follow-up check passed against actual merged origin/main 1d5caf7 (31 harness + 64 targeted cases). Only .gitignore and this coordination record changed afterward; application source remains identical to tested 5ffec23."
@@ -456,7 +480,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "id": "terra-full-pipeline",
   "owner": "et",
   "status": "active",
-  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio data→flag→message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
+  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio dataâ†’flagâ†’message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
   "branch": "codex/terra-end-to-end",
   "base": "37948ed4f76cbbfbef7b4570d8ed06b84c6e8723",
   "domains": [

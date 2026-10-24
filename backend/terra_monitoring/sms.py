@@ -1,8 +1,9 @@
 """Opted-in, fixed-recipient Twilio SMS and an explicit simulated-flag demo.
 
 Assessment remains pure. This module has no scheduler, provider-data ingestion,
-automatic retry, public recipient input or subscription service. SQLite records
-one attempt per logical opening; an uncertain send is never blindly repeated.
+background retry, public recipient input or subscription service. SQLite records
+one logical delivery with bounded caller-driven retries only for definitive
+rate-limit rejection; an uncertain send is never blindly repeated.
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from typing import Callable, Mapping
 import httpx
 
 EVENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}\Z")
+SOURCE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,255}\Z")
 PHONE = re.compile(r"\+[1-9][0-9]{6,14}\Z")
 SID = re.compile(r"SM[0-9a-fA-F]{32}\Z")
 OUTBOUND_STATUSES = {"accepted", "scheduled", "queued", "sending", "sent", "delivered",
@@ -30,7 +32,8 @@ TERMINAL_STATUSES = {"delivered", "undelivered", "failed", "canceled"}
 ENV_KEYS = {"TERRA_SMS_ENABLED", "TERRA_SMS_DEMO_ENABLED", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN",
             "TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "API_KEY_SID", "API_KEY_SECRET",
             "TWILIO_FROM_NUMBER", "TERRA_SMS_TO_NUMBER", "TERRA_SMS_DB_PATH", "TERRA_SMS_MAX_PER_DAY"}
-DEFAULT_DB = Path(__file__).resolve().parents[2] / ".terra-local" / "sms.sqlite3"
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DB = PACKAGE_ROOT / ".terra-local" / "sms.sqlite3"
 
 
 def _utcnow() -> datetime:
@@ -145,8 +148,16 @@ class SMSConfig:
         except (TypeError, ValueError):
             limit = 10
             errors.append("invalid_daily_limit")
+        try:
+            db_path = Path(values.get("TERRA_SMS_DB_PATH") or DEFAULT_DB)
+            if not db_path.is_absolute():
+                db_path = PACKAGE_ROOT / db_path
+            db_path = db_path.resolve()
+        except (OSError, ValueError):
+            db_path = DEFAULT_DB
+            errors.append("invalid_delivery_store_path")
         return cls(account, username, secret, sender, recipient, boolean("TERRA_SMS_ENABLED"),
-                   boolean("TERRA_SMS_DEMO_ENABLED"), Path(values.get("TERRA_SMS_DB_PATH") or DEFAULT_DB),
+                   boolean("TERRA_SMS_DEMO_ENABLED"), db_path,
                    limit, tuple(errors))
 
 
@@ -205,14 +216,35 @@ class SMSDispatcher:
                 delivery_key TEXT PRIMARY KEY, event_id TEXT NOT NULL, recipient_hash TEXT NOT NULL,
                 mode TEXT NOT NULL, body_hash TEXT NOT NULL, status TEXT NOT NULL,
                 created_at TEXT NOT NULL, updated_at TEXT NOT NULL, attempted_at TEXT,
-                provider_sid TEXT, provider_status TEXT, error_code TEXT
+                provider_sid TEXT, provider_status TEXT, error_code TEXT,
+                attempt_count INTEGER NOT NULL DEFAULT 1, next_attempt_at TEXT, source_event_id TEXT
             );
             CREATE INDEX IF NOT EXISTS sms_event ON sms_delivery(recipient_hash, event_id);
             CREATE TABLE IF NOT EXISTS sms_live_episode (
                 slot TEXT PRIMARY KEY, event_id TEXT NOT NULL, start_utc TEXT NOT NULL,
                 last_valid_utc TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS sms_attempt (
+                delivery_key TEXT NOT NULL, attempt_no INTEGER NOT NULL,
+                attempted_at TEXT NOT NULL, outcome TEXT NOT NULL DEFAULT 'sending', error_code TEXT,
+                PRIMARY KEY (delivery_key, attempt_no)
+            );
             """)
+            # Existing local ledgers predate rate-limit retry support. Add the
+            # fields without discarding their no-resend evidence.
+            columns = {row[1] for row in db.execute("PRAGMA table_info(sms_delivery)")}
+            for column, declaration in (("attempt_count", "INTEGER NOT NULL DEFAULT 1"),
+                                        ("next_attempt_at", "TEXT"), ("source_event_id", "TEXT")):
+                if column not in columns:
+                    try:
+                        db.execute("ALTER TABLE sms_delivery ADD COLUMN " + column + " " + declaration)
+                    except sqlite3.OperationalError:
+                        if column not in {row[1] for row in db.execute("PRAGMA table_info(sms_delivery)")}:
+                            raise
+            db.execute("""INSERT OR IGNORE INTO sms_attempt
+                (delivery_key,attempt_no,attempted_at,outcome,error_code)
+                SELECT delivery_key,attempt_count,attempted_at,status,error_code FROM sms_delivery
+                WHERE attempted_at IS NOT NULL""")
             yield db
         finally:
             db.close()
@@ -257,7 +289,9 @@ class SMSDispatcher:
         status = "uncertain" if row["status"] == "sending" and not row["provider_sid"] else row["status"]
         fields = {key: row[column] for key, column in
                   (("provider_message_id", "provider_sid"), ("provider_status", "provider_status"),
-                   ("error_code", "error_code"), ("updated_at_utc", "updated_at")) if row[column] is not None}
+                   ("error_code", "error_code"), ("updated_at_utc", "updated_at"),
+                   ("attempt_count", "attempt_count"), ("next_attempt_at_utc", "next_attempt_at"),
+                   ("source_event_id", "source_event_id")) if row[column] is not None}
         return self._result(row["event_id"], status, mode=row["mode"], duplicate=duplicate, **fields)
 
     def _key(self, event_id: str) -> str:
@@ -268,7 +302,7 @@ class SMSDispatcher:
             return db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
 
     def _update(self, event_id: str, **fields) -> dict:
-        allowed = {"status", "provider_sid", "provider_status", "error_code"}
+        allowed = {"status", "provider_sid", "provider_status", "error_code", "next_attempt_at"}
         if not fields.keys() <= allowed:
             raise ValueError("Unsupported delivery update")
         fields["updated_at"] = _stamp(self._clock()).isoformat()
@@ -286,35 +320,53 @@ class SMSDispatcher:
             columns = ",".join(key + "=?" for key in fields)
             db.execute("UPDATE sms_delivery SET " + columns + " WHERE delivery_key=?",
                        (*fields.values(), self._key(event_id)))
+            if "status" in fields:
+                db.execute("UPDATE sms_attempt SET outcome=?,error_code=? WHERE delivery_key=? AND attempt_no=?",
+                    (fields["status"], fields.get("error_code"), self._key(event_id), row["attempt_count"]))
             row = db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
             db.commit()
             return self._row_result(row)
 
-    def _reserve(self, event_id: str, mode: str, body: str) -> dict | None:
+    def _reserve(self, event_id: str, mode: str, body: str, source_event_id: str | None = None) -> dict | None:
         now = _stamp(self._clock())
         with self._connection() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
             if row is not None:
-                if row["body_hash"] != _digest(body) or row["mode"] != mode:
+                if row["body_hash"] != _digest(body) or row["mode"] != mode or row["source_event_id"] not in {None, source_event_id}:
                     db.commit()
                     return self._result(event_id, "blocked", mode=mode, error_code="event_id_conflict")
-                db.commit()
-                return self._row_result(row, duplicate=True)
+                if source_event_id is not None and row["source_event_id"] is None:
+                    db.execute("UPDATE sms_delivery SET source_event_id=? WHERE delivery_key=?",
+                               (source_event_id, self._key(event_id)))
+                    row = db.execute("SELECT * FROM sms_delivery WHERE delivery_key=?", (self._key(event_id),)).fetchone()
+                retry_due = (mode == "farm" and row["status"] == "retry_wait" and row["attempt_count"] < 3
+                             and row["next_attempt_at"] is not None and _stamp(row["next_attempt_at"]) <= now)
+                if not retry_due:
+                    db.commit()
+                    return self._row_result(row, duplicate=True)
             disabled = db.execute("SELECT value FROM sms_settings WHERE key='disabled'").fetchone()
             if disabled is not None and disabled[0] == "true":
                 db.commit()
                 return self._result(event_id, "suppressed", mode=mode)
-            count = db.execute("SELECT COUNT(*) FROM sms_delivery WHERE attempted_at>=?",
+            count = db.execute("SELECT COUNT(*) FROM sms_attempt WHERE attempted_at>=?",
                                (now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),)).fetchone()[0]
             if count >= self.config.max_per_day:
                 db.commit()
                 return self._result(event_id, "rate_limited", mode=mode, error_code="daily_attempt_limit")
-            db.execute("""INSERT INTO sms_delivery
-                (delivery_key,event_id,recipient_hash,mode,body_hash,status,created_at,updated_at,attempted_at)
-                VALUES (?,?,?,?,?,'sending',?,?,?)""",
-                (self._key(event_id), event_id, self._recipient_hash, mode, _digest(body),
-                 now.isoformat(), now.isoformat(), now.isoformat()))
+            attempt = 1 if row is None else row["attempt_count"] + 1
+            if row is None:
+                db.execute("""INSERT INTO sms_delivery
+                    (delivery_key,event_id,recipient_hash,mode,body_hash,status,created_at,updated_at,attempted_at,source_event_id)
+                    VALUES (?,?,?,?,?,'sending',?,?,?,?)""",
+                    (self._key(event_id), event_id, self._recipient_hash, mode, _digest(body),
+                     now.isoformat(), now.isoformat(), now.isoformat(), source_event_id))
+            else:
+                db.execute("""UPDATE sms_delivery SET status='sending',attempt_count=?,next_attempt_at=NULL,error_code=NULL,
+                    attempted_at=?,updated_at=? WHERE delivery_key=?""",
+                    (attempt, now.isoformat(), now.isoformat(), self._key(event_id)))
+            db.execute("INSERT INTO sms_attempt(delivery_key,attempt_no,attempted_at) VALUES (?,?,?)",
+                       (self._key(event_id), attempt, now.isoformat()))
             db.commit()
         return None
 
@@ -343,9 +395,12 @@ class SMSDispatcher:
             return None
         return sid, status
 
-    def _send(self, event_id: str, mode: str, body: str) -> dict:
+    def _send(self, event_id: str, mode: str, body: str, *, validity_period: int = 300,
+              expires_at: datetime | None = None, source_event_id: str | None = None) -> dict:
         if not isinstance(event_id, str) or not EVENT_ID.fullmatch(event_id):
             return self._result(event_id, "blocked", mode=mode, error_code="invalid_event_id")
+        if isinstance(validity_period, bool) or not isinstance(validity_period, int) or not 1 <= validity_period <= 300:
+            return self._result(event_id, "blocked", mode=mode, error_code="invalid_validity_period")
         state = self.status()
         if not state["configured"] or state["configuration_errors"]:
             return self._result(event_id, "not_configured", mode=mode, error_code="sms_configuration")
@@ -354,15 +409,23 @@ class SMSDispatcher:
         if not state["enabled"] or mode == "demo" and not state["demo_enabled"]:
             return self._result(event_id, "disabled", mode=mode)
         try:
-            duplicate = self._reserve(event_id, mode, body)
+            duplicate = self._reserve(event_id, mode, body, source_event_id)
             if duplicate is not None:
                 return duplicate
-            if self._suppressed():
-                return self._update(event_id, status="suppressed")
             try:
                 with self._client() as client:
+                    if self._suppressed():
+                        return self._update(event_id, status="suppressed")
+                    if expires_at is not None:
+                        # Recheck after ledger/client setup, directly before
+                        # the request. Never round a sub-second lifetime up to
+                        # Twilio's one-second minimum or extend the deadline.
+                        remaining = int((_stamp(expires_at) - _stamp(self._clock())).total_seconds())
+                        if remaining < 1:
+                            return self._update(event_id, status="expired", error_code="event_expired")
+                        validity_period = min(validity_period, remaining)
                     response = client.post(self._url(), data={"From": self.config.sender,
-                        "To": self.config.recipient, "Body": body, "ValidityPeriod": "300"})
+                        "To": self.config.recipient, "Body": body, "ValidityPeriod": str(validity_period)})
             except httpx.HTTPError:
                 return self._update(event_id, status="uncertain", error_code="provider_outcome_unknown")
             try:
@@ -372,6 +435,22 @@ class SMSDispatcher:
             if response.status_code >= 500 or response.status_code == 408:
                 return self._update(event_id, status="uncertain",
                                     error_code=self._provider_code(payload, "provider_outcome_unknown"))
+            if response.status_code == 429:
+                possible_sid = payload.get("sid") if isinstance(payload, dict) else None
+                possible_status = payload.get("status") if isinstance(payload, dict) else None
+                has_sid = isinstance(possible_sid, str) and SID.fullmatch(possible_sid)
+                accepted = isinstance(possible_status, str) and possible_status in {
+                    "accepted", "scheduled", "queued", "sending", "sent", "delivered"}
+                if has_sid or accepted:
+                    return self._update(event_id, status="uncertain", error_code="provider_outcome_unknown",
+                        provider_sid=possible_sid if has_sid else None,
+                        provider_status=possible_status if isinstance(possible_status, str) and possible_status in OUTBOUND_STATUSES else None)
+                current = self._existing(event_id)
+                if mode == "farm" and current is not None and current["attempt_count"] < 3:
+                    delay = 30 if current["attempt_count"] == 1 else 120
+                    due = _stamp(self._clock()) + timedelta(seconds=delay)
+                    return self._update(event_id, status="retry_wait",
+                        error_code=self._provider_code(payload, "20429"), next_attempt_at=due.isoformat())
             if not 200 <= response.status_code < 300:
                 return self._update(event_id, status="failed",
                                     error_code=self._provider_code(payload, "provider_rejected"))
@@ -471,10 +550,89 @@ class SMSDispatcher:
                 if row is not None:
                     result.append(self._row_result(row, duplicate=True))
                 else:
-                    result.append(self._send(event_id, "live", self._body(finding, evidence, demo=False)))
+                    expires = _stamp(packet["query"]["valid_utc"]) + timedelta(hours=packet["query"]["max_age_hours"])
+                    result.append(self._send(event_id, "live", self._body(finding, evidence, demo=False), expires_at=expires))
             except (OSError, sqlite3.Error, ValueError, TypeError):
                 result.append(self._result(event_id, "blocked", mode="live", error_code="delivery_store_unavailable"))
         return result
+
+    def dispatch_event(self, envelope: dict) -> dict:
+        """Send one immutable, eligible orchard message from a trusted backend.
+
+        This internal boundary accepts a prepared terra-notification-v1 message,
+        never untrusted browser text. The caller owns orchard subscriptions,
+        event grouping, text persistence, relevance rechecks and outbox draining.
+        Real recipient/sender and transport opt-in stay in this dispatcher.
+        """
+        source_id = envelope.get("event_id") if isinstance(envelope, dict) else None
+        valid_id = isinstance(source_id, str) and SOURCE_ID.fullmatch(source_id) is not None
+        ledger_id = "farm-" + _digest(source_id) if valid_id else None
+
+        def blocked(code: str, status: str = "blocked") -> dict:
+            result = self._result(ledger_id, status, mode="farm", error_code=code)
+            if valid_id:
+                result["source_event_id"] = source_id
+            return result
+
+        if not isinstance(envelope, dict) or not valid_id:
+            return blocked("invalid_notification")
+        try:
+            schema = envelope.get("schema_version", envelope.get("schema"))
+            if schema != "terra-notification-v1" or envelope.get("schema", schema) != schema:
+                return blocked("invalid_notification_schema")
+            if envelope["data_mode"] != "current":
+                return blocked("noncurrent_notification")
+            if envelope["kind"] != "orchard_update" or envelope["transition"] not in {
+                    "initial", "opening", "escalation", "recovery", "milestone", "combined"}:
+                return blocked("invalid_notification_kind")
+            if envelope["severity"] not in {"info", "moderate", "strong"} or envelope["category"] not in {
+                    "temperature", "chill", "data_health"}:
+                return blocked("invalid_notification_category")
+            orchard = envelope["orchard_id"]
+            if not isinstance(orchard, str) or not SOURCE_ID.fullmatch(orchard):
+                return blocked("invalid_orchard_id")
+            for key in ("source_event_ids", "episode_ids"):
+                identifiers = envelope[key]
+                if not isinstance(identifiers, list) or len(identifiers) > 100 or key == "source_event_ids" and not identifiers:
+                    return blocked("invalid_notification_identifiers")
+                if any(not isinstance(item, str) or not SOURCE_ID.fullmatch(item) for item in identifiers) or len(set(identifiers)) != len(identifiers):
+                    return blocked("invalid_notification_identifiers")
+            eligibility = envelope["eligibility"]
+            if not isinstance(eligibility, dict) or not isinstance(eligibility.get("eligible"), bool):
+                return blocked("invalid_notification_eligibility")
+            if eligibility["eligible"] is not True:
+                return blocked("notification_ineligible", "suppressed")
+            text = envelope["text"]
+            if not isinstance(text, str) or not text.strip() or len(text) > 1200 or any(ord(c) < 32 and c not in "\n\r\t" for c in text):
+                return blocked("invalid_notification_text")
+            text.encode("utf-8")  # Reject unpaired surrogates before reservation.
+            now = _stamp(self._clock())
+            created, checked, expires = (_stamp(envelope[key]) for key in
+                ("created_at_utc", "checked_at_utc", "expires_at_utc"))
+            if created > now or checked > now or expires <= created or expires - created > timedelta(hours=6):
+                return blocked("invalid_notification_times")
+            if now - checked > timedelta(minutes=5):
+                return blocked("stale_monitor_check")
+            if expires <= now or expires - now < timedelta(seconds=1):
+                return blocked("event_expired", "expired")
+            observation = envelope["observation_time_utc"]
+            if observation is None:
+                if envelope["category"] == "temperature":
+                    return blocked("missing_observation_time")
+            else:
+                observed = _stamp(observation)
+                if observed > checked:
+                    return blocked("invalid_observation_time")
+                if envelope["category"] == "temperature" and now - observed > timedelta(hours=6):
+                    return blocked("stale_observation")
+            validity = min(300, int((expires - now).total_seconds()))
+            result = self._send(ledger_id, "farm", text, validity_period=validity, expires_at=expires,
+                                source_event_id=source_id)
+            return {**result, "source_event_id": source_id}
+        except (KeyError, TypeError, ValueError, AttributeError, OverflowError, UnicodeError):
+            return blocked("invalid_notification")
+
+    dispatch_message = dispatch_event
 
     def _canonical_live_event(self, proposed_id: str, finding: dict, evidence: dict) -> str | None:
         """Keep one opening while continuous evidence slides out of the fetch window.
@@ -515,6 +673,12 @@ class SMSDispatcher:
                 return result
             if not SID.fullmatch(row["provider_sid"]):
                 return {**result, "receipt_error": "invalid_persisted_message_id"}
+            # Advance the persisted poll-attempt time even when a provider
+            # check fails. Oldest-first bounded batches must not let one bad
+            # SID permanently starve later accepted messages.
+            result = self._update(event_id)
+            if result["status"] in TERMINAL_STATUSES:
+                return result
             if self.config.errors:
                 return {**result, "receipt_error": "sms_configuration"}
             try:
@@ -535,6 +699,28 @@ class SMSDispatcher:
                 if provider_status in {"failed", "undelivered", "canceled"} else None)
         except (OSError, sqlite3.Error, ValueError, TypeError):
             return self._result(event_id, "blocked", error_code="delivery_store_unavailable")
+
+    def reconcile_pending(self, limit: int = 10) -> list[dict]:
+        """Poll a bounded oldest-first batch of persisted, nonterminal SIDs.
+
+        The caller schedules this work. This method sends no SMS and cannot
+        retry uncertain attempts without a provider SID. Original farm event
+        IDs survive restart so callers can update their own outbox receipts.
+        """
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
+            return [self._result(None, "blocked", error_code="invalid_receipt_limit")]
+        try:
+            with self._connection() as db:
+                pending = db.execute("""SELECT event_id FROM sms_delivery
+                    WHERE recipient_hash=? AND provider_sid IS NOT NULL
+                    AND status IN ('provider_accepted','uncertain','sending')
+                    ORDER BY updated_at,created_at,delivery_key LIMIT ?""",
+                    (self._recipient_hash, limit)).fetchall()
+            return [self.receipt(row["event_id"]) for row in pending]
+        except (OSError, sqlite3.Error, ValueError, TypeError):
+            return [self._result(None, "blocked", error_code="delivery_store_unavailable")]
+
+    poll_pending_receipts = reconcile_pending
 
     def disable(self) -> dict:
         """Persist opt-out for this local dispatcher; already in-flight SMS cannot be recalled."""

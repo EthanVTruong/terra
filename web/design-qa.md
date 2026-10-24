@@ -199,3 +199,45 @@ and run its configured integration checks before merging this branch.
 ## Local-first reconciliation
 
 User authorized integrating the approved quiet UI with main after PR10. The combined build retains ChatGPT controls, replay-only source warnings and trial-placeholder delivery labels, alongside the cube logo, Pacific day dividers, clock-only footers and explicit phone readiness. All22 UI checks and4 packaging cases run together. Isolated18520 browser verified the two-day offline feed, old support-loss evidence, connection controls, 390/320 containment and Escape focus return; no provider, SMS or actual subscription change. Cloud migration is deferred in favor of the local open-source quickstart.
+
+
+## October 24 selected-screen restoration
+
+Source visual truth: `../docs/terra/selected-ui/reference-chat.png` and
+`reference-station-lab.png`. Normalized paired evidence:
+`../docs/terra/selected-ui/before-vs-reference.jpg` and
+`after-vs-reference.jpg`.
+
+The chat source is 1756 x 1298 pixels at 2.2x density, clipped below its composer.
+The comparison aligns both app frames to 744 CSS pixels, with a 52px header,
+28px source cube and 14px/20px source font. The Station lab source is 2150 x1370
+pixels; its exact accepted71627c1 presentation and real map/control behavior are
+retained. Browser chrome, the clipped source bottom and different historical
+message contents are excluded from false pixel comparisons. The paired image
+contains both source and rendered implementation in the same input.
+
+The first pass found three P2s: the persistent farm/context toolbar, a duplicate
+account icon, and controls/status outside the message capsule. The d390 repair
+moves those actions into Sources, preserves the mounted ChatGPT provider and
+visible-plus focus return, and puts plus, the actual message input and send
+inside one capsule. The name-only b8eeea7 follow-up changes visible labels to
+Terra without changing geometry or internal compatibility keys.
+
+- Typography: original Terra Sans, weight, 14/20 rhythm and wrapping retained.
+- Layout: source frame, header, cube, grey bubbles, spacing and radii retained;
+  one quiet composer matches the selected surface.
+- Tokens/assets: original background/bubble palette, supplied cube bytes and
+  Phosphor icons retained; no replacement art or fabricated map.
+- Content: real onboarding, replies, pending/recovery, consent and saved Details
+  remain. Replay/unavailable truth, actual dates and immutable history remain
+  visible; historical fixture text is not rewritten to fake screenshot data.
+- Interactions: independent post-repair browser checks passed menu access,
+  writing/query Escape focus return, phone access, old-note Details and320px
+  containment with zero browser warnings/errors.47 pure UI cases and build pass;
+  two optional native-browser cases were skipped in that pure test invocation.
+
+Focused header/composer and note regions were compared in addition to the full
+paired frame. There are no remaining actionable P0/P1/P2 visual findings.
+Final runtime/source gates are tracked separately from this visual comparison.
+
+final result: passed

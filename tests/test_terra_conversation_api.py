@@ -111,3 +111,21 @@ def test_completed_request_reconcile_race_has_distinct_safe_error(api):
     response = client.post("/api/tara/reconcile", json={"request_id": "unused-ack", "target_request_id": "real-complete", "confirm_uncertain": True, "orchard_id": orchard})
     assert response.status_code == 409 and response.json()["error"]["code"] == "request_already_completed"
     assert "real-complete" not in response.text and not writer.packets
+
+
+def test_http_here_question_returns_saved_walnuts_without_model_usage(api):
+    client, service, writer = api
+    assert client.post("/api/tara/messages", json={"request_id": "walnut-crops", "text": "I grow walnuts"}).status_code == 200
+    saved = client.post("/api/tara/setup", json={"request_id": "walnut-pin", "action": "location", "location": {**LOCATION, "name": "Walnut farm"}})
+    assert saved.status_code == 200
+    orchard = saved.json()["orchard_id"]
+    question = {"request_id": "saved-walnut-question", "text": "What are we growing here?", "orchard_id": orchard}
+    for _ in range(2):
+        response = client.post("/api/tara/messages", json=question)
+        assert response.status_code == 200
+        answer = response.json()["assistant_turn"]
+        assert answer["data"]["intent"] == "profile_crops"
+        assert answer["data"]["local_facts"]["crops"] == ["walnut"]
+        assert answer["text"] == "Your saved crops are walnut."
+    assert service.store.orchard(orchard)["crops"] == ["walnut"]
+    assert not writer.packets

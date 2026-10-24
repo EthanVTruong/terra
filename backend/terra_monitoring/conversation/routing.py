@@ -97,7 +97,7 @@ def route(text, context=None, known_subjects=()):
         return "notification_status"
     low = re.sub(r"^(?:thanks|thank you|got it)[,\s]+(?:but\s+)?", "", scoped).strip()
     local_patterns = {
-        "profile_crops": r"(?:what (?:crops?|varieties) (?:am i|are we) growing|what (?:am i|are we) growing|what (?:crops?|varieties) (?:do i|do we) (?:grow|have)|(?:show|tell) me (?:my|our) crops?|what(?:'s| is| are) (?:my|our|the) (?:crop|crops|variety|varieties))",
+        "profile_crops": r"(?:what (?:crops?|varieties) (?:am i|are we) growing(?: here)?|what (?:am i|are we) growing(?: here)?|what (?:crops?|varieties) (?:do i|do we) (?:grow|have)|(?:show|tell) me (?:my|our) crops?|what(?:'s| is| are) (?:my|our|the) (?:crop|crops|variety|varieties))",
         "profile_location": r"(?:where(?:'s| is) (?:my|our|the) (?:farm|orchard)(?: (?:saved|located))?|what(?:'s| is) (?:my|our|the) (?:saved )?(?:(?:farm|orchard) )?location|what location did i save)",
         "profile_notifications": r"(?:are (?:my |our |the )?(?:browser )?(?:alerts|notifications) (?:enabled|on|off)|what(?:'s| is) (?:my |the )?(?:browser )?notification (?:status|preference))",
         "profile_monitor": r"(?:are you monitoring(?: (?:my|our|the) (?:farm|orchard))?|is monitoring (?:active|running|enabled|on)|is (?:the )?monitor (?:active|running|on)|is (?:my|our|the) (?:farm|orchard) (?:ready|being monitored)|are we ready)",

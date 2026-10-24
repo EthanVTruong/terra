@@ -69,13 +69,7 @@
   ],
   "depends_on": [],
   "contracts": [],
-  "artifacts": [
-    "docs/terra/full-flow-verification/results.md",
-    "docs/terra/full-flow-verification/held-out-review.md",
-    "docs/terra/full-flow-verification/evidence/final-browser-stages.json",
-    "docs/terra/full-flow-verification/evidence/final-publication-proof.json",
-    "docs/terra/full-flow-verification/evidence/placeholder-delivery-redacted.json"
-  ],
+  "artifacts": [],
   "handoff": {
     "revision": "37b417fab75c49c03f5f356eabc9090c7d5b75a7",
     "summary": "Bounded full-flow behavior verification complete; source frozen. Three independent browser grower profiles plus delegated first-time/returning/operator audits verified actual onboarding, real QC/estimator/monitor replay, quiet controls, station exclusion, proactive coverage/recovery notes and immutable grounded follow-ups. This metadata/evidence handoff adds no implementation change. The subsequent user goal remains active until the designated consolidation owner completes the combined final main release with the selected polished UI and newer authoritative upstream layer.",
@@ -86,7 +80,8 @@
       "Independent cached Mar16-22 review:840 rows,168 causal hours,72 usable/96 insufficient estimates; explicit small-change and coherent+5/+15 controls stayed quiet, isolated spike flagged. No confirmed fault labels; no universal zero false-positive claim. Source/reference hashes and boundary counterexample retained.",
       "Read-only verification of existing integration-owner synthetic trial SMS receipt: delivered, one attempt, handset confirmed. Redacted proof separates that placeholder from historical replay notes. No new external SMS/provider/LLM/training or shared live-state mutation in replay; original8520 and8512 preserved.",
       "No scientific module/reference diff against reviewed cb58022; worker source histories preserved. Results document exact tested revisions, screenshots, selected-UI release boundary and viewport/OS-notification limitations.",
-      "These source-owner captures verify frozen37b behavior. The user-selected polished chat and Station lab screenshots remain the visual targets for the consolidated production UI; pre-polish verification screenshots are not replacement designs. Consolidation separately retains final Tara, publication-consent mapping and authoritative Nathan098ebe0 compatibility gates."
+      "These source-owner captures verify frozen37b behavior. The user-selected polished chat and Station lab screenshots remain the visual targets for the consolidated production UI; pre-polish verification screenshots are not replacement designs. Consolidation separately retains final Tara, publication-consent mapping and authoritative Nathan098ebe0 compatibility gates.",
+      "Tracked verification files: docs/terra/full-flow-verification/results.md, docs/terra/full-flow-verification/held-out-review.md, docs/terra/full-flow-verification/evidence/final-browser-stages.json, docs/terra/full-flow-verification/evidence/final-publication-proof.json, docs/terra/full-flow-verification/evidence/placeholder-delivery-redacted.json"
     ],
     "uncertainty": "The final combined head must preserve Nathan's newer authoritative model/data changes and pass actual-upstream gates/exact-head CI. This standalone browser capture predates the selected polished visual slice. No new mobile-width or real OS-notification permission test was claimed here. Real trial-template phone delivery is verified separately from historical in-app coverage content. Main integration and one retained-data runtime rollout belong to their designated owners.",
     "next": "Push this single evidence head and provide its SHA/results to the consolidation owner immediately. Do not merge worker branches or change implementation. Consolidation owner completes final selected-UI review, actual-upstream checks/CI and main; existing runtime owner performs one retained-data rollout."

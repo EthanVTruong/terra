@@ -22,7 +22,7 @@ from ..pipeline import replay
 from ..qc.detect import Detection
 from ..qc.model import chill_hours, chill_mask
 from ..store import MemoryStore
-from ..timeutil import season_bounds, utc
+from ..timeutil import focus_bounds, utc
 
 log = logging.getLogger(__name__)
 
@@ -249,7 +249,7 @@ def run_bench(n_faults: int = 100, seed: int = 42, ctx: Context | None = None, s
     fa_parts = []
     labels_all: list[FaultLabel] = []
     for si, season in enumerate(seasons):
-        a, b = season_bounds(season, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
+        a, b = focus_bounds(season)  # the Oct-Mar part of the season
         if max_days:
             b = min(b, a + pd.Timedelta(days=max_days) - pd.Timedelta(hours=1))
         truth = ctx.store.readings(a, b, stations["station_id"].tolist())

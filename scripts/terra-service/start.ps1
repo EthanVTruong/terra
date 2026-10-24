@@ -13,6 +13,7 @@ $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 if (-not $PythonExe) { $PythonExe = Join-Path $repoRoot '.venv/Scripts/python.exe' }
 $pythonPath = (Resolve-Path -LiteralPath $PythonExe).Path
 if (-not $StateDir) { $StateDir = Join-Path $repoRoot '.terra-local/runtime' }
+if (-not [IO.Path]::IsPathRooted($StateDir)) { $StateDir = Join-Path (Get-Location).Path $StateDir }
 $runtimeDir = [IO.Path]::GetFullPath($StateDir)
 $webRoot = Join-Path $repoRoot 'web/dist'
 if (-not (Test-Path -LiteralPath (Join-Path $webRoot 'index.html'))) {
@@ -31,9 +32,9 @@ if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyCon
     throw "Port $Port is already in use. Stop its owner before starting another monitor."
 }
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
-# Start-Process joins arguments on Windows. Quoted absolute paths have no quotes
-# in their filenames; trim trailing separators so they cannot escape the quote.
-$quoted = ($arguments | ForEach-Object { '"' + $_.TrimEnd('\') + '"' }) -join ' '
+# Start-Process joins arguments on Windows. Double trailing backslashes inside
+# quotes without changing the actual argument (including a drive-root path).
+$quoted = ($arguments | ForEach-Object { '"' + ($_ -replace '(\\+)$', '$1$1') + '"' }) -join ' '
 $previousPythonPath = $env:PYTHONPATH
 try {
     $env:PYTHONPATH = Join-Path $repoRoot 'backend'

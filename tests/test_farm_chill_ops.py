@@ -277,11 +277,25 @@ def test_llm_call_uses_system_instructions_small_json_no_provider_state(watch):
     captured = []
     def respond(request):
         captured.append(json.loads(request.content))
+        events = json.loads(captured[-1]["input"])["events"]
+        prose = {}
+        for key, event in events.items():
+            if event["kind"] == "welcome":
+                text = "monitoring is connected; estimated chill is {{hours}} hours with incomplete coverage"
+                if event["include_weather"]:
+                    text += "; weather support is usable" if event["weather_usable"] else "; weather support is limited"
+            else:
+                text = "weather coverage is limited and the orchard estimate is incomplete"
+            prose[key] = text
         return httpx.Response(200, json={"status": "completed", "output": [{"type": "message", "content": [
-            {"type": "output_text", "text": "Demo orchard: West Orchard has incomplete estimated chill as of Jan 11, 1:00 AM PST. Weather support is usable."}]}]})
+            {"type": "output_text", "text": json.dumps(prose)}]}]})
     monitor.writer = Writer(key="private", model="configured-test-model", client=httpx.Client(transport=httpx.MockTransport(respond)))
     apply(monitor, p)
     assert captured[0]["instructions"] == SYSTEM_PROMPT and captured[0]["store"] is False
+    schema = captured[0]["text"]["format"]
+    assert schema["type"] == "json_schema" and schema["strict"] is True
+    assert schema["schema"]["required"] == list(json.loads(captured[0]["input"])["events"])
+    assert all(value == {"type": "string"} for value in schema["schema"]["properties"].values())
     assert "observations" not in captured[0]["input"] and "peer_evidence" not in captured[0]["input"]
     assert monitor.store.messages(p["id"])[0]["generation"] == "openai"
 

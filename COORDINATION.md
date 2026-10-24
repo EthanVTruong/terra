@@ -75,7 +75,7 @@
   "kind": "task",
   "id": "terra-multivariable-flags",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User requests humidity, wind and solar checks through cleaned CIMIS observations, grounded agent responses and simulation handoff, with missing/source-quality statuses separate and visible Terra naming. Preserve frozen temperature QC and Nathan numerical algorithms. Bounded source validation only; no model training, bulk backfill or real SMS sends.",
   "branch": "codex/terra-multivariable-flags",
   "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
@@ -97,16 +97,17 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "ccf06a7ddb55fd1259d318f596ddf33ad00070cd",
+    "revision": "62cbbd58d349a9a4b112cfa8b54c6b40505550f2",
     "summary": "Integrated independent humidity/wind/solar normalizer, provisional peer checks, variable data-health, durable selective events, grounded optional ChatGPT wording and direct Q&A, pinned real-source sim inputs and controls. Visible Terra naming preserves legacy internal keys.",
     "evidence": [
       "480 bounded actual CIMIS station-hours decoded with individual units/QC; 360 March temperature overlaps match original exactly at 0.0F maximum difference. Both retained snapshots produce zero provisional numerical findings; wind I warnings stay separate. docs/terra/weather-source-audit.json.",
       "62 pure detector cases and 64 focused native lifecycle, sim, factual conversation and wording cases passed in separate runs; final combined126case receipt and required scoped harness are in progress.",
       "Actual browser wind60mph injection produced persisted note/simulated phone and exact agent response; marking Y withheld that reading and stated source-quality warning, without modifying temperature estimate. Browser logs empty; proof .terra-local/verification/weather-agent-browser.png.",
-      "Both production and simulation Vite/Sites builds pass. No external SMS/LLM calls, shared runtime changes, reference fitting or Nathan numerical edits. docs/terra/weather-simulation-handoff.md gives exact versioned actions, source hashes, limits and owner handoff."
+      "Both production and simulation Vite/Sites builds pass. No external SMS/LLM calls, shared runtime changes, reference fitting or Nathan numerical edits. docs/terra/weather-simulation-handoff.md gives exact versioned actions, source hashes, limits and owner handoff.",
+      "Final owner gate passed all12 groups against4fba932, including the actual Nathan map-point/full-flow bridge. Exact frozen source transferred to sole canonical integration owner. No independent merge or further source work."
     ],
-    "uncertainty": "Initial conservative peer rules are provisional; naturally labelled fault sensitivity/false-positive rate and crop-risk rules are unvalidated. Historical publication visibility is snapshot-only. Existing source/main and runtime owners retain sole merge/activation responsibility; Nathan redesign owner identity has not been independently confirmed.",
-    "next": "Complete combined regression/CI, integrate through sole main owner and provide exact commit/contract to Nathan sim owner; retain isolated preview18540 and existing live8512/demo8520/18522 state."
+    "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
+    "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
   }
 }
 ```
@@ -116,7 +117,7 @@
   "kind": "task",
   "id": "terra-device-location",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "Direct user requests a button-only device-location onboarding: native browser permission then automatic necessary location details and station selection. Remove coordinates, elevation, farm-name and confirmation fields from grower onboarding. Preserve manual API compatibility, scientific selection logic, separate notification/ChatGPT consent and all private runtime state.",
   "branch": "codex/tara-device-location",
   "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
@@ -138,16 +139,17 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "90728f0a7743f39f84080931d610d7153017011a",
+    "revision": "c2604e55571afb78dd4f243f1b7bb5ec1e4c5e34",
     "summary": "Button-only location source is ready: one fresh native fix, server-verified ground elevation, automatic save and existing station selection. No coordinate, elevation, name, preset or confirmation form. Neutral Shared location profile label; explicit native approval supplies location consent. Existing human setup and raw messages remain unchanged; exact legacy app guidance is projected to current wording only.",
     "evidence": [
       "30 new device API/resolver cases and all393 conversation cases pass on8f baseline.50 pure UI cases and11 explicit browser cases passed before the narrow legacy-prompt follow-up; its helper/resumed-draft proof also passed. Final assembled UI/native checks run after integration.",
       "Actual guarded local API plus full App, simulated public Davis GPS and REAL official USGS EPQS lookup passed:76.8804387ft, source provenance, one native call, automatic notification-step advance, zero manual fields/extra confirmation, quiet reopen and320px without errors. No OS permission dialog was clicked.",
       "Independent source audit cleared factory/SMS-off parity, real ground-value validation, no target station substitution, completed replay before lookup and atomic setup fingerprint/request-cursor guard against stale/ABA callbacks. Lookup failure saves no profile/reservation; exact-ID approved-position retry survives reload.",
-      "No startup/GET migration, nonce/version write, account/private runtime/SMS/ChatGPT change or inference was introduced. Manual API signatures remain compatible. Existing automatic six-peer regional/QC/elevation selection and monitoring readiness remain authoritative."
+      "No startup/GET migration, nonce/version write, account/private runtime/SMS/ChatGPT change or inference was introduced. Manual API signatures remain compatible. Existing automatic six-peer regional/QC/elevation selection and monitoring readiness remain authoritative.",
+      "Final frozen source: native-browser12/12, pure/helper51/51 and all11 configured scoped groups passed. Source consumed by the canonical integration candidate; lane stopped after handoff, private runtime untouched."
     ],
-    "uncertainty": "Final canonical base reconciliation, configured checks/CI and owner-controlled live rollout remain. Native permission is the actual user action; tests simulate it. Ground-provider or native failure provides retry without forms.",
-    "next": "Hand exact ready source to sole consolidation owner, reconcile once with final quiet PR16/main while preserving its capsule/header/composer/name changes, then final combined checks. Exclusive runtime owner performs retained-state update. No independent main/runtime/account/SMS writes."
+    "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
+    "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
   }
 }
 ```
@@ -173,16 +175,17 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "011a99757e005f9204ff69024a0661f1a952756a",
+    "revision": "b952d46945be0044b159f72eda578b8e2cc51034",
     "summary": "Completed the concise final-submission README on an isolated branch: 607 words versus 1079, clear product capabilities, one-command historical preview, explicit live-weather/ChatGPT/notification setup, controlled replay demonstration, short agent instructions and a four-area code map. Product claims are grounded in current main; all implementation and private state are preserved.",
     "evidence": [
       "README source commit 011a99757e005f9204ff69024a0661f1a952756a; comparison base 8f028a8320661c4a59344f1e3067e8af2bb79a74.",
       "All 14 relative links resolve. UTF-8/LF, git diff --check and actual run_terra.py --help pass. Read-only independent review found no material correction.",
       "Required terra.py check --base origin/main --task terra-submission-readme passes coordination/filesystem and all 11 configured groups: chatgpt, conversation, demo, farm, full-flow, harness, JSON, pipeline, runtime, setup and SMS.",
-      "Reviewed current main source/runbooks plus read-only existing location-onboarding, multivariable and consolidation records. No existing chats messaged; no provider, SMS, runtime, credential or scientific changes."
+      "Reviewed current main source/runbooks plus read-only existing location-onboarding, multivariable and consolidation records. No existing chats messaged; no provider, SMS, runtime, credential or scientific changes.",
+      "Product-first README consumed in canonical candidate, retaining new device-location and weather behavior. No remaining documentation lane work."
     ],
-    "uncertainty": "Checked against current main 8f028a8. Location simplification and multivariable extensions are still independent work; this README uses stable product wording and does not advertise their unmerged behavior. Scientific acceptance and full native/PostgreSQL CI are separate from the passing scoped checks.",
-    "next": "Publish the two documentation commits as a small reviewable PR for the sole consolidation owner. Scope is frozen; no additional research, QA loop, application edits or live actions."
+    "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
+    "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
   }
 }
 ```
@@ -193,9 +196,9 @@
   "id": "terra-product-consolidation",
   "owner": "et",
   "status": "active",
-  "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner. Final direct user steering requires the selected polished chat and Station lab screens while preserving full messaging. The bounded follow-up repairs the upstream synthetic CLI missing season_bounds import and the common saved-crop question alias without numerical/model changes. Root authorizes the bounded get-alert wording compatibility fix and safe check-runner capture/timeout diagnostics, preserving the configured time and output bounds.",
+  "intent": "Integrate all approved product functionality into main: selected quiet cube-branded chat with complete messaging, saved evidence and ChatGPT-plan writing; one-button device location with real terrain elevation; Nathan draggable/interpolated Station lab; temperature plus independent humidity/wind/solar and missing-data monitoring through the same live or replay feed. Preserve private runtime and human drafts. Consolidate local work into one TechProjects/Terra folder, retain recoverable historical work, and stop completed chat loops.",
   "branch": "codex/terra-consolidate-main",
-  "base": "8f028a8320661c4a59344f1e3067e8af2bb79a74",
+  "base": "4fba93297b8128ce5b41c9b0dece6adf252884c9",
   "domains": [
     "terra-coordination",
     "terra-qc-json",
@@ -213,22 +216,28 @@
     "backend/chillwatch/demo/scenario.py",
     "tests/test_scenario.py",
     "terra.py",
-    "tests/test_terra_harness.py"
+    "tests/test_terra_harness.py",
+    "AGENTS.md",
+    "config/terra/**",
+    "spec.md"
   ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "b8eeea7b3faa1c243d40f20f9091f6cd49b6542e",
-    "summary": "PR15 published the complete approved temperature/chat/Station lab release on main8f028a8. This bounded follow-up restores the exact selected quiet chat chrome while retaining full messaging: farm/setup/writing/location/usage actions are in Sources, plus/input/send share one capsule, and the provider remains mounted with visible-opener focus return. Visible new greeting/composer labels say Terra; internal compatibility names and old messages remain unchanged. It also fixes the upstream synthetic CLI missing season import and the saved-crop question alias without numerical changes.",
+    "revision": "09854e80f8a28453e79a35f42519405b8df3908c",
+    "summary": "One final candidate now contains quiet UI d390d39/visible Terra labels b8eeea7, addressed alert routing eb7eee1, device c2604e5, all-variable weather/map bridge62cbbd5, Nathan main4fba932, product-first README b952d46 and final demo proof0dba4bd. The single reconciliation preserves location-display/retry semantics together with the plus/input/send capsule and mounted ChatGPT provider; routing retains get/tara/terra and independent weather vocabulary.",
     "evidence": [
-      "Independent normalized comparison against the exact two user screenshots passed the d390 selected surface: same744px frame,52px header,28px cube,14/20px typography and grey bubbles. The three toolbar/account/composer chrome P2s were corrected; actual320px containment, menu/query/writing keyboard focus, mobile Details and old-note provenance passed. Source images and paired before/after proof are retained under docs/terra/selected-ui; web/design-qa.md records the comparison.",
-      "The exact restored source passed47 pure/helper UI cases and production build; two optional native-browser cases were not configured in that pure run. New actual Typer CLI regression uses mocked generation/training/replay, and saved-walnut service/API regressions assert zero writer calls. Conversation/greeting/profile tests pass after the visible Terra label update. No real ingestion/training or phone test was performed.",
-      "Prior full actual098ebe0-base scoped validation passed all eleven selected groups. The final follow-up adds only the bounded native import/profile alias/selected chrome/name changes and metadata corrections; final actual8f-base and exact-head CI receipts remain required.",
-      "Completeness audit proves the original dirty weather-context set is committed/clean at6cd5881 and patch-equivalent853336a; all intended worker functionality is in main ancestry or reconciled patches. Exact demo evidence7b03421 is retained in this follow-up. All historical refs and the original uncommitted prototype are preserved."
+      "Device owner: all393 conversation cases,30 focused device cases,12 native-browser and51 pure/helper checks; full11-group scoped8f gate passed. Actual App to guarded API to official USGS lookup verified using a public Davis test position; no actual OS permission click or human setup write.",
+      "Weather owner62cbbd5: all12 required groups passed against actual main4fba932;127 focused weather cases, both builds and55 UI/packaging checks passed with2 existing optional skips. Actual map spot to shared feed to persisted wind note and grounded question passed; source warnings remain separate.480 bounded real station-hours audited;360 overlapping temperature values are identical.",
+      "Selected UI independently matched exact user screenshots at normalized density:744px frame,52px header,28px cube,14/20px type and grey bubbles. Quiet plus menu, real composer,320px containment, draft preservation and provider focus return passed. Reference and paired proof retained in docs/terra/selected-ui and web/design-qa.md.",
+      "Configured-writer regression passes both ordinary and Terra-addressed Why did I get this alert with a valid saved reference, one factual writer call, exact retry deduplication and no off-topic/raw prompt forwarding. Synthetic CLI and saved-crop alias regressions remain included.",
+      "Completeness audit covers original dirty weather context and all intended historical worker functionality. Full branch refs and original unborn prototype are preserved. Demo and weather owners saved hash-verified handoffs under the shared private directory before stopping completed lanes.",
+      "Runner09854e8:34 harness cases pass including real process EOF, genuine timeout/tree cleanup, partial progress and aggregate output bound. Original120s conversation deadline unchanged. This repairs a separately reproduced Windows pipe-EOF hazard; the earlier conversation timeout cause remains unconfirmed pending the combined gate.",
+      "Combined source builds both interfaces and passes51 pure/helper UI cases plus8 packaging cases;2 existing optional native-browser cases skipped in that run. Final source retains the selected chrome and one-button location together. Existing replay journals pin their source digest and must remain archived/served with compatible source rather than silently reset for the added weather snapshot."
     ],
-    "uncertainty": "Final follow-up CI, actual8f-base scoped checks and the primary-owner second preserved-state rollout remain pending. Newly requested multivariable flags and one-button device-location onboarding have separate owners and are next-release work; their untested implementations are not included in this bounded release.",
-    "next": "Run exact-head CI in parallel with actual8f-base scoped checks and final functional UI smoke. Merge and push the small follow-up only when gates pass, then have the exclusive runtime owner repeat retained-state verification and hand back the final main SHA/tree and complete feature receipt."
+    "uncertainty": "Final combined exact-head CI and actual4f-base scoped gates are required before merge. Exclusive runtime owner then performs retained-state canonical-path activation. No live/private migration or historical-data deletion has occurred in source integration.",
+    "next": "Run one combined exact-head gate cycle, publish through PR16, then coordinate private/runtime quiesce, consistent backups and canonical TechProjects/Terra migration. Remove verified inactive worktrees and rebuildable copies only after preservation; retain two to three core chats without waiting loops."
   }
 }
 ```
@@ -1423,7 +1432,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "task",
   "id": "terra-local-polish",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User explicitly authorizes merging PR10, reconciling the approved polished UI with current main for fresh clones, adopting local-first open-source operation and then beginning a visual sim polish pass. PR10 merged as adced1a after all4 exact-head checks. Preserve newer ChatGPT controls, replay-only semantics, fixed-phone readiness, existing backend/scientific behavior and all private services/state. Sim conversation/engine work is active separately; presentation refinement must preserve its owner changes.",
   "branch": "codex/terra-local-polish",
   "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
@@ -1447,10 +1456,11 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
       "Shared main fast-forwarded cleanly to adced1a; original staged prototype and current8504/8512/8517/8520 services untouched.",
       "Read current sim branch facts only: separate8520 station/grower app, active conversation verification owner; no backend or sim owner checkout mutations.",
       "Production build passed;22 UI and4 packaging checks pass. No backend, scientific, reference, dependency or private state diff against main.",
-      "Isolated18520 runtime seeded with the existing offline demo, worker/source/SMS disabled and fresh ChatGPT state. Both connection panels work without authorization/provider requests. Mobile390 and320 have exact viewport-width/no horizontal overflow; selected unavailable note preserves its old values and Escape restores its note focus."
+      "Isolated18520 runtime seeded with the existing offline demo, worker/source/SMS disabled and fresh ChatGPT state. Both connection panels work without authorization/provider requests. Mobile390 and320 have exact viewport-width/no horizontal overflow; selected unavailable note preserves its old values and Escape restores its note focus.",
+      "Selected quiet UI restoration d390d39 and visible Terra naming b8eeea7 independently verified. Completed UI owner stopped previews/probe and archived; source transferred to canonical integration owner."
     ],
-    "uncertainty": "Final combined scoped checks and exact-head CI must pass before user-authorized integration. Sim owner is still reconciling conversation behavior in its own dirty checkout; no mutation there.",
-    "next": "Publish a small UI integration PR and merge after exact-head checks; then make an isolated CSS/presentation slice for the sim using a committed owner revision."
+    "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
+    "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
   }
 }
 ```

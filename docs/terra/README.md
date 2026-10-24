@@ -45,7 +45,12 @@ retains its original dependencies and is not claimed by these checks.
   stations and exclusions. Respect `ok`, `stale` and `insufficient_data`.
 - `target_comparison`: measured value and its comparison, if a target exists.
   For a calibrated station this uses Terra's frozen pair-adjusted expectation;
-  it is distinct from the location interpolation value.
+  it is distinct from the location interpolation value. `typical_low_f` and
+  `typical_high_f` add the station's calibrated historical residual bounds to
+  that same-hour expectation. They describe a typical historical range, not a
+  future forecast or a guaranteed confidence interval. They remain null for
+  an unavailable comparison or an uncalibrated sensor. A stale comparison may
+  retain these historical values with an explicit stale status.
 - `station_findings`: original causal e1 findings relevant to this query/hour.
 - `estimator_qc_exclusions`: separately labelled QC exclusions used for the
   estimator. A measured calibrated target is held out of the peer-QC pass too,

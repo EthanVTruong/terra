@@ -133,6 +133,9 @@ def _clean(frame: pd.DataFrame, calibrated: set[int]) -> pd.DataFrame:
         finite = isinstance(value, Real) and not isinstance(value, (bool, np.bool_)) and math.isfinite(value)
         if not finite:
             reasons.append("missing_or_nonfinite_value")
+            # Keep the numeric JSON contract even for an unavailable unknown
+            # sensor. The caller's original frame remains untouched.
+            row["temperature_f"] = None
         elif not -130 <= value <= 140:
             reasons.append("physical_bounds")
         if not isinstance(row["quality"], str) or row["quality"] != "usable":
@@ -199,6 +202,7 @@ def _findings(scored: pd.DataFrame, observations: pd.DataFrame) -> list[dict]:
 def _comparison(target: int | None, valid: pd.Timestamp, as_of: pd.Timestamp, max_age: float,
                 cleaned: pd.DataFrame, scored: pd.DataFrame, events: list[dict], estimate: dict) -> dict:
     base = {"station_id": target, "observed_f": None, "expected_f": None, "departure_f": None,
+            "typical_low_f": None, "typical_high_f": None,
             "classification": None, "level": None, "reference_id": None, "expected_method": None}
     if target is None:
         return {**base, "status": "unassessable", "reason": "no_independent_target_observation"}
@@ -213,6 +217,7 @@ def _comparison(target: int | None, valid: pd.Timestamp, as_of: pd.Timestamp, ma
     if len(selected):
         target_row = selected.iloc[0]
         base.update(expected_f=target_row.expected_f, departure_f=target_row.residual,
+                    typical_low_f=target_row.typical_low_f, typical_high_f=target_row.typical_high_f,
                     expected_method="terra-pair-adjusted-median", reference_id=target_row.reference_id,
                     level=target_row.level)
         if target_row.reference_status != "available":

@@ -124,7 +124,7 @@ export function taraNotificationEnabledAt(snapshot) {
   for (let index = events.length - 1; index >= 0; index -= 1) {
     const event = events[index];
     if (event.role !== "event" || event.kind !== "notification" || event.data?.saved !== true) continue;
-    const stamp = Date.parse(event.created_at);
+    const stamp = Date.parse(publicationTime(event));
     return event.data.enabled === true && Number.isFinite(stamp) ? stamp : null;
   }
   return null;

@@ -59,7 +59,7 @@ test("enabling browser alerts excludes a delayed pre-consent note and alerts onc
     // Consent changes while the feed still contains only A. B already exists
     // on the server, but its delayed response arrives after the saved choice.
     snapshot.notifications.enabled = true;
-    snapshot.turns.push({ id: "enable-event", role: "event", kind: "notification", text: "Browser notifications enabled", created_at: "2026-10-24T16:02:00Z", reply_to: null, reactions: [], delivery: "local_saved", data: { enabled: true, saved: true, permission: "granted" } });
+    snapshot.turns.push({ id: "enable-event", role: "event", kind: "notification", text: "Browser notifications enabled", created_at: "2026-03-11T11:00:00Z", published_at: "2026-10-24T16:02:00Z", reply_to: null, reactions: [], delivery: "local_saved", data: { enabled: true, saved: true, permission: "granted" } });
     await refresh();
     await page.getByText("Browser notifications enabled", { exact: true }).waitFor();
     await flushEffects();

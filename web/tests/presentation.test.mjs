@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mergeTaraTimeline } from "../src/tara-state.js";
+import { mergeTaraTimeline, taraNotificationEnabledAt } from "../src/tara-state.js";
 import { clockTime, dayLabel, displayNoteText, evidenceTime, localDay, publicationTime } from "../src/presentation.js";
 
 test("notes group at Pacific midnight rather than UTC midnight", () => {
@@ -70,12 +70,16 @@ test("only valid timezone-qualified publication clocks replace a legacy creation
 });
 
 test("notification eligibility compares saved publication with consent, retaining quiet delayed pre-consent notes", () => {
-  const enabledAt = Date.parse("2026-10-24T16:01:00Z");
   const created_at = "2026-03-11T11:00:00Z";
+  const consent = { role: "event", kind: "notification", created_at, published_at: "2026-10-24T16:02:00Z", data: { saved: true, enabled: true } };
+  const snapshot = { notifications: { enabled: true, capability: "browser_open" }, turns: [consent] };
+  const enabledAt = taraNotificationEnabledAt(snapshot);
+  assert.equal(enabledAt, Date.parse(consent.published_at));
+  assert.equal(taraNotificationEnabledAt({ ...snapshot, turns: [{ ...consent, published_at: undefined }] }), Date.parse(created_at));
   const records = [
-    { id: "historical-new", created_at, published_at: "2026-10-24T16:02:00Z" },
-    { id: "delayed-before-consent", created_at, published_at: "2026-10-24T16:00:00Z" },
-    { id: "exact-consent", created_at, published_at: "2026-10-24T16:01:00Z" },
+    { id: "historical-new", created_at, published_at: "2026-10-24T16:03:00Z" },
+    { id: "delayed-before-consent", created_at, published_at: "2026-10-24T16:01:00Z" },
+    { id: "exact-consent", created_at, published_at: "2026-10-24T16:02:00Z" },
     { id: "naive-publication", created_at, published_at: "2026-10-24T16:03:00" },
     { id: "legacy-new", created_at: "2026-10-24T16:03:00Z" },
   ];

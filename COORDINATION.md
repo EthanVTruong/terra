@@ -8,7 +8,7 @@
   "status": "active",
   "intent": "ET requests consolidation of the intended working product into main and prompt publication. Integrate the approved Tara and assigned-sender work, held-out station/grower simulation and verified follow-up fixes, and accepted local UI polish. Preserve prior branches, unrelated prototype edits, numerical models, private runtime settings and state. One integration owner coordinates with the existing live-runtime owner.",
   "branch": "codex/terra-consolidate-main",
-  "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
+  "base": "a14e1483c4681c24cecc1c97da6a4ffb3c67eb57",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -17,6 +17,7 @@
     "COORDINATION.md",
     "backend/terra_monitoring/**",
     "tests/test_terra*.py",
+    "tests/test_farm_chill_ops*.py",
     "web/**",
     "docs/terra/**",
     "README.md",

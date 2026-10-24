@@ -103,7 +103,7 @@ model:
   num_threads: 0          # 0 = all cores; set lower (or CHILLWATCH_LGB_THREADS) when sharing the machine
   prism_mask_fraction: 0.3  # spec
   seed: 42
-  build_workers: 4        # processes building per-season training frames
+  build_workers: 3        # processes building per-season training frames (each needs ~1-2 GB on CIMIS)
   blind_max_train_rows: 1500000  # TODO source: subsample when retraining for blind_test
 
 uncertainty:

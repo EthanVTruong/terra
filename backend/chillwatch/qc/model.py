@@ -142,7 +142,7 @@ def training_frame(
         keep = np.isfinite(y) & (aux["n_valid"] >= 1)
         if not keep.any():
             continue
-        X = X[keep].copy()
+        X = X[keep].astype("float32")
         if mask_prism and "prism_tmin" in X.columns and rng is not None:
             m = rng.random(len(X)) < mask_prism
             X.loc[m, ["prism_tmin", "prism_tmax"]] = np.nan
@@ -269,6 +269,16 @@ def error_report(df: pd.DataFrame, pred_col: str = "pred") -> dict[str, Any]:
 
 
 # =========================================================================== train
+def slim_readings(r: pd.DataFrame) -> pd.DataFrame:
+    """Only what building training frames needs (numeric, compact): no raw paths or estimates."""
+    keep = ["station_id", "ts", "temp_f", "qc_status", *[c for c in EXTRA_FEATURES if c in r.columns]]
+    out = r[keep].copy()
+    for c in ("temp_f", *[c for c in EXTRA_FEATURES if c in r.columns]):
+        out[c] = out[c].astype("float32")
+    out["qc_status"] = out["qc_status"].astype("category")
+    return out
+
+
 def _season_frame(job: tuple[Any, ...]) -> tuple[str, pd.DataFrame, set[str]]:
     """One season's training rows (runs in a worker process)."""
     season, r, stations, start, end, extras = job
@@ -320,7 +330,7 @@ def train(
     jobs = []
     for s in train_seasons:
         start, end = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
-        r = store.readings(start, end, stations["station_id"].tolist())
+        r = slim_readings(store.readings(start, end, stations["station_id"].tolist()))
         if r.empty or r["temp_f"].notna().sum() == 0:
             continue
         jobs.append((s, r, start, end))
@@ -439,7 +449,7 @@ def _holdout_known_stations(store: Any, stations: pd.DataFrame, booster: lgb.Boo
     jobs = []
     for s in hold:
         a, b = season_bounds(s, reg["seasons"]["start_mmdd"], reg["seasons"]["end_mmdd"])
-        r = store.readings(a, b, stations["station_id"].tolist())
+        r = slim_readings(store.readings(a, b, stations["station_id"].tolist()))
         if len(r) and r["temp_f"].notna().any():
             jobs.append((s, r, stations, a, b, extras))
     if not jobs:

@@ -5,7 +5,7 @@
   "kind": "task",
   "id": "twilio-trial-placeholder",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "User requested holding custom SMS/webhook work and, if supported, sending predefined trial templates as placeholders when discrepancies select a meaningful alert. Add an explicitly configured template mode to the existing dispatcher with honest persisted receipts/UI labels. Preserve event selection, opt-in, ledger, retry, frozen QC and Nathan models. No paid account changes; automatic sends stay disabled until private credential readiness is resolved.",
   "branch": "codex/twilio-trial-placeholder",
   "base": "a9dcc6c06b872890cf86adda22b207251fb50b5e",
@@ -13,13 +13,13 @@
   "paths": ["COORDINATION.md", "backend/terra_monitoring/sms.py", "backend/terra_monitoring/farm_ops/service.py", "tests/test_terra_sms.py", "tests/test_farm_chill_ops.py", "web/src/delivery.js", "web/src/SmsControls.jsx", "web/tests/delivery.test.mjs", "docs/terra/twilio-sms.md", ".env.example"],
   "depends_on": [],
   "contracts": [],
-  "artifacts": [],
+  "artifacts": ["https://github.com/EthanVTruong/terra/pull/8"],
   "handoff": {
-    "revision": "22f10639ef5352f0bfb31f8513ea2701044fcef7",
-    "summary": "Explicit trial-template transport and honest UI/receipt labels implemented and verified. The existing event/opt-in/ledger/retry path sends the fixed sample when configured; actual messages/evidence remain immutable in Terra. No new worker, webhook or endpoint. Temporary inbound experiment stopped. Root integration owner owns merge and activation.",
-    "evidence": ["All325 combined SMS/HTTP/farm/runtime/pipeline cases passed; after final receipt contract additions,159 transport cases and the focused farm persistence case passed again. Final terra.py scoped check against78e835d passed all six configured groups and coordination/filesystem. Overlap with terra-full-pipeline explicitly reconciled with root owner.", "Five UI receipt semantics cases, four packaging cases and final production build pass. Independent read-only review found no concrete P1/P2 regressions. No configured private values in source diff; commit attributed to established Ethan identity with no assistant trailers.", "Trial payload exactly To plus fixed Body=sms_internal_alerts; custom Terra mode remains default. Persisted content_mode/template_name/transport/data_mode/source_event_id/provider_message_id distinguish sample delivery from actual finding content across restarts/config changes. Old journals migrate as Terra content.", "No additional real SMS or account mutation in this implementation. Prior Console sample provider-delivered and handset-confirmed stays separate from unverified automatic API delivery."],
-    "uncertainty": "Automatic trial API delivery remains unverified and disabled pending private token rotation and root integration. No proactive custom-content capability claimed. Trial API omits ValidityPeriod: expired submission is withheld locally, but Twilio queue time after acceptance is unbounded by this adapter.",
-    "next": "Root authorized integration preparation after cleanup PR6. Reconcile latest origin/main e4292b2 into this preserved branch in one focused cycle, retain four service receipt fields and cleanup shared parser/journal/schema initialization, run final scoped checks, push a reviewable PR without merging or changing runtime/private flags. Root retains activation and the real API send test."
+    "revision": "0c28839c626087c099702345064c59b62f4f1e82",
+    "summary": "Placeholder branch reconciled with cleanup PR6 and accepted conversation documentation, pushed and opened as reviewable PR8. One focused source repair preserves shared parser/runtime journal selection/schema-once behavior and trial metadata; service differs only by four receipt fields. Both prior branches/history are preserved. Root retains final merge and activation.",
+    "evidence": ["Final terra.py check against latest documentation maina9dcc6c passed terra-farm-tests,terra-harness,terra-json-tests,terra-pipeline-tests,terra-runtime-tests,terra-sms-tests plus coordination/filesystem. Earlier cleanup-basee4292b2 check also passed; overlap explicitly coordinated with root/cleanup owners.", "Five UI semantics and four packaging cases pass. Frontend/dependency tree is identical to the production build already verified on the original source. Independent review found no concrete P1/P2 regressions; both cleanup and trial test sets retained.", "PR8 diff is limited to10 placeholder-related files. No writer/runtime/configuration module change againstmain; service change is exactly content_mode/template_name/transport/data_mode passthrough. Priorhead d0b44a9 is preserved at codex/twilio-trial-placeholder-pre-cleanup.", "Trial payload exactly To plus fixed Body=sms_internal_alerts; persisted source/provider/content/data-mode correlation keeps actual orchard text immutable inapp. No real SMS, runtime, private credential or enabled-flag changes during integration preparation. Prior Console handset proof remains separate."],
+    "uncertainty": "PR8 remains unmerged and exact-head CI must be checked by the integration owner. Automatic trial API delivery remains unverified/disabled pending private credential rotation and an explicit delivery test. Trial omits provider queue ValidityPeriod; local submission freshness is still enforced.",
+    "next": "Root reviews PR8 and its exact-head checks, owns merge and any later private activation. Do not independently change main/runtime/credentials/flags or send texts. Keep actual in-app message and placeholder phone receipt distinct."
   }
 }
 ```

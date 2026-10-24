@@ -1,5 +1,266 @@
 # Terra integration coordination
 
+## Custom sensor alerts in connected grower chat
+
+```json
+{
+  "kind": "task",
+  "id": "terra-sensor-chat-repair",
+  "owner": "et",
+  "status": "done",
+  "intent": "Direct user request to fix custom test-sensor alerts missing from chat after opening simulation. Reuse computed native sensor flags for each isolated grower watch and regress actual connected HTTP/feed/evidence behavior without changing numerical policy or live delivery.",
+  "branch": "codex/terra-sensor-chat-repair",
+  "base": "db7310e",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/demo_simulation/engine.py", "backend/terra_monitoring/demo_simulation/full_flow.py", "tests/test_terra_full_flow.py", "tests/test_terra_simulation_connection.py"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "ed669611669e609a3480e8b0bfcf6ec3dc274774",
+    "summary": "Shared native computed temperature sensor flags now reach every saved grower watch in the same isolated replay, with atomic same-frame evaluation and each farm's own assessment geometry. Numerical classification, source data, live state and delivery policy are unchanged.",
+    "evidence": ["Actual runtime connect/action/feed regression passes: normal48F stays quiet, strong90F publishes, repeat and next-hour checks deduplicate, normal closes quietly, new excursion reopens and prior Details stay unchanged; current native store and disabled SMS remain intact.", "The same new regression with exact db7310e ReplayBridge.evaluate restored in an isolated process fails specifically at zero delivered sensor notes instead of one. Ignored baseline-failure.txt retains that witness.", "Two-grower full-flow regression passes for custom temperature and60mph sensor wind; both farms retain their distinct coordinates, elevation and identity in immutable note evidence.", "All177 affected cases pass across test_terra_simulation_connection.py10, test_terra_full_flow.py17, test_terra_demo_simulation.py19, test_terra_weather_integration.py4 and test_farm_chill_ops_writer.py127. No failures or skips; only existing Starlette TestClient deprecation warning.", "Product hashes agree with independent parent browser proof: engine31330d265a48f727a1a8b5e94247495b6e500ef2ceb95ddc610368fd96a2172f and full_flow7e88f57e395725e63177980bb6bd801bc9f153b08c74547f04dfe9a14fb4f166. Coordination validation and git diff whitespace checks pass."],
+    "uncertainty": "All session sensors share replay inputs without farm ownership/radius metadata; repair preserves that existing policy. Humidity/wind/solar already flow through packet weather findings, with custom wind positively regressed. No external provider, genuine account generation or phone send was performed by this worker.",
+    "next": "Parent hands frozen source ed66961 to the existing sole integrator for its combined final gate and main publication. No worker push or merge; affected test process exited0 and worker source is frozen."
+  }
+}
+```
+
+## Contextual ChatGPT conversation and concise insight engine
+
+```json
+{
+  "kind": "task",
+  "id": "terra-conversational-engine",
+  "owner": "et",
+  "status": "done",
+  "intent": "Direct user request: make the selected ChatGPT plan the actual conversational engine before the next push, understanding follow-ups, asking focused clarifications and explaining Python-computed facts in concise useful alerts. Python retains numerical/event/action authority. User explicitly authorizes coordination with the sole main integrator, which holds publication for this slice.",
+  "branch": "codex/terra-conversational-engine",
+  "base": "06c560596e7341d3ab0ca5c24787c35b63a47bba",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/conversation/**", "backend/terra_monitoring/farm_ops/insight_writer.py", "backend/terra_monitoring/runtime.py", "tests/test_terra_conversation_engine.py", "tests/test_terra_engine_context.py", "tests/test_terra_engine_flow.py", "tests/test_terra_insight_writer.py", "tests/test_terra_chatgpt_runtime.py", "tests/test_terra_conversation_writer_integration.py", "docs/terra/chatgpt-plan.md", "docs/terra/conversation-contract.md", "docs/terra/conversational-engine.md", "docs/terra/tara-conversation.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "3fd9090d9165f41e06e34f01e6e1abcd8debe92f",
+    "summary": "Frozen contextual conversation and concise proactive-insight implementation. The real default ChatGPT runtime uses bounded same-farm history/current text/authoritative Python facts; model chooses answer, focused clarification, reaction or silence. Quantities/citations/state claims are checked; local actions, event selection and measurements remain Python-owned. Referenced evidence and earlier cited facts remain distinct from current data. Custom crop entry remains neutral; no automatic almond, cultivar, stage or agronomic target. All worker/source processes are released; sole source/ops integrator owns combined checks, genuine proof and publication.",
+    "evidence": ["Frozen base06c5605; product code1e0bcae; source2eca77d includes a test-only historical-phrasing correction.17files; no numerical/auth/providertransport/UI edits beyond runtime writer wiring.", "147 dedicated engine/context/flow/insight/writer-integration cases PASS;430 existing conversation/crop/weather/factual cases PASS;35 UI entry/source/state cases PASS. Actual guarded HTTP regression uses the real automatic InsightWriter marker, passes raw current question+recent dialogue, and proves duplicate refresh/retry makes no additional generation.", "Required terra.py check --base06c5605 --task terra-conversational-engine completed:15other configured groups PASS. New engine group initially rejected an old mock sentence presenting saved evidence as current; corrected only that fixture and reran the complete147-case group PASS. Original broad command exit1 is retained honestly; sole integrator repeats combined gate on corrected source.", "Independent review repaired runtime marker omission, passive invented action/delivery claims, historical-as-current claims, mixed alert coverage polarity, and preservation of prior cited facts. New inference fallbacks use one local-only path, never a second request or API-key billing.", "docs/terra/conversational-engine.md is the implementation/verification guide. Existing same-ID durable reservation, source guards, immutable messages and SMS boundaries retained."],
+    "uncertainty": "No genuine new-engine account request was made in this worker. The sole integrator controls physical rollout/publication and has coordinated bounded acceptance with the resumed runtime operator; no duplicate private actions or phone sends belong to this lane. Qualitative grounding remains instruction/citation/targeted validation based, not formal semantic proof. No sourced crop-knowledge Markdown or agronomic-risk policy was added.",
+    "next": "Bounded grounding repair3fd9090 is released: numeric placeholders require compatible source unit/sign/recognized role or exact ordered native clock/date/range group; all four safety guards split individual assertions, including causal and colon forms. Root independently reproduced all four attacks before the repair and confirmed rejection afterward, preserving valid Fahrenheit and scoped-negative controls. Final183-case affected group PASS, core107 cases; engine.py SHA256 f76b625f6a8b10d3b8f3068e7c71e34a1f0af4087748bf457a1546a91668bd4d. Worker broader seven-file group354 PASS before four extra root cases. Integrator reports its pre-repair merged aa91ead all16 groups PASS; it owns final independent verification, genuine3/4-call proof and publication. All four engine worktrees/processes are released for verified preservation/retirement after consumption."
+  }
+}
+```
+
+## ChatGPT entry UI
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chatgpt-entry-ui",
+  "owner": "et",
+  "status": "done",
+  "intent": "Build the user-selected Granola-style Terra opening gate with only Sign in with ChatGPT, using one shared existing OAuth/status/model controller. Preserve popup consent, real account catalog, usage controls and settings; no fabricated readiness, inference on render, provider login or private-vault access. Root and existing integration owner own backend/default-launch setup and main integration.",
+  "branch": "codex/terra-chatgpt-entry-ui",
+  "base": "4449d8c0a063947d81e1625ed7e81e48c2f6d2fb",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "web/src/App.jsx",
+    "web/src/ChatGPTConnection.jsx",
+    "web/src/useChatGPTConnection.js",
+    "web/src/chatgpt-entry.js",
+    "web/src/Welcome.jsx",
+    "web/src/welcome.css",
+    "web/src/chatgpt-state.js",
+    "web/tests/chatgpt-state.test.mjs",
+    "web/tests/chatgpt-entry.test.mjs",
+    "web/tests/chatgpt-entry-browser.test.mjs",
+    "web/tests/chatgpt-fixture.mjs",
+    "web/tests/tara-browser-alerts.test.mjs",
+    "web/tests/tara-device-location.test.mjs",
+    "web/package.json",
+    "docs/terra/chatgpt-entry-design-qa.md",
+    "design-qa.md",
+    "README.md",
+    "docs/terra/setup-and-hosting.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "4449d8c0a063947d81e1625ed7e81e48c2f6d2fb",
+    "summary": "Finite ChatGPT opening gate implemented from the supplied reference, then tightened after ET requested less whitespace. Final560×450desktop and compact mobile cards accepted by root. One extracted original controller serves entry and settings; exact existing PKCE popup/consent/catalog/model/usage actions retained. Expired source offers only explicit guarded Return to Terra and a fresh document. No simulation menu or backend behavior changed.",
+    "evidence": [
+      "Final compact1325×927,390×844,320×740 captures and normalized combined comparison retained only in ignored shared handoff; root accepted the compact desktop/mobile. Root design-qa.md records five surfaces, intentional compact departure, earlier fixes and limitations.",
+      "Targeted11readiness/recovery tests pass including same-account writer readiness, UNIX-second cooldown, returned-catalog invalidation and guarded expired-source disconnect. Final production build and4packaging tests pass.",
+      "Broader UI suite61pass/3optional native skipped before last focused repair; native skips not counted as passes. Existing browser-alert/device-location tests retain all assertions with explicit eligible ChatGPT/source fixture. New optional native entry regression added.",
+      "Controlled native CUA proof: initial zero writes/inference, real connect route/invalid URL failure, cancel focus return, explicit catalog model PUT, chat entry, single settings dialog/focus return, expired source guarded DELETE and fresh authstatus200. No actual OAuth, inference, permissions, private vault, credential, live process or numerical change.",
+      "README/setup preview wording now describes enabled ChatGPT entry with weather/worker/SMS disabled. design-qa.md registered under the existing UI/documentation domain."
+    ],
+    "uncertainty": "Native test runner was not configured in this slice. Source integrator owns combined backend/CI and genuine connected runtime proof. Local saved status is not a promise of provider availability; first-call failures remain governed by backend recovery.",
+    "next": "Sole source integrator consumes the frozen commit once and reconciles its App wrapper with the owner menu slice; run combined gates. Root/runtime owner supplies final connected proof. Stop only this task fixture and created tabs; preserve ignored evidence."
+  }
+}
+```
+
+## Trusted conversational factual answers
+
+```json
+{
+  "kind": "task",
+  "id": "terra-trusted-factual-answers",
+  "owner": "et",
+  "status": "done",
+  "intent": "Latest direct user requirement: let the existing selected ChatGPT plan author concise supported weather/profile answers from trusted local facts. Preserve local scope, source dates, private profile fields, exact quantities and intent/idempotence; unsupported or invalid generation keeps the truthful local answer. No provider, authentication, numerical or live-runtime changes.",
+  "branch": "codex/terra-trusted-factual-answers",
+  "base": "fb57c2df939c851f4d17c2d4ac131994624690e1",
+  "domains": ["terra-qc-json", "terra-coordination"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/conversation/service.py", "backend/terra_monitoring/conversation/factual_writer.py", "tests/test_terra_conversation_factual_writer.py"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "b5c2f92053061a9a2ca3dcc19ec3b54d4c6548b8",
+    "summary": "Both existing local-answer branches now let the selected plan generator author supported saved-profile and weather prose once. A bounded adapter reuses the weather discrepancy validator and validates other entity/quantity/status roles; private saved values are inserted locally in one pass. Original local_facts, references, clocks, scope and durable request deduplication remain authoritative. Prior simulation branch79cb69a remains preserved.",
+    "evidence": [
+      "48 focused cases PASS in6.97s, including actual guarded runtime API to selected fake generator; profile/temperature/independent variables, source dates, old references, replay, missing facts, privacy, swapped roles, units, polarity, advice, malformed/refused output and one-call retry/restart are covered. No actual inference/provider/acquisition/SMS was used.",
+      "Affected run135PASS with one pre-existing runtime writer test missing its new source header; root repaired that separate fixture in6f7006f. All new adapter and legacy local_facts/weather/weather_variables cases passed. The final48-case run includes additional guarded API, replay and literal private-binding regressions.",
+      "Records/filesystem/scope validation againstfb57c2d PASS with zero errors. New test maps to exactlyterra-qc-json and is in existing conversation-context argv at unchanged120s; no new matrix group. All changed text is UTF-8/LF."
+    ],
+    "uncertainty": "Conservative supported-English validation can return local fallback for unknown wording; absent/unrepresentable facts and missing generator stay local without inference. Provider/model failure is truthful template fallback with no automatic retry. Full combined exact-head gates and integration remain with root.",
+    "next": "Integrate the frozen branch with current main and root fixture/docs updates, review the bounded source contract, then run the single combined15-group gate. Preserve selected provider/model/consent and private runtime."
+  }
+}
+```
+
+## Default preview ChatGPT capability
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chatgpt-entry-runtime",
+  "owner": "et",
+  "status": "done",
+  "intent": "Enable the existing human-initiated ChatGPT connection in the default saved-example launcher while retaining isolated preview state, no weather worker, cleared provider/SMS credentials and an explicit no-ChatGPT diagnostic option.",
+  "branch": "codex/terra-chatgpt-entry-runtime",
+  "base": "1b32644a0e6c8f03618914f51c33fc395c019e81",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "run_terra.py",
+    "tests/test_terra_bootstrap.py",
+    "tests/test_terra_chatgpt_runtime.py",
+    "README.md",
+    "docs/terra/chatgpt-plan.md",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "1b32644a0e6c8f03618914f51c33fc395c019e81",
+    "summary": "Default saved-example launcher now exposes the existing guarded ChatGPT controls, retaining no worker, cleared weather/API-key/SMS credentials and preview-local protected state. Explicit --no-chatgpt intentionally disables controls in either mode without erasing state. Live configuration semantics and runtime factory opt-in stay unchanged.",
+    "evidence": [
+      "23 bootstrap/ChatGPT-runtime tests and 2 subtests pass, including a cold process using the actual generated preview command: guarded GET /api/chatgpt/status returns 200/disconnected, no accounts/model, worker absent and SMS disabled while HTTP transports, OAuth start, model catalog and generation are forbidden.",
+      "Original credential-clearing regression passes. Diagnostic opt-out and doctor wording are covered. git diff --check passes.",
+      "Existing broader runtime group has 50 passing cases and one inherited 403-versus-405 wrong-method guard failure at tests/test_terra_runtime.py::test_guarded_farm_routes_share_validation_and_wrong_method_errors; this lane does not modify runtime routes.",
+      "Official OpenAI open-source SIWC sign-in guidance read: https://developers.openai.com/siwc/token-sharing-open-source/sign-in. No account, vault, OAuth authorization or inference request was performed."
+    ],
+    "uncertainty": "Frontend entry gate is a separate coordinated patch. Existing canonical alert/chill questions use bounded conversational generation, while weather local-facts answers and unavailable-history cases remain deterministic. Full integration checks and inherited route failure belong to the existing sole integration owner.",
+    "next": "Sole integration owner merges this local branch with the frontend gate, reconciles the inherited runtime guard regression and runs the actual-base integration gate; runtime owner alone coordinates any process restart."
+  }
+}
+```
+
+## Receipt and location refinement
+
+```json
+{
+  "kind": "task",
+  "id": "terra-bean-location-polish",
+  "owner": "et",
+  "status": "done",
+  "intent": "Latest direct ET correction: restore a short location message followed by the polished Use my location button; replace the face crop with a full-head transparent Terra cutout peeking above a small rounded bean backing. Incorporate the shared UI into main through the sole integrator.",
+  "branch": "codex/terra-peek-receipt",
+  "base": "96c1bb1",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "web/src/TaraConversation.jsx",
+    "web/src/tara-conversation.css",
+    "web/public/brand/terra-peek-receipt.png",
+    "web/public/brand/terra-peek-receipt.md",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "19ae2510dd871bd96843578349c4118b398a8b36",
+    "summary": "Latest ET correction implemented: native location message restored above the single polished button. Receipt uses a separate rounded bean backing and a transparent full-head Terra derivative with visible overflow/contain; no horizontal face crop. Durable greeting, native setup guards and original approved logo assets preserved. No App/menu/auth/simulation changes.",
+    "evidence": [
+      "Final production build,51UIhelper and4packaging cases pass;2existing optional browser cases skipped. Scoped records/filesystem validation and independent finite review clear.",
+      "Actual isolated8542 browser verified persisted greeting, user message, restored location message, one Use my location action and uncropped peeking character; clean675px viewport. Screenshot C:/Users/mreth/.codex/visualizations/2026/10/24/01a16f75-4321-7d63-b72c-4b0bd9fb7e82/terra-peek-receipt-final.png.",
+      "Built-in imagegen transparent derivative saved as web/public/brand/terra-peek-receipt.png; prompt/provenance in adjacent markdown.1254px RGBA alpha extrema0..255 confirmed using bundled runtime. Original assets unchanged."
+    ],
+    "uncertainty": "Combined main integration and live activation remain with the sole source/runtime owners; no actual location permission, terrain, account or SMS action was used for this visual verification.",
+    "next": "Deliver frozen exact commit/tree to source owner for common main UI. Preserve asset/proof through canonical move and await merged-source confirmation."
+  }
+}
+```
+
+## Grower chat simplification
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chat-simplify",
+  "owner": "et",
+  "status": "done",
+  "intent": "Remove redundant chat header/footer controls, clean composer focus, add a bean-shaped Terra read receipt, and connect Station lab through + with chat fed by simulation instead of live CIMIS. Verify and incorporate into main, as explicitly requested by ET.",
+  "branch": "codex/terra-chat-simplify",
+  "base": "db0a57e",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "web/**",
+    "backend/terra_monitoring/**",
+    "tests/test_terra_full_flow.py",
+    "tests/test_terra_runtime.py",
+    "tests/test_terra_server.py",
+    "run_terra.py",
+    "tests/test_terra_bootstrap.py",
+    "docs/terra/**",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "b746d8b",
+    "summary": "Requested UI and functional simulator connection implemented. Removed redundant farm/setup/writing header and plan/usage footer; green outgoing bubbles retain Grok Bot geometry, single accessible composer focus and bean-cropped existing Terra receipt. + connects browser session to isolated station readings, opens lab and restores live selection on disconnect. Source changes lock chat briefly; setup builds both clients.",
+    "evidence": [
+      "82 runtime/full-flow/demo backend tests pass; 47 UI helper tests and 4 packaging checks pass (2 pre-existing browser tests skipped). Both client production builds pass.",
+      "Actual browser on isolated 8540: saved walnut farm and chat preserved through connect; /stations opened; Support loss generated a new native grower note; disconnect restored original live conversation without simulated notes.",
+      "Independent UI review findings fixed and rechecked: transition lock, stable menu focus and composer focus contrast. Preview .terra-local/ui-qa/chat-preview.png.",
+      "Required terra.py check --base origin/main --task terra-chat-simplify running; final results retained by integration owner."
+    ],
+    "uncertainty": "Live provider inference/SMS not invoked by verification. Simulation is historical, retains isolated journals and requires reconnection after server restart. Required scoped checks and remote CI/main integration pending at this source checkpoint.",
+    "next": "Root completes required checks, merges the reviewed candidate to main and refreshes local main build/runtime while preserving operator journals and account configuration."
+  }
+}
+```
+
 ```json
 {
   "kind": "task",
@@ -269,14 +530,15 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "b952d46945be0044b159f72eda578b8e2cc51034",
-    "summary": "Completed the concise final-submission README on an isolated branch: 607 words versus 1079, clear product capabilities, one-command historical preview, explicit live-weather/ChatGPT/notification setup, controlled replay demonstration, short agent instructions and a four-area code map. Product claims are grounded in current main; all implementation and private state are preserved.",
+    "revision": "e4fa373a8f0e56740512761f948cf64b89c8e756",
+    "summary": "Consumed the concise product-first README and the user-requested italic Made with <3 credit under the title. The canonical candidate retains the integrated native location, multivariable weather, selected chat and current ChatGPT entry instructions; historical source verification remains recorded below.",
     "evidence": [
       "README source commit 011a99757e005f9204ff69024a0661f1a952756a; comparison base 8f028a8320661c4a59344f1e3067e8af2bb79a74.",
       "All 14 relative links resolve. UTF-8/LF, git diff --check and actual run_terra.py --help pass. Read-only independent review found no material correction.",
       "Required terra.py check --base origin/main --task terra-submission-readme passes coordination/filesystem and all 11 configured groups: chatgpt, conversation, demo, farm, full-flow, harness, JSON, pipeline, runtime, setup and SMS.",
       "Reviewed current main source/runbooks plus read-only existing location-onboarding, multivariable and consolidation records. No existing chats messaged; no provider, SMS, runtime, credential or scientific changes.",
-      "Product-first README consumed in canonical candidate, retaining new device-location and weather behavior. No remaining documentation lane work."
+      "Product-first README consumed in canonical candidate, retaining new device-location and weather behavior. No remaining documentation lane work.",
+      "User-requested Made with <3 credit from e4fa373 is included; exact remote branch tip reconciled before final main publication."
     ],
     "uncertainty": "Combined exact-head CI and retained-state activation transfer to the canonical integration and exclusive runtime owners.",
     "next": "Source lane complete; no polling or new parallel work. Recoverable proof is preserved for canonical folder cleanup."
@@ -292,7 +554,7 @@
   "status": "active",
   "intent": "Integrate all approved product functionality into main: selected quiet cube-branded chat with complete messaging, saved evidence and ChatGPT-plan writing; one-button device location with real terrain elevation; Nathan draggable/interpolated Station lab; temperature plus independent humidity/wind/solar and missing-data monitoring through the same live or replay feed. Preserve private runtime and human drafts. Consolidate local work into one TechProjects/Terra folder, retain recoverable historical work, and stop completed chat loops.",
   "branch": "codex/terra-consolidate-main",
-  "base": "db0a57e932c8a3c2dcac957eeec6d15dc0ec2a6b",
+  "base": "a9fe338febf6b420d67d1c6280c4249839c262a0",
   "domains": [
     "terra-coordination",
     "terra-qc-json",
@@ -314,14 +576,16 @@
     "AGENTS.md",
     "config/terra/**",
     "spec.md",
-    "pyproject.toml"
+    "pyproject.toml",
+    "run_terra.py",
+    "design-qa.md"
   ],
   "depends_on": [],
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "a046879f5aa194a7abb6c62b53e104496f026b2c",
-    "summary": "One final candidate now contains quiet UI d390d39/visible Terra labels b8eeea7, addressed alert routing eb7eee1, device c2604e5, all-variable weather/map bridge62cbbd5, Nathan main4fba932, product-first README b952d46 and final demo proof0dba4bd. The single reconciliation preserves location-display/retry semantics together with the plus/input/send capsule and mounted ChatGPT provider; routing retains get/tara/terra and independent weather vocabulary. Final combined verification caught and repaired device setup bypassing the replay factory (db05ebd) and new weather wording using a preset selector. Weather b89198f genuinely authors validated prose for pure/supported mixed facts through one configured generator; referenced weather alerts now retain original station/variable facts at the conversation caller. Nathan db0a57e zoom/adjustable point sensors and the eca1100 open-source docs/license/font patch are now included. Root MIT license and package metadata agree; the selected layout/cube/composer use the existing system font fallback, so the earlier exact-font comparison is historical.",
+    "revision": "1208ee3daf8b05bfbea29bbbb7af17c251acddd0",
+    "summary": "Frozen complete Terra product: selected green-message quiet chat/full-head receipt/native location, compact ChatGPT entry, actual contextual selected-plan conversation and concise proactive notes, minimal +Open simulation with guarded live return, Nathan seasonal chill/charts/latest reading layout9a, native custom sensor temperature and weather alerts flowing into grower chat/evidence with isolation/dedup preserved. All recent UI and feature tips are reconciled into this one main-bound release; final publication/canonical private-state rollout remains with this sole operator.",
     "evidence": [
       "Device owner: all393 conversation cases,30 focused device cases,12 native-browser and51 pure/helper checks; full11-group scoped8f gate passed. Actual App to guarded API to official USGS lookup verified using a public Davis test position; no actual OS permission click or human setup write.",
       "Weather owner62cbbd5: all12 required groups passed against actual main4fba932;127 focused weather cases, both builds and55 UI/packaging checks passed with2 existing optional skips. Actual map spot to shared feed to persisted wind note and grounded question passed; source warnings remain separate.480 bounded real station-hours audited;360 overlapping temperature values are identical.",
@@ -336,10 +600,29 @@
       "Combined browser and guarded API proof verified a real crop message, one location button, public Davis terrain lookup, saved location, separate in-chat notification choice and local saved-profile reply. This exposed the factory mismatch before merge; the final repaired-source smoke and exact-head gates remain required.",
       "Final combined-source production and Station lab builds,51 pure/helper UI cases and8 packaging cases pass;2 existing optional browser cases skipped. All51 demo/full-flow/weather integration cases pass after the final native map merge. Native point sensors are included in both lab and grower data-snapshot fingerprints.",
       "Actual final guarded API flow preserved injected factory mode, real public Davis terrain provenance and usable comparison; map spot query and wind60mph action returned200 and the production feed retained the station note. A transient terrain503 retained clean setup and the same-ID retry succeeded. No native permission, SMS, worker or paid generation was used.",
-      "Hosted Windowsbd gate passed11 groups but the combined412-case conversation command exceeded its legacy60s default at152 completed cases. No assertion failed; full backend andmacOS passed, and local exactbd passedall12. The focused verification repair partitions the identical12 conversation files into three bounded120s checks, with unchanged assertions, backend-matching2-thread limits and15min outer portable job budget. No product code changes."
+      "Hosted Windowsbd gate passed11 groups but the combined412-case conversation command exceeded its legacy60s default at152 completed cases. No assertion failed; full backend andmacOS passed, and local exactbd passedall12. The focused verification repair partitions the identical12 conversation files into three bounded120s checks, with unchanged assertions, backend-matching2-thread limits and15min outer portable job budget. No product code changes.",
+      "Published tree4e13b0a3587ac5b65631598c37d6b7ba790bf3f2 equals checked5b98159; exact-head web/macOS CI passed at publication, other jobs pending. PR17closed as fully included.",
+      "PR19 semantic union builds both interfaces.55 UI helper cases pass with2 existing optional skips, including fixed document-source tests for late callbacks, cross-tab switching, unknown runtime and isolated replay.",
+      "PR19 backend safety79cb69a:8 real ASGI/native store cases pass covering expired and other-runtime cookies, fixed expected source identity, delayed requests, explicit recovery, switching/held and durable onboarding pending locks, provider routing and cube asset.",
+      "Bean/location/greeting96c1bb1 integrated semantically; opening persists transactionally through retry/refresh/profile migration/restart. Actual fresh-clone phrase im growing almonds repaired using existing affirmative crop parser;60 focused crop cases pass with question/negative/future guards.",
+      "Exact5b hosted backend/web/macOS passed. Hosted Windows passed13/14 groups; full-flow16-case group reached12cases then120s limit without assertionfailure. Split same full-flow file into complementary8/8 selections, each original120s limit, with no skipped/removed assertions. Combined gate verifies new15 groups.",
+      "Engine062daf product1e0bcae:147 new core/context/flow/insight/runtime cases,430 legacy conversation cases and35 UI state cases pass. Its broad gate passed15 other groups; one old present-tense mock was corrected and147 cases re-run. No real provider/SMS was used by producer.",
+      "Final pipeline source-header fixture98a8ca1 and latest Nathan interpolation policy06c5605:248 pipeline/weather/estimate/lifecycle/wording/factual cases pass. Policy terra-interpolation-policy-v1 SHA471fbb826c7de14a28bfb8cbe9c00d7b9cce1776571cae0600efff1f8c464236; no training/refit/new dependency.",
+      "Auth770 combined:62 UI helper cases,8 packaging cases and both production builds pass with3 optional native browser tests skipped. Actual isolated enabled/no-account runtime shows compact Sign in with ChatGPT; no account inference on open. Source-recoveryc77 adds confirmed live-selection restoration without draft loss;3 focused cases pass.",
+      "Independent read-only startup/crop/device review:60 crop and30 device cases pass; no frontend almond seed or startup auto-send. Existing human almond sessions remain preserved.",
+      "Cleanup:32 inactive linked checkouts retired with all30 named refs; old4 independent audit copies moved intact under ignored retained-audit folder with1855 files and Git refs/index/status verified. Existing private/public runtimes restored to prior sources while new engine was developed; final move requires a fresh quiesce/capture.",
+      "Combined aa91ead passed all16 configured groups against fcbc7ea, exit0. Repaired combined source is checking against actual Nathan62e3404. Latest UI63 helper and4 packaging cases pass with3 optional native skips; both production builds pass.",
+      "Factual guard repair3fd9090:183 affected cases pass; independent exact4 attack recheck rejects unit swaps, role swaps, invented advice and false receipt while valid46.5F passes. Each controlled case calls once.",
+      "Real selected-plan proof is in progress through the original retained account/model, isolated SIM and no worker. Initial proactive attempt fell back, second completed genuinely; next natural question exposed a potentially overstrict historical qualifier guard and is being replayed locally before any further generation. No new SMS yet. Original human state preserved, genuine errors retained.",
+      "Remote codex/terra-peek-receipt90f50e870901d4d8b0b53bf251ff1b5fef5a61e2 verified20261024; peeking PNG and provenance MD are byte-identical in candidate. Final all-branch tip reconciliation remains part of publication.",
+      "Second combined16-group gate passed against actual main62e3404. Native sensor repair ed669/4d86f8 passes177 affected cases and actual +SIM/map90F/nativechat/Details browser proof, oldevaluate reproduces0notesfailure; merged1208. Fresh install independently passed both builds, doctor7/7,pipcheck at85e; finalone-flow smoke uses1208.",
+      "Generic temporal-boundary repair1e7ca4e passes204 affected cases. Both captured grounded saved-reading responses validate, original4 inventedunit/role/advice/receipt attacks reject, historical comma/colon frames accepted while currentclaims reject. No generic wording whitelist replaced the contextual engine.",
+      "GENUINE selected ChatGPT plan gpt-6-luna proof: proactivealert accepted; final initialreply, contextualfollowup and focusedclarification allchatgpt_plan/completed, with history8/10/12 IDs; exactHTTP retryreturnsstoredreply andGETrefreshnoadditionalgeneration.7 total finite generation triggers:4 accepted,3 earlier truthful fallbacks retained and the observed temporalfalsepositives repaired. Original account/model/consent/pause and all live human rows preserved; tests ran in isolatedSIM/no-worker, no SMS.",
+      "Final remote peek90f latestassets match; user-requested READMEcredit e4fa373 included; Nathan9a ordinarymergedpreservingauthorship. Finalfullconfiguredcheckrunningbeforemainmerge; finalphone occurs once after canonical restart on existingreceiver, simulationexternalSMSdisabled.",
+      "Final actual main a9fe338 refines the already-integrated Nathan9a Expected/Difference layout with his published classes. Explicitly reviewed both small alternatives, retained latest published presentation, preserved source binding/ReturnToLive/charts/sensor bridge. Final gate and publication use actual a9 base."
     ],
-    "uncertainty": "Final configuration-only Windows repair must pass exact-head CI and actualdb0-base scoped groups before merge. Product source and independent fresh-clone acceptance remain unchanged frombd71502; private cutover/archives still require runtime-owner quiesce.",
-    "next": "Run one combined exact-head gate cycle, publish through PR16, then coordinate private/runtime quiesce, consistent backups and canonical TechProjects/Terra migration. Remove verified inactive worktrees and rebuildable copies only after preservation; retain two to three core chats without waiting loops."
+    "uncertainty": "All source and real conversation proof complete; final16-group exactcandidatecheck, mainpublication and canonical folder/private-state cutover remain. One actual phone placeholder test is explicitly authorized after canonical activation, with existing caps/recipient/consent and no retries/new purchase. Original unborn index/data, all human journals, grants, prior receipts and immutable evidence must survive.",
+    "next": "Finish finalconfiguredgate, publish ordinarymerge with checkedtree equality, snapshot/quiesce and move all Terra work into canonical folder, rebuild generated dependencies, verify retained-account/history/current worker, make ONE final phone test, hand off one user acceptance chat and stop completed lanes."
   }
 }
 ```
@@ -473,7 +756,40 @@
 {
   "kind": "check",
   "id": "terra-full-flow-tests",
-  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_full_flow.py", "-q"],
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_full_flow.py",
+    "-k",
+    "native_map_spots or device_setup or production_and_lab or new_native_farm or grower_profile_list or native_conversation_state or spike_flows or test_sensor_changes",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "terra-full-flow-recovery-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "tests/test_terra_full_flow.py",
+    "-k",
+    "not (native_map_spots or device_setup or production_and_lab or new_native_farm or grower_profile_list or native_conversation_state or spike_flows or test_sensor_changes)",
+    "-q"
+  ],
   "timeout": 120
 }
 ```
@@ -689,6 +1005,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "backend/terra_monitoring/**",
     "config/terra/**",
     "docs/terra/**",
+    "design-qa.md",
     "tests/test_terra_json.py",
     "tests/test_terra_demo_simulation.py",
     "tests/test_terra_full_flow.py",
@@ -715,9 +1032,13 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_farm_chill_ops*.py",
     "tests/test_terra_chatgpt*.py",
     "tests/test_terra_conversation*.py",
+    "tests/test_terra_conversation_factual_writer.py",
+    "tests/test_terra_engine*.py",
+    "tests/test_terra_insight_writer.py",
     "run_terra.py",
     "tests/test_terra_bootstrap.py",
-    "tests/test_terra_weather*.py"
+    "tests/test_terra_weather*.py",
+    "tests/test_terra_simulation_connection.py"
   ],
   "depends_on": [],
   "checks": [
@@ -732,8 +1053,10 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "terra-conversation-tests",
     "terra-conversation-crops-tests",
     "terra-conversation-context-tests",
+    "terra-conversational-engine-tests",
     "terra-setup-tests",
-    "terra-weather-tests"
+    "terra-weather-tests",
+    "terra-full-flow-recovery-tests"
   ]
 }
 ```
@@ -1128,6 +1451,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "-o",
     "pythonpath=backend",
     "tests/test_terra_runtime.py",
+    "tests/test_terra_simulation_connection.py",
     "-q"
   ],
   "timeout": 120
@@ -1460,6 +1784,15 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
 ```json
 {
   "kind": "check",
+  "id": "terra-conversational-engine-tests",
+  "argv": ["{python}", "-B", "-m", "pytest", "--noconftest", "-o", "pythonpath=backend", "tests/test_terra_conversation_engine.py", "tests/test_terra_engine_context.py", "tests/test_terra_engine_flow.py", "tests/test_terra_insight_writer.py", "tests/test_terra_conversation_writer_integration.py", "-q"],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "check",
   "id": "terra-conversation-crops-tests",
   "argv": [
     "{python}",
@@ -1497,6 +1830,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_timeline.py",
     "tests/test_terra_conversation_weather.py",
     "tests/test_terra_conversation_writer_integration.py",
+    "tests/test_terra_conversation_factual_writer.py",
     "-q"
   ],
   "timeout": 120

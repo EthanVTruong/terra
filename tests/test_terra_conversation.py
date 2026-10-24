@@ -36,6 +36,26 @@ def setup_farm(service):
     return service.action(request_id="pin", action="location", location=LOCATION)["state"]["orchard_id"]
 
 
+def test_opening_prompt_stays_before_first_message_across_retry_refresh_and_farm_migration(conversation):
+    service, monitor, writer = conversation
+    prompt = service.state()["initial_prompt"]
+    first = service.message(request_id="first-crop", text="walnuts")
+    turns = first["state"]["turns"]
+    assert [(turn["role"], turn["text"]) for turn in turns[:2]] == [("assistant", prompt), ("user", "walnuts")]
+    assert turns[0]["data"]["action"] == "initial_prompt"
+    service.message(request_id="first-crop", text="walnuts")
+    reopened = ConversationService(Monitor(Store(monitor.store.path), writer=writer, clock=lambda: HOUR))
+    assert reopened.state()["turns"][:2] == turns[:2]
+    orchard = reopened.action(request_id="first-location", action="location", location=LOCATION)["state"]["orchard_id"]
+    assert reopened.state(orchard)["turns"][:2] == turns[:2]
+    restarted = reopened.action(request_id="new-setup", action="restart")
+    assert restarted["assistant_turn"]["text"] == prompt
+    assert restarted["state"]["turns"][-1]["data"]["action"] == "initial_prompt"
+    next_crop = reopened.message(request_id="next-crop", text="peaches")
+    assert [turn["text"] for turn in next_crop["state"]["turns"] if turn["data"].get("action") == "initial_prompt"] == [prompt]
+    assert not writer.packets
+
+
 def test_setup_persists_metadata_manual_pin_and_real_pending_state(conversation):
     service, monitor, writer = conversation
     for _ in range(3):

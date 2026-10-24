@@ -1,5 +1,7 @@
 # Terra
 
+*Made with <3*
+
 **A local-first assistant for orchard weather, winter chill, and the data behind them.**
 
 Tell Terra what you grow and where. It checks nearby weather stations, estimates temperature at your orchard, and keeps a quiet inbox of meaningful updates. Ask follow-up questions, inspect the evidence, or receive selected notes by SMS.
@@ -27,9 +29,11 @@ Open **http://127.0.0.1:8512**. Use `python3` if needed. Stop with Ctrl+C.
 
 The launcher creates `.venv`, installs pinned dependencies, builds the interface, and serves the UI and API. First setup needs internet; no API key, database server, or model training is needed.
 
-**Default preview:** saved historical assessments and controlled examples, with live weather, the worker, ChatGPT, and SMS disabled. State stays in `.terra-local/preview`.
+**Default preview:** saved historical assessments and controlled examples, with live weather, the worker, and SMS disabled. The opening screen offers **Sign in with ChatGPT**. Use your eligible account and explicitly select a returned model if one is not already saved. Sign-in starts only when you choose it; opening Terra alone makes no model request. Preview history and its separate protected ChatGPT connection stay in `.terra-local/preview`.
 
-Enter your crops, select **Use my location**, and approve the browser request. Terra looks up ground elevation and selects nearby eligible stations. Approving device location authorizes the one-button setup; manual coordinates and elevation remain available if device location or the terrain lookup is unavailable. Choose notifications separately.
+Use `python run_terra.py --no-chatgpt` for a diagnostic session with ChatGPT controls unavailable. This does not sign out or erase an existing connection.
+
+Enter your crops, select **Use my location**, and approve the browser request. Terra looks up ground elevation and selects nearby eligible stations. Approving device location authorizes the one-button setup. If permission or the terrain lookup fails, the saved draft is retained and you can retry the same location request. Choose notifications separately.
 
 Troubleshoot with `python run_terra.py --doctor`; choose another port with `--port 8520`.
 
@@ -43,7 +47,7 @@ python run_terra.py --live --env-file /absolute/path/to/cimis.env
 
 Windows paths such as `C:/private/cimis.env` also work. Set up your crops and farm location in the app. Live monitoring checks every five minutes. Preserve `.terra-local/runtime` across restarts and keep the process and computer running.
 
-- **ChatGPT:** connect your eligible plan and select a model in the app. [Connection guide](docs/terra/chatgpt-plan.md).
+- **ChatGPT:** the opening screen uses your own eligible plan and explicit model selection. The account control retains usage, reconnection and sign-out settings. [Connection guide](docs/terra/chatgpt-plan.md).
 - **Notifications:** browser alerts work while Terra is open. SMS requires Twilio setup and orchard opt-in; add `--sms-env-file /absolute/path/to/twilio.env`. Trial-template mode sends a generic placeholder. [Phone setup](docs/terra/twilio-sms.md).
 - **Operations:** [state, background operation, and shutdown](docs/terra/local-runtime.md). Add `--no-worker` in live mode for on-demand queries only.
 

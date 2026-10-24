@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, reconcilableTaraRequests, restoreTaraOperation, taraDisplayText, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
+import { bindTaraOperationSource, createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, reconcilableTaraRequests, restoreTaraOperation, taraDisplayText, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
 
 const turn = (extra = {}) => ({ id: "turn-1", role: "user", kind: "text", text: "Thanks", created_at: "2026-10-24T16:00:00Z", reply_to: null, reactions: [], delivery: "local_saved", ...extra });
 const snapshot = (extra = {}) => ({ schema_version: "terra-conversation-v1", setup: { stage: "complete", crops: ["almond"], orchard_id: "farm-1" }, orchard_id: "farm-1", orchards: [{ id: "farm-1", name: "West Orchard" }], turns: [], monitoring: { status: "pending" }, notifications: { enabled: false, capability: "browser_open" }, pending_requests: [], ...extra });
@@ -51,6 +51,39 @@ test("restored or retried operations preserve request identity and exact payload
   assert.equal(taraError({ error: { code: "request_in_progress" } }, 409).inProgress, true);
   assert.equal(taraError({ error: { code: "request_already_completed" } }, 409).alreadyCompleted, true);
   assert.equal(restoreTaraOperation({ ...operation, status: "result_available" }).status, "result_available");
+});
+
+test("a persisted operation keeps its original source even when reloaded before the rejected reply", () => {
+  const live = { context: "live-A", kind: "live" }, replay = { context: "sim-B", kind: "simulation" };
+  const operations = [
+    createTaraOperation("message", { text: "How much chill?", orchard_id: "farm-1" }, "source-message"),
+    createTaraOperation("setup", { action: "device_location", device_location: { lat: 38.6, lon: -121.84, accuracy_m: 8 } }, "source-location"),
+    createTaraOperation("reconcile", { target_request_id: "prior-request", confirm_uncertain: true, orchard_id: "farm-1" }, "source-recovery"),
+  ];
+  for (const operation of operations) {
+    const saved = JSON.stringify(bindTaraOperationSource(operation, live));
+    const restored = restoreTaraOperation(JSON.parse(saved));
+    assert.equal(restored.sourceContext, "live-A");
+    assert.deepEqual(bindTaraOperationSource(restored, live).body, operation.body);
+    for (const changed of [replay, { context: "live-after-restart", kind: "live" }]) {
+      assert.throws(() => bindTaraOperationSource(restored, changed), (error) => error.rejected === true && error.sourceChanged === true);
+      assert.equal(restored.sourceContext, "live-A");
+    }
+  }
+});
+
+test("legacy pending operations can resume only in confirmed live or standalone state", () => {
+  const operation = createTaraOperation("message", { text: "My saved draft", orchard_id: "farm-1" }, "legacy-request");
+  const restored = restoreTaraOperation(JSON.parse(JSON.stringify(operation)));
+  for (const source of [{ context: "live-A", kind: "live" }, { context: "standalone-replay", kind: "isolated" }]) {
+    assert.equal(bindTaraOperationSource(restored, source).sourceContext, source.context);
+  }
+  for (const source of [{ context: "sim-B", kind: "simulation" }, { context: "expired", kind: "expired" }, { kind: "unconfirmed" }]) {
+    assert.throws(() => bindTaraOperationSource(restored, source), (error) => error.rejected === true && error.sourceChanged === true);
+  }
+  // A new explicit user operation may start in a confirmed simulator.
+  assert.equal(bindTaraOperationSource(operation, { context: "sim-B", kind: "simulation" }).sourceContext, "sim-B");
+  assert.equal(restoreTaraOperation({ ...operation, sourceContext: null }), null);
 });
 
 test("message outcomes require the actual persisted assistant reply", () => {

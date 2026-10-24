@@ -1,3 +1,4 @@
+import { sourceFetch as fetch } from "./source-fetch";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { clockTime, dayLabel, displayNoteText, localDay, publicationTime, timestamp } from "./presentation";
@@ -72,10 +73,9 @@ export function FarmNote({ message, orchard, onDetails, selectedMessage, details
 
 export function FarmAvailability({ farm }) {
   const monitor = farm.feed?.monitor;
-  const mode = monitor?.orchard?.mode || farm.orchard?.mode;
   return <>
     {farm.error && <div className="load-error" role="status"><p>{farm.error}</p><button onClick={farm.refresh}>Retry updates</button></div>}
-    {mode && mode !== "current" ? <div className="availability-status" role="status"><strong>Replay only</strong><span>These saved readings don’t describe current conditions.</span></div> : monitor && (!monitor.comparison_available || monitor.source_error) && <div className="availability-status" role="status"><strong>Weather support unavailable</strong><span>{monitor.data_through ? `Last reading · ${timestamp(monitor.data_through)}` : "Waiting for usable station readings."}</span></div>}
+    {monitor && (!monitor.comparison_available || monitor.source_error) && <div className="availability-status" role="status"><strong>Weather support unavailable</strong><span>{monitor.data_through ? `Last reading · ${timestamp(monitor.data_through)}` : "Waiting for usable station readings."}</span></div>}
   </>;
 }
 

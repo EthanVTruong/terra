@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
+import { eligibleChatGPTFixture } from "./chatgpt-fixture.mjs";
 
 // Run against this checkout's dev server; browser dependencies stay optional.
 // TERRA_BROWSER_URL=http://127.0.0.1:8519
@@ -40,6 +41,8 @@ test("enabling browser alerts excludes a delayed pre-consent note and alerts onc
     const monitor = { orchard: profile, comparison_available: false, source_error: null, worker: { heartbeat_status: "fresh" } };
     await page.route("**/api/**", async (route) => {
       const request = route.request(), path = new URL(request.url()).pathname;
+      const connection = eligibleChatGPTFixture(path);
+      if (connection) return route.fulfill({ json: connection });
       assert.equal(request.method(), "GET", "Opening and refreshing the feed must not mutate state");
       if (path === "/api/tara/conversation") return route.fulfill({ json: snapshot });
       if (path === "/api/orchards") return route.fulfill({ json: { orchards: [profile] } });
@@ -109,6 +112,8 @@ test("an existing completed farm can request explicit browser consent and retain
     const setupPosts = [];
     await page.route("**/api/**", async (route) => {
       const request = route.request(), path = new URL(request.url()).pathname;
+      const connection = eligibleChatGPTFixture(path);
+      if (connection) return route.fulfill({ json: connection });
       if (request.method() === "POST" && path === "/api/tara/messages") {
         const body = request.postDataJSON();
         assert.equal(body.orchard_id, profile.id);

@@ -1,6 +1,18 @@
 .tara-compose-row{display:flex;align-items:flex-end;gap:8px;min-width:0}
 .tara-compose-row>.tara-compose-area{flex:1;min-width:0}
 .tara-compose-row>.icon-button{margin-bottom:7px;flex-shrink:0}
-.tara-plan-status{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:8px 4px 0;color:var(--muted);font-size:11px;line-height:17px}
-.tara-plan-status a,.tara-plan-status button{font-size:11px;line-height:17px}
 .tara-view-return{margin-top:9px}
+.simulation-open{margin-top:0;text-decoration:none;color:#3c4737}
+.simulation-open>span:first-of-type{flex:1}
+.simulation-description{margin:2px 8px 10px;color:#737373;font-size:11px;line-height:17px}
+.simulation-disconnect{margin:3px 8px 7px}
+.simulation-dot{width:6px;height:6px;border-radius:50%;background:#718765}
+.source-advanced{border-top:1px solid var(--line);padding-top:4px}
+.source-advanced>summary{padding:9px 8px;cursor:pointer;font-size:12px;color:#737373;list-style:none;border-radius:7px}
+.source-advanced>summary::-webkit-details-marker{display:none}
+.source-advanced>summary:hover{background:#f1f1f1;color:#444}
+.source-advanced[open]>summary{margin-bottom:8px;color:#444}
+.source-new-farm{margin:7px 8px 0}
+
+.simulation-menu{max-width:300px;padding:7px}
+.simulation-menu .simulation-open{margin:0}

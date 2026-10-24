@@ -31,22 +31,26 @@ save no location profile. Existing regional peer selection, QC and coverage
 requirements remain authoritative and can leave monitoring unavailable.
 The legacy explicit-location API remains compatible for existing callers.
 
-## Local decisions before model use
+## Contextual conversation and local authority
 
-The application chooses message, attached reaction, or silence before inference.
-Simple thanks gets no reply. Acknowledgments and clearly unrelated requests get
-an attached thumbs-up. New or ambiguous subjects receive a local clarification.
-Mixed input retains a supported farm question and discards unrelated clauses.
-The legacy orchard-question route applies the same scope boundary.
+The normal ChatGPT-enabled runtime uses the selected model as its
+[conversation engine](conversational-engine.md). It receives the current grower
+message, bounded recent same-farm dialogue and authoritative Python facts, then
+chooses a concise answer, necessary focused clarification, attached reaction or
+silence. Ordinary questions and unfamiliar phrasing reach this engine without
+the earlier local vocabulary gate. Explicit app actions retain their local
+executor and permission checks; the legacy/offline route keeps its bounded router.
 
 Saved crop/location/preferences, monitor status, the supported chill-method FAQ,
-and comparable historical gap arithmetic are answered locally. Unavailable totals
-also stay local. A gap requires actual matching method, cutoff, adequate coverage
+and weather facts are computed locally. The engine can explain those facts and
+their implications, including unknown or unsupported states. Coordinates, raw
+station arrays and credential-like strings are excluded from assembled context.
+Comparable historical gap arithmetic remains Python-owned. A gap requires actual matching method, cutoff, adequate coverage
 and enough reference seasons; fixture values such as 180/220 are never defaults.
 Old comparisons retain their year and completed-season meaning.
 
 Humidity, wind speed and solar radiation questions use the saved assessment's
-versioned `weather` section locally, with station IDs, %, mph or W/m² and the
+versioned `weather` section as their factual source, with station IDs, %, mph or W/m² and the
 observation time. These are station observations; the temperature estimator does
 not supply orchard estimates for these variables. Numerical discrepancies use
 explicitly provisional station-to-neighbor rules. Missing readings, source QC
@@ -55,10 +59,10 @@ solar reading remains zero; low daylight withholds the solar comparison.
 Replies to old weather notes retain their immutable assessment after new
 measurements arrive. Historical humidity/wind/solar comparisons remain unavailable.
 
-Eligible fact explanations reuse Terra's selected ChatGPT plan connection and
-explicit consent. The model receives bounded facts and canonical intent, without
-the raw conversation. Its prose must pass the existing quantity/role validator;
-failure uses a grounded fallback without an automatic model retry. Interactive
+Fact explanations reuse Terra's selected ChatGPT plan connection and explicit
+consent. Current messages and recent same-farm conversation are separate from
+cited authoritative facts. Quantities use application-owned bindings and output
+validation; failure uses a grounded local fallback without a second model request. Interactive
 questions never silently switch to API-key billing. Seasonal totals retain useful
 source dates; exact timestamps and immutable inputs remain under Details.
 
@@ -84,7 +88,7 @@ calibration, ingestion run, SMS activation, or closed-app push service is added.
 The product and assistant are named Terra. Legacy `tara` route, storage and file
 identifiers remain compatibility keys so saved conversations and clients keep working.
 
-Verification includes local routing and call counts, actual runtime/provider
+Earlier verification included local routing and call counts, actual runtime/provider
 assembly, strict factual fallback, saved setup, retries/concurrency, real process
 exit, browser permissions and browser delivery semantics. Windows Edge testing
 verified actual onboarding, attached reactions, silence, quiet reopening, a
@@ -95,4 +99,24 @@ account used Terra's already approved connection; no Codex credential is reused.
 The first live unavailable-total attempt completed at the provider but failed
 the factual wording validator. The final path answers that absence locally with
 zero generator calls; the separate eligible weather reply passed validation.
-Runtime deployment evidence and final CI belong to the integration handoff.
+These receipts predate the contextual-engine change. Its controlled tests and
+required genuine multi-turn proof are documented separately in the engine guide;
+final runtime deployment evidence and CI belong to the integration handoff.
+
+## Current product interface
+
+The common interface starts with Terra's ChatGPT sign-in screen and reuses the
+existing connection, consent, model selection and usage controls. Onboarding
+keeps the opening greeting in order, follows the crop reply with a short location
+message and one **Use my location** button, then saves the explicit alert choice.
+The quiet chat uses green outgoing bubbles, the full-head Terra receipt and one
+plus/input/send capsule. The plus menu contains **Open simulation**, which
+connects the isolated Station lab feed and opens its controls. Station lab can
+return to the original live chat. Saved assessments are absent from this main
+flow; exact JSON, source modes, dates and evidence remain available on demand.
+Persistent replay labels are omitted from the chat chrome. Source-bound requests,
+private journals and disabled real SMS in simulation retain their safeguards.
+
+`main` is the shared product implementation. Use the normal launcher and
+`python terra.py brief` from the canonical `TechProjects/Terra` folder; do not
+reintroduce older prototype interfaces or sibling working folders.

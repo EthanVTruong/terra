@@ -28,7 +28,7 @@ class BootstrapTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="terra setup ") as folder:
             root = Path(folder)
             output = io.StringIO()
-            with patch.object(bootstrap, "prerequisites", return_value=PREREQUISITES), \
+            with patch.object(bootstrap, "prerequisites", return_value=(list(PREREQUISITES[0]), PREREQUISITES[1])), \
                     patch.object(bootstrap, "port_available", return_value=True), \
                     patch.object(bootstrap, "prepare") as prepare, redirect_stdout(output):
                 result = bootstrap.main(["--doctor"], root=root)
@@ -37,6 +37,7 @@ class BootstrapTests(unittest.TestCase):
             prepare.assert_not_called()
             self.assertIn("Runtime dependencies", output.getvalue())
             self.assertIn("Web build", output.getvalue())
+            self.assertIn("sign-in is available", output.getvalue())
 
     def test_preview_overrides_inherited_and_legacy_dotenv_credentials(self):
         with tempfile.TemporaryDirectory(prefix="terra preview ") as folder:
@@ -66,16 +67,77 @@ print(json.dumps([bool(os.getenv('CIMIS_APP_KEY')), bool(os.getenv('OPENAI_API_K
             self.assertEqual(json.loads(result.stdout), [False, False, False, False, False,
                                                         str((state / "sms.sqlite3").resolve()), ""])
 
-    def test_preview_runtime_has_no_worker_or_chatgpt_and_uses_absolute_paths(self):
+    def test_preview_runtime_enables_chatgpt_without_worker_and_uses_absolute_paths(self):
         root = Path(tempfile.gettempdir()).resolve() / "terra checkout with spaces"
         state = root / ".terra-local/preview"
-        args = SimpleNamespace(live=False, port=18520)
+        args = SimpleNamespace(live=False, port=18520, no_chatgpt=False)
         command = bootstrap.runtime_command(root, args, state)
         self.assertIn("--no-worker", command)
-        self.assertIn("--no-chatgpt", command)
+        self.assertNotIn("--no-chatgpt", command)
         self.assertEqual(command[0], str(bootstrap.python_path(root)))
         self.assertEqual(command[command.index("--web-root") + 1], str(root / "web/dist/client"))
         self.assertEqual(command[command.index("--state-dir") + 1], str(state))
+
+    def test_preview_no_chatgpt_is_an_explicit_diagnostic_option(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            output = io.StringIO()
+            with patch.object(bootstrap, "prerequisites", return_value=PREREQUISITES), \
+                    patch.object(bootstrap, "port_available", return_value=True), \
+                    patch.object(bootstrap, "prepare"), \
+                    patch.object(bootstrap.subprocess, "call", return_value=0) as launch, redirect_stdout(output):
+                result = bootstrap.main(["--no-chatgpt"], root=root)
+            self.assertEqual(result, 0)
+            self.assertIn("--no-chatgpt", launch.call_args.args[0])
+            self.assertIn("--no-worker", launch.call_args.args[0])
+            self.assertIn("disabled by --no-chatgpt", output.getvalue())
+            self.assertEqual(list(root.iterdir()), [])
+
+    def test_actual_preview_command_has_blank_local_chatgpt_status_without_external_work(self):
+        code = """
+import json, sys
+from unittest.mock import patch
+from fastapi.testclient import TestClient
+from terra_monitoring import runtime
+
+def forbidden(*args, **kwargs):
+    raise AssertionError('Preview startup/status attempted external work or authorization')
+
+def inspect(app, **kwargs):
+    origin = 'http://127.0.0.1:18520'
+    with TestClient(app, base_url=origin) as client:
+        sms = client.get('/api/sms/status').json()
+        headers = {'Origin': origin, 'X-Terra-SMS-Control': sms['control_token']}
+        response = client.get('/api/chatgpt/status', headers=headers)
+        status = response.json()
+        assert app.state.runtime_worker_thread is None
+        assert not sms['enabled'] and not sms['demo_enabled']
+        assert any(getattr(route, 'path', None) == '/api/chatgpt/connect' for route in app.routes)
+        assert app.state.chatgpt_auth._server is None
+        print(json.dumps({'http_status': response.status_code, 'state': status['state'],
+                          'plan_enabled': status['plan_enabled'], 'accounts': status['accounts'],
+                          'model': status['writer']['selected_model'],
+                          'auth_path': str(app.state.runtime_state_dir / 'chatgpt')}))
+
+with patch('httpx.HTTPTransport.handle_request', forbidden), \\
+     patch('httpx.AsyncHTTPTransport.handle_async_request', forbidden), \\
+     patch('socket.create_connection', forbidden), \\
+     patch('terra_monitoring.chatgpt.auth.AuthManager.start', forbidden), \\
+     patch('terra_monitoring.chatgpt.provider.ChatGPTPlanClient.models', forbidden), \\
+     patch('terra_monitoring.chatgpt.provider.ChatGPTPlanClient.generate', forbidden), \\
+     patch('uvicorn.run', inspect):
+    runtime.main(sys.argv[1:])
+"""
+        with tempfile.TemporaryDirectory(prefix="terra fresh ChatGPT ") as folder:
+            state = Path(folder) / "preview"
+            command = bootstrap.runtime_command(REPO, SimpleNamespace(live=False, port=18520, no_chatgpt=False), state)
+            env = bootstrap.runtime_environment(REPO, state, live=False)
+            result = subprocess.run([sys.executable, "-c", code, *command[3:]], cwd=REPO, env=env,
+                                    capture_output=True, text=True, timeout=30, check=True)
+            self.assertEqual(json.loads(result.stdout), {
+                "http_status": 200, "state": "disconnected", "plan_enabled": False,
+                "accounts": [], "model": None, "auth_path": str(state / "chatgpt")})
+            self.assertTrue((state / "chatgpt").is_dir())
 
     def test_live_launch_preserves_operator_environment_and_passes_explicit_files(self):
         root = REPO
@@ -129,18 +191,21 @@ print(json.dumps([bool(os.getenv('CIMIS_APP_KEY')), bool(os.getenv('OPENAI_API_K
             self.assertIn("configuration file is unavailable", output.getvalue())
 
     def test_source_change_invalidates_cached_web_build(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            for name in ("package.json", "pnpm-lock.yaml", "index.html", "vite.config.mjs",
-                         "src/main.jsx", "public/assessments/example.json", "dist/client/index.html"):
-                path = root / "web" / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("initial", encoding="utf-8")
-            stamp = root / "web/dist/.terra-inputs.sha256"
-            stamp.write_text(bootstrap.web_fingerprint(root), encoding="utf-8")
-            self.assertTrue(bootstrap.web_ready(root))
-            (root / "web/public/assessments/example.json").write_text("new evidence", encoding="utf-8")
-            self.assertFalse(bootstrap.web_ready(root))
+        for client in ("web", "web/demo"):
+            with self.subTest(client=client), tempfile.TemporaryDirectory() as folder:
+                self.check_build_cache(Path(folder), client)
+
+    def check_build_cache(self, root, client):
+        for name in ("package.json", "pnpm-lock.yaml", "index.html", "vite.config.mjs",
+                     "src/main.jsx", "public/assessments/example.json", "dist/client/index.html"):
+            path = root / client / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("initial", encoding="utf-8")
+        stamp = root / client / "dist/.terra-inputs.sha256"
+        stamp.write_text(bootstrap.web_fingerprint(root, client), encoding="utf-8")
+        self.assertTrue(bootstrap.web_ready(root, client))
+        (root / client / "public/assessments/example.json").write_text("new evidence", encoding="utf-8")
+        self.assertFalse(bootstrap.web_ready(root, client))
 
 
 if __name__ == "__main__":

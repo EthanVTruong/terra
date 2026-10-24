@@ -15,6 +15,10 @@ _FACT_CONTEXTS = WEATHER_INTENTS
 
 def _weather_context(data):
     facts = data.get("local_facts", {})
+    if data.get("intent") == "conversation":
+        return {"weather_reference": bool(data.get("evidence_ids")),
+                "weather_evidence_ids": data.get("evidence_ids", []),
+                "temperature_evidence_id": data.get("temperature_evidence_id")}
     return {"weather_reference": data.get("intent") in _FACT_CONTEXTS - {"weather_history_unavailable"},
             "weather_evidence_ids": [facts["evidence_id"]] if facts.get("evidence_id") else [],
             "temperature_evidence_id": facts.get("temperature_evidence_id")}
@@ -151,7 +155,8 @@ class ConversationService:
                 if row["thread"] != (orchard_id or "onboarding"):
                     raise ValueError("The referenced message belongs to another farm")
                 data = json.loads(row["payload"]).get("data", {})
-                context, event_ids = data.get("intent"), data.get("source_event_ids", [])
+                context = data.get("focus") if data.get("intent") == "conversation" else data.get("intent")
+                event_ids = data.get("source_event_ids", [])
                 weather = _weather_context(data)
             else:
                 note = self.store.message(reply_to)
@@ -170,8 +175,8 @@ class ConversationService:
                 if turn.get("role") == "assistant":
                     assistant = turn
                     intent = turn.get("data", {}).get("intent")
-                    context = intent if intent in QUESTIONS or intent in LOCAL_INTENTS or intent in _FACT_CONTEXTS else "farm"
-                    event_ids = turn.get("data", {}).get("source_event_ids", []) if intent in QUESTIONS else []
+                    context = (turn.get("data", {}).get("focus") or "farm") if intent == "conversation" else intent if intent in QUESTIONS or intent in LOCAL_INTENTS or intent in _FACT_CONTEXTS else "farm"
+                    event_ids = turn.get("data", {}).get("source_event_ids", []) if intent in QUESTIONS or intent == "conversation" else []
                     weather = _weather_context(turn.get("data", {}))
                     break
             # Match the latest visible proactive note when actual publication
@@ -229,6 +234,10 @@ class ConversationService:
             db.execute("INSERT INTO tara_requests(id,thread,signature,created,status,payload,owner) VALUES(?,?,?,?,?,NULL,?)",
                        (request_id, thread, signature, now, "pending", encoded(self.owner) if self.owner else None))
             if user_text is not None:
+                if thread == "onboarding" and not db.execute("SELECT 1 FROM tara_turns WHERE thread=?", (thread,)).fetchone():
+                    opening = self._turn(request_id + ":opening", "assistant", PROMPT, now,
+                                         data={"action": "initial_prompt"})
+                    self._put(db, thread, opening)
                 user = self._turn(request_id + ":user", "user", user_text, now, reply_to=reply_to)
                 self._put(db, thread, user)
         active(self.store.path, request_id, True)
@@ -265,7 +274,7 @@ class ConversationService:
         turn["published_at"] = utc().isoformat()
         db.execute("INSERT OR IGNORE INTO tara_turns VALUES(?,?,?,?)", (turn["id"], thread, turn["created_at"], encoded(turn)))
 
-    def _finish(self, request_id, thread, user, *, text=None, reaction=False, event=None, data=None, setup=None, preference=None, migrate=None):
+    def _finish(self, request_id, thread, user, *, text=None, reaction=False, event=None, data=None, setup=None, preference=None, migrate=None, decision=None):
         now = utc(self.monitor.clock()).isoformat()
         assistant = self._turn(request_id + ":assistant", "assistant", text, now, data=data) if text else None
         attached = {"emoji": "👍", "target_id": user["id"]} if reaction and user else None
@@ -290,6 +299,8 @@ class ConversationService:
                 thread = migrate
             core = {"request_id": request_id, "outcome": "message" if assistant else "reaction" if attached else "none",
                     "user_turn": user, "assistant_turn": assistant, "reaction": attached, "event": event, "orchard_id": None if thread == "onboarding" else thread}
+            if decision is not None:
+                core["decision"] = decision
             db.execute("UPDATE tara_requests SET status='complete',payload=? WHERE id=?", (encoded(core), request_id))
         active(self.store.path, request_id, False)
         return {**core, "state": self.state(core["orchard_id"])}
@@ -342,6 +353,83 @@ class ConversationService:
                            (request_id, thread, fingerprint(body), now, "complete", encoded(core), encoded(self.owner) if self.owner else None))
         return {**core, "state": self.state(core["orchard_id"])}
 
+    def _engine_fallback(self, *, selected, setup, supplied, intent, context, weather_reply):
+        """Retain useful local facts after one failed plan attempt; never retry it."""
+        if not selected:
+            if supplied or setup["stage"] == "location":
+                return "Share your location so I can find the weather data for your farm."
+            return "What are you growing?"
+        if intent in LOCAL_INTENTS:
+            from .local_facts import profile_answer
+            return profile_answer(intent, self.state(selected))[0]
+        if weather_reply is not None:
+            return weather_reply[0]
+        if intent in {"history", "history_gap"}:
+            from .local_facts import gap_answer
+            return gap_answer(self.monitor.status(selected)["summary"])[0]
+        if intent == "chill_total":
+            from ..farm_ops.service import _event, _facts
+            from ..farm_ops.writer import message_input
+            from ..farm_ops.conversational_writer import compact_text
+            from ..farm_ops.writer import Writer
+            status = self.monitor.status(selected)
+            profile = self.store.orchard(selected)
+            event = _event(profile, "chill_total", "answer", "info", self.monitor.clock(),
+                           _facts(status["summary"]), "local-conversation-fallback")
+            packet = message_input(profile, [event], self.monitor.clock(),
+                                   question={"intent": "chill_total", "text": QUESTIONS["chill_total"]})
+            return compact_text(packet, Writer(key="", model="").write(packet)["text"])
+        events = self.store.events_by_ids(selected, context.get("event_ids", []))
+        if events:
+            from ..farm_ops.service import _explanation
+            return " ".join(dict.fromkeys(_explanation(event) for event in events[:3]))
+        return "ChatGPT couldn't finish that reply. Your saved readings are available in Details; try the connection again."
+
+    def _engine_reply(self, *, finish, packet, selected, setup, supplied, intent, context, weather_reply, setup_update, crop_candidate=None):
+        from .engine import EngineUnavailable, respond
+        try:
+            result = respond(self.monitor.writer.generator, packet)
+        except EngineUnavailable:
+            try:
+                answer = self._engine_fallback(selected=selected, setup=setup, supplied=supplied,
+                    intent=intent, context=context, weather_reply=weather_reply)
+            except Exception:
+                # Finish the reserved turn even when a local renderer cannot
+                # describe an unfamiliar event. Never retry an uncertain call.
+                answer = "ChatGPT couldn't finish that reply. Your saved conversation is retained; check the connection before asking again."
+            data = {"intent": "conversation", "focus": context.get("intent"),
+                    "generation": "template", "generation_outcome": "engine_unavailable",
+                    "source_event_ids": context.get("event_ids", [])}
+            if not selected and (supplied or setup["stage"] == "location"):
+                data["action"] = "location_choice"
+            return finish(text=answer, data=data, setup=setup_update,
+                          decision={"generation": "template", "generation_outcome": "engine_unavailable"})
+        if (not selected and setup["stage"] == "crop" and supplied is None and crop_candidate
+                and result["outcome"] in {"message", "clarify"} and result["focus"] == "location"):
+            # The model interpreted a bare, unfamiliar crop answer in context.
+            # The existing profile validator still owns what can be persisted.
+            from ..farm_ops.service import orchard_profile
+            orchard_profile(crops=crop_candidate["crops"], variety=crop_candidate.get("variety"),
+                            crop_description=crop_candidate.get("crop_description"))
+            supplied = crop_candidate
+            setup_update = {**setup, **crop_candidate, "stage": "location"}
+        cited = [fact for fact in packet["facts"] if fact["id"] in result["fact_ids"]]
+        event_ids = list(dict.fromkeys(identifier for fact in cited for identifier in fact.get("event_ids", [])))
+        evidence_ids = list(dict.fromkeys(fact["evidence_id"] for fact in cited if fact.get("evidence_id")))
+        data = {"intent": "conversation", "focus": result["focus"], "fact_ids": result["fact_ids"],
+                "source_facts": cited, "source_event_ids": event_ids, "evidence_ids": evidence_ids,
+                "history_ids": [turn["id"] for turn in packet["history"]],
+                "generation": result["provider"], "generation_outcome": result["generation_outcome"],
+                "response_kind": result["outcome"]}
+        if not selected and (supplied or setup["stage"] == "location"):
+            data["action"] = "location_choice"
+        elif setup["stage"] == "notifications":
+            data["action"] = "notification_choice"
+        return finish(text=result["text"] if result["outcome"] in {"message", "clarify"} else None,
+                      reaction=result["outcome"] == "reaction", data=data, setup=setup_update,
+                      decision={"generation": result["provider"], "generation_outcome": result["generation_outcome"],
+                                "response_kind": result["outcome"], "fact_ids": result["fact_ids"], "focus": result["focus"]})
+
     def message(self, *, request_id, text, orchard_id=None, reply_to=None):
         if not isinstance(text, str) or not text.strip() or len(text) > 1000 or any(ord(c) < 32 and c not in "\n\t" for c in text):
             raise ValueError("Provide a short message")
@@ -366,6 +454,28 @@ class ConversationService:
             if supplied:
                 from ..farm_ops.service import orchard_profile
                 orchard_profile(crops=supplied["crops"], variety=supplied.get("variety"), crop_description=supplied.get("crop_description"))
+        # Local actions retain their existing executor and permission checks.
+        # Every other connected conversational message goes to the model with
+        # the actual question/history, without the legacy vocabulary gate.
+        local_actions = {"notifications_off", "sms_off", "preference_unchanged", "notifications_choice", "notification_status", "correction"}
+        engine_enabled = bool(getattr(self.monitor.writer, "conversation_engine", False)
+                              and getattr(self.monitor.writer, "generator", None) is not None)
+        setup_update = {**setup, **supplied, "stage": "location"} if supplied else None
+        crop_candidate = None
+        engine_packet = None
+        if engine_enabled and intent not in local_actions:
+            from .context import context_packet
+            if (not selected and setup["stage"] == "crop" and supplied is None
+                    and intent not in {"thanks", "ack"}
+                    and text.strip().lower().rstrip(".!") not in {"hey", "hi", "hello", "good morning", "good afternoon"}):
+                try:
+                    crop_candidate = crops_from("I grow " + text.strip())
+                except ValueError:
+                    crop_candidate = None
+            engine_packet = context_packet(self, text=text.strip(), selected=selected, context=context,
+                                           reply_to=reply_to, setup_override=setup_update)
+            if crop_candidate:
+                engine_packet["capabilities"]["unconfirmed_crop_candidate"] = crop_candidate["crops"]
         previous, user = self._reserve(request_id, selected or "onboarding", body, text.strip(), reply_to)
         if previous:
             return {**previous, "state": self.state(previous["orchard_id"])}
@@ -389,14 +499,21 @@ class ConversationService:
             return finish(text="Notification preferences only change when you explicitly ask or save a choice.")
         if intent == "correction":
             return finish(text="Let's correct the farm profile. Start a new setup to save different crops or a location.", data={"action": "restart_setup"})
+        if engine_packet is not None:
+            return self._engine_reply(finish=finish, packet=engine_packet, selected=selected, setup=setup,
+                supplied=supplied, intent=intent, context=context, weather_reply=weather_reply,
+                setup_update=setup_update, crop_candidate=crop_candidate)
         if intent == "thanks":
             return finish()
         if intent == "ack":
             return finish(reaction=True)
         if intent in LOCAL_INTENTS:
             from .local_facts import profile_answer
+            from .factual_writer import write_factual
             answer, facts = profile_answer(intent, self.state(selected))
-            return finish(text=answer, data={"intent": intent, "local_facts": facts})
+            result = write_factual(intent, facts, answer, self.monitor.writer, mode=profile.get("mode", "current"))
+            return finish(text=result["text"], data={"intent": intent, "local_facts": facts,
+                          "generation": result["provider"], "generation_outcome": result["outcome"]})
         if not selected and setup["stage"] == "crop":
             if supplied:
                 return finish(text="Where are you growing? Share your location.",
@@ -407,8 +524,11 @@ class ConversationService:
         if not selected:
             return finish(text="Share your location to start monitoring.", data={"action": "location_choice"})
         if intent in _FACT_CONTEXTS:
+            from .factual_writer import write_factual
             answer, facts = weather_reply
-            return finish(text=answer, data={"intent": intent, "local_facts": facts})
+            result = write_factual(intent, facts, answer, self.monitor.writer, mode=profile.get("mode", "current"))
+            return finish(text=result["text"], data={"intent": intent, "local_facts": facts,
+                          "generation": result["provider"], "generation_outcome": result["outcome"]})
         if intent in {"off_topic"}:
             return finish(reaction=True)
         if intent in {"needs_context", "clarify"}:
@@ -539,7 +659,8 @@ class ConversationService:
         if previous:
             return {**previous, "state": self.state(previous["orchard_id"])}
         if action == "restart":
-            return self._finish(request_id, thread, None, setup=empty_setup())
+            return self._finish(request_id, thread, None, text=PROMPT,
+                                data={"action": "initial_prompt"}, setup=empty_setup())
         now = utc(self.monitor.clock()).isoformat()
         if action in {"location", "device_location"}:
             p = self.monitor.create_orchard(location.get("name", "My farm"), orchard_id="farm-" + fingerprint(request_id)[:20],

@@ -1,4 +1,4 @@
-"""A deliberately bounded local router. Raw conversation never enters inference."""
+"""Local action admission and offline fallback; connected dialogue uses engine.py."""
 from __future__ import annotations
 
 import re
@@ -194,7 +194,7 @@ def route(text, context=None, known_subjects=()):
         return "setup_help"
     if "?" in text and re.search(r"\b(got it|okay|understood)\b", low):
         return "clarify"
-    if re.match(r"\s*(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily)\s+)?(?:grow|have|am growing|are growing)|(?:i'm|we're)\s+growing|growing)\b", text, re.I):
+    if re.match(r"\s*(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily)\s+)?(?:grow|have|am growing|are growing)|(?:i['’]?m|we['’]?re)\s+growing|growing)\b", text, re.I):
         return "clarify"
     return "off_topic"
 
@@ -217,7 +217,7 @@ def crops_from(text):
     body = description.rstrip(".!").strip()
     reversed_declaration = re.fullmatch(
         r"(.+?)\s+(?:are|is)\s+what\s+(?:i(?:['’]?m| am)|we(?:['’]?re| are))\s+growing", body, re.I)
-    declaration = re.match(r"^(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily|currently)\s+)?(?:grow|have|am growing|are growing)|(?:i'm|we're)\s+growing|growing)\s+", body, re.I)
+    declaration = re.match(r"^(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily|currently)\s+)?(?:grow|have|am growing|are growing)|(?:i['’]?m|we['’]?re)\s+growing|growing)\s+", body, re.I)
     if reversed_declaration:
         body = reversed_declaration.group(1).strip()
         declaration = True
@@ -241,7 +241,7 @@ def crops_from(text):
     filler = {"organic", "some", "mostly", "mainly", "primarily", "a", "an", "the", "we", "i", "grow", "growing", "have", "our", "my"}
     crops, varieties, known_count = [], [], 0
     for piece in pieces:
-        piece = re.sub(r"^(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily|currently)\s+)?(?:grow|have|am growing|are growing)|(?:i'm|we're)\s+growing|growing)\s+", "", piece, count=1, flags=re.I)
+        piece = re.sub(r"^(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily|currently)\s+)?(?:grow|have|am growing|are growing)|(?:i['’]?m|we['’]?re)\s+growing|growing)\s+", "", piece, count=1, flags=re.I)
         if re.search(
                 r"\b(?:no|not|never|nothing|else|don['’]?t|doesn['’]?t|can['’]?t|won['’]?t|"
                 r"i|we|they|you|are|is|was|were|will|would|should|could|might|must|"

@@ -11,10 +11,16 @@ and permission screen themselves.
 
 ## Run locally
 
-Install `requirements-terra-dev.txt`, build the existing web client, and start the
-normal `python -m terra_monitoring.runtime` command with `PYTHONPATH=backend` and
-the existing private source configuration. The Windows service helper uses the
-same runtime. ChatGPT controls are enabled by the CLI; `--no-chatgpt` opts out.
+Run `python run_terra.py`. The default saved-example preview includes ChatGPT
+sign-in with its own protected state in `.terra-local/preview/chatgpt`, while
+live weather, the background worker and SMS remain disabled. Opening the app or
+reading connection status does not begin OAuth, fetch a model catalog or generate
+a response. Choose Continue with ChatGPT yourself to begin sign-in.
+
+`python run_terra.py --no-chatgpt` intentionally disables the connection controls
+for that session without erasing its saved connection. Live mode and the normal
+`python -m terra_monitoring.runtime` command also enable ChatGPT controls unless
+`--no-chatgpt` is supplied. The Windows service helper uses the same runtime.
 The embedding factory remains opt-in (`chatgpt_enabled=True`).
 
 Open Message writing from the account icon, choose Continue with ChatGPT, complete
@@ -76,18 +82,20 @@ in the connection control. Plan usage shares the user's existing allowance; it
 does not provide extra tokens or promise a separate per-dollar price.
 
 Detection, event eligibility, measurements, clocks and notification decisions stay
-in Python. The normal runtime selects `voice="text"` for coherent proactive
-weather-coverage notes. The model writes a brief text from categorical weather and
-estimate states; names, crops, clocks, counts and technical causes are excluded
-from that model input. State-specific checks reject reversed availability,
-invented advice or quantities, and unrecognized wording. Fallbacks use the same
-approved casual voice, including a stronger message when data is fully missing.
+in Python. The normal ChatGPT-enabled runtime now uses the selected model as its
+[contextual conversation and insight engine](conversational-engine.md). It receives
+the actual current message, bounded recent same-farm dialogue, saved crop/setup
+context and Python-computed facts. It understands follow-ups, asks one focused
+clarification when necessary, and writes concise useful explanations of selected
+alerts. This supersedes the earlier canonical-intent/wording-only interface.
 
-Exact event facts, source clocks and recovery counts remain in `llm_input` and
-Details. The interface labels replay mode outside the bubbles and retains message
-timestamps. Mixed-state updates, questions, noncoverage events and the explicit
-API-key writer retain the earlier time-aware factual renderer until their own
-voice contracts are expanded. Existing published field notes remain immutable.
+Coordinates, credential-like strings and raw station arrays are excluded from
+assembled context. Original old-note facts remain separate from current readings.
+Quantities use cited application-owned bindings; structured validation and
+state-specific checks reject malformed responses and unsupported assertions,
+without a fixed prose vocabulary. Fallback is entirely local, with no second
+provider attempt or API-key switch. Original inputs, source clocks and event facts
+remain immutable. The legacy explicit API-key writer retains its own contract.
 
 ## Current verification boundary
 
@@ -113,12 +121,11 @@ tokens. It suppresses the setup welcome for this isolated review, keeps explicit
 replay labels, and activates neither a live worker nor SMS. Previously saved
 preview records are preserved in their separate state directory.
 
-The [Terra conversation contract](conversation-contract.md) is preserved separately.
-This slice ships incoming notes and plan connection. Conversational onboarding,
-reactions and silence outcomes remain separate acceptance work. The coverage-note
-slice now follows the approved short texting style; other note types still need
-their own voice reconciliation. Future changes must keep generated and fallback
-notes consistent and preserve exact evidence.
+The preceding real-account receipts describe earlier wording paths, not proof of
+the new contextual engine. The [Terra conversation contract](conversation-contract.md)
+and [engine implementation](conversational-engine.md) distinguish current behavior
+from those historical checks. Final integrated-source inference evidence belongs
+to the operator's runtime verification; controlled tests alone do not establish it.
 
 The isolated preview runs without a monitor worker or SMS transport activation.
 It shows the labelled weather-only replay and leaves existing main messages intact.

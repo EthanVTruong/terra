@@ -250,6 +250,19 @@ class DemoSimulation:
                     "elevation_ft": ORCHARD["elevation_ft"]} for s in self.session["sensors"]]
         return _stations(pd.DataFrame(self.station_metadata + sensors))
 
+    def sensor_flags(self):
+        """Native temperature flags at the session sensors' own locations.
+
+        Every watch in this isolated replay uses the same sensor inputs. Keep
+        one projection for the lab and growers without reclassifying readings
+        or replacing a grower's separately calculated location assessment.
+        """
+        with self._lock:
+            return [{"sensor_id": sid, "level": c["level"], "observed_f": c["observed_f"],
+                     "expected_f": c["expected_f"], "deviation_f": c["deviation_f"],
+                     "valid_utc": self.session["clock"]}
+                    for sid, c in self.sensor_checks.items() if c["level"] != "none"]
+
     def _evaluate(self):
         observations = self._inputs()
         self.stations = self._all_stations()
@@ -267,10 +280,8 @@ class DemoSimulation:
         known["quality"] = known["source_quality"]
         self.scored = _score(known, self.reference)
         self.sensor_checks = self._sensor_checks()
-        flags = [{"sensor_id": sid, "level": c["level"], "observed_f": c["observed_f"], "expected_f": c["expected_f"],
-                  "deviation_f": c["deviation_f"], "valid_utc": self.session["clock"]}
-                 for sid, c in self.sensor_checks.items() if c["level"] != "none"]
-        self.monitor.apply(self.session["orchard_id"], {"latest": self.packet, "sensor_flags": flags}, now=now)
+        self.monitor.apply(self.session["orchard_id"],
+                           {"latest": self.packet, "sensor_flags": self.sensor_flags()}, now=now)
         published = self.monitor.flush(self.session["orchard_id"], now=now)
         self.session["evaluations"][self.session["clock"]] = {
             "orchard_f": self.packet["location_estimate"]["temperature"],

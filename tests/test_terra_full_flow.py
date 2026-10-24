@@ -182,6 +182,45 @@ class FullFlowTests(unittest.TestCase):
         self.assertNotIn(6, packet["location_estimate"]["used_station_ids"])
         self.assertTrue(feed["monitor"]["comparison_available"])
 
+    def test_test_sensor_changes_get_distinct_grower_source_snapshot_ids(self):
+        profile = self.create_farm()
+        baseline = self.bridge.assessment(profile)["provenance"]["data_snapshot_id"]
+        lab = self.action({"type": "sensor", "lat": 38.55, "lon": -121.78, "value_f": 60.0})
+        added = self.bridge.assessment(profile)["provenance"]["data_snapshot_id"]
+        self.assertNotEqual(baseline, added)
+        self.action({"type": "sensor_value", "sensor_id": lab["sensors"][0]["id"], "value_f": 70.0})
+        self.assertNotEqual(added, self.bridge.assessment(profile)["provenance"]["data_snapshot_id"])
+
+    def test_session_sensor_temperature_and_weather_alerts_keep_each_farms_own_evidence(self):
+        profiles = [self.create_farm("east-farm", lat=38.57, lon=-121.79, elevation_ft=42.0),
+                    self.create_farm("west-farm", lat=38.60, lon=-121.90, elevation_ft=120.0)]
+        normal = self.action({"type": "sensor", "lat": 38.56, "lon": -121.79, "value_f": 48.0})
+        sensor = normal["sensors"][0]
+        self.assertEqual(sensor["check"]["level"], "none")
+        self.action({"type": "sensor_value", "sensor_id": sensor["id"], "value_f": 90.0})
+        weather = self.action({"type": "sensor_weather", "sensor_id": sensor["id"],
+                               "variable": "wind_speed_mph", "value": 60.0})
+        self.assertTrue(any(f["station_id"] == sensor["id"] and f["variable"] == "wind_speed_mph"
+                            for f in weather["assessment"]["weather"]["findings"]))
+        for profile in profiles:
+            with self.subTest(farm=profile["id"]):
+                events = self.bridge.store.events(profile["id"])
+                temperature = [event for event in events if event["type"] == "sensor_flag"]
+                wind = [event for event in events if event["type"] == "weather_discrepancy"
+                        and event["facts"]["station_id"] == sensor["id"]
+                        and event["facts"]["variable"] == "wind_speed_mph"]
+                self.assertEqual(len(temperature), 1)
+                self.assertEqual(len(wind), 1)
+                for event in (*temperature, *wind):
+                    notes = [note for note in self.feed(profile["id"])["messages"] if event["id"] in note["event_ids"]]
+                    self.assertEqual(len(notes), 1)
+                    details = self.client.get(f'/api/orchards/{profile["id"]}/messages/{notes[0]["id"]}/details').json()
+                    packet = details["assessments"][0]
+                    self.assertEqual(packet["query"]["location_id"], profile["id"])
+                    self.assertEqual({key: packet["query"][key] for key in ("lat", "lon", "elevation_ft")},
+                                     {key: profile[key] for key in ("lat", "lon", "elevation_ft")})
+                    self.assertEqual(packet["data_mode"], "injected")
+
     def test_support_loss_native_feed_details_dedup_and_three_distinct_hour_recovery(self):
         self.create_farm()
         lab = self.action({"type": "preset", "name": "support_loss"})

@@ -63,3 +63,24 @@ export function connectionPollDelay(status, now, fallbackDeadline) {
   if (status.attempt?.state === "expired" || !Number.isFinite(deadline) || deadline <= now) return 0;
   return Math.min(2000, deadline - now);
 }
+
+// Local readiness is the backend's saved consent/writer state, not an inference request.
+export function writerReady(status, now = Date.now(), catalog = null) {
+  const writer = status?.writer;
+  return status?.state === "connected" && status.plan_enabled === true
+    && nonempty(status.active_account_id) && writer?.connected === true
+    && writer.active_account_id === status.active_account_id && nonempty(writer.selected_model)
+    && writer.usage_paused === false
+    && (!catalog || (catalog.selected_model === writer.selected_model && catalog.models.some((item) => item.slug === writer.selected_model)))
+    && !(Number.isFinite(writer.cooldown_until) && writer.cooldown_until > now / 1000);
+}
+
+export function entryStage({ status, verified, loading, catalog = null, phase = connectionPhase(status) }) {
+  if (!verified) return loading ? "checking" : "unavailable";
+  if (phase !== "connected") return phase;
+  const writer = status?.writer;
+  if (!status.plan_enabled || !status.active_account_id || writer?.connected !== true
+      || writer.active_account_id !== status.active_account_id) return "unavailable";
+  if (Number.isFinite(writer.cooldown_until) && writer.cooldown_until > Date.now() / 1000) return "cooldown";
+  return nonempty(writer.selected_model) && (!catalog || catalog.selected_model === writer.selected_model) ? "ready" : "model";
+}

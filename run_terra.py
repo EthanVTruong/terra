@@ -74,8 +74,8 @@ def runtime_ready(root: Path) -> bool:
         return False
 
 
-def web_fingerprint(root: Path) -> str:
-    web = root / "web"
+def web_fingerprint(root: Path, client: str = "web") -> str:
+    web = root / client
     paths = [web / name for name in ("package.json", "pnpm-lock.yaml", "index.html", "vite.config.mjs")]
     for name in ("src", "public", "scripts", "worker", ".openai"):
         paths.extend(path for path in (web / name).rglob("*") if path.is_file())
@@ -86,10 +86,10 @@ def web_fingerprint(root: Path) -> str:
     return digest.hexdigest()
 
 
-def web_ready(root: Path) -> bool:
-    stamp = root / "web/dist/.terra-inputs.sha256"
-    return ((root / "web/dist/client/index.html").is_file() and stamp.is_file()
-            and stamp.read_text(encoding="utf-8").strip() == web_fingerprint(root))
+def web_ready(root: Path, client: str = "web") -> bool:
+    stamp = root / client / "dist/.terra-inputs.sha256"
+    return ((root / client / "dist/client/index.html").is_file() and stamp.is_file()
+            and stamp.read_text(encoding="utf-8").strip() == web_fingerprint(root, client))
 
 
 def port_available(port: int) -> bool:
@@ -121,11 +121,12 @@ def prepare(root: Path, pnpm: str) -> None:
     if not runtime_ready(root):
         run_step([str(python), "-m", "pip", "install", "--disable-pip-version-check", "-r",
                   str(root / "requirements-terra.txt")], root, "Installing Terra runtime dependencies...")
-    if not web_ready(root):
-        run_step([pnpm, "--dir", str(root / "web"), "install", "--frozen-lockfile"], root,
-                 "Installing web dependencies...")
-        run_step([pnpm, "--dir", str(root / "web"), "build"], root, "Building the web client...")
-        (root / "web/dist/.terra-inputs.sha256").write_text(web_fingerprint(root), encoding="utf-8")
+    for client, label in (("web", "Terra"), ("web/demo", "Station lab")):
+        if not web_ready(root, client):
+            run_step([pnpm, "--dir", str(root / client), "install", "--frozen-lockfile"], root,
+                     f"Installing {label} dependencies...")
+            run_step([pnpm, "--dir", str(root / client), "build"], root, f"Building {label}...")
+            (root / client / "dist/.terra-inputs.sha256").write_text(web_fingerprint(root, client), encoding="utf-8")
 
 
 def runtime_environment(root: Path, state: Path, *, live: bool) -> dict[str, str]:
@@ -152,7 +153,7 @@ def runtime_command(root: Path, args, state: Path) -> list[str]:
                "--port", str(args.port), "--state-dir", str(state),
                "--web-root", str(root / "web/dist/client")]
     if not args.live:
-        command.extend(["--no-worker", "--no-chatgpt"])
+        command.append("--no-worker")
     else:
         for name in ("env_file", "sms_env_file", "chatgpt_state_dir"):
             value = getattr(args, name)
@@ -160,8 +161,8 @@ def runtime_command(root: Path, args, state: Path) -> list[str]:
                 command.extend(["--" + name.replace("_", "-"), str(value.expanduser().resolve())])
         if args.no_worker:
             command.append("--no-worker")
-        if args.no_chatgpt:
-            command.append("--no-chatgpt")
+    if args.no_chatgpt:
+        command.append("--no-chatgpt")
     return command
 
 
@@ -176,12 +177,12 @@ def main(argv=None, *, root: Path = ROOT) -> int:
     parser.add_argument("--sms-env-file", type=Path, help="Private SMS file; requires --live")
     parser.add_argument("--chatgpt-state-dir", type=Path, help="Stable protected ChatGPT directory; requires --live")
     parser.add_argument("--no-worker", action="store_true", help="Use --live for on-demand queries without polling")
-    parser.add_argument("--no-chatgpt", action="store_true", help="Disable optional ChatGPT controls in live mode")
+    parser.add_argument("--no-chatgpt", action="store_true", help="Disable ChatGPT sign-in controls for a diagnostic session")
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error("port must be between 1 and 65535")
     if not args.live and (args.env_file or args.sms_env_file or args.chatgpt_state_dir or args.no_worker):
-        parser.error("operator configuration and --no-worker require --live; preview already disables all providers")
+        parser.error("operator configuration and --no-worker require --live; preview already disables live weather and SMS")
     if args.chatgpt_state_dir and args.no_chatgpt:
         parser.error("--chatgpt-state-dir cannot be combined with --no-chatgpt")
     for path in (args.env_file, args.sms_env_file):
@@ -193,10 +194,13 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         checks.extend([
             ("Runtime dependencies", runtime_ready(root), "Run python run_terra.py --setup-only."),
             ("Web build", web_ready(root), "Run python run_terra.py --setup-only."),
+            ("Station lab build", web_ready(root, "web/demo"), "Run python run_terra.py --setup-only."),
             (f"Port {args.port}", port_available(args.port), "Already in use; choose --port 8520 or use the existing server."),
         ])
         for label, ok, advice in checks:
             print(f"{'OK' if ok else 'NEEDS SETUP'}  {label}" + ("" if ok else f": {advice}"))
+        print("ChatGPT sign-in is disabled by --no-chatgpt." if args.no_chatgpt else
+              "ChatGPT sign-in is available in Terra and starts only when you choose to connect.")
         print("Provider readiness is checked separately in Terra; this diagnostic does not validate credentials or delivery.")
         return int(any(not ok for _, ok, _ in checks))
     try:
@@ -210,7 +214,9 @@ def main(argv=None, *, root: Path = ROOT) -> int:
             print("Local setup complete. Run python run_terra.py to open the preview.")
             return 0
         mode = "Live runtime: confirm your location and provider readiness in Terra." if args.live else (
-            "Saved-example preview: current weather, ChatGPT and SMS are disabled. Use --live to connect services.")
+            "Saved-example preview: live weather, the worker and SMS are disabled. "
+            + ("ChatGPT sign-in is disabled by --no-chatgpt." if args.no_chatgpt else
+               "Choose Continue with ChatGPT in Terra to connect your own account."))
         print(f"{mode}\nOpen http://127.0.0.1:{args.port} after server startup. Stop with Ctrl+C.", flush=True)
         return subprocess.call(runtime_command(root, args, state), cwd=root,
                                env=runtime_environment(root, state, live=args.live))

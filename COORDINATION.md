@@ -527,7 +527,7 @@
   "status": "active",
   "intent": "Integrate all approved product functionality into main: selected quiet cube-branded chat with complete messaging, saved evidence and ChatGPT-plan writing; one-button device location with real terrain elevation; Nathan draggable/interpolated Station lab; temperature plus independent humidity/wind/solar and missing-data monitoring through the same live or replay feed. Preserve private runtime and human drafts. Consolidate local work into one TechProjects/Terra folder, retain recoverable historical work, and stop completed chat loops.",
   "branch": "codex/terra-consolidate-main",
-  "base": "92793c5199b32c2e0a8498be9cea7a857f5ddff0",
+  "base": "fcbc7ea7d3f1b06c718d465f8b33a0739c53a6ea",
   "domains": [
     "terra-coordination",
     "terra-qc-json",
@@ -557,8 +557,8 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "92793c5199b32c2e0a8498be9cea7a857f5ddff0",
-    "summary": "Baseline published via PR16 at92793c5 after all14 actual573-base checks. Follow-up PR19 is being reconciled once with current native device, weather, provider and Nathan map paths; root owns integration, backend helper owns bounded stale-source guard tests, UI owner owns finite bean/location/greeting patch. Preserve selected quiet one-capsule composer and full messaging. No private runtime or extra SMS changes.",
+    "revision": "ca9f556cd20344d721d8753db81bf590a7dc2448",
+    "summary": "Combined candidate includes the selected quiet chat, full-head Terra receipt, short native-location prompt/button, durable greeting, minimal Open simulation and explicit live return, no persistent replay chrome, compact ChatGPT-only entry with real account/model/usage gating, and trusted saved-fact wording. Latest human request additionally makes ChatGPT the contextual conversational engine: bounded16-turn same-farm history and24 trusted Python facts, contextual answers/clarifiers/reactions/silence, concise grounded proactive InsightWriter, original Python authority/actions/idempotence preserved. Any crop remains valid; almonds are explicit demo or saved human data, never a startup message. Latest Nathan fcbc weather/test-sensor interpolation policy is preserved alongside frozen real-station temperature QC. Final code is integrated; genuine runtime proof/publication/canonical cleanup remain with this sole owner.",
     "evidence": [
       "Device owner: all393 conversation cases,30 focused device cases,12 native-browser and51 pure/helper checks; full11-group scoped8f gate passed. Actual App to guarded API to official USGS lookup verified using a public Davis test position; no actual OS permission click or human setup write.",
       "Weather owner62cbbd5: all12 required groups passed against actual main4fba932;127 focused weather cases, both builds and55 UI/packaging checks passed with2 existing optional skips. Actual map spot to shared feed to persisted wind note and grounded question passed; source warnings remain separate.480 bounded real station-hours audited;360 overlapping temperature values are identical.",
@@ -578,10 +578,15 @@
       "PR19 semantic union builds both interfaces.55 UI helper cases pass with2 existing optional skips, including fixed document-source tests for late callbacks, cross-tab switching, unknown runtime and isolated replay.",
       "PR19 backend safety79cb69a:8 real ASGI/native store cases pass covering expired and other-runtime cookies, fixed expected source identity, delayed requests, explicit recovery, switching/held and durable onboarding pending locks, provider routing and cube asset.",
       "Bean/location/greeting96c1bb1 integrated semantically; opening persists transactionally through retry/refresh/profile migration/restart. Actual fresh-clone phrase im growing almonds repaired using existing affirmative crop parser;60 focused crop cases pass with question/negative/future guards.",
-      "Exact5b hosted backend/web/macOS passed. Hosted Windows passed13/14 groups; full-flow16-case group reached12cases then120s limit without assertionfailure. Split same full-flow file into complementary8/8 selections, each original120s limit, with no skipped/removed assertions. Combined gate verifies new15 groups."
+      "Exact5b hosted backend/web/macOS passed. Hosted Windows passed13/14 groups; full-flow16-case group reached12cases then120s limit without assertionfailure. Split same full-flow file into complementary8/8 selections, each original120s limit, with no skipped/removed assertions. Combined gate verifies new15 groups.",
+      "Engine062daf product1e0bcae:147 new core/context/flow/insight/runtime cases,430 legacy conversation cases and35 UI state cases pass. Its broad gate passed15 other groups; one old present-tense mock was corrected and147 cases re-run. No real provider/SMS was used by producer.",
+      "Final pipeline source-header fixture98a8ca1 and latest Nathan interpolation policy06c5605:248 pipeline/weather/estimate/lifecycle/wording/factual cases pass. Policy terra-interpolation-policy-v1 SHA471fbb826c7de14a28bfb8cbe9c00d7b9cce1776571cae0600efff1f8c464236; no training/refit/new dependency.",
+      "Auth770 combined:62 UI helper cases,8 packaging cases and both production builds pass with3 optional native browser tests skipped. Actual isolated enabled/no-account runtime shows compact Sign in with ChatGPT; no account inference on open. Source-recoveryc77 adds confirmed live-selection restoration without draft loss;3 focused cases pass.",
+      "Independent read-only startup/crop/device review:60 crop and30 device cases pass; no frontend almond seed or startup auto-send. Existing human almond sessions remain preserved.",
+      "Cleanup:32 inactive linked checkouts retired with all30 named refs; old4 independent audit copies moved intact under ignored retained-audit folder with1855 files and Git refs/index/status verified. Existing private/public runtimes restored to prior sources while new engine was developed; final move requires a fresh quiesce/capture."
     ],
-    "uncertainty": "One final combined local/browser check and exact-head CI remain for PR19; definitive source errors and persisted retry source binding are being verified in the same bounded repair. Private move awaits operator release.",
-    "next": "Finish one PR19 reconciliation/check cycle, publish; complete verified inactive cleanup and one canonical Terra folder with operator-controlled runtime restoration. Conclude completed chat lanes."
+    "uncertainty": "Exact combined16-group gate and genuine selected-plan contextual/proactive proof remain before final release. Final rollout is authorized in this primary chat; paused old operator stays paused. Original staged prototype, both human journals, grants, SMS ledger and legacy replay source/state must survive canonical move. Source modes/evidence stay truthful on demand; no biological crop-risk thresholds or real-data training added.",
+    "next": "Run one final combined gate against fcbc, prove genuine selected-plan insight/context/clarification in isolated SIM without SMS or live-human mutation, publish all to main, then verified inactive cleanup and one canonical TechProjects/Terra folder. Boot preserved live service plus separate blank public try session. A separately user-requested new acceptance chat owns one later phone test; do not duplicate it here."
   }
 }
 ```

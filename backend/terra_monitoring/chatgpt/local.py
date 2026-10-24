@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from contextlib import asynccontextmanager
 from pathlib import Path
+import threading
 
 from .api import create_router
 from .auth import AuthManager
@@ -11,7 +12,11 @@ from .provider import ChatGPTPlanClient
 
 
 def attach_controls(app, state_dir, *, auth=None, provider=None, preview_only=False):
-    """Use the app's existing local-session guard and preserve its lifespan."""
+    """Use the app's local guard and preserve one complete server lifespan.
+
+    Shutdown permanently closes the OAuth manager. Create a new app instance to
+    restart a server with these controls rather than reuse closed credentials.
+    """
     root = Path(state_dir).expanduser().resolve()
     auth = auth if auth is not None else AuthManager(root / "auth")
     provider = provider if provider is not None else ChatGPTPlanClient(auth, root / "provider")
@@ -22,9 +27,16 @@ def attach_controls(app, state_dir, *, auth=None, provider=None, preview_only=Fa
     router = create_router(auth, provider, mutation_guard=app.state.local_mutation_guard, preview_only=preview_only)
     app.router.routes[:0] = router.routes
     original = app.router.lifespan_context
+    used = False
+    lifecycle_lock = threading.Lock()
 
     @asynccontextmanager
     async def lifespan(application):
+        nonlocal used
+        with lifecycle_lock:
+            if used:
+                raise RuntimeError("A ChatGPT-enabled app supports one server lifespan; create a new app instance to restart it.")
+            used = True
         try:
             async with original(application):
                 yield

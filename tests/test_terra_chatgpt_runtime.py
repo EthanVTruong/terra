@@ -186,6 +186,17 @@ def test_auth_manager_closes_after_monitor_worker_stops(tmp_path, plan, monkeypa
     assert auth.closed and not app.state.runtime_worker_thread.is_alive()
 
 
+def test_enabled_app_requires_new_instance_after_shutdown(tmp_path, plan):
+    app = make_app(tmp_path, chatgpt_enabled=True)
+    with TestClient(app, base_url=ORIGIN) as client:
+        assert client.get("/api/health").status_code == 200
+    assert plan[0].closed
+    with pytest.raises(RuntimeError, match="create a new app instance"):
+        with TestClient(app, base_url=ORIGIN):
+            pytest.fail("A server must not run with the already closed OAuth manager")
+    assert plan[1].calls == []
+
+
 @pytest.mark.parametrize("kwargs", [{"chatgpt_enabled": 1},
     {"chatgpt_state_dir": "relative"}, {"chatgpt_enabled": True, "chatgpt_state_dir": "relative"}])
 def test_invalid_connection_configuration_fails_before_initialization(tmp_path, plan, kwargs):

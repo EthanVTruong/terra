@@ -38,6 +38,7 @@ def create_runtime_app(*, live_service: Any = None, sms_dispatcher: Any = None,
     ChatGPT controls are opt-in for embedding callers. Enabling them gives a
     runtime-created monitor the plan writer; an injected monitor's writer remains
     authoritative. Construction never signs in, fetches models or runs inference.
+    A ChatGPT-enabled app has one server lifespan; recreate the app to restart it.
     """
     interval = _interval(poll_seconds)
     if not isinstance(start_worker, bool):

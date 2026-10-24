@@ -17,6 +17,8 @@ const clock = (v, date = false) => v ? new Intl.DateTimeFormat('en-US', {
 }).format(new Date(v)) : '—';
 const flagged = s => s?.flagged === true;
 const support = p => p?.location_estimate?.n_used ?? 0;
+// Count only the calibrated stations; test sensors also feed the estimate but are not stations.
+const stationSupport = state => (state.assessment?.location_estimate?.used_station_ids || []).filter(id => state.stations.some(s => s.id === id)).length;
 const supported = p => p?.location_estimate?.status === 'ok';
 let audio;
 function unlockAudio() {
@@ -649,7 +651,7 @@ function StationControl({
             station_id: row.id,
             online: !row.online
           });
-        }}><span /></button></div>)}</div><div className="support-summary"><span>Orchard support</span><strong>{support(state.assessment)} of {state.stations.length}</strong></div><p className="control-footnote">Temperature changes apply to this hour only.</p></>}</aside>;
+        }}><span /></button></div>)}</div><div className="support-summary"><span>Orchard support</span><strong>{stationSupport(state)} of {state.stations.length}</strong></div><p className="control-footnote">Temperature changes apply to this hour only.</p></>}</aside>;
 }
 // Controls for a map spot or test sensor. Setting a spot's temperature places a test sensor there.
 function SpotControl({

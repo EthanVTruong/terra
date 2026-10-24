@@ -1,5 +1,31 @@
 # Terra integration coordination
 
+## Contextual ChatGPT conversation and concise insight engine
+
+```json
+{
+  "kind": "task",
+  "id": "terra-conversational-engine",
+  "owner": "et",
+  "status": "active",
+  "intent": "Direct user request: make the selected ChatGPT plan the actual conversational engine before the next push, understanding follow-ups, asking focused clarifications and explaining Python-computed facts in concise useful alerts. Python retains numerical/event/action authority. User explicitly authorizes coordination with the sole main integrator, which holds publication for this slice.",
+  "branch": "codex/terra-conversational-engine",
+  "base": "06c560596e7341d3ab0ca5c24787c35b63a47bba",
+  "domains": ["terra-coordination", "terra-qc-json"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/conversation/**", "backend/terra_monitoring/farm_ops/insight_writer.py", "backend/terra_monitoring/runtime.py", "tests/test_terra_conversation_engine.py", "tests/test_terra_engine_context.py", "tests/test_terra_engine_flow.py", "tests/test_terra_insight_writer.py", "tests/test_terra_chatgpt_runtime.py", "tests/test_terra_conversation_writer_integration.py", "docs/terra/chatgpt-plan.md", "docs/terra/conversation-contract.md", "docs/terra/conversational-engine.md"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "06c560596e7341d3ab0ca5c24787c35b63a47bba",
+    "summary": "Implementation active in isolated root worktree. Bounded dialogue worker owns new engine.py plus engine tests; alert worker owns new insight_writer.py plus alert tests. Root owns context/service/runtime integration. Existing local fallback stays available when plan cannot complete; no fallback retries inference.",
+    "evidence": ["Prior fresh-main audit identified deterministic routing/scripted clarification and restricted wording; direct user steering explicitly expands that behavior.", "Sole publication owner acknowledged hold and supplied frozen base06c5605; existing auth/model/consent/source guards retained."],
+    "uncertainty": "New engine behavior is not yet implemented or verified. Real model verification will use the operator's existing legitimate Terra connection through the runtime, not reused assistant credentials.",
+    "next": "Integrate bounded context and model outcomes, verify guarded API follow-ups/clarification/alerts/idempotency/fallback, then hand frozen commit to sole integrator."
+  }
+}
+```
+
 ## ChatGPT entry UI
 
 ```json

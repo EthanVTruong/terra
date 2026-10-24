@@ -144,6 +144,8 @@ def _check_meaning(packet, text):
 class InsightWriter:
     """Use the connected conversational engine for proactive explanations once."""
 
+    conversation_engine = True
+
     def __init__(self, writer):
         self.writer = writer
 

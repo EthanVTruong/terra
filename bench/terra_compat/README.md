@@ -15,6 +15,6 @@ python bench/terra_compat/terra_compat_intervals.py > intervals.json            
 ```
 
 Each run takes a few minutes.
-- `eval`, `extra`, `common_rows`, `stats` and `checks` were produced at commit `daa451a` with model `cimis-v1` and the Oct–Mar physics fit.
+- `eval`, `extra`, `common_rows`, `stats` and `checks` were produced at commit `14e1250` (same tree as `daa451a`) with model `cimis-v1` and the Oct–Mar physics fit.
 - `estimate_check.json` was produced at `edf361d`. Its estimate runs with the lapse off, so the physics fit does not enter.
 - `intervals.json` was produced at `b0e8e91`, with the year-round physics fit and its p10/p90 bins (`data/models/physics_fit.json`, SHA-256 `37633cc9…`).

@@ -36,7 +36,7 @@ estimate:
   validated_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   # p10/p90 from the physics fit's calibrated bins (fit-physics). Coverage of the nominal 80%:
   # 79.9% on held-out 2023-25 at all region stations (the fit's own estimator); with
-  # estimate_location 78-86% pooled on Terra's network and 83-93% at the ASOS sites, but 54-98%
+  # estimate_location 77-86% pooled on Terra's network and 83-93% at the ASOS sites, but 54-98%
   # at single sites (a site unlike all its peers, e.g. the Delta in summer, is under-covered).
   # The bin table is part of method_version. Off by default: whether to show them is Terra's call.
   intervals: false

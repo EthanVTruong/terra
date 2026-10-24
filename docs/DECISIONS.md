@@ -110,7 +110,7 @@ See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below com
     of the nominal 80% on held-out 2023-25 hours at all region stations. That estimator uses the region-wide lapse, not
     `estimate_location`'s local, span-gated lapse.
   - With `estimate_location` (`bench/terra_compat/intervals.json`):
-    - Terra's network, each station estimated from the other four: 78–86% pooled (Oct–Mar 2024-25, Apr–Aug 2025, Mar 2026).
+    - Terra's network, each station estimated from the other four: 77–86% pooled (Oct–Mar 2024-25, Apr–Aug 2025, Mar 2026).
     - Six ASOS sites near Davis: 83–93% pooled.
     - Single sites: 54–98%.
     - So the Terra-facing intervals stay off by default.
@@ -127,7 +127,8 @@ See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below com
   - **Full replay** (`bench/experiments/detection_gate_replay.json`; per-season runs in `bench/results/20261024-1*`,
     made with `bench/experiments/bench_season.py`):
     - Setup: `cimis-v2`, weekly hour-of-day offsets. Seasons 2023-24, 2024-25 and 2025-26, each with the bench's 50 faults
-      (24 drifts and 24 offsets in all). 2025-26 was not used to tune anything.
+      (24 drifts and 24 offsets in all). No gate setting was tuned on 2025-26, but its results were seen before the
+      default was decided.
 
       | Gate | Drift caught | Offset caught | False drift/offset alarms per station-month | All false alarms | Chill error on faulted stations, repaired |
       |---|---:|---:|---:|---:|---:|
@@ -136,25 +137,32 @@ See `docs/TERRA_COMPATIBILITY.md` for the contract comparison; numbers below com
       | daily spread, 4× | 19/24 | 15/24 | 0.28 | 0.63 | 19.1 h |
 
     - Unrepaired chill error on the faulted stations: 23.7 h.
-    - 2025-26 on its own:
-      - spec: 6/8 drifts, 3/8 offsets, 0.07 false alarms.
-      - 4×: 8/8 drifts, 4/8 offsets, 0.35 false alarms.
+    - 2025-26 on its own, with false alarms per station-month:
+      - spec: 6/8 drifts, 3/8 offsets; 0.07 drift/offset false alarms, 0.48 of all types.
+      - 4×: 8/8 drifts, 4/8 offsets; 0.35 drift/offset false alarms, 0.76 of all types.
+      - This was the noisiest of the three seasons under both gates.
     - Whatever the gate, the spikes, stuck runs, outages and clock shifts come out the same.
   - **Decision: the spec gate stays the default.**
-    - No setting is a free gain. The harness suggested the 5× daily gate would beat the spec at the same false-alarm
-      rate, but the full replay does not confirm it.
-    - The 4× daily gate catches 14 more of the 48 faults but quadruples false drift/offset alarms. On 130 stations that
-      is about 36 a month instead of 9, and each alarm replaces a station's readings with estimates.
+    - No setting is a free gain.
+      - The harness suggested the 5× daily gate would catch more drifts and offsets for a small rise in false alarms
+        (2024-25: drift 31 → 40%, offset 23 → 29%, false alarms 0.065 → 0.081).
+      - In the full replay it catches about as many as the spec (21 vs 20 of 48), while drift/offset false alarms rise
+        0.07 → 0.11.
+    - The 4× daily gate catches 14 more of the 48 faults but quadruples false drift/offset alarms. On the ~90 stations
+      that report, that is about 25 a month instead of 6 (rates per observed station-month, measured Oct–Mar). Each
+      alarm replaces a station's readings with estimates.
     - Turning it on is a two-line config change (`mean24_basis: daily`, `mean24_sigma: 4.0`) and a call for whoever
       reviews the alarms.
-  - **Holdout use:** 2023-24 and 2024-25 have now been used to choose the offset scheme, the model and this gate. A
-    clean check of the combined configuration needs 2026-27 or later. 2025-26 was inspected for the Terra report,
-    though not for detection.
+  - **Holdout use:**
+    - 2023-24 and 2024-25 were used to choose the offset scheme, the model and the gate candidates.
+    - 2025-26 was inspected for the Terra report and was part of the replay behind the gate default, so it is no longer
+      a clean detection holdout either.
+    - A clean check of the combined configuration needs 2026-27 or later.
 - **Tests**: the SQL tests default to a separate `chillwatch_test` database. The end-to-end test deletes and rewrites rows
   for synthetic ids that are real CIMIS ids (6 Davis, 70, 71, ...).
 - **Mock pipeline** (`bench/experiments/mock_pipeline.py`): the whole pipeline on synthetic data with known truth passes
   10 of 10 checks. It covers interpolation vs baselines, lapse at a foothill site, coverage, offsets, detection, the
-  findings handoff and gap filling. False alarms on its 20 clean stations: 0.39 per station-month. The 5 °F drift was
+  findings handoff and gap filling. False alarms on its 20 clean stations: 0.38 per station-month. The 5 °F drift was
   found but typed as an offset; the bench counts drift and offset as interchangeable for recall.
 
 ## Design decisions

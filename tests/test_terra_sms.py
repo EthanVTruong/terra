@@ -15,7 +15,7 @@ import httpx
 import pytest
 
 from terra_monitoring.sms import SMSConfig, SMSDispatcher, build_demo_assessment
-from terra_monitoring import sms
+from terra_monitoring import configuration, sms
 
 NOW = datetime(2026, 1, 11, 16, 5, tzinfo=timezone.utc)
 MESSAGE_SID = "SM" + "a" * 32
@@ -34,15 +34,6 @@ def demo_packet():
     return build_demo_assessment()
 
 
-def live_packet(demo_packet):
-    packet = copy.deepcopy(demo_packet)
-    packet["data_mode"] = "current"
-    packet["query"]["as_of_utc"] = NOW.isoformat()
-    packet["provenance"]["live_source"] = {
-        "provider": "CIMIS", "status": "refreshed", "checked_at_utc": NOW.isoformat(),
-        "retrieved_at_utc": NOW.isoformat(), "data_through_utc": packet["query"]["valid_utc"],
-        "failed_station_ids": [], "missing_station_ids": [], "warning": None}
-    return packet
 
 
 def dispatcher(environment, requests=None, handler=None, *, clock=lambda: NOW):
@@ -339,113 +330,16 @@ def test_corrupt_or_unwritable_store_prevents_send(environment, tmp_path):
     assert instance.demo("corrupt")["status"] == "not_configured" and calls == []
 
 
-def test_live_finding_dispatches_once_and_never_mutates_assessment(environment, demo_packet):
-    calls = []
-    packet = live_packet(demo_packet)
-    original = copy.deepcopy(packet)
-    instance = dispatcher(environment, calls)
-    results = instance.dispatch_assessment(packet)
-    assert len(results) == 1 and results[0]["mode"] == "live" and results[0]["status"] == "provider_accepted"
-    assert results[0]["event_id"].startswith("live-")
-    repeated = instance.dispatch_assessment(packet)
-    assert repeated[0]["duplicate"] is True and len(calls) == 1
-    assert packet == original
-    assert "DEMO" not in parse_qs(calls[0].content.decode())["Body"][0]
 
 
-@pytest.mark.parametrize("alter", [
-    lambda p: p.update(data_mode="synthetic"), lambda p: p.update(data_mode="injected"),
-    lambda p: p.update(data_mode="historical_replay"), lambda p: p["provenance"].pop("live_source"),
-    lambda p: p["provenance"]["live_source"].update(status="cached_after_error"),
-    lambda p: p["provenance"]["live_source"].update(failed_station_ids=[6]),
-    lambda p: p["provenance"]["live_source"].update(warning="refresh failed"),
-    lambda p: p["provenance"]["live_source"].update(checked_at_utc=(NOW - timedelta(minutes=6)).isoformat(),
-        retrieved_at_utc=(NOW - timedelta(minutes=6)).isoformat()),
-    lambda p: p["provenance"]["live_source"].update(retrieved_at_utc=(NOW - timedelta(hours=7)).isoformat()),
-    lambda p: p["query"].update(max_age_hours=100),
-    lambda p: p["query"].update(as_of_utc=(NOW + timedelta(minutes=1)).isoformat()),
-    lambda p: p["station_findings"][0].update(freshness="stale"),
-    lambda p: p["station_findings"][0].update(reference_id="different-reference"),
-    lambda p: p["station_findings"][0]["evidence"][-1].update(observation_available=False),
-    lambda p: p["station_findings"][0]["evidence"][-1].update(source_quality="missing"),
-    lambda p: p["station_findings"][0]["evidence"][-1].update(original_source_flag="M"),
-    lambda p: p["station_findings"][0]["evidence"][-1].update(expected_f=None),
-    lambda p: p.update(station_findings=[]),
-])
-def test_ineligible_live_packets_never_reach_real_transport(environment, demo_packet, alter):
-    calls = []
-    packet = live_packet(demo_packet)
-    alter(packet)
-    assert dispatcher(environment, calls).dispatch_assessment(packet) == [] and calls == []
 
 
-def test_stale_live_packet_and_malformed_packets_are_safely_withheld(environment, demo_packet):
-    calls = []
-    instance = dispatcher(environment, calls, clock=lambda: NOW + timedelta(hours=7))
-    assert instance.dispatch_assessment(live_packet(demo_packet)) == []
-    for packet in (None, {}, [], {"data_mode": "current", "schema_version": "terra-location-assessment-v1"}):
-        assert instance.dispatch_assessment(packet) == []
-    assert calls == []
 
 
-def test_continuing_live_readings_keep_same_opening_delivery_identity(environment, demo_packet):
-    calls = []
-    clock = [NOW]
-    instance = dispatcher(environment, calls, clock=lambda: clock[0])
-    packet = live_packet(demo_packet)
-    first = instance.dispatch_assessment(packet)[0]
-    clock[0] += timedelta(hours=1)
-    new_valid = (clock[0] - timedelta(minutes=5)).isoformat()
-    packet["query"].update(valid_utc=new_valid, as_of_utc=clock[0].isoformat())
-    packet["provenance"]["data_snapshot_id"] = "a-new-snapshot"
-    packet["provenance"]["live_source"].update(checked_at_utc=clock[0].isoformat(),
-        retrieved_at_utc=clock[0].isoformat(), data_through_utc=new_valid)
-    finding = packet["station_findings"][0]
-    finding["end_utc"] = new_valid
-    finding["evidence"].append({**finding["evidence"][-1], "timestamp": new_valid, "temperature_f": 121.0})
-    second = instance.dispatch_assessment(packet)[0]
-    assert first["event_id"] == second["event_id"] and second["duplicate"] is True and len(calls) == 1
 
 
-def test_live_sliding_source_window_preserves_continuing_incident_after_restart(environment, demo_packet):
-    calls = []
-    clock = [NOW]
-    packet = live_packet(demo_packet)
-    first = dispatcher(environment, calls, clock=lambda: clock[0]).dispatch_assessment(packet)[0]
-    for hour in range(1, 72):
-        clock[0] = NOW + timedelta(hours=hour)
-        valid = clock[0] - timedelta(minutes=5)
-        packet["query"].update(valid_utc=valid.isoformat(), as_of_utc=clock[0].isoformat())
-        packet["provenance"]["live_source"].update(checked_at_utc=clock[0].isoformat(),
-            retrieved_at_utc=clock[0].isoformat(), data_through_utc=valid.isoformat())
-        finding = packet["station_findings"][0]
-        sliding_start = max(NOW - timedelta(minutes=5), valid - timedelta(hours=47))
-        finding.update(start_utc=sliding_start.isoformat(), detected_at_utc=sliding_start.isoformat(),
-                       end_utc=valid.isoformat(), visible_at_utc=sliding_start.isoformat())
-        finding["evidence"] = [{**finding["evidence"][-1], "timestamp": valid.isoformat()}]
-        result = dispatcher(environment, calls, clock=lambda: clock[0]).dispatch_assessment(packet)[0]
-        assert result["event_id"] == first["event_id"] and result["duplicate"] is True
-    assert len(calls) == 1
 
 
-def test_live_new_episode_after_evidence_gap_sends_new_opening_and_old_results_are_withheld(environment, demo_packet):
-    calls = []
-    clock = [NOW]
-    packet = live_packet(demo_packet)
-    instance = dispatcher(environment, calls, clock=lambda: clock[0])
-    first = instance.dispatch_assessment(packet)[0]
-    old_packet = copy.deepcopy(packet)
-    clock[0] += timedelta(hours=2)
-    valid = (clock[0] - timedelta(minutes=5)).isoformat()
-    packet["query"].update(valid_utc=valid, as_of_utc=clock[0].isoformat())
-    packet["provenance"]["live_source"].update(checked_at_utc=clock[0].isoformat(),
-        retrieved_at_utc=clock[0].isoformat(), data_through_utc=valid)
-    finding = packet["station_findings"][0]
-    finding.update(start_utc=valid, detected_at_utc=valid, end_utc=valid, visible_at_utc=valid)
-    finding["evidence"] = [{**finding["evidence"][-1], "timestamp": valid}]
-    second = instance.dispatch_assessment(packet)[0]
-    assert second["event_id"] != first["event_id"] and second["duplicate"] is False and len(calls) == 2
-    assert instance.dispatch_assessment(old_packet) == [] and len(calls) == 2
 
 
 def test_trusted_notification_and_alias_send_immutable_text_once_across_restart(environment, notification):
@@ -875,7 +769,7 @@ def test_relative_journal_path_is_anchored_to_package_and_shares_dedupe_across_c
     # Use an isolated package anchor for actual writes; the working directory
     # changes model the API and worker being launched from different folders.
     package = tmp_path / "package"
-    monkeypatch.setattr(sms, "PACKAGE_ROOT", package)
+    monkeypatch.setattr(configuration, "PACKAGE_ROOT", package)
     one, two = tmp_path / "one", tmp_path / "two"
     one.mkdir()
     two.mkdir()
@@ -913,3 +807,45 @@ def test_failed_oldest_receipt_poll_cannot_starve_later_healthy_message(environm
     healthy = dispatcher(environment, calls, respond, clock=lambda: clock[0]).reconcile_pending(limit=1)
     assert healthy[0]["event_id"] == second["event_id"] and healthy[0]["status"] == "delivered"
     assert [request.method for request in calls] == ["POST", "POST", "GET", "GET"]
+
+
+def test_schema_initialization_is_once_per_dispatcher_under_concurrent_use(environment, demo_packet, monkeypatch):
+    calls, initializations = [], []
+    instance = dispatcher(environment, calls)
+    initialize = instance._initialize_schema
+    def counted(db):
+        initializations.append(True)
+        initialize(db)
+    monkeypatch.setattr(instance, "_initialize_schema", counted)
+    monkeypatch.setattr(sms, "build_demo_assessment", lambda: demo_packet)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda _: instance.demo("schema-once"), range(4)))
+    assert len(initializations) == 1
+    assert len(calls) == 1 and all(r["event_id"] == "schema-once" for r in results)
+    instance.status()
+    instance.receipt("schema-once")
+    instance.receipt("schema-once")
+    assert len(initializations) == 1
+
+
+def test_retired_station_episode_table_is_not_created_or_deleted(environment, notification):
+    calls = []
+    instance = dispatcher(environment, calls)
+    instance.dispatch_event(notification)
+    with sqlite3.connect(environment["TERRA_SMS_DB_PATH"]) as db:
+        assert not db.execute("SELECT 1 FROM sqlite_master WHERE name='sms_live_episode'").fetchone()
+        db.execute("CREATE TABLE sms_live_episode(slot TEXT PRIMARY KEY,event_id TEXT,start_utc TEXT,last_valid_utc TEXT)")
+        db.execute("INSERT INTO sms_live_episode VALUES ('old-slot','old-event','before','after')")
+    restarted = dispatcher(environment, calls)
+    assert restarted.dispatch_event(notification)["duplicate"] is True
+    with sqlite3.connect(environment["TERRA_SMS_DB_PATH"]) as db:
+        assert db.execute("SELECT * FROM sms_live_episode").fetchone() == ("old-slot", "old-event", "before", "after")
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("contents", [b"X=bad\x00value", b"X=" + b"a" * 65536], ids=["nul", "oversized"])
+def test_sms_uses_the_shared_bounded_literal_parser(environment, tmp_path, contents):
+    path = tmp_path / "invalid.env"
+    path.write_bytes(contents)
+    config = SMSConfig.from_env({**environment, "TERRA_SMS_ENV_FILE": str(path)})
+    assert "env_file_unavailable_or_invalid" in config.errors

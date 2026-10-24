@@ -2,7 +2,7 @@
 
 This is the persistent seasonal-watch layer over the existing live CIMIS query,
 frozen e1 statistical QC and Nathan's location estimator. Those numerical
-modules are unchanged. The first profile is Nonpareil almond at a configured
+formulas and calibration are unchanged. The first profile is Nonpareil almond at a configured
 Davis-area **demonstration** pin, not an independently verified real orchard.
 
 The backend now saves orchard profiles, hourly estimates and revisions, full
@@ -61,30 +61,50 @@ conversation are sent to the writer. Only relevant fields are present.
 - [Actual API feed fixture](farm-chill-ops/feed-fixture.json)
 
 Python decides detection, severity, lifecycle, grouping, thresholds and delivery
-eligibility. The LLM returns message text only, normally one or two sentences,
-at most 420 characters, with no em dash. Supplied observation/display times stay
-visible. Neighbor measurements and the full assessment remain under Details.
+eligibility. The optional writer generates concise prose for each selected event;
+it does not choose from fixed messages. A strict `text.format` JSON schema requires
+exact event keys (`event_0`, `event_1`, etc.), each containing a short clause.
+Quantities use role-bound placeholders such as `{{hours}}` for current estimated
+chill and `{{historical_median_hours}}` for the same-point historical median.
+Python substitutes the exact values, preserves event order, and adds the orchard
+name, original source times and demo marker. Final messages are at most 420
+characters. Neighbor measurements and the full assessment remain under Details.
 
-By default the same facts use deterministic templates. An optional OpenAI
-Responses writer requires both `OPENAI_API_KEY` and an explicitly selected
-`TERRA_LLM_MODEL`; no model, account, key or billing is created here. It sends
-the fixed instructions and compact input without stored provider conversation.
-Provider failure, invalid text or an invented numeric fact falls back to the
-template and cannot stop ingestion or lose the event. The text/style checks
-are safeguards, not a proof that arbitrary generated language is correct.
-[Official API documentation](https://developers.openai.com/api/docs/guides/text).
+The model receives per-event categorical facts, placeholder values, the accepted
+English vocabulary and local quantity-role hints, rather than complete candidates;
+orchard names, free-text questions, raw weather history and source timestamps are
+excluded from that request. The saved `llm_input` remains the original compact
+factual packet. Local checks require every expected placeholder exactly once in
+its factual role, reject unbound quantities/units, and check lifecycle, estimated
+status, incomplete coverage and historical availability. A small English
+vocabulary rejects unsupported actions, biological claims, causes, invented times
+and unfamiliar wording. These are conservative semantic checks, not a proof of
+truth for arbitrary natural language; valid but unfamiliar paraphrases may fall
+back. New event explanations need an explicit supported contract before generation.
+
+Without a configured generator, the OpenAI Responses path requires both
+`OPENAI_API_KEY` and `TERRA_LLM_MODEL`. Alternatively an existing provider can be
+injected as `Writer(generator=...)`; its `generate(instructions, packet, schema)`
+returns `{"text": <JSON event clauses>}`. Both paths use the same local validation.
+An injected generator failure goes directly to the local template and never
+silently switches to API-key billing. This module does not create an account,
+model, key or plan connection. The HTTP path sets `store: false` and keeps no
+provider conversation. Provider failure, refusal, incomplete output, extra or
+duplicate fields, invalid wording and oversized output all use the unchanged
+deterministic fallback; ingestion and event publication remain available.
+[Official Structured Outputs documentation](https://developers.openai.com/api/docs/guides/structured-outputs).
 
 ## Run
 
 Install the existing `requirements-terra-dev.txt`. In PowerShell from this
-checkout, set the import path and an **absolute shared database path** once:
+checkout, set the import path and an **absolute shared state directory** once:
 
 ```powershell
 $env:PYTHONPATH = 'backend'
-$env:TERRA_FARM_DB = (Join-Path (Get-Location) '.terra-local\farm-chill-ops.sqlite3')
-python -m terra_monitoring.farm_ops add-orchard --id west --name 'West Orchard'
-python -m terra_monitoring.farm_ops once
-python -m terra_monitoring.farm_ops run --interval 300
+$terraState = (Join-Path (Get-Location) '.terra-local\runtime')
+python -m terra_monitoring.farm_ops --state-dir $terraState add-orchard --id west --name 'West Orchard'
+python -m terra_monitoring.farm_ops --state-dir $terraState once
+python -m terra_monitoring.farm_ops --state-dir $terraState run --interval 300
 ```
 
 The existing live source reads its configured CIMIS key from process environment.

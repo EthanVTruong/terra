@@ -12,8 +12,10 @@ station error detection, gap filling and a fault-injection benchmark. See
 The additive [Terra integration](docs/terra/README.md) joins the frozen statistical
 station detector to Nathan's existing temperature/geometry estimator. It returns
 location estimates, relevant station flags and measured comparisons as strict
-JSON, with a web preview for saved examples and on-demand live queries. The existing ChillWatch pipeline remains
-unchanged. See [spec.md](spec.md) for the target product and next review boundary.
+JSON, with a web preview for saved examples and on-demand live queries. The existing
+ChillWatch numerical pipeline remains unchanged; audited input guards are described
+in [backend cleanup](docs/terra/backend-cleanup.md). See [spec.md](spec.md) for the
+target product and next review boundary.
 
 
 ## Live location queries

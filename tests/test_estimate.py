@@ -209,3 +209,61 @@ def test_lapse_ignores_stations_beyond_max_km():
     obs = pd.concat([_obs(), _obs({900: 20.0}).query("station_id == 900")])
     out = _at_davis(stations=st, observations=obs)
     assert (out["method"] == "idw").all() and (out["lapse_station_ids"].map(len) == 0).all()
+
+
+def _operating_date_case(hours):
+    stations = pd.DataFrame({
+        "station_id": range(1, 7),
+        "lat": [38.5, 38.51, 38.52, 38.53, 38.54, 38.55],
+        "lon": [-121.8] * 6,
+        "elevation_ft": [0.0, 100.0, 200.0, 1000.0, 2000.0, 3000.0],
+        "connect_date": pd.NaT,
+        "disconnect_date": pd.NaT,
+    })
+    observations = pd.DataFrame([
+        {"station_id": sid, "timestamp": hour, "temperature_f": temp,
+         "quality": "usable", "source_flag": ""}
+        for hour in hours for sid, temp in enumerate([40.0, 40.0, 40.0, 60.0, 80.0, 100.0], 1)
+    ])
+    return stations, observations
+
+
+@pytest.mark.parametrize("date_column,date_value", [
+    ("disconnect_date", "2026-01-10"), ("connect_date", "2026-01-12"),
+])
+def test_lapse_and_provenance_ignore_inactive_stations(date_column, date_value):
+    hours = pd.DatetimeIndex(["2026-01-11T16:00Z"])
+    stations, observations = _operating_date_case(hours)
+    stations.loc[stations["station_id"] > 3, date_column] = pd.Timestamp(date_value)
+    actual = estimate_location(38.5, -121.8, 500.0, hours, hours[-1], observations, stations)
+    absent = estimate_location(38.5, -121.8, 500.0, hours, hours[-1],
+                               observations.query("station_id <= 3"), stations.query("station_id <= 3"))
+    pd.testing.assert_frame_equal(actual, absent)
+    assert actual["temperature"].item() == pytest.approx(40.0)
+    assert actual["method"].item() == "idw"
+    assert actual["lapse_station_ids"].item() == []
+    assert set(actual["data_through_utc"].item()) == {1, 2, 3}
+
+
+def test_operating_dates_are_inclusive_per_hour_ending_pst_day_in_batch():
+    # Jan 11 2400 PST is Jan 12 08:00 UTC and still belongs to Jan 11.
+    hours = pd.DatetimeIndex(["2026-01-11T08:00Z", "2026-01-11T09:00Z",
+                              "2026-01-12T08:00Z", "2026-01-12T09:00Z"])
+    stations, observations = _operating_date_case(hours)
+    stations.loc[stations["station_id"] > 3, ["connect_date", "disconnect_date"]] = pd.Timestamp("2026-01-11")
+    actual = estimate_location(38.5, -121.8, 500.0, hours, hours[-1], observations, stations)
+    assert actual["method"].tolist() == ["idw", "idw_lapse", "idw_lapse", "idw"]
+    assert actual["lapse_station_ids"].tolist() == [[], [1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5, 6], []]
+    direct = pd.concat([
+        estimate_location(38.5, -121.8, 500.0, [hour], hours[-1], observations, stations)
+        for hour in hours
+    ], ignore_index=True)
+    pd.testing.assert_frame_equal(actual, direct)
+
+
+def test_inactive_observations_do_not_advance_provenance_for_active_station():
+    hours = pd.DatetimeIndex(["2026-01-11T16:00Z", "2026-01-12T16:00Z"])
+    stations, observations = _operating_date_case(hours)
+    stations["disconnect_date"] = pd.Timestamp("2026-01-11")
+    actual = estimate_location(38.5, -121.8, 500.0, hours[:1], hours[-1], observations, stations)
+    assert set(actual["data_through_utc"].item().values()) == {hours[0].isoformat()}

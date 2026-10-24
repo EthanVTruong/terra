@@ -23,3 +23,101 @@
 @media(min-width:740px){.control-heading{margin-bottom:8px}.selected-station-heading{min-height:40px}.temperature-control{margin-top:8px}.temperature-value{margin-bottom:5px}.temperature-value input{font-size:34px;line-height:42px}.station-comparison{margin-top:12px}.station-list-heading{margin-top:12px}.station-row{min-height:27px}.control-footnote{display:none}.station-controls{padding-bottom:10px}.support-summary{margin-top:7px;padding-top:8px}}
 @media(max-width:390px){.station-controls{grid-template-columns:minmax(0,1fr);gap:0}.station-controls>*{grid-column:1;grid-row:auto;min-width:0}.station-controls .station-list-heading{margin-top:20px;margin-bottom:6px}.station-controls .station-list{grid-row:auto}.station-controls .station-row{min-height:32px}.station-controls .station-select{font-size:11px}.station-controls .support-summary{grid-row:auto;margin-top:12px}.station-controls .station-comparison{margin-top:14px}.station-controls .selected-station-heading{margin-top:0}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Station lab: preserve the map and control behavior, clarify the operator view. */
+body:has(.stations-view){min-width:0}
+.stations-view .lab-window{border-color:#dededb;box-shadow:0 6px 24px #242a1d05,0 1px 3px #242a1d05}
+.lab-window .station-app-brand{gap:10px}
+.lab-window .station-app-brand img{display:block;width:30px;height:30px;object-fit:cover;border-radius:8px;background:#064a32;flex:none}
+.lab-window .station-app-brand h1{font-size:14px;letter-spacing:-.15px}
+.lab-window .lab-toolbar{height:52px}
+.lab-window .segmented{padding:3px;border:1px solid #e8e8e5;background:#f1f1ef;border-radius:9px;gap:2px}
+.lab-window .segmented button{font-size:11px;line-height:18px;padding:4px 11px;border:1px solid transparent;border-radius:6px;color:#6b6b6b}
+.lab-window .segmented button[aria-pressed=true]{border-color:#dfdfda;background:#fcfcfc;color:#30342c;box-shadow:0 1px 2px #20251508}
+.lab-window .segmented button:last-child[aria-pressed=true]{background:#edf1e6;border-color:#dce4d1;color:#485b35}
+.lab-window .evaluation-state{padding:4px 8px;border:1px solid #e8e9e3;border-radius:6px;background:#f7f8f4;color:#686e60;font-size:11px;line-height:17px;white-space:nowrap}
+.lab-window .weather-map{border-radius:7px}
+.lab-window .map-station.selected .map-station-caption{border:1px solid #a7b592;background:#fcfdf9;box-shadow:0 3px 12px #23311616}
+.lab-window .map-station.selected .map-station-caption>span{color:#27361f}
+.lab-window .station-controls{padding-top:2px;padding-left:23px;padding-right:20px}
+.lab-window .selected-station-heading{flex-direction:row;align-items:flex-start;justify-content:space-between;gap:8px;min-height:31px;margin:0 0 12px}
+.lab-window .selected-station-heading h2{min-width:0;font-size:17px;line-height:23px;letter-spacing:-.25px}
+.lab-window .selected-station-heading .station-state{margin-top:2px;padding:1px 6px;border-radius:5px;background:#f0f2eb;color:#5d6c50;font-size:10px;line-height:18px;white-space:nowrap;flex:none}
+.lab-window .selected-station-heading .station-state.flagged{background:#f7eee3;color:#926239}
+.lab-window .selected-station-heading .station-state.offline,
+.lab-window .selected-station-heading .station-state.unavailable{background:#f0f0ee;color:#777970}
+.lab-window .temperature-control{margin-top:0}
+.lab-window .temperature-control>label{font-size:11px;color:#737373}
+.lab-window .temperature-value{margin-top:4px;margin-bottom:8px;gap:2px}
+.lab-window .temperature-value input{font-size:36px;line-height:44px;letter-spacing:-1.1px;font-variant-numeric:tabular-nums}
+.lab-window .temperature-value>span{font-size:23px;color:#737373}
+.lab-window .temperature-slider{accent-color:#657651}
+.lab-window .slider-context{margin-top:6px;font-size:10px}
+.lab-window .slider-context button{border-radius:4px;padding:2px 0 2px 4px}
+.lab-window .station-comparison{margin-top:14px;padding-top:12px;border-top:1px solid #e9eae5;gap:14px}
+.lab-window .station-comparison span{font-size:10px;color:#737373}
+.lab-window .station-comparison strong{font-size:18px;line-height:25px;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.lab-window .reading-state{font-size:10px;line-height:15px;min-height:30px;margin-top:6px;color:#737373}
+.lab-window .station-list-heading{margin-top:10px;margin-bottom:6px;font-size:11px;color:#737373}
+.lab-window .station-row{min-height:32px;margin:1px -7px;padding:1px 7px;border:1px solid transparent;border-radius:6px;gap:7px;transition:background 150ms,border-color 150ms}
+.lab-window .station-row.active{background:#f1f3ec;border-color:#e5e9dc}
+.lab-window .station-select{font-size:11px;line-height:18px;color:#626958}
+.lab-window .station-row.active .station-select{color:#34402b}
+.lab-window .station-select>span:last-child{font-variant-numeric:tabular-nums}
+.lab-window .reporting-toggle[aria-pressed=true]{background:#82916f}
+.lab-window .support-summary{margin-top:10px;padding-top:10px;font-size:11px}
+.lab-window .support-summary strong{font-variant-numeric:tabular-nums;color:#545d49}
+.lab-window .lab-footer{min-height:56px;background:#fafbf7;padding:9px 16px}
+.lab-window .scenario-controls{gap:6px}
+.lab-window .scenario-controls>span{display:none}
+.lab-window .scenario-controls>button{min-height:30px;padding:4px 10px;border:1px solid #e1e4d9;border-radius:6px;background:#fcfcfa;color:#626a56;font-size:11px;line-height:19px}
+.lab-window .scenario-controls>button:hover:not(:disabled){background:#edf1e5;border-color:#ccd6bd;color:#3f512f}
+.lab-window .scenario-controls>button:active:not(:disabled){background:#e5ebda}
+.lab-window .time-controls{gap:9px}
+.lab-window .time-controls>span{font-size:10px;color:#737373}
+.lab-window .map-bottom{height:30px;align-items:center;color:#737373;font-size:10px}
+.stations-view .below-app{color:#6e6e6e;font-size:10px}
+@media(min-width:740px){
+  .lab-window .station-controls{padding-bottom:12px}
+  .lab-window .selected-station-heading{min-height:30px;margin-bottom:8px}
+  .lab-window .reading-state{min-height:16px;margin-top:5px}
+  .lab-window .station-row{min-height:29px;margin-top:0;margin-bottom:0;padding-top:0;padding-bottom:0}
+  .lab-window .support-summary{margin-top:8px;padding-top:8px}
+  .lab-window .lab-footer{min-height:52px;padding-top:8px;padding-bottom:8px}
+}
+@media(max-width:950px) and (min-width:740px){
+  .lab-window .station-controls{padding-left:17px;padding-right:17px}
+  .lab-window .selected-station-heading{flex-wrap:wrap;gap:2px 8px;margin-bottom:10px}
+  .lab-window .scenario-controls{gap:4px}
+  .lab-window .scenario-controls>button{padding-left:8px;padding-right:8px}
+}
+@media(max-width:739px){
+  .lab-window .lab-header{height:52px}
+  .lab-window .station-app-brand{gap:8px}
+  .lab-window .station-app-brand img{width:27px;height:27px}
+  .lab-window .lab-toolbar{height:49px;gap:8px}
+  .lab-window .segmented button{padding:3px 7px;font-size:10px}
+  .lab-window .evaluation-state{padding:3px 6px;font-size:10px;line-height:15px;white-space:normal;max-width:145px}
+  .lab-window .station-controls{padding:19px 20px 18px;gap:0 24px}
+  .lab-window .selected-station-heading{grid-column:1;grid-row:1;flex-wrap:wrap;gap:3px 8px;margin:0 0 10px}
+  .lab-window .temperature-control{grid-column:1;grid-row:2}
+  .lab-window .station-comparison{grid-column:1;grid-row:3;margin-top:12px}
+  .lab-window .reading-state{grid-column:1;grid-row:4}
+  .lab-window .station-list-heading{grid-column:2;grid-row:1;margin:0 0 6px}
+  .lab-window .station-list{grid-column:2;grid-row:2/5}
+  .lab-window .support-summary{grid-column:2;grid-row:5;margin-top:7px}
+  .lab-window .lab-footer{padding:10px 12px;gap:10px}
+  .lab-window .scenario-controls{justify-content:space-between;gap:4px}
+  .lab-window .scenario-controls>button{padding:4px 7px;font-size:10px}
+}
+@media(max-width:390px){
+  .lab-window .station-controls{display:block;padding:18px 18px 17px}
+  .lab-window .selected-station-heading{flex-wrap:nowrap}
+  .lab-window .station-list-heading{margin-top:18px}
+  .lab-window .station-row{min-height:34px}
+  .lab-window .support-summary{margin-top:12px}
+  .lab-window .scenario-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .lab-window .scenario-controls>button{min-height:32px;font-size:11px}
+  .lab-window .evaluation-state{max-width:125px}
+  .lab-window .segmented button{padding-left:6px;padding-right:6px}
+}

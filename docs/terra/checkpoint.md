@@ -1,5 +1,9 @@
 # Clean statistical checkpoint and first JSON integration
 
+The subsequent [main consolidation verification](main-consolidation.md) records
+full-backend CI, restored typical ranges and integration/portability repairs.
+The checks below describe the original first-slice checkpoint.
+
 Prepared against shared `main`:
 `229106c251cfa41993a747cde2a40f29e53ed60f`.
 The original prototype cleanup chat released ownership after its final checks.

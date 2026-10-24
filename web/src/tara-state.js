@@ -64,6 +64,11 @@ export function validateTaraResult(value, operation) {
     const notice = validateTaraTurn(value.event);
     if (value.outcome !== "none" || value.user_turn || notice.kind !== "notice" || notice.data.target_request_id !== operation.body.target_request_id || !state.turns.some((turn) => turn.id === notice.id && turn.text === notice.text && turn.data?.target_request_id === operation.body.target_request_id) || state.pending_requests.some((item) => item.request_id === operation.body.target_request_id)) throw new Error("The unfinished request could not be reconciled. Refresh its status before continuing.");
   }
+  if (operation.kind === "setup" && operation.body.action === "device_location") {
+    const location = validateTaraTurn(value.event);
+    const saved = state.turns.find((turn) => turn.id === location.id);
+    if (location.role !== "event" || location.kind !== "location" || location.data?.source !== "device" || location.data?.saved !== true || location.data?.confirmed !== true || !state.orchard_id || location.data.orchard_id !== state.orchard_id || saved?.role !== "event" || saved.kind !== "location" || saved.text !== location.text || saved.data?.source !== "device" || saved.data?.saved !== true || saved.data?.confirmed !== true || saved.data?.orchard_id !== state.orchard_id) throw new Error("The shared location could not be confirmed. Retry the same location request.");
+  }
   return value;
 }
 
@@ -76,7 +81,8 @@ export function createTaraOperation(kind, body, requestId) {
 export function restoreTaraOperation(value) {
   if (!object(value) || value.version !== 1 || !["message", "setup", "reconcile"].includes(value.kind) || value.path !== (value.kind === "message" ? "/api/tara/messages" : value.kind === "reconcile" ? "/api/tara/reconcile" : "/api/tara/setup") || !object(value.body) || !identifier(value.body.request_id)) return null;
   if (value.kind === "message" && (typeof value.body.text !== "string" || !value.body.text.trim() || value.body.text.length > 1000)) return null;
-  if (value.kind === "setup" && !["location", "notifications", "restart"].includes(value.body.action)) return null;
+  if (value.kind === "setup" && !["location", "device_location", "notifications", "restart"].includes(value.body.action)) return null;
+  if (value.kind === "setup" && value.body.action === "device_location" && !validDeviceLocation(value.body.device_location)) return null;
   if (value.kind === "reconcile" && (!identifier(value.body.target_request_id) || value.body.confirm_uncertain !== true || !nullableId(value.body.orchard_id))) return null;
   return { ...value, status: ["in_progress", "result_available"].includes(value.status) ? value.status : "unconfirmed" };
 }
@@ -98,9 +104,19 @@ export function readTaraDraft(key) {
   return typeof value === "string" ? value.slice(0, 1000) : "";
 }
 
-export function restoreFarmLocation(value) {
-  if (!object(value) || !["name", "lat", "lon", "elevation"].every((key) => typeof value[key] === "string") || typeof value.confirmed !== "boolean") return { name: "", lat: "", lon: "", elevation: "", source: "manual", confirmed: false };
-  return { name: value.name.slice(0, 80), lat: value.lat.slice(0, 40), lon: value.lon.slice(0, 40), elevation: value.elevation.slice(0, 40), source: ["preset", "device"].includes(value.source) ? value.source : "manual", confirmed: value.confirmed };
+const validDeviceLocation = (value) => object(value) && Object.keys(value).every((key) => ["lat", "lon", "accuracy_m"].includes(key)) && Number.isFinite(value.lat) && Math.abs(value.lat) <= 90 && Number.isFinite(value.lon) && Math.abs(value.lon) <= 180 && (value.accuracy_m === null || Number.isFinite(value.accuracy_m) && value.accuracy_m >= 0);
+
+export function deviceLocationFromPosition(position) {
+  const coords = position?.coords;
+  const value = { lat: coords?.latitude, lon: coords?.longitude, accuracy_m: Number.isFinite(coords?.accuracy) && coords.accuracy >= 0 ? coords.accuracy : null };
+  if (!validDeviceLocation(value)) throw new Error("Your location couldn’t be read. Try again.");
+  return value;
+}
+
+export function taraLocationSetupKey(snapshot) {
+  if (snapshot?.setup?.stage !== "location") return null;
+  const prompt = [...(snapshot.turns || [])].reverse().find((turn) => turn.role === "assistant" && turn.data?.action === "location_choice");
+  return JSON.stringify({ orchard_id: snapshot.orchard_id, crops: snapshot.setup.crops, variety: snapshot.setup.variety ?? null, crop_description: snapshot.setup.crop_description ?? null, prompt_id: prompt?.id ?? null });
 }
 
 export function mergeTaraTimeline(turns, fieldNotes = []) {
@@ -143,16 +159,10 @@ export function taraNeedsNotificationChoice(snapshot) {
   return false;
 }
 
-export function validateFarmLocation(draft) {
-  const lat = Number(draft.lat), lon = Number(draft.lon), elevation = Number(draft.elevation);
-  if (!draft.name.trim() || draft.name.trim().length > 80) throw new Error("Give this farm a short name.");
-  if (![draft.lat, draft.lon, draft.elevation].every((value) => String(value).trim()) || !Number.isFinite(lat) || Math.abs(lat) > 90 || !Number.isFinite(lon) || Math.abs(lon) > 180 || !Number.isFinite(elevation) || elevation < -1500 || elevation > 20000) throw new Error("Enter valid latitude, longitude and elevation in feet.");
-  if (!draft.confirmed) throw new Error("Confirm that the location and elevation describe your farm.");
-  return { name: draft.name.trim(), lat, lon, elevation_ft: elevation, source: ["device", "preset"].includes(draft.source) ? draft.source : "manual", confirmed: true };
-}
-
 export function taraError(body, status) {
   const code = body?.error?.code || body?.detail?.code;
+  if (status === 503 && code === "location_lookup_failed") return new Error("Couldn’t get your location details. Try again.");
+  if (status === 409 && code === "setup_changed") return Object.assign(new Error("Setup changed while location was loading. Refresh to continue."), { setupChanged: true });
   if (status === 409 && code === "request_already_completed") return Object.assign(new Error("The earlier reply finished. Recover its saved result without retrying generation."), { alreadyCompleted: true });
   if (status === 409 && code === "request_in_progress") return Object.assign(new Error("Terra is still handling this request. Refresh its status before sending another."), { inProgress: true });
   if (status === 403) return new Error("Reconnect to the local Terra page, then retry this request.");

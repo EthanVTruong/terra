@@ -47,7 +47,7 @@
   "kind": "task",
   "id": "terra-full-flow-verification",
   "owner": "et",
-  "status": "active",
+  "status": "done",
   "intent": "Subsequent user-requested goal: independently test final contributor revisions as first-time, returning and skeptical data-operator users; exercise onboarding, held-out simulation through frozen QC/Nathan and monitoring, no-alert controls, proactive UI messages, truthful delivery state and grounded follow-ups. Fix concrete defects and push the reviewed integrated simulation and verification changes after the complete flow passes. Preserve current runtime, credentials and original staged prototype.",
   "branch": "codex/terra-demo-simulation",
   "base": "cb58022",
@@ -66,18 +66,27 @@
   ],
   "depends_on": [],
   "contracts": [],
-  "artifacts": [],
+  "artifacts": [
+    "docs/terra/full-flow-verification/results.md",
+    "docs/terra/full-flow-verification/held-out-review.md",
+    "docs/terra/full-flow-verification/evidence/final-browser-stages.json",
+    "docs/terra/full-flow-verification/evidence/final-publication-proof.json",
+    "docs/terra/full-flow-verification/evidence/placeholder-delivery-redacted.json"
+  ],
   "handoff": {
     "revision": "37b417fab75c49c03f5f356eabc9090c7d5b75a7",
-    "summary": "Frozen controlled replay, actual production-interface bridge, natural-language/crop/weather follow-ups, immutable old-note context and publication-order repair are included in the consolidated candidate alongside final Tara and approved UI. The functional source is committed; the source owner retains final browser evidence and task metadata separately. Source data, scientific reference, normal live process and original 8520 session were preserved.",
+    "summary": "Bounded full-flow behavior verification complete; source frozen. Three independent browser grower profiles plus delegated first-time/returning/operator audits verified actual onboarding, real QC/estimator/monitor replay, quiet controls, station exclusion, proactive coverage/recovery notes and immutable grounded follow-ups. This metadata/evidence handoff adds no implementation change. The subsequent user goal remains active until the designated consolidation owner completes the combined final main release with the selected polished UI and newer authoritative upstream layer.",
     "evidence": [
-      "Source owner passed all ten configured groups on the pre-ordering implementation, then 386 affected conversation/farm/API cases and 28 UI/build cases for the bounded persisted-publication ordering repair. Consolidation subsequently combined final Tara source and passed all affected conversation/full-flow/farm/state cases plus 47 pure/helper UI cases and the production build.",
-      "Actual controlled checks establish quiet original/coherent-warming frames, a flagged excluded station with usable orchard peers, coverage loss producing one grower note, three distinct subsequent usable hours before recovery, and old loss Details retaining two supporting stations after current support recovers to five. These are controlled behavioral checks, not natural-fault accuracy labels.",
-      "The replay uses held-out March 2026 observations, isolated journals, local factual wording and disabled external delivery. Its simulated phone card is separate from the independently verified actual trial placeholder: ignored trial-api-success proof records provider delivered, one attempt and direct handset confirmation. Live configuration belongs solely to the primary owner.",
-      "First-publication wall timestamps now order new payloads without changing created_at, source/query clocks, IDs or immutable prior payloads. Consolidation applies the same validated publication/fallback mapping to presentation and notification consent; source-specific old-alert evidence remains unchanged."
+      "All ten scoped groups passed at853336a against cb58022. After final publication ordering at37b417f, affected conversation/farm/full-flow and SMS/runtime/demo suites passed with zero skips;28 UI tests and production build passed. Both web packages passed frozen installs, builds and eight packaging cases.",
+      "Actual slider125F flagged Davis against about46.5F expected; four remaining peers kept orchard usable without an extra grower note. Support loss to two peers published one actual in-app coverage note without refresh; three distinct restored hours produced recovery. Old selected Details and follow-up retained original two-station evidence/time.",
+      "Same-hour source timestamps preserved; new actual publication timestamps order welcome before loss and default follow-up explains latest loss. Saved DOM, API and final screenshots prove37b behavior. Ordinary language/crops/readiness/weather-history/context fixes retain factual/no-call contracts.",
+      "Independent cached Mar16-22 review:840 rows,168 causal hours,72 usable/96 insufficient estimates; explicit small-change and coherent+5/+15 controls stayed quiet, isolated spike flagged. No confirmed fault labels; no universal zero false-positive claim. Source/reference hashes and boundary counterexample retained.",
+      "Read-only verification of existing integration-owner synthetic trial SMS receipt: delivered, one attempt, handset confirmed. Redacted proof separates that placeholder from historical replay notes. No new external SMS/provider/LLM/training or shared live-state mutation in replay; original8520 and8512 preserved.",
+      "No scientific module/reference diff against reviewed cb58022; worker source histories preserved. Results document exact tested revisions, screenshots, selected-UI release boundary and viewport/OS-notification limitations.",
+      "These source-owner captures verify frozen37b behavior. The user-selected polished chat and Station lab screenshots remain the visual targets for the consolidated production UI; pre-polish verification screenshots are not replacement designs. Consolidation separately retains final Tara, publication-consent mapping and authoritative Nathan098ebe0 compatibility gates."
     ],
-    "uncertainty": "The owner is finalizing evidence-only browser artifacts and its own completion record on the preserved simulation branch. Final combined CI/UI review, publication and primary-owner runtime verification are tracked by terra-product-consolidation and terra-full-pipeline. No required known implementation is held solely in that metadata follow-up.",
-    "next": "Finish the source-owner evidence handoff without changing frozen implementation. Consolidation completes its exact-head release gates and publishes main; the primary owner performs the single retained-state live rollout. Keep actual trial delivery and isolated simulated phone behavior clearly distinguished."
+    "uncertainty": "The final combined head must preserve Nathan's newer authoritative model/data changes and pass actual-upstream gates/exact-head CI. This standalone browser capture predates the selected polished visual slice. No new mobile-width or real OS-notification permission test was claimed here. Real trial-template phone delivery is verified separately from historical in-app coverage content. Main integration and one retained-data runtime rollout belong to their designated owners.",
+    "next": "Push this single evidence head and provide its SHA/results to the consolidation owner immediately. Do not merge worker branches or change implementation. Consolidation owner completes final selected-UI review, actual-upstream checks/CI and main; existing runtime owner performs one retained-data rollout."
   }
 }
 ```

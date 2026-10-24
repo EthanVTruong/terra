@@ -1,0 +1,30 @@
+{
+  "code_revision": "37b417fab75c49c03f5f356eabc9090c7d5b75a7",
+  "source_clock_unchanged": "2026-03-11T11:00:00+00:00",
+  "native_notes_newest_first": [
+    {
+      "id": "591ae767fa7d85366922a5eb81c0656c4ac5123354939e384a5ac074bcb5edb4",
+      "created_at": "2026-03-11T11:00:00+00:00",
+      "published_at": "2026-10-24T18:17:39.588936+00:00",
+      "text": "Weather data\u2019s a bit spotty right now, so the estimate\u2019s incomplete."
+    },
+    {
+      "id": "183ef1cc67616f18dfd4cf72d2fe507b11c5c7f59c78441e3307ecfd1ee5e47e",
+      "created_at": "2026-03-11T11:00:00+00:00",
+      "published_at": "2026-10-24T18:14:28.486429+00:00",
+      "text": "Demo replay: Your farm is saved; estimated chill is 0 hours with incomplete coverage; weather support is usable. As of Mar 11."
+    }
+  ],
+  "latest_follow_up": {
+    "text": "Demo replay: Weather data could not support a current orchard estimate; the cause is unconfirmed. As of Mar 11, 3:00 AM PST.",
+    "intent": "explain_alert"
+  },
+  "acknowledgment_attached": true,
+  "side_effects": {
+    "real_sms": false,
+    "provider_calls": false,
+    "llm_calls": false,
+    "model_training": false,
+    "live_state": false
+  }
+}

@@ -1,8 +1,10 @@
 # Final Terra user-flow verification
 
-Status: in progress. This is the subsequent verification goal requested after
-the isolated station simulation. It must consume the final contributor revisions
-before claiming the complete experience passed.
+Status: bounded behavior verification complete at `37b417f`; evidence published
+in [results.md](results.md). The subsequent goal remains active until the
+designated consolidation owner finishes actual-upstream checks, exact-head CI
+and main integration with the user's selected polished UI and all final
+contributor revisions. Earlier standalone receipts do not replace those gates.
 
 The grower saves a farm, chooses notifications, receives a meaningful monitor
 note when new weather changes reliability, opens its exact evidence, and asks a
@@ -42,10 +44,13 @@ Injected changes are labelled scenarios. A quiet control set proves those tested
 cases stayed quiet; it cannot establish a universal zero false-positive rate or
 confirm that every naturally flagged reading represents a real sensor failure.
 
-Shared live service8512, auth preview8517 and user demo8520 stay untouched during
-testing. Fresh test state and ports are used for mutations. No credential vault is
-copied, and automatic SMS remains disabled pending its existing readiness gate.
+Shared live service8512, auth preview8517 and user demo8520 stayed untouched by
+this replay testing. Fresh state and ports were used for mutations. No credential
+vault was copied. The integration owner subsequently verified one delivered
+trial-template phone ping; this replay made no external send or SMS configuration
+change. See the separate redacted delivery proof in the results.
 
-Final evidence will identify the actual integrated source revision, data/reference
-hashes, test output, browser screenshots, defects repaired and remaining external
-account limitations before the branch is pushed.
+The results identify tested revisions, data/reference evidence, test groups,
+browser screenshots, repaired defects, delivery scope and remaining combined
+release gates. The consolidation owner receives this single frozen source plus
+metadata handoff before finishing the main release.

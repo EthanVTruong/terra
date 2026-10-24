@@ -1,0 +1,227 @@
+{
+  "code_revision": "853336a12e9970fb3d06e5c895e45e4f24366075",
+  "stages": [
+    {
+      "stage": "minor",
+      "clock": "2026-03-11T11:00:00+00:00",
+      "farm": {
+        "chill_method": "orchard-hours-32-45-nov1-mar31-fixed-pst-v1",
+        "crop": "avocado",
+        "crop_description": "We grow Hass avocados and Meyer lemons.",
+        "crops": [
+          "avocado",
+          "meyer lemons"
+        ],
+        "demo_location": false,
+        "elevation_ft": 60.0,
+        "geometry_key": "ed932a127db1c084eb903e6bb82f0108deb6051d0f01359aa105d92d2a20e8f8",
+        "id": "farm-e3c4c15c0e873b9614b7",
+        "lat": 38.55,
+        "location_source": "caller-supplied orchard pin and elevation",
+        "lon": -121.78,
+        "mode": "injected",
+        "name": "Verification Orchard",
+        "target": {
+          "agronomic_requirement_verified": false,
+          "hours": null,
+          "kind": "not_configured",
+          "note": "No crop-specific reference has been configured.",
+          "source": null
+        },
+        "variety": null
+      },
+      "davis_f": 48.6,
+      "davis_flagged": false,
+      "supporting_stations": 5,
+      "comparison_available": true,
+      "proactive_messages": [
+        {
+          "id": "3836c26ebeaac9a2bb978281482676d056719a175e13fbd35d5b264d44de8ac5",
+          "text": "Demo replay: Your farm is saved; estimated chill is 0 hours with incomplete coverage; weather support is usable. As of Mar 11.",
+          "types": [
+            "welcome"
+          ]
+        }
+      ],
+      "side_effects": {
+        "real_sms": false,
+        "provider_calls": false,
+        "llm_calls": false,
+        "model_training": false,
+        "live_state": false
+      }
+    },
+    {
+      "stage": "spike",
+      "clock": "2026-03-11T11:00:00+00:00",
+      "farm": {
+        "chill_method": "orchard-hours-32-45-nov1-mar31-fixed-pst-v1",
+        "crop": "avocado",
+        "crop_description": "We grow Hass avocados and Meyer lemons.",
+        "crops": [
+          "avocado",
+          "meyer lemons"
+        ],
+        "demo_location": false,
+        "elevation_ft": 60.0,
+        "geometry_key": "ed932a127db1c084eb903e6bb82f0108deb6051d0f01359aa105d92d2a20e8f8",
+        "id": "farm-e3c4c15c0e873b9614b7",
+        "lat": 38.55,
+        "location_source": "caller-supplied orchard pin and elevation",
+        "lon": -121.78,
+        "mode": "injected",
+        "name": "Verification Orchard",
+        "target": {
+          "agronomic_requirement_verified": false,
+          "hours": null,
+          "kind": "not_configured",
+          "note": "No crop-specific reference has been configured.",
+          "source": null
+        },
+        "variety": null
+      },
+      "davis_f": 125.0,
+      "davis_flagged": true,
+      "supporting_stations": 4,
+      "comparison_available": true,
+      "proactive_messages": [
+        {
+          "id": "3836c26ebeaac9a2bb978281482676d056719a175e13fbd35d5b264d44de8ac5",
+          "text": "Demo replay: Your farm is saved; estimated chill is 0 hours with incomplete coverage; weather support is usable. As of Mar 11.",
+          "types": [
+            "welcome"
+          ]
+        }
+      ],
+      "side_effects": {
+        "real_sms": false,
+        "provider_calls": false,
+        "llm_calls": false,
+        "model_training": false,
+        "live_state": false
+      }
+    },
+    {
+      "stage": "loss",
+      "clock": "2026-03-11T11:00:00+00:00",
+      "farm": {
+        "chill_method": "orchard-hours-32-45-nov1-mar31-fixed-pst-v1",
+        "crop": "avocado",
+        "crop_description": "We grow Hass avocados and Meyer lemons.",
+        "crops": [
+          "avocado",
+          "meyer lemons"
+        ],
+        "demo_location": false,
+        "elevation_ft": 60.0,
+        "geometry_key": "ed932a127db1c084eb903e6bb82f0108deb6051d0f01359aa105d92d2a20e8f8",
+        "id": "farm-e3c4c15c0e873b9614b7",
+        "lat": 38.55,
+        "location_source": "caller-supplied orchard pin and elevation",
+        "lon": -121.78,
+        "mode": "injected",
+        "name": "Verification Orchard",
+        "target": {
+          "agronomic_requirement_verified": false,
+          "hours": null,
+          "kind": "not_configured",
+          "note": "No crop-specific reference has been configured.",
+          "source": null
+        },
+        "variety": null
+      },
+      "davis_f": 47.6,
+      "davis_flagged": false,
+      "supporting_stations": 2,
+      "comparison_available": false,
+      "proactive_messages": [
+        {
+          "id": "803b11c84a58765ee3d113310b6c3f714a87ed0214e9307c9ecfcd7f237de97a",
+          "text": "Weather data\u2019s a bit spotty right now, so the estimate\u2019s incomplete.",
+          "types": [
+            "monitoring_limited"
+          ]
+        },
+        {
+          "id": "3836c26ebeaac9a2bb978281482676d056719a175e13fbd35d5b264d44de8ac5",
+          "text": "Demo replay: Your farm is saved; estimated chill is 0 hours with incomplete coverage; weather support is usable. As of Mar 11.",
+          "types": [
+            "welcome"
+          ]
+        }
+      ],
+      "side_effects": {
+        "real_sms": false,
+        "provider_calls": false,
+        "llm_calls": false,
+        "model_training": false,
+        "live_state": false
+      }
+    },
+    {
+      "stage": "recovery",
+      "clock": "2026-03-11T14:00:00+00:00",
+      "farm": {
+        "chill_method": "orchard-hours-32-45-nov1-mar31-fixed-pst-v1",
+        "crop": "avocado",
+        "crop_description": "We grow Hass avocados and Meyer lemons.",
+        "crops": [
+          "avocado",
+          "meyer lemons"
+        ],
+        "demo_location": false,
+        "elevation_ft": 60.0,
+        "geometry_key": "ed932a127db1c084eb903e6bb82f0108deb6051d0f01359aa105d92d2a20e8f8",
+        "id": "farm-e3c4c15c0e873b9614b7",
+        "lat": 38.55,
+        "location_source": "caller-supplied orchard pin and elevation",
+        "lon": -121.78,
+        "mode": "injected",
+        "name": "Verification Orchard",
+        "target": {
+          "agronomic_requirement_verified": false,
+          "hours": null,
+          "kind": "not_configured",
+          "note": "No crop-specific reference has been configured.",
+          "source": null
+        },
+        "variety": null
+      },
+      "davis_f": 47.5,
+      "davis_flagged": false,
+      "supporting_stations": 5,
+      "comparison_available": true,
+      "proactive_messages": [
+        {
+          "id": "9a84b0bceeda077156979a4d2d80ddd7153382b02420fe55e6f4b5a632d6a31e",
+          "text": "Weather data\u2019s back. The estimate\u2019s updating again.",
+          "types": [
+            "monitoring_recovered"
+          ]
+        },
+        {
+          "id": "803b11c84a58765ee3d113310b6c3f714a87ed0214e9307c9ecfcd7f237de97a",
+          "text": "Weather data\u2019s a bit spotty right now, so the estimate\u2019s incomplete.",
+          "types": [
+            "monitoring_limited"
+          ]
+        },
+        {
+          "id": "3836c26ebeaac9a2bb978281482676d056719a175e13fbd35d5b264d44de8ac5",
+          "text": "Demo replay: Your farm is saved; estimated chill is 0 hours with incomplete coverage; weather support is usable. As of Mar 11.",
+          "types": [
+            "welcome"
+          ]
+        }
+      ],
+      "side_effects": {
+        "real_sms": false,
+        "provider_calls": false,
+        "llm_calls": false,
+        "model_training": false,
+        "live_state": false
+      },
+      "old_loss_evidence_support_after_recovery": 2
+    }
+  ]
+}

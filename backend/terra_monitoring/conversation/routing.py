@@ -22,7 +22,9 @@ historical history pace behind ahead accumulated accumulating accumulation total
 temperature temperatures weather data station stations neighbor neighbors neighboring support supporting coverage reliable reliability usable
 available unavailable incomplete complete missing spotty stale old new reading readings quality alert alerts warning warnings flag flags note notes
 mean means meaning wrong off low high too long season seasonal orchard farm condition conditions status getting looking doing good okay ok back
-still more less not no enough under over slow slowly recent look like says say help hey hi tara count counting current gap difference am s t jan january feb february mar march apr april
+still more less not no enough under over slow slowly recent look like says say help hey hi tara count counting current gap difference am s t
+got but cold hot warm degrees fahrenheit fresh freshness age outdated acting up suspect flagged findings taken recorded updated checked there
+jan january feb february mar march apr april
 may jun june jul july aug august sep september oct october nov november dec december pst pdt utc""".split())
 
 
@@ -46,10 +48,11 @@ def route(text, context=None, known_subjects=()):
     # a command and fictional settings are never commands to this application.
     for clause in clauses:
         part = clause.strip(" ,👍")
-        part = re.sub(r"^(?:(?:no )?thanks|thank you|got it)[,\s]+", "", part)
+        part = re.sub(r"^(?:(?:no )?thanks|thank you|got it)[,\s]+(?:but\s+)?", "", part)
         if OFF_TOPIC.search(part):
             continue
-        if re.search(r"\b(?:don't|do not|never)\s+(?:stop|turn off|disable|pause|unsubscribe|switch off)\b", part):
+        if (re.search(r"\b(?:don't|do not|never)\s+(?:stop|turn off|disable|pause|unsubscribe|switch off)\b", part)
+                or re.search(r"\b(?:don't|do not|never)\s+(?:turn|switch)\s+(?:(?:the|my|all)\s+)?(?:browser\s+)?(?:alerts?|notifications?|sms|texts?)\s+(?:off|on)\b", part)):
             return "preference_unchanged"
         imperative = re.sub(r"^(?:please\s+|(?:can|could|would) you\s+)", "", part).strip(" ?")
         target = r"(?:(?:the|my|all) )?(?:browser )?(?:alerts?|notifications?|sms|texts?)(?: only)?(?: please)?"
@@ -78,7 +81,7 @@ def route(text, context=None, known_subjects=()):
             if OFF_TOPIC.search(prefix) or not explicit:
                 continue
             part = prefix
-        if not re.search(r"\b(chill|chilling|station|stations|weather|coverage|data|history|historical|compare|comparison|last year|past years?|how far|behind|why|explain|mean|farm|orchard|crops?|growing|location|monitor(?:ing)?|trees|plants|bloom|forecast|predict\w*|gdd|gdh|spray|irrigat\w*|alerts?|notifications?|sms|texting)\b", part):
+        if not re.search(r"\b(chill|chilling|station|stations|weather|temperature|cold|warm|hot|readings?|estimate|normal|coverage|data|history|historical|compare[ds]?|comparison|last year|past years?|how far|behind|why|explain|mean|farm|orchard|crops?|growing|location|monitor(?:ing)?|trees|plants|bloom|forecast|predict\w*|gdd|gdh|spray|irrigat\w*|alerts?|notifications?|sms|texting)\b", part):
             continue
         factual.append(part)
     scoped = " ".join(factual).strip()
@@ -92,7 +95,7 @@ def route(text, context=None, known_subjects=()):
         return "clarify"
     if re.search(r"\b(?:alerts?|notifications?|sms|texting)\b", scoped) and re.search(r"\b(?:turn|switch|disable|stop|pause|enable)\b", scoped):
         return "notification_status"
-    low = scoped
+    low = re.sub(r"^(?:thanks|thank you|got it)[,\s]+(?:but\s+)?", "", scoped).strip()
     local_patterns = {
         "profile_crops": r"(?:what (?:crops?|varieties) (?:am i|are we) growing|what (?:am i|are we) growing|what (?:crops?|varieties) (?:do i|do we) (?:grow|have)|(?:show|tell) me (?:my|our) crops?|what(?:'s| is| are) (?:my|our|the) (?:crop|crops|variety|varieties))",
         "profile_location": r"(?:where(?:'s| is) (?:my|our|the) (?:farm|orchard)(?: (?:saved|located))?|what(?:'s| is) (?:my|our|the) (?:saved )?(?:(?:farm|orchard) )?location|what location did i save)",
@@ -113,14 +116,37 @@ def route(text, context=None, known_subjects=()):
         return "unsupported"
     if re.search(r"\b(explain|why|what does .*mean|meaning)\b", low) and re.search(r"\b(alert|warning|flag|note)\b", low):
         return _bounded("explain_alert", low, known_subjects)
+    normal_context = {"chill_total": "history", "history": "history", "history_gap": "history",
+                      "station_health": "station_health", "freshness": "station_health",
+                      "temperature": "temperature_normal", "temperature_normal": "temperature_normal",
+                      "station_findings": "station_findings", "explain_alert": "explain_alert"}
+    if re.fullmatch(r"(?:is (?:that|this|it) (?:normal|usual|okay)|does (?:that|this) look normal)", low):
+        return normal_context.get(context, "needs_context")
+    if re.search(r"\btemperature\b", low) and re.search(r"\bnormal\b", low):
+        return _bounded("temperature_normal", low, known_subjects)
+    # These factual intents are answered locally from retained observations;
+    # they never enter the writer or broaden its positive vocabulary gate.
+    if (re.search(r"\b(?:how old|how fresh)\b", low) and re.search(r"\b(?:data|readings?|estimate)\b", low)
+            or re.search(r"\b(?:data|readings?|estimate)\b.*\b(?:old|stale|fresh|outdated)\b", low)
+            or re.search(r"\bwhen\b.*\b(?:data|readings?|estimate)\b.*\b(?:taken|recorded|updated|checked)\b", low)):
+        return _bounded("freshness", low, known_subjects)
+    if (re.search(r"\b(?:which|what|any)\b.*\bstations?\b.*\b(?:acting up|flagged|suspect|wrong|unusual)\b", low)
+            or re.search(r"\bstation (?:flags?|findings?|warnings?)\b", low)):
+        return _bounded("station_findings", low, known_subjects)
+    if (re.search(r"\btemperature\b", low)
+            or re.search(r"\bhow (?:cold|hot|warm)\b", low)
+            or re.fullmatch(r"(?:what(?:'s| is)|how(?:'s| is)) (?:(?:the|my|our) )?weather(?: like)?(?: (?:at (?:my|our|the) (?:farm|orchard)|right now|now|today|here))*", low)):
+        return _bounded("temperature", low, known_subjects)
+    if re.search(r"\b(?:estimate|readings?)\b.*\b(?:reliable|usable|available|okay)\b", low):
+        return _bounded("station_health", low, known_subjects)
     if re.fullmatch(r"(?:(?:thanks|thank you)[, ]*)?(?:how (?:far|much) (?:are we |am i )?behind(?: are we| am i| is .+)?|how many chill hours (?:are we|am i) (?:behind|ahead)|what(?:'s| is) (?:the )?(?:chill )?(?:gap|difference))", low):
         return _bounded("history_gap", low, known_subjects) if context else "needs_context"
-    if re.search(r"\b(how (?:far|much) (?:are we )?behind|behind (?:are we|the usual)|historical|past years?|last year|usual pace|compare|comparison)\b", low):
+    if re.search(r"\b(how (?:far|much) (?:are we )?behind|behind (?:are we|the usual)|historical|past years?|last year|usual pace|compare[ds]?|comparison)\b", low):
         domain = re.search(r"\b(chill|chilling|orchard|farm|station|temperature)\b", low)
-        elliptical = re.fullmatch(r"(?:(?:thanks|thank you)[, ]*)?(?:how far (?:are we )?behind(?: are we)?|how much (?:are we )?behind|compare (?:past years?|historical (?:chill )?pace)|historical pace|last year|what about last year|are we behind|how (?:does|do) (?:that|we|this) compare)", low)
+        elliptical = re.fullmatch(r"(?:(?:thanks|thank you)[, ]*)?(?:how far (?:are we )?behind(?: are we)?|how much (?:are we )?behind|compare (?:past years?|historical (?:chill )?pace)|compared? (?:with|to) last year|historical pace|last year|what about last year|are we behind|how (?:does|do) (?:that|we|this) compare)", low)
         if domain or elliptical:
             return _bounded("history", low, known_subjects) if context else "needs_context"
-        return "off_topic"
+        return "clarify" if re.search(r"\b(?:chill|weather|station|farm|orchard)\b", low) else "off_topic"
     if (re.search(r"\b(station (?:health|coverage|data|reading)|(?:neighboring|supporting) stations?|stations? (?:normal|usable|available)|weather (?:support|coverage|data))\b", low)
             or re.fullmatch(r"(?:how'?s (?:the )?coverage|is (?:the )?(?:coverage|data) (?:usable|reliable|okay|current|back)|data quality|data reliability|coverage)", low)
             or re.fullmatch(r"(?:what'?s|how is|how'?s|is) (?:the )?weather(?: (?:looking|doing|today|now|here))?", low.strip())):
@@ -135,48 +161,87 @@ def route(text, context=None, known_subjects=()):
     if re.fullmatch(r"(?:thanks[,! ]*)?why", low) and context in QUESTIONS and context != "explain_alert":
         return "cause_limit"
     if re.fullmatch(r"(?:why|why is that|how far|what does (?:that|this) mean|what about (?:that|this)|explain (?:that|this))", low):
-        return context if context in QUESTIONS or context in LOCAL_INTENTS else "needs_context"
-    if re.search(r"\b(chill|chilling|station|coverage)\b", low):
+        return context if context in QUESTIONS or context in LOCAL_INTENTS or context in {"temperature", "temperature_normal", "freshness", "station_findings"} else "needs_context"
+    if re.search(r"\b(chill|chilling|station|coverage|temperature|weather|readings?|estimate|data)\b", low):
         return "clarify"
     if re.search(r"\b(monitoring|monitor|farm|orchard|location|growing|crop)\b", low):
         return "setup_help"
     if "?" in text and re.search(r"\b(got it|okay|understood)\b", low):
+        return "clarify"
+    if re.match(r"\s*(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily)\s+)?(?:grow|have|am growing|are growing)|(?:i'm|we're)\s+growing|growing)\b", text, re.I):
         return "clarify"
     return "off_topic"
 
 
 def crops_from(text):
     """Keep supplied crop metadata, never infer a variety or crop requirement."""
-    if len(text) > 240 or OFF_TOPIC.search(text) or re.search(r"[?{}<>]|\b(ignore|instructions|system|prompt|turn off|disable)\b", text, re.I):
+    if (not isinstance(text, str) or len(text) > 240 or OFF_TOPIC.search(text)
+            or re.search(r"[?{}<>\n\r]|\b(ignore|instructions?|system|prompt|turn off|disable|enable|send|text me)\b", text, re.I)
+            or re.match(r"\s*(?:what|which|how|where|when|why|do|does|can|could|should|would|is|are|tell me|show me|compare|explain)\b", text, re.I)):
         return None
     aliases = {"almond": "almond", "walnut": "walnut", "pistachio": "pistachio", "grape": "grape",
-               "citrus": "citrus", "tomato": "tomato", "olive": "olive", "cherr(?:y|ies)": "cherry",
+               "citrus": "citrus", "tomato(?:es)?": "tomato", "olive": "olive", "cherr(?:y|ies)": "cherry",
                "apple": "apple", "peach(?:es)?": "peach", "pear": "pear", "prune": "prune",
                "plum": "plum", "apricot": "apricot", "strawberr(?:y|ies)": "strawberry", "avocado": "avocado",
                "corn": "corn", "wheat": "wheat", "lettuce": "lettuce", "rice": "rice",
                "blueberr(?:y|ies)": "blueberry", "dragon ?fruit": "dragon fruit", "potato(?:es)?": "potato",
                "onion": "onion", "carrot": "carrot", "broccoli": "broccoli", "cauliflower": "cauliflower",
                "soybean": "soybean", "cotton": "cotton", "alfalfa": "alfalfa", "kiwi": "kiwi"}
-    found = [(match.start(), value) for pattern, value in aliases.items()
-             if (match := re.search(r"\b(?:" + pattern + r")s?\b", text, re.I))]
-    crops = [value for _, value in sorted(found)]
-    variety = "Nonpareil" if "almond" in crops and re.search(r"\bnonpareil\b", text, re.I) else None
-    explicit = re.search(r"\b(?:variety|cultivar)\s*[:=]?\s+([\w -]{1,60})", text, re.I)
+    description = text.strip()
+    body = description.rstrip(".!").strip()
+    declaration = re.match(r"^(?:(?:i|we)\s+(?:(?:mainly|mostly|primarily|currently)\s+)?(?:grow|have|am growing|are growing)|(?:i'm|we're)\s+growing|growing)\s+", body, re.I)
+    if declaration:
+        body = body[declaration.end():].strip()
+    else:
+        body = re.sub(r"^(?:my|our)\s+", "", body, flags=re.I)
+    explicit = re.search(r"\b(?:variety|cultivar)\s*[:=]?\s+([\w '-]{1,60})$", body, re.I)
+    explicit_variety = explicit.group(1).strip() if explicit else None
     if explicit:
-        variety = explicit.group(1).strip()
-    elif found and not variety:
-        prefix = text[:min(start for start, _ in found)].strip(" ,.!:")
-        prefix = re.sub(r"^(?:(?:i|we)(?:'m| are| am)?\s+(?:grow|growing|have)\b\s*|my\b\s*)", "", prefix, flags=re.I).strip()
-        filler = {"organic", "some", "mostly", "mainly", "a", "an", "the", "we", "i", "grow", "growing", "have", "our", "my"}
-        if (prefix and re.fullmatch(r"[A-Z][A-Za-z'-]*(?: [A-Z][A-Za-z'-]*){0,2}", prefix)
-                and not set(prefix.lower().split()) & filler):
-            variety = prefix
-    if not crops:
-        match = re.fullmatch(r"(?:i (?:grow|have|am growing)|we (?:grow|have)|growing)\s+([\w ,'-]{2,80})[.!]?", text.strip(), re.I)
-        if not match:
+        body = body[:explicit.start()].rstrip(" ,")
+    pieces = [part.strip() for part in re.split(r"[,;&]|\b(?:and|plus)\b", body, flags=re.I) if part.strip()]
+    if not 1 <= len(pieces) <= 12:
+        if declaration:
+            raise ValueError("Provide between one and twelve actual crops")
+        return None
+    filler = {"organic", "some", "mostly", "mainly", "primarily", "a", "an", "the", "we", "i", "grow", "growing", "have", "our", "my"}
+    crops, varieties, known_count = [], [], 0
+    for piece in pieces:
+        if (not re.fullmatch(r"[\w][\w '-]{0,79}", piece) or not re.search(r"[^\W\d_]", piece)
+                or re.search(r"\b(?:what|which|how|would|should|could|can|want|plan|because|then|please|not|or)\b", piece, re.I)
+                or set(piece.lower().split()) <= filler):
             return None
-        crops = [part.strip().lower() for part in re.split(r",|\band\b", match.group(1)) if part.strip()]
+        matches = [(match, value) for pattern, value in aliases.items()
+                   for match in re.finditer(r"\b(?:" + pattern + r")s?\b", piece, re.I)]
+        if len(matches) > 1:
+            # Compound crop/variety wording needs clarification rather than a
+            # partial match that quietly discards another supplied crop.
+            return None
+        variety = None
+        if matches:
+            match, crop = matches[0]
+            if piece[match.end():].strip().lower() not in {"", "trees", "vines", "plants", "crops"}:
+                return None
+            known_count += 1
+            prefix = piece[:match.start()].strip()
+            if crop == "almond" and prefix.lower() == "nonpareil":
+                variety = "Nonpareil"
+            elif (prefix and re.fullmatch(r"[A-Z][A-Za-z'-]*(?: [A-Z][A-Za-z'-]*){0,2}", prefix)
+                  and not set(prefix.lower().split()) & filler):
+                variety = prefix
+        else:
+            # Generic crop names are permitted by the profile contract. Keep
+            # unknown list entries instead of retaining only recognized nouns.
+            if re.search(r"\b(?:on|at|because|when|where|for|to|weather|data|estimate|station|notifications?|alerts?|question)\b", piece, re.I):
+                return None
+            crop = piece.lower()
+        crops.append(crop)
+        varieties.append(variety)
+    if not declaration and not known_count:
+        return None
     if not 1 <= len(crops) <= 12:
         raise ValueError("Provide between one and twelve actual crops")
     crops = list(dict.fromkeys(crops))
-    return {"crops": crops, "variety": variety if len(crops) == 1 else None, "crop_description": text.strip()}
+    variety = (explicit_variety or varieties[0]) if len(pieces) == 1 else None
+    if explicit_variety and varieties[0] and explicit_variety.casefold() != varieties[0].casefold() and len(pieces) == 1:
+        return None
+    return {"crops": crops, "variety": variety, "crop_description": description}

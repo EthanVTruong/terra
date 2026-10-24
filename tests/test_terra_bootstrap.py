@@ -64,7 +64,7 @@ print(json.dumps([bool(os.getenv('CIMIS_APP_KEY')), bool(os.getenv('OPENAI_API_K
             result = subprocess.run([sys.executable, "-c", code], cwd=root, env=env,
                                     capture_output=True, text=True, timeout=20, check=True)
             self.assertEqual(json.loads(result.stdout), [False, False, False, False, False,
-                                                        str(state / "sms.sqlite3"), ""])
+                                                        str((state / "sms.sqlite3").resolve()), ""])
 
     def test_preview_runtime_has_no_worker_or_chatgpt_and_uses_absolute_paths(self):
         root = Path(tempfile.gettempdir()).resolve() / "terra checkout with spaces"

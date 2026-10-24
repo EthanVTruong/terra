@@ -7,8 +7,11 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import signal
 import subprocess
 import sys
+import tempfile
+import time
 import unicodedata
 from urllib.parse import urlsplit
 
@@ -20,6 +23,72 @@ BULK = {".pt", ".pth", ".ckpt", ".onnx", ".h5", ".hdf5", ".parquet",
         ".csv", ".tsv", ".jsonl", ".feather", ".pickle", ".tif", ".tiff"}
 RESERVED = re.compile(r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)", re.I)
 FENCES = re.compile(r"^```json[ \t]*\n(.*?)^```[ \t]*$", re.M | re.S)
+
+
+CHECK_OUTPUT_LIMIT = 1024 * 1024
+
+
+def _stop_check_tree(process):
+    """Bounded cleanup of only this check's newly created process tree."""
+    error = None
+    try:
+        if os.name == "nt":
+            stopped = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3,
+                creationflags=subprocess.CREATE_NO_WINDOW)
+            if stopped.returncode:
+                error = "process-tree termination could not be confirmed"
+        else:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+    except (OSError, subprocess.TimeoutExpired):
+        error = "process-tree termination could not be confirmed"
+    finally:
+        if process.poll() is None:
+            process.kill()
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            error = "check process did not exit after termination"
+    return error
+
+
+def _run_check(argv, root, timeout, output_limit):
+    # File capture does not wait for pipe EOF from a check's descendants.
+    # Polling bounds captured/returned output; disk writes can briefly overshoot.
+    options = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW}
+               if os.name == "nt" else {"start_new_session": True})
+    started = time.monotonic()
+    reason, cleanup_error = None, None
+    with tempfile.TemporaryFile() as output:
+        process = subprocess.Popen(argv, cwd=root, stdout=output, stderr=subprocess.STDOUT,
+            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}, **options)
+        deadline = started + timeout
+        while True:
+            if os.fstat(output.fileno()).st_size > output_limit:
+                reason = "output limit exceeded"
+                break
+            if process.poll() is not None:
+                break
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                reason = "timed out"
+                break
+            try:
+                process.wait(timeout=min(0.05, remaining))
+            except subprocess.TimeoutExpired:
+                pass
+        if reason:
+            cleanup_error = _stop_check_tree(process)
+        size = os.fstat(output.fileno()).st_size
+        if size > output_limit:
+            reason = reason or "output limit exceeded"
+        marker = b"\n[check output truncated]\n" if size > output_limit else b""
+        output.seek(0)
+        captured = output.read(max(0, output_limit - len(marker))) + marker[:output_limit]
+    return process.returncode, captured.decode("utf-8", "replace"), reason, cleanup_error, min(size, output_limit), time.monotonic() - started
 
 
 def records(text):
@@ -406,20 +475,27 @@ class Harness:
                 names.add(contract["check"])
         if not affected:
             names.update(k for d in self.index["domain"].values() for k in self.strings(d, "checks"))
+        output_remaining = CHECK_OUTPUT_LIMIT
         for name in sorted(names):
+            if not output_remaining:
+                self.errors.append("Fast checks exhausted the total command-output limit")
+                break
             entry = self.index["check"][name]
             argv = [sys.executable if part == "{python}" else part for part in entry["argv"]]
+            timeout = entry.get("timeout", 60)
+            print(f"RUN {name} (limit {timeout}s)", flush=True)
             try:
-                result = subprocess.run(argv, cwd=self.root, capture_output=True, text=True,
-                                        encoding="utf-8", errors="replace", timeout=entry.get("timeout", 60),
-                                        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
-                if result.returncode:
-                    self.errors.append(f"Fast check {name} failed (exit {result.returncode})")
-                    print(result.stdout + result.stderr, end="")
+                code, output, reason, cleanup_error, used, elapsed = _run_check(argv, self.root, timeout, output_remaining)
+                output_remaining -= used
+                if reason or code:
+                    detail = f"{reason} after {elapsed:.2f}s" if reason else f"failed (exit {code})"
+                    self.errors.append(f"Fast check {name} {detail}; preserve work and escalate after one repair cycle")
+                    if output:
+                        print(output, end="" if output.endswith("\n") else "\n", flush=True)
                 else:
-                    print(f"PASS {name}")
-            except subprocess.TimeoutExpired:
-                self.errors.append(f"Fast check {name} timed out; preserve work and escalate after one repair cycle")
+                    print(f"PASS {name} ({elapsed:.2f}s)", flush=True)
+                if cleanup_error:
+                    self.errors.append(f"Fast check {name}: {cleanup_error}")
             except OSError as exc:
                 self.errors.append(f"Cannot run {name}: {exc}")
 

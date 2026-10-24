@@ -9,7 +9,9 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location("terra", Path(__file__).resolve().parents[1] / "terra.py")
 terra = importlib.util.module_from_spec(SPEC)
@@ -291,6 +293,50 @@ class HarnessTests(unittest.TestCase):
                 code = terra.main(["--root", str(self.root), "check", "--task", "a"])
             self.assertEqual(code, 1)
             self.assertIn(message, output.getvalue())
+
+    def test_completed_check_does_not_wait_for_descendant_pipe_eof(self):
+        script = ("import subprocess,sys,tempfile; "
+                  "subprocess.Popen([sys.executable,'-c','import time; time.sleep(4)'], "
+                  "stdout=sys.stdout,stderr=sys.stderr,close_fds=False,cwd=tempfile.gettempdir()); "
+                  "print('parent-finished',flush=True)")
+        self.data[4].update(argv=["{python}", "-c", script], timeout=2)
+        save(self.root, self.data)
+        project, output = terra.Harness(self.root), io.StringIO()
+        with redirect_stdout(output):
+            project.run_checks({"data"})
+        self.assertEqual(project.errors, [], output.getvalue())
+        self.assertIn("PASS fast", output.getvalue())
+
+    def test_actual_timeout_keeps_progress_and_terminates_descendants(self):
+        marker = self.root / "descendant-survived.txt"
+        descendant = f"import time; from pathlib import Path; time.sleep(2); Path({str(marker)!r}).write_text('survived')"
+        script = ("import subprocess,sys,tempfile,time; "
+                  f"subprocess.Popen([sys.executable,'-c',{descendant!r}], close_fds=False,cwd=tempfile.gettempdir()); "
+                  "print('before-timeout',flush=True); time.sleep(10)")
+        self.data[4].update(argv=["{python}", "-c", script], timeout=1)
+        save(self.root, self.data)
+        project, output = terra.Harness(self.root), io.StringIO()
+        with redirect_stdout(output):
+            project.run_checks({"data"})
+        self.assertTrue(any("timed out" in error for error in project.errors), project.errors)
+        self.assertIn("before-timeout", output.getvalue())
+        self.assertFalse(any("termination could not be confirmed" in error for error in project.errors), project.errors)
+        time.sleep(1.5)
+        self.assertFalse(marker.exists(), "Timed-out check left a running descendant")
+
+    def test_total_combined_command_output_is_bounded_across_checks(self):
+        argv = ["{python}", "-c", "import sys; sys.stdout.write('o'*300); sys.stderr.write('e'*300)"]
+        self.data[4].update(argv=argv, timeout=3)
+        self.data.append({"kind": "check", "id": "later", "argv": argv, "timeout": 3})
+        self.data[1]["checks"] = ["fast", "later"]
+        save(self.root, self.data)
+        project, output = terra.Harness(self.root), io.StringIO()
+        with patch.object(terra, "CHECK_OUTPUT_LIMIT", 1024), redirect_stdout(output):
+            project.run_checks({"data"})
+        self.assertIn("PASS fast", output.getvalue())
+        self.assertTrue(any("later output limit exceeded" in error for error in project.errors), project.errors)
+        self.assertIn("[check output truncated]", output.getvalue())
+        self.assertLess(len(output.getvalue().encode("utf-8")), 1024)
 
     def test_dependency_changes_run_consumer_checks(self):
         self.data.append({"kind": "check", "id": "consumer", "argv": ["{python}", "-c", "raise SystemExit(7)"], "timeout": 10})

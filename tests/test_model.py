@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -91,7 +93,12 @@ def test_offsets_shift_expected(syn_stations, syn_readings, syn_model):
     assert off["night_f"] - base_n == pytest.approx(3.0, abs=1e-6)
     assert off["day_f"] - base_d == pytest.approx(3.0, abs=1e-6)
     after = predict_expected(70, a + pd.Timedelta(days=10), a + pd.Timedelta(days=11), ctx=ctx)
-    night = after["ts"].map(lambda t: ((t.hour - 8) % 24 >= 19) or ((t.hour - 8) % 24 <= 6))
+    # expected values move by the station's hour-of-day offsets (each also exactly +3 F vs clean)
+    from chillwatch.qc.model import hourly_offsets
+
+    hourly = json.loads(off["hourly_f"])
+    base_h = hourly_offsets(syn_readings[syn_readings.station_id == 70], e, base_n, base_d)
+    assert np.allclose(np.array(hourly) - np.array(base_h), 3.0, atol=1e-6)
+    pst_hour = after["ts"].map(lambda t: (t.hour - 8) % 24)
     shift = after["expected_f"] - before["expected_f"]
-    assert shift[night].mean() == pytest.approx(off["night_f"], abs=1e-6)
-    assert shift[~night].mean() == pytest.approx(off["day_f"], abs=1e-6)
+    assert np.allclose(shift, pst_hour.map(lambda h: hourly[h]), atol=1e-6)

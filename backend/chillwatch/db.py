@@ -71,6 +71,7 @@ class StationOffset(Base):
     kind: Mapped[str] = mapped_column(String(16))  # learned | accepted
     night_f: Mapped[float] = mapped_column(Float)
     day_f: Mapped[float] = mapped_column(Float)
+    hourly_f: Mapped[str | None] = mapped_column(Text)  # JSON list of 24 PST hour-of-day offsets
     window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     window_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

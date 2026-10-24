@@ -20,6 +20,7 @@ import pandas as pd
 from sklearn.model_selection import GroupKFold, GroupShuffleSplit
 
 from .. import config
+from ..normalize import to_pst
 from ..repair import uncertainty as unc
 from ..timeutil import season_bounds, utc
 from .features import EXTRA_FEATURES, feature_names, is_night, location_features, station_features
@@ -602,6 +603,11 @@ def _offset_series(hours: pd.DatetimeIndex, night: np.ndarray, offsets: pd.DataF
         has = j >= 0
         jj = np.clip(j, 0, None)
         val = np.where(night, ok["night_f"].to_numpy(dtype="float64")[jj], ok["day_f"].to_numpy(dtype="float64")[jj])
+        if "hourly_f" in ok:  # 24 PST hour-of-day values; rows without them keep night/day
+            table = np.array([json.loads(v) if isinstance(v, str) and v else [np.nan] * 24
+                              for v in ok["hourly_f"]], dtype="float64").reshape(len(ok), 24)
+            hv = table[jj, to_pst(pd.DatetimeIndex(hours)).hour.to_numpy()]
+            val = np.where(np.isfinite(hv), hv, val)
         out = np.where(has & np.isfinite(val), val, out)
     return out
 
@@ -663,6 +669,27 @@ def compute_offset(
     return n_f, d_f, int(len(d))
 
 
+def hourly_offsets(readings: pd.DataFrame, expected: pd.DataFrame, night_f: float, day_f: float,
+                   k: float | None = None) -> list[float]:
+    """Per PST hour-of-day median residual, each pulled toward its night/day value with weight n / (n + k).
+
+    24 values indexed by PST hour (0-23). Hourly bins follow the daily bias cycle better than two
+    bins (bench/experiments/offset_bins.json); the pull keeps thin hours stable.
+    """
+    k = float(k if k is not None else config.thresholds()["offsets"].get("hour_shrink_k", 14))
+    d = readings.merge(expected, on="ts", how="inner")
+    d = d[(d["qc_status"] == "ok") & d["temp_f"].notna() & d["expected_f"].notna()]
+    r = (d["temp_f"] - (d["expected_f"] - d.get("offset_f", 0.0))).to_numpy(dtype="float64")
+    hour = to_pst(pd.DatetimeIndex(d["ts"])).hour.to_numpy()
+    out = []
+    for h in range(24):
+        base = night_f if (h >= 19 or h <= 6) else day_f
+        rh = r[hour == h]
+        w = len(rh) / (len(rh) + k) if len(rh) else 0.0
+        out.append(float(w * np.median(rh) + (1 - w) * base) if len(rh) else float(base))
+    return out
+
+
 def set_offset_from_window(
     station_id: int, start: datetime, end: datetime, ctx: Any | None = None, kind: str = "accepted"
 ) -> dict[str, Any]:
@@ -678,6 +705,7 @@ def set_offset_from_window(
         "kind": kind,
         "night_f": n_f,
         "day_f": d_f,
+        "hourly_f": json.dumps(hourly_offsets(r, e, n_f, d_f)),
         "window_start": utc(start),
         "window_end": utc(end),
         "created_at": pd.Timestamp.now(tz="UTC"),
@@ -709,6 +737,7 @@ def update_learned_offsets(as_of: datetime, ctx: Any | None = None, station_ids:
             continue
         ctx.store.add_offset({
             "station_id": int(sid), "kind": "learned", "night_f": n_f, "day_f": d_f,
+            "hourly_f": json.dumps(hourly_offsets(r, e, n_f, d_f)),
             "window_start": start, "window_end": end, "created_at": pd.Timestamp.now(tz="UTC"),
         })
         n_added += 1

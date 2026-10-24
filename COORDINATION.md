@@ -62,7 +62,9 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_live.py",
     "tests/test_terra_server.py",
     "tests/fixtures/terra_live/**",
-    ".env.example"
+    ".env.example",
+    "tests/test_terra_pipeline.py",
+    "scripts/terra-service/**"
   ],
   "depends_on": [],
   "checks": [
@@ -338,6 +340,54 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     ],
     "uncertainty": "Local on-demand service only. Initial PR4 CI passed all four jobs including native/PostgreSQL with zero skips. The final cache repair still needs its exact-revision CI run. Natural-fault accuracy is unverified; automatic numerical fault calibration remains limited to five stations. Always-on worker, SMS and hosting are future work.",
     "next": "Verify final cache-repair CI on draft PR4 and keep the loopback preview available. Review working live path with ET before the continuous monitoring/delivery slice."
+  }
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "terra-full-pipeline",
+  "owner": "et",
+  "status": "active",
+  "intent": "ET explicitly requested a /goal to autonomously guide existing Terra chats, finish and coordinate UI/livebackend/persistentfarmchill monitoring/Twilio data\u2192flag\u2192message pipeline, verify readiness and merge/push working integration while ET sleeps. Root is final integration owner, answers routine cross-chat questions using accepted decisions, preserves domain ownership/human attribution/original staged files, and distinguishes real delivery from labelled controls and account blockers. Twilio account/password/verification/paid steps require real access and any applicable user confirmations; no fabricated delivery or silent cost authority. GitHub contributor cache refresh only through supported safe controls.",
+  "branch": "codex/terra-end-to-end",
+  "base": "0b1554930038d981881742d3a84b29e99dff595b",
+  "domains": [
+    "terra-coordination",
+    "terra-qc-json"
+  ],
+  "paths": [
+    "AGENTS.md",
+    "COORDINATION.md",
+    "backend/terra_monitoring/**",
+    "tests/test_terra*.py",
+    "tests/fixtures/terra_live/**",
+    "tests/fixtures/terra/**",
+    "scripts/terra-service/**",
+    "requirements-terra.txt",
+    "requirements-terra-dev.txt",
+    ".env.example",
+    "docs/terra/**",
+    "spec.md",
+    "README.md",
+    "web/**",
+    ".github/workflows/terra.yml"
+  ],
+  "depends_on": [
+    "terra-authorship"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "cfe3d5541b0496c2d4abd4685e64de945c4602b4",
+    "summary": "Root orchestration worktree isolated at Terra-orchestrator. Live API owner finalizes PR4; persistent farm-chill ops owner implements monitoring/event state; Twilio owner handles console/credentials/transport and private opted-in phone; UI owner ports accepted Grok-like prototype onto real live app; logo owner provides only approved assets. Root owns contract reconciliation, cross-layer acceptance, merges/readiness and final handoff.",
+    "evidence": [
+      "User explicitly authorizes guiding and answering all other chats. Accepted decisions:32\u201345F fromNov1 for orchard/current/historical, FNRIC separate, two completed days below20th before pacewarning, updatesanytime/no-repeat, incomingonlythreevalues/minimalcopy/evidenceaside, frozenfive-stationQC/Nathanmath unchanged.",
+      "PR4headcfe3d55:189pure+31harness and webbuild/4tests green; final fullPostgreSQL CI pending. Twilio account remains sign-up/no sender/credentials/real send. Private recipient already provided in Twilio chat. Root async spending-limit question pending; no paid changes authorized yet."
+    ],
+    "uncertainty": "Current Twilio trial/customSMS restrictions and sender approvals may block real delivery; actual account must establish readiness. New external keys, identity/phone checks and legal/payment steps cannot be fabricated. Full integration/source/receipt/workerrestart tests still required. Githubsidebar cache remains server-controlled although APIalready2humans.",
+    "next": "Agree durable event/transport/UI contracts, finish owners isolatedwork, mergePR4whenexactCIgreen, integrate worker/SMS/UI oncehandedoff, run end-to-end+fullCI/browser/demo delivery, publish verifiedmain and report any unavoidable account dependency."
   }
 }
 ```

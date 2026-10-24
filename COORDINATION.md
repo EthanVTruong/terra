@@ -1328,3 +1328,143 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   }
 }
 ```
+
+```json
+{
+  "kind": "domain",
+  "id": "chillwatch-core",
+  "owner": "nathan",
+  "purpose": "Existing ChillWatch estimation and data/model layer: ingestion and sources, QC detection and model, physics/uncertainty/repair, benchmark and experiments, its configuration, migrations, design docs and tests. ET's narrow-repair domains keep the individual files they list (estimate, normalize, CIMIS decoding, grid label, demo scenario and their tests).",
+  "paths": [
+    "backend/chillwatch/__init__.py",
+    "backend/chillwatch/cli.py",
+    "backend/chillwatch/config.py",
+    "backend/chillwatch/context.py",
+    "backend/chillwatch/db.py",
+    "backend/chillwatch/ingest.py",
+    "backend/chillwatch/pipeline.py",
+    "backend/chillwatch/store.py",
+    "backend/chillwatch/timeutil.py",
+    "backend/chillwatch/bench/**",
+    "backend/chillwatch/qc/**",
+    "backend/chillwatch/demo/__init__.py",
+    "backend/chillwatch/demo/faults.py",
+    "backend/chillwatch/demo/synthetic.py",
+    "backend/chillwatch/repair/__init__.py",
+    "backend/chillwatch/repair/fill.py",
+    "backend/chillwatch/repair/grid_html.py",
+    "backend/chillwatch/repair/physics_fit.py",
+    "backend/chillwatch/repair/uncertainty.py",
+    "backend/chillwatch/repair/virtual.py",
+    "backend/chillwatch/sources/__init__.py",
+    "backend/chillwatch/sources/asos.py",
+    "backend/chillwatch/sources/base.py",
+    "backend/chillwatch/sources/diy.py",
+    "backend/chillwatch/sources/prism.py",
+    "backend/chillwatch/sources/terrain.py",
+    "bench/**",
+    "config/*.yaml",
+    "config/*.json",
+    "config/scenarios/**",
+    "docs/DATA_ML_LAYER.md",
+    "docs/DECISIONS.md",
+    "docs/TERRA_COMPATIBILITY.md",
+    "migrations/**",
+    "alembic.ini",
+    "tests/test_asos.py",
+    "tests/test_cimis.py",
+    "tests/test_detect.py",
+    "tests/test_diy.py",
+    "tests/test_faults.py",
+    "tests/test_fill.py",
+    "tests/test_grid.py",
+    "tests/test_integration_sql.py",
+    "tests/test_model.py",
+    "tests/test_neighbors.py",
+    "tests/test_repair_extra.py",
+    "tests/test_store_sql.py",
+    "tests/fixtures/cimis_*.json"
+  ],
+  "depends_on": [],
+  "checks": [
+    "chillwatch-core-tests"
+  ]
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "chillwatch-core-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "-o",
+    "pythonpath=backend",
+    "-p",
+    "no:cacheprovider",
+    "tests/test_neighbors.py",
+    "tests/test_cimis.py",
+    "tests/test_asos.py",
+    "tests/test_diy.py",
+    "tests/test_faults.py",
+    "tests/test_grid.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+```json
+{
+  "kind": "task",
+  "id": "chillwatch-terra-followup",
+  "owner": "nathan",
+  "status": "done",
+  "intent": "Nathan-requested ChillWatch follow-up after PR #2: Terra-facing estimate_location (output fields, findings, as-of), calibrated no-station uncertainty bins, hour-of-day station offsets, April-September data with the year-round model cimis-v2, drift/offset detector options with a three-season replay, and fixes from two independent reviews. No change to Terra QC/JSON, SMS or web code; ET's input-guard and portability repairs are preserved.",
+  "branch": "chillwatch-data-ml-layer",
+  "base": "a14e1483c4681c24cecc1c97da6a4ffb3c67eb57",
+  "domains": [
+    "chillwatch-core",
+    "terra-input-guards",
+    "terra-portability",
+    "terra-coordination"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/chillwatch/bench/run.py",
+    "backend/chillwatch/cli.py",
+    "backend/chillwatch/demo/faults.py",
+    "backend/chillwatch/demo/scenario.py",
+    "backend/chillwatch/estimate.py",
+    "backend/chillwatch/qc/model.py",
+    "backend/chillwatch/repair/physics_fit.py",
+    "backend/chillwatch/repair/uncertainty.py",
+    "bench/**",
+    "config/thresholds.yaml",
+    "docs/DECISIONS.md",
+    "docs/TERRA_COMPATIBILITY.md",
+    "tests/test_estimate.py",
+    "tests/test_scenario.py",
+    "tests/test_store_sql.py"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "ee75bef83c278c3ec6b088cc8ed4253bbb811c6a",
+    "summary": "Follow-up complete on chillwatch-data-ml-layer (17 commits after c00b212, re-authored to Nathan without assistant co-author trailers, then main a14e148 merged with both sides of tests/test_estimate.py kept; the demo scenario test now generates readings over the Oct-Mar window run_scenario replays, keeping ET's September-start model fixture). Spec detector gate stays the default; daily 4x gate is a documented opt-in. Details and numbers: docs/DECISIONS.md section 'Terra integration, hourly offsets, year-round data (2026-10-24)' and docs/TERRA_COMPATIBILITY.md 'Status after the follow-up work'.",
+    "evidence": [
+      "Model cimis-v2 (model.txt SHA-256 b474d05e3a7fd177b7a2e5d86cf6b289a3c950f14b70790eed270c8c6e2822b8), trained Sep-Aug 2005-06..2022-23; held-out 2023-25 known-station MAE with half-year-matched hour-of-day offsets 1.881 F Oct-Mar, 1.938 F Apr-Sep vs cimis-v1 1.897 / 2.396 F (bench/experiments/compare_v1_v2.json).",
+      "Year-round physics fit data/models/physics_fit.json SHA-256 37633cc95ce00dc5a645c84d244050160d60292fd8593ff768de37552cccda1a: lapse x0.75, 600 ft weighting, held-out 2.333 F vs spec 2.384 F, p10-p90 coverage 79.9%.",
+      "estimate_location on Terra's five stations, each from the other four: 1.78 F Oct-Mar 2024-25, 2.34 F Apr-Aug 2025; p10-p90 77-86% pooled, 54-98% at single sites, so intervals stay off (bench/terra_compat/intervals.json).",
+      "Detector replay, cimis-v2, 2023-24..2025-26, 48 drift/offset faults: spec gate 20/48 at 0.07 false drift/offset alarms per station-month; daily 4x 34/48 at 0.28 (bench/experiments/detection_gate_replay.json).",
+      "Mock pipeline on synthetic truth 10/10 checks (bench/experiments/mock_pipeline.json). Full test suite and terra.py check results are recorded in the merge's PR."
+    ],
+    "uncertainty": "2023-24 and 2024-25 were used to choose the offset scheme, model and gate candidates, and 2025-26 informed the gate default; a clean check needs 2026-27 or later. Models and the physics fit are local files (data/ is git-ignored), recorded here by SHA-256 only. Intervals under-cover sites unlike their peers (Delta in summer).",
+    "next": "ET reviews the PR from chillwatch-data-ml-layer into main and merges normally. Decide whether to enable residual.mean24_basis daily with mean24_sigma 4.0 (more caught faults, about 4x the false drift/offset alarms). Re-validate on 2026-27 as it arrives."
+  }
+}
+```

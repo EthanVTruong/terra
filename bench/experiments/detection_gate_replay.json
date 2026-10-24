@@ -1,0 +1,338 @@
+{
+ "spec_hourly_3x": {
+  "runs": [
+   "20261024-133332.json",
+   "20261024-123540.json",
+   "20261024-124651.json"
+  ],
+  "seasons": [
+   "2023-24",
+   "2024-25",
+   "2025-26"
+  ],
+  "detection": {
+   "drift": {
+    "n": 24,
+    "detected": 11,
+    "recall": 0.458,
+    "type_correct": 9,
+    "median_hours_to_detect": 189.0
+   },
+   "offset": {
+    "n": 24,
+    "detected": 9,
+    "recall": 0.375,
+    "type_correct": 8,
+    "median_hours_to_detect": 42.0
+   },
+   "spike": {
+    "n": 24,
+    "detected": 23,
+    "recall": 0.958,
+    "type_correct": 20,
+    "median_hours_to_detect": 11.0
+   },
+   "stuck": {
+    "n": 27,
+    "detected": 25,
+    "recall": 0.926,
+    "type_correct": 25,
+    "median_hours_to_detect": 19.0
+   },
+   "outage": {
+    "n": 27,
+    "detected": 26,
+    "recall": 0.963,
+    "type_correct": 25,
+    "median_hours_to_detect": 50.0
+   },
+   "clock_shift": {
+    "n": 24,
+    "detected": 18,
+    "recall": 0.75,
+    "type_correct": 18,
+    "median_hours_to_detect": 62.5
+   }
+  },
+  "false_alarms_per_station_month": 0.432,
+  "drift_offset_false_alarms_per_station_month": 0.066,
+  "false_alarms_by_type": {
+   "spike": 234,
+   "offset": 43,
+   "clock_shift": 66,
+   "drift": 15,
+   "stuck": 1,
+   "offline": 22
+  },
+  "uninjected_station_months": 882.85,
+  "per_season": {
+   "2023-24": {
+    "model": "cimis-v2",
+    "drift": [
+     1,
+     8
+    ],
+    "offset": [
+     2,
+     8
+    ],
+    "fa_per_station_month": 0.434,
+    "fa_drift_offset_per_station_month": 0.055
+   },
+   "2024-25": {
+    "model": "cimis-v2",
+    "drift": [
+     4,
+     8
+    ],
+    "offset": [
+     4,
+     8
+    ],
+    "fa_per_station_month": 0.373,
+    "fa_drift_offset_per_station_month": 0.074
+   },
+   "2025-26": {
+    "model": "cimis-v2",
+    "drift": [
+     6,
+     8
+    ],
+    "offset": [
+     3,
+     8
+    ],
+    "fa_per_station_month": 0.483,
+    "fa_drift_offset_per_station_month": 0.069
+   }
+  },
+  "chill_on_faulted": {
+   "mean_abs_error_unrepaired": 23.72,
+   "mean_abs_error_repaired": 19.82
+  }
+ },
+ "daily_5x": {
+  "runs": [
+   "20261024-145245.json",
+   "20261024-150931.json",
+   "20261024-151001.json"
+  ],
+  "seasons": [
+   "2023-24",
+   "2024-25",
+   "2025-26"
+  ],
+  "detection": {
+   "drift": {
+    "n": 24,
+    "detected": 13,
+    "recall": 0.542,
+    "type_correct": 10,
+    "median_hours_to_detect": 185.0
+   },
+   "offset": {
+    "n": 24,
+    "detected": 8,
+    "recall": 0.333,
+    "type_correct": 8,
+    "median_hours_to_detect": 30.5
+   },
+   "spike": {
+    "n": 24,
+    "detected": 23,
+    "recall": 0.958,
+    "type_correct": 20,
+    "median_hours_to_detect": 11.0
+   },
+   "stuck": {
+    "n": 27,
+    "detected": 25,
+    "recall": 0.926,
+    "type_correct": 25,
+    "median_hours_to_detect": 19.0
+   },
+   "outage": {
+    "n": 27,
+    "detected": 26,
+    "recall": 0.963,
+    "type_correct": 25,
+    "median_hours_to_detect": 50.0
+   },
+   "clock_shift": {
+    "n": 24,
+    "detected": 18,
+    "recall": 0.75,
+    "type_correct": 18,
+    "median_hours_to_detect": 62.5
+   }
+  },
+  "false_alarms_per_station_month": 0.453,
+  "drift_offset_false_alarms_per_station_month": 0.105,
+  "false_alarms_by_type": {
+   "spike": 226,
+   "offset": 84,
+   "clock_shift": 58,
+   "drift": 9,
+   "stuck": 1,
+   "offline": 22
+  },
+  "uninjected_station_months": 882.85,
+  "per_season": {
+   "2023-24": {
+    "model": "cimis-v2",
+    "drift": [
+     2,
+     8
+    ],
+    "offset": [
+     1,
+     8
+    ],
+    "fa_per_station_month": 0.461,
+    "fa_drift_offset_per_station_month": 0.085
+   },
+   "2024-25": {
+    "model": "cimis-v2",
+    "drift": [
+     5,
+     8
+    ],
+    "offset": [
+     5,
+     8
+    ],
+    "fa_per_station_month": 0.387,
+    "fa_drift_offset_per_station_month": 0.095
+   },
+   "2025-26": {
+    "model": "cimis-v2",
+    "drift": [
+     6,
+     8
+    ],
+    "offset": [
+     2,
+     8
+    ],
+    "fa_per_station_month": 0.506,
+    "fa_drift_offset_per_station_month": 0.134
+   }
+  },
+  "chill_on_faulted": {
+   "mean_abs_error_unrepaired": 23.72,
+   "mean_abs_error_repaired": 17.24
+  }
+ },
+ "daily_4x": {
+  "runs": [
+   "20261024-112236.json",
+   "20261024-134328.json",
+   "20261024-140236.json"
+  ],
+  "seasons": [
+   "2023-24",
+   "2024-25",
+   "2025-26"
+  ],
+  "detection": {
+   "drift": {
+    "n": 24,
+    "detected": 19,
+    "recall": 0.792,
+    "type_correct": 15,
+    "median_hours_to_detect": 175.0
+   },
+   "offset": {
+    "n": 24,
+    "detected": 15,
+    "recall": 0.625,
+    "type_correct": 14,
+    "median_hours_to_detect": 57.0
+   },
+   "spike": {
+    "n": 24,
+    "detected": 23,
+    "recall": 0.958,
+    "type_correct": 20,
+    "median_hours_to_detect": 11.0
+   },
+   "stuck": {
+    "n": 27,
+    "detected": 25,
+    "recall": 0.926,
+    "type_correct": 25,
+    "median_hours_to_detect": 19.0
+   },
+   "outage": {
+    "n": 27,
+    "detected": 26,
+    "recall": 0.963,
+    "type_correct": 25,
+    "median_hours_to_detect": 50.0
+   },
+   "clock_shift": {
+    "n": 24,
+    "detected": 18,
+    "recall": 0.75,
+    "type_correct": 18,
+    "median_hours_to_detect": 62.5
+   }
+  },
+  "false_alarms_per_station_month": 0.632,
+  "drift_offset_false_alarms_per_station_month": 0.28,
+  "false_alarms_by_type": {
+   "offset": 216,
+   "spike": 224,
+   "drift": 31,
+   "clock_shift": 64,
+   "stuck": 1,
+   "offline": 22
+  },
+  "uninjected_station_months": 882.85,
+  "per_season": {
+   "2023-24": {
+    "model": "cimis-v2",
+    "drift": [
+     4,
+     8
+    ],
+    "offset": [
+     5,
+     8
+    ],
+    "fa_per_station_month": 0.618,
+    "fa_drift_offset_per_station_month": 0.256
+   },
+   "2024-25": {
+    "model": "cimis-v2",
+    "drift": [
+     7,
+     8
+    ],
+    "offset": [
+     6,
+     8
+    ],
+    "fa_per_station_month": 0.504,
+    "fa_drift_offset_per_station_month": 0.232
+   },
+   "2025-26": {
+    "model": "cimis-v2",
+    "drift": [
+     8,
+     8
+    ],
+    "offset": [
+     4,
+     8
+    ],
+    "fa_per_station_month": 0.764,
+    "fa_drift_offset_per_station_month": 0.346
+   }
+  },
+  "chill_on_faulted": {
+   "mean_abs_error_unrepaired": 23.72,
+   "mean_abs_error_repaired": 19.14
+  }
+ }
+}

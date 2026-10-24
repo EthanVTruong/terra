@@ -1,6 +1,7 @@
 """Fast drift/offset detector tuning: one detection pass per station-season, no day-by-day replay.
 
-Expected values (model, source-QC neighbors) are computed once per held-out season and cached.
+Expected values (model, source-QC neighbors) are computed once per model and held-out season and
+cached (data/experiments/expected_<model>_<season>.parquet; the committed results used cimis-v1).
 Each injected fault (bench parameter ranges) goes into one station's clean series, and the
 detector runs once with as_of = season end. False alarms come from the same detector on every
 clean station-season. Tune on 2023-24, check on 2024-25, then confirm with `chillwatch bench`
@@ -44,7 +45,7 @@ def season_inputs(season: str):
     st = ctx.region_stations()
     r = ctx.store.readings(a, b, st["station_id"].tolist())
     CACHE.mkdir(parents=True, exist_ok=True)
-    f = CACHE / f"expected_{season}.parquet"
+    f = CACHE / f"expected_{ctx.model.version}_{season}.parquet"
     if f.exists():
         exp = pd.read_parquet(f)
     else:

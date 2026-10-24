@@ -1,0 +1,8 @@
+# Pure statistical QC + Nathan's temperature/geometry estimator only.
+# The existing ChillWatch training pipeline retains its own pyproject dependencies.
+numpy==2.5.4
+pandas==3.1.0
+PyYAML==6.0.3
+python-dateutil==3.0.0
+six==1.17.0
+tzdata==2026.5

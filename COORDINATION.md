@@ -6,7 +6,7 @@
   "id": "terra-ui-fidelity",
   "owner": "et",
   "status": "active",
-  "intent": "User requests a further design pass matching the exact Grok Bot / Fliptexts references, approved lowercase terra wordmark, interaction design and animation polish. Preserve accepted compact conversation, three-value notes, pinned temperature context and the current live assessment contract. Isolated checkout based on the live-query commit; no backend edits, provider ingestion, training, delivery, deployment or changes to another chat's files.",
+  "intent": "User requests a further design pass matching the exact Grok Bot / Fliptexts references, approved lowercase terra wordmark, interaction design and animation polish. Preserve accepted compact conversation, three-value notes, pinned temperature context and the current live assessment contract. Isolated checkout based on the live-query commit; no backend edits, provider ingestion, training, delivery, deployment or changes to another chat's files. Root-authorized second slice: reconcile actual orchard setup/feed/evidence with the existing SMS-owner component. Preserve pure assessment requests, shared local-session guard, incoming-only notes and actual delivery receipts; no real SMS action during UI QA.",
   "branch": "codex/terra-ui-fidelity",
   "base": "7f37e2670103fc2efa83c272e1cab285e3616620",
   "domains": [
@@ -22,18 +22,19 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "7f37e2670103fc2efa83c272e1cab285e3616620",
-    "summary": "Independent visual slice complete on the committed live API: exact source-backed shell/type/bubbles, approved wordmark-only header, compact incoming three-value notes, pinned linked temperature evidence/JSON, anchored source/location controls, mobile focus and restrained motion. Root owns final pipeline integration; the next additive slice can connect its frozen farm feed/SMS components.",
+    "revision": "3e0596a99f877eb1c295a592eebd690a6d814082",
+    "summary": "Visual slice3e0596a passed; combined incoming farm feed/setup/evidence and owner SMS controls now implemented in a second additive UI commit. Build,4 packaging and3 delivery-state cases pass. Root owns backend startup and final unified browser gate; no real SMS action during UI QA.",
     "evidence": [
       "Actual in-app source inspection plus combined screenshot at .terra-local/ui-fidelity/comparison-final.png. Native target 744x768, approximately 424px chat /320px evidence; 44px header; source font and 14/20,8/12,16/16/16/6 bubble values.",
       "Approved 1080px logo pair copied byte-identically to web/public/brand; wordmark SHA 48aa13f9b307fc37b9abcc0ab4b064aa358cbea7b97fef530cc7b5544fb13955; manifest/README retained.",
       "Desktop, 390px and 320px browser checks: exact download=renderedJSON, linked tab/evidence selection, close/reopen, popover/Escape focus, mobile Shift-Tab wrap and opener restoration, current-query keyboard return, unavailable/expected-null rendering and clean final console.",
       "Actual CIMIS custom estimate 60.1°F and Davis 60.4°F observed /60.0°F expected verified. Separate delayed 503/cancel/disconnected probes retain previous 37.0°F replay; no SMS sent.",
       "Production build and 4 packaging cases pass. Scoped terra.py check against 7f37e26 passes in shared configured .venv; original minimal .venv lacks pytest. Algorithms/data/contracts unchanged.",
-      "web/design-qa.md passes this presentation scope; native source control behavior, physical touch, OS reduced-motion toggle and external clipboard paste remain explicitly unverified."
+      "web/design-qa.md passes this presentation scope; native source control behavior, physical touch, OS reduced-motion toggle and external clipboard paste remain explicitly unverified.",
+      "Combined UI uses canonical actual owner feed fixture and SmsControls2ac2beb, keeps initial phone opt-in off, protects source/subscription races and preserves matching loopback Host/Origin through the proxy. GET8512/api/orchards was404 before root runtime replacement; web/design-qa.md explicitly blocks final combined browser readiness."
     ],
     "uncertainty": "Static Grok shell does not expose native interaction timings; Terra 220/180ms durations are proposals using the source 350ms widget curve. Original Terra staged bootstrap untouched. Monitoring/SMS routes and delivery readiness are separate root-owned integration, with actual farm response fixture now supplied; provider acceptance must stay distinct from delivery.",
-    "next": "Root can cherry-pick the independent visual commit on merged live main 37948ed. Connect the canonical /api/orchards feed and owner SmsControls in a separate additive UI commit after the unified server is available; preserve pure /api/assess and incoming-only behavior."
+    "next": "Root cherry-picks the visual and combined UI commits, resolves its old App/SMS presentation conflicts using this explicitly reconciled UI result, boots unified API8512, then requests the focused remaining browser checklist in web/design-qa.md."
   }
 }
 ```

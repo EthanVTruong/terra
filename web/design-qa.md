@@ -1,8 +1,8 @@
 # UI fidelity QA — 2026-10-24
 
-final result: passed
+final result: blocked
 
-Scope: current assessment UI, approved wordmark, reference styling and connected
+The independent visual slice at 3e0596a passed. The combined monitoring/phone UI\ncompiles and its receipt-label tests pass, but its final browser gate awaits the\nroot-owned unified API on port8512 (the prior process still returns404 for orchard routes).\n\nScope of the completed visual check: current assessment UI, approved wordmark, reference styling and connected
 location /evidence /saved-assessment interactions. Monitoring inbox and SMS
 integration are separate root-owned feature work.
 
@@ -60,3 +60,29 @@ during the team's shared-browser mutex. The monitor/SMS integration needs its ow
 API/browser verification before a complete pipeline readiness claim.
 
 No unresolved P0/P1/P2 issue remains in this presentation scope.
+
+## Combined UI checkpoint (second additive commit)
+
+Implemented against the actual owner-generated farm feed fixture and canonical
+orchard API, plus SMS-owner component2ac2beb:
+- Guarded Monitor this location setup, durable orchard source selection, incoming
+  persisted field notes and exact message/details/assessment JSON.
+- Owner-controlled explicit SMS demo/status/receipt/pause, plus guarded orchard
+  opt-in. Initial setup keeps phone alerts off. No real send was performed.
+- Provider-accepted, queued, sent, delivered and local publication remain distinct;
+  three semantic client tests pass. Four packaging cases and production build pass.
+- Abort/version guards protect rapid orchard/detail/subscription changes; failed
+  queries and cancellation remain visible while the monitoring feed is selected.
+- Vite preserves original loopback Host/Origin; the server authorization is unchanged.
+
+Remaining blocking browser checks against the unified API:
+1. Create/select a labelled demo orchard through Monitor this location; verify
+   shared-token mutation succeeds and initial opt-in remains off.
+2. Read actual persisted notes, worker/source health, coverage/season status; open
+   exact details and confirm source flags are not promoted into orchard alerts.
+3. Recheck ordinary location queries through /api/assess and confirm no send effect.
+4. Verify disabled Phone Alerts state, focus/Escape/outside click, masked setup and
+   no real SMS action. Opt-in/provider-delivery actions require controlled transport
+   or root's separately authorized account verification.
+5. Desktop/mobile/minimum-width feed and evidence, exact record JSON, empty/failure
+   retention, quick source changes, clean fresh console and source comparison.

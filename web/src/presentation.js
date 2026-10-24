@@ -9,6 +9,7 @@ export const clockTime = (value) => new Intl.DateTimeFormat("en-US", { timeZone:
 export function dataModeLabel(packet, sourceKind) {
   if (packet.data_mode === "injected") return sourceKind === "example" ? "Historical · injected fault" : "Injected fault · demo";
   if (packet.data_mode !== "current") return packet.data_mode.replaceAll("_", " ");
+  if (sourceKind === "monitor") return "Monitoring · current weather";
   if (sourceKind !== "query") return "Saved current-weather query";
   const source = packet.provenance.live_source;
   return source ? `Current weather · ${source.status === "cached_after_error" ? "saved after error" : source.status}` : "Current weather";

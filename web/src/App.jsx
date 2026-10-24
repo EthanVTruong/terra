@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { EvidencePanel } from "./EvidencePanel";
 import { dataModeLabel, departure, stationName, temperature, timestamp } from "./presentation";
+import { FarmConversation, FarmOverview, useFarmFeed } from "./FarmFeed";
+import SmsControls from "./SmsControls";
+import { usePresence } from "./usePresence";
 
 const SCHEMA = "terra-location-assessment-v1";
 const ESTIMATE_STATUSES = new Set(["ok", "stale", "insufficient_data"]);
@@ -106,16 +109,6 @@ function Values({ observed, expected, difference }) {
   return <div className="compact-finding"><div className="message-facts"><span><small>Observed</small><strong>{temperature(observed)}</strong></span><span><small>Expected</small><strong>{temperature(expected)}</strong></span></div><div className="message-departure"><span>Departure</span><strong>{departure(difference)}</strong></div></div>;
 }
 
-function usePresence(open, duration = 200) {
-  const [mounted, setMounted] = useState(open);
-  useEffect(() => {
-    if (open) { setMounted(true); return; }
-    const timer = setTimeout(() => setMounted(false), duration);
-    return () => clearTimeout(timer);
-  }, [open, duration]);
-  return open || mounted;
-}
-
 function Disclosure({ title, children }) {
   return <details className="disclosure"><summary><Icon name="file" /><span>{title}</span><Icon name="chevron" size={13} /></summary><div className="disclosure-body">{children}</div></details>;
 }
@@ -168,6 +161,17 @@ function AssessmentFacts({ packet, sourceKind, onOpenJson, onOpenEvidence }) {
 }
 
 export function App() {
+  const [view, setView] = useState("assessment");
+  const [smsStatus, setSmsStatus] = useState(null);
+  const [monitorSetup, setMonitorSetup] = useState(false);
+  const [orchardName, setOrchardName] = useState("Demo orchard");
+  const [monitoringBusy, setMonitoringBusy] = useState(false);
+  const [farmDetails, setFarmDetails] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false), [detailsError, setDetailsError] = useState("");
+  const farm = useFarmFeed(view === "monitor");
+  const detailRequest = useRef({ version: 0, controller: null }), setupIdentity = useRef(null), nearBottom = useRef(true);
+  const orchardNameInput = useRef(null);
   const [entries, setEntries] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [packet, setPacket] = useState(null);
@@ -245,7 +249,7 @@ export function App() {
       if (value.data_mode !== "current") throw new Error("The weather service did not return a current assessment. The previous result is retained.");
       if (active(task)) {
         const returnFocus = startedInForm && queryForm.current?.dataset.open === "true" && (document.activeElement === document.body || queryForm.current.contains(document.activeElement));
-        setPacket(value); setResultSource({ kind: "query", label: "Current weather query" }); setQueryOpen(false);
+        setView("assessment"); setPacket(value); setResultSource({ kind: "query", label: "Current weather query" }); setQueryOpen(false);
         if (returnFocus) requestAnimationFrame(() => queryTrigger.current?.focus());
       }
     } catch (reason) {
@@ -260,7 +264,7 @@ export function App() {
     try {
       if (file.size > 10 * 1024 * 1024) throw new Error("Choose an assessment JSON smaller than 10 MB.");
       const value = validateAssessment(JSON.parse(await file.text()));
-      if (active(task)) { setSelectedId(""); setPacket(value); setResultSource({ kind: "file", label: file.name }); setMobileJson(false); }
+      if (active(task)) { setView("assessment"); setSelectedId(""); setPacket(value); setResultSource({ kind: "file", label: file.name }); setMobileJson(false); }
     } catch (reason) { fail(task, reason instanceof SyntaxError ? new Error("This file is not valid JSON. The previous result is retained.") : reason); }
     finally { finish(task); }
   }, [active, begin, fail, finish]);
@@ -303,6 +307,21 @@ export function App() {
   }, [contextRetry]);
 
   useEffect(() => { if (mobileJson) closeButton.current?.focus(); }, [mobileJson]);
+  useEffect(() => { if (monitorSetup) orchardNameInput.current?.focus(); }, [monitorSetup]);
+  useEffect(() => {
+    if (farm.orchards.length && !userSelection.current) setView("monitor");
+  }, [farm.orchards]);
+  useEffect(() => {
+    detailRequest.current.controller?.abort(); detailRequest.current.version += 1;
+    setFarmDetails(null); setSelectedMessage(null); setDetailsLoading(false); setDetailsError("");
+  }, [farm.orchardId]);
+  useEffect(() => () => detailRequest.current.controller?.abort(), []);
+  useEffect(() => {
+    if (view === "monitor" && nearBottom.current) requestAnimationFrame(() => {
+      const container = messageScroll.current;
+      container?.scrollTo({ top: container.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    });
+  }, [farm.feed?.messages, view]);
   useEffect(() => { if (queryOpen) latitudeInput.current?.focus(); }, [queryOpen]);
   useEffect(() => { if (controlsOpen) controlsForm.current?.querySelector("select")?.focus(); }, [controlsOpen]);
   useEffect(() => { setSelectedEvidence(null); messageScroll.current?.scrollTo(0, 0); }, [packet]);
@@ -350,7 +369,7 @@ export function App() {
   function selectExample(event) {
     const entry = entries.find((item) => item.id === event.target.value);
     if (!entry) return;
-    userSelection.current = true; setMobileJson(false); setQueryOpen(false); setControlsOpen(false); loadExample(entry);
+    userSelection.current = true; setView("assessment"); setMobileJson(false); setQueryOpen(false); setControlsOpen(false); loadExample(entry);
     requestAnimationFrame(() => controlsTrigger.current?.focus());
   }
   function openFile(event) {
@@ -360,7 +379,7 @@ export function App() {
     requestAnimationFrame(() => controlsTrigger.current?.focus());
   }
   function toggleQuery() {
-    setControlsOpen(false);
+    setMonitorSetup(false); setControlsOpen(false);
     if (!queryOpen && !draftEdited.current && packet) {
       const preset = context?.station_presets.find((station) => station.station_id === packet.query.target_station_id);
       setDraft({ lat: String(packet.query.lat), lon: String(packet.query.lon), elevation: String(packet.query.elevation_ft), preset: preset ? String(preset.station_id) : "" });
@@ -369,9 +388,11 @@ export function App() {
   }
   function closeQuery() { setQueryOpen(false); requestAnimationFrame(() => queryTrigger.current?.focus()); }
   function editField(field, value) {
+    setupIdentity.current = null;
     draftEdited.current = true; setQueryError(""); setDraft((previous) => ({ ...previous, [field]: value, preset: "" }));
   }
   function choosePreset(event) {
+    setupIdentity.current = null;
     const preset = context?.station_presets.find((station) => String(station.station_id) === event.target.value);
     draftEdited.current = true; setQueryError("");
     setDraft((previous) => preset ? { lat: String(preset.lat), lon: String(preset.lon), elevation: String(preset.elevation_ft), preset: String(preset.station_id) } : { ...previous, preset: "" });
@@ -385,7 +406,73 @@ export function App() {
     } catch (reason) { setQueryError(reason.message); }
   }
 
-  const showPanel = Boolean(packet) && (mobile ? mobileJson : panelOpen);
+  function openMonitor() {
+    userSelection.current = true;
+    request.current.controller?.abort(); request.current.version += 1;
+    setLoading(false); setPendingKind(null); setError(""); setNotice(""); setView("monitor"); setQueryOpen(false); setControlsOpen(false);
+    setPanelTab("temperature"); setPanelOpen(true); setMobileJson(false); nearBottom.current = true;
+  }
+
+  async function createMonitoring(event) {
+    event.preventDefault();
+    if (monitoringBusy) return;
+    try {
+      const values = queryValues(draft), name = orchardName.trim();
+      if (!name || name.length > 80) throw new Error("Enter an orchard name of 1–80 characters.");
+      setMonitoringBusy(true); setQueryError("");
+      const sessionResponse = await fetch("/api/sms/status");
+      if (!sessionResponse.ok) throw new Error("Reconnect to the local Terra service to set up monitoring.");
+      const session = await sessionResponse.json();
+      if (typeof session.control_token !== "string" || !session.control_token) throw new Error("Reload the local page to authorize monitoring setup.");
+      setSmsStatus(session);
+      setupIdentity.current ||= "orchard-" + crypto.randomUUID();
+      const response = await fetch("/api/orchards", { method: "POST", headers: { "Content-Type": "application/json", "X-Terra-SMS-Control": session.control_token }, body: JSON.stringify({ name, orchard_id: setupIdentity.current, lat: values.lat, lon: values.lon, elevation_ft: values.elevation_ft }) });
+      if (!response.ok) throw new Error(response.status === 403 ? "Reload the local page, then retry monitoring setup." : "Monitoring could not be set up. Check the location and retry.");
+      const profile = await response.json();
+      if (typeof profile.id !== "string" || typeof profile.name !== "string") throw new Error("The saved location could not be read. Reload monitoring before retrying.");
+      const returnFocus = queryForm.current?.dataset.open === "true" && (document.activeElement === document.body || queryForm.current.contains(document.activeElement));
+      farm.addOrchard(profile); setFarmDetails(null); setSelectedMessage(null); openMonitor();
+      if (returnFocus) requestAnimationFrame(() => queryTrigger.current?.focus());
+    } catch (reason) { setQueryError(reason instanceof TypeError ? "The local monitoring service could not be reached. Retry setup." : reason.message); }
+    finally { setMonitoringBusy(false); }
+  }
+
+  async function openFarmDetails(event, message) {
+    opener.current = event.currentTarget; setPanelTab("temperature"); setPanelOpen(true);
+    if (mobile) setMobileJson(true);
+    detailRequest.current.controller?.abort();
+    const task = { version: detailRequest.current.version + 1, controller: new AbortController() };
+    detailRequest.current = task;
+    setSelectedMessage(message.id); setFarmDetails(null); setDetailsLoading(true); setDetailsError("");
+    try {
+      const response = await fetch("/api/orchards/" + encodeURIComponent(farm.orchardId) + "/messages/" + encodeURIComponent(message.id) + "/details", { signal: task.controller.signal });
+      if (!response.ok) throw new Error("The note’s evidence is unavailable. Open Details to retry.");
+      const value = await response.json();
+      if (value.message?.id !== message.id || value.message?.orchard_id !== farm.orchardId || !Array.isArray(value.assessments) || !Array.isArray(value.events)) throw new Error("The note’s evidence could not be read.");
+      if (detailRequest.current.version === task.version && !task.controller.signal.aborted) setFarmDetails(value);
+    } catch (reason) { if (detailRequest.current.version === task.version && !task.controller.signal.aborted) setDetailsError(reason.message); }
+    finally { if (detailRequest.current.version === task.version) setDetailsLoading(false); }
+  }
+
+  const showSmsAssessment = useCallback((value) => {
+    try {
+      const checked = validateAssessment(value);
+      request.current.controller?.abort(); request.current.version += 1;
+      userSelection.current = true; setView("assessment"); setLoading(false); setPendingKind(null); setError("");
+      setPacket(checked); setSelectedId(""); setQueryOpen(false); setControlsOpen(false); setMobileJson(false);
+      setResultSource({ kind: "demo", label: "Simulated flag", description: "SMS demo · simulated observations" });
+    } catch { setNotice("A demo response was received, but its assessment could not be displayed."); }
+  }, []);
+
+  const farmPackets = (farmDetails?.assessments || []).flatMap((item) => {
+    try { return [validateAssessment(item)]; } catch { return []; }
+  }).sort((a, b) => Date.parse(a.query.valid_utc) - Date.parse(b.query.valid_utc));
+  const panelPacket = view === "monitor" ? farmPackets.at(-1) || null : packet;
+  const panelRecord = view === "monitor" ? farmDetails || farm.feed : null;
+  const panelReady = view === "monitor" ? Boolean(farm.orchardId) : Boolean(packet);
+  const primaryLabel = view === "monitor" && !panelPacket ? "Chill" : "Temperature";
+  const monitorOverview = detailsLoading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>Opening evidence…</p></div> : panelPacket ? <details className="disclosure farm-extra"><summary><Icon name="file" /><span>Chill and monitoring</span><Icon name="chevron" size={12} /></summary><div className="disclosure-body"><FarmOverview farm={farm} details={farmDetails} /></div></details> : <FarmOverview farm={farm} details={farmDetails} />;
+  const showPanel = panelReady && (mobile ? mobileJson : panelOpen);
   const panelMounted = usePresence(showPanel, 220);
   const queryMounted = usePresence(queryOpen, 180);
   const controlsMounted = usePresence(controlsOpen, 180);
@@ -395,27 +482,30 @@ export function App() {
   const previewNote = resultSource?.kind === "query" ? "Provider query · checked on demand" : resultSource?.kind === "file" ? `Local file · ${resultSource.label}` : resultSource?.description || "Saved assessment · no message delivery";
   return <main className={`app-window${showPanel ? " with-artifacts" : ""}${panelMounted ? " panel-mounted" : ""}`}>
     <section className="conversation" inert={mobile && mobileJson ? true : undefined} aria-hidden={mobile && mobileJson ? true : undefined}>
-      <header className="thread-header"><h1 className="brand-wordmark"><img src={`${import.meta.env.BASE_URL}brand/terra-wordmark-1080.png`} alt="terra" /></h1><div className="thread-actions"><span className={`presence${querying ? " is-working" : ""}`} title={querying ? "Checking current station data" : "On-demand location checks"}>{querying ? "Checking…" : "Field notes"}</span><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { setPanelOpen(true); if (mobile) setMobileJson(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
-      <div ref={messageScroll} className="message-scroll" aria-busy={loading}>
+      <header className="thread-header"><h1 className="brand-wordmark"><img src={`${import.meta.env.BASE_URL}brand/terra-wordmark-1080.png`} alt="terra" /></h1><div className="thread-actions"><span className={`presence${querying ? " is-working" : ""}`} title={querying ? "Checking current station data" : "On-demand location checks"}>{querying ? "Checking…" : view === "monitor" ? farm.feed?.monitor.worker?.heartbeat_status === "fresh" ? "Monitoring" : farm.feed?.monitor.worker?.heartbeat_status === "stale_or_stopped" ? "Updates unavailable" : "On demand" : "Field notes"}</span><SmsControls onAssessment={showSmsAssessment} onStatus={setSmsStatus} orchard={farm.orchard} /><button ref={panelTrigger} className={`icon-button${showPanel ? " selected" : ""}`} onClick={(event) => { opener.current = event.currentTarget; if (showPanel) closeJson(); else { setPanelOpen(true); if (mobile) setMobileJson(true); } }} aria-label={showPanel ? "Hide evidence panel" : "Show evidence panel"} aria-expanded={showPanel}><Icon name="panel" size={17} /></button></div></header>
+      <div ref={messageScroll} className="message-scroll" aria-busy={view === "monitor" ? farm.loading : loading} onScroll={(event) => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}>
+        {view === "monitor" ? <>{error && userSelection.current && <div className="load-error" role="alert"><p>{error}</p>{retryable && <button onClick={retry}>Retry {lastAttempt.current?.kind === "query" ? "query" : "request"}</button>}</div>}{loading && pendingKind === "query" && <div className="request-status" role="status"><span>Checking location…</span><button onClick={cancel}>Cancel</button></div>}{notice && <p className="request-notice" role="status">{notice}</p>}<FarmConversation farm={farm} onDetails={openFarmDetails} selectedMessage={selectedMessage} detailsLoading={detailsLoading} detailsError={detailsError} /></> : <>
         {error && <div className="load-error" role="alert"><p>{error}</p>{retryable && <button onClick={retry}><Icon name="refresh" size={14} />{lastAttempt.current?.kind === "query" ? "Retry query" : "Retry"}</button>}</div>}
         {loading && packet && <div className="request-status" role="status"><span>{querying ? "Checking location…" : "Opening assessment…"}<small>Previous result shown below.</small></span>{!queryOpen && <button onClick={cancel}>Cancel</button>}</div>}
         {notice && <p className="request-notice" role="status">{notice}</p>}
         {packet ? <div className="assessment-arrival" key={`${packet.query.location_id}:${packet.query.valid_utc}:${resultSource?.kind}`}><AssessmentFacts packet={packet} sourceKind={resultSource?.kind} onOpenJson={showJson} onOpenEvidence={showEvidence} /></div> : loading ? <div className="empty-state" role="status"><span className="typing-indicator" aria-hidden="true"><i /><i /><i /></span><p>{querying ? "Checking current station data…" : "Opening assessment…"}</p>{pendingKind && !queryOpen && <button className="cancel-empty" onClick={cancel}>Cancel</button>}</div> : <div className="empty-state"><Icon name="location" size={24} /><h2>Check a location</h2><p>Query current weather or open a saved assessment.</p></div>}
+        </>}
       </div>
       <footer className="assessment-controls">
-        {queryMounted && <form ref={queryForm} id="location-query" className="query-panel" data-open={queryOpen} inert={!queryOpen ? true : undefined} noValidate onSubmit={submitQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeQuery(); } }} aria-label="Query location">
-          <div className="query-heading"><strong>Check a location</strong><button type="button" className="icon-button" onClick={closeQuery} aria-label="Close query form"><Icon name="close" /></button></div>
+        {queryMounted && <form ref={queryForm} id="location-query" className="query-panel" data-open={queryOpen} inert={!queryOpen ? true : undefined} noValidate onSubmit={monitorSetup ? createMonitoring : submitQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeQuery(); } }} aria-label="Query location">
+          <div className="query-heading"><strong>{monitorSetup ? "Monitor this location" : "Check a location"}</strong><button type="button" className="icon-button" onClick={closeQuery} aria-label="Close query form"><Icon name="close" /></button></div>
           <label className="query-preset">Location<select value={draft.preset} onChange={choosePreset}><option value="">Custom location</option>{context?.station_presets.map((station) => <option key={station.station_id} value={station.station_id}>{station.name}</option>)}</select></label>
           <div className="coordinate-fields"><label>Latitude<input ref={latitudeInput} type="number" step="any" min="-90" max="90" inputMode="decimal" value={draft.lat} onChange={(event) => editField("lat", event.target.value)} placeholder="38.6000" required /></label><label>Longitude<input type="number" step="any" min="-180" max="180" inputMode="decimal" value={draft.lon} onChange={(event) => editField("lon", event.target.value)} placeholder="−121.8400" required /></label><label>Elevation · ft<input type="number" step="any" inputMode="decimal" value={draft.elevation} onChange={(event) => editField("elevation", event.target.value)} placeholder="70" required /></label></div>
+          {monitorSetup && <label className="orchard-name">Orchard name<input ref={orchardNameInput} value={orchardName} maxLength={80} onChange={(event) => { setOrchardName(event.target.value); setupIdentity.current = null; }} /><small>Phone alerts start off.</small></label>}
           {queryError && <p className="query-error" role="alert">{queryError}</p>}
           {contextLoading ? <p className="query-connection" role="status">Checking weather connection…</p> : contextError || !context?.configured ? <div className="query-connection"><p>{contextError || "Current weather isn’t connected yet. Saved assessments remain available."}</p><button type="button" onClick={() => setContextRetry((value) => value + 1)}>Retry connection</button></div> : <p className="query-connection">CIMIS hourly readings · checked on demand</p>}
-          <div className="query-actions">{querying && <button type="button" className="query-cancel" onClick={cancel}>Cancel</button>}<button className="query-submit" type="submit" disabled={querying || contextLoading || !context?.configured}>{querying ? "Checking…" : "Check location"}<Icon name="location" size={14} /></button></div>
+          <div className="query-actions">{farm.available && !monitorSetup && <button type="button" className="setup-link" onClick={() => { setMonitorSetup(true); setQueryError(""); }}>Monitor this location</button>}{querying && <button type="button" className="query-cancel" onClick={cancel}>Cancel</button>}<button className="query-submit" type="submit" disabled={monitorSetup ? monitoringBusy : querying || contextLoading || !context?.configured}>{monitorSetup ? monitoringBusy ? "Setting up…" : "Start monitoring" : querying ? "Checking…" : "Check location"}<Icon name="location" size={14} /></button></div>
         </form>}
-        {controlsMounted && <div ref={controlsForm} className="source-panel" data-open={controlsOpen} inert={!controlsOpen ? true : undefined} aria-label="Assessment sources"><div className="query-heading"><strong>Saved assessments</strong><button className="icon-button" onClick={() => { setControlsOpen(false); controlsTrigger.current?.focus(); }} aria-label="Close saved assessments"><Icon name="close" size={15} /></button></div><label htmlFor="assessment-example" className="sr-only">Saved assessments</label><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()}><Icon name="upload" size={16} /><span>Open assessment JSON</span><span className="file-extension">.json</span></button><p className="preview-note">{previewNote}</p></div>}
+        {controlsMounted && <div ref={controlsForm} className="source-panel" data-open={controlsOpen} inert={!controlsOpen ? true : undefined} aria-label="Assessment sources"><div className="query-heading"><strong>Sources</strong><button className="icon-button" onClick={() => { setControlsOpen(false); controlsTrigger.current?.focus(); }} aria-label="Close saved assessments"><Icon name="close" size={15} /></button></div>{farm.available && <div className="monitor-source"><label>Monitoring<select value={farm.orchardId} onChange={(event) => { farm.selectOrchard(event.target.value); openMonitor(); }}><option value="" disabled>No locations yet</option>{farm.orchards.map((orchard) => <option key={orchard.id} value={orchard.id}>{orchard.name}{orchard.demo_location ? " · demo" : ""}</option>)}</select></label>{farm.orchardId && <button className="open-file" onClick={openMonitor}><Icon name="location" size={16} /><span>Open field notes</span><Icon name="chevron" size={12} /></button>}</div>}<label htmlFor="assessment-example" className="source-label">Saved assessments</label><select id="assessment-example" value={selectedId} onChange={selectExample} disabled={!entries.length}><option value="" disabled>{resultSource?.kind === "file" ? resultSource.label : "Choose an example"}</option>{entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select><button className="open-file" onClick={() => fileInput.current?.click()}><Icon name="upload" size={16} /><span>Open assessment JSON</span><span className="file-extension">.json</span></button><p className="preview-note">{previewNote}</p></div>}
         <div className="composer"><button ref={controlsTrigger} className="composer-source icon-button" onClick={() => { setQueryOpen(false); setControlsOpen((value) => !value); }} aria-expanded={controlsOpen} aria-label="Choose assessment source" title="Saved assessments and local JSON"><Icon name="plus" size={19} /></button><button ref={queryTrigger} className="query-toggle" onClick={toggleQuery} aria-expanded={queryOpen} aria-controls="location-query"><span>Check a location</span><span className="composer-send"><Icon name="send" size={15} /></span></button></div>
         <input ref={fileInput} type="file" accept=".json,application/json" onChange={openFile} className="sr-only" tabIndex={-1} aria-label="Open local assessment JSON" />
       </footer>
     </section>
-    {panelMounted && packet && <EvidencePanel packet={packet} sourceKind={resultSource?.kind} finding={evidenceFinding} comparison={evidenceComparison} tab={panelTab} onTab={setPanelTab} mobile={mobile} onClose={closeJson} closeRef={closeButton} jsonRef={jsonPre} open={showPanel} />}
+    {panelMounted && panelReady && <EvidencePanel packet={panelPacket} record={panelRecord} overview={view === "monitor" ? monitorOverview : null} primaryLabel={primaryLabel} sourceKind={view === "monitor" ? "monitor" : resultSource?.kind} finding={view === "monitor" ? null : evidenceFinding} comparison={view === "monitor" ? null : evidenceComparison} tab={panelTab} onTab={setPanelTab} mobile={mobile} onClose={closeJson} closeRef={closeButton} jsonRef={jsonPre} open={showPanel} />}
   </main>;
 }

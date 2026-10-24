@@ -62,3 +62,19 @@ elapsed time was not used as an animation measurement.
 
 Local screenshots and the combined source/implementation comparison are under
 `.terra-local/ui-fidelity/`. The frontend QA report is `web/design-qa.md`.
+
+## Additive monitoring/phone checkpoint
+
+The next UI commit reconciles the canonical /api/orchards feed/setup/details
+contract and the existing SMS-owner component. It preserves pure /api/assess.
+Initial setup leaves orchard SMS opt-in off. The Phone Alerts popover supports
+explicit simulation, receipt refresh and pause, and displays actual masked setup.
+The monitor's published inbox status is distinct from external delivery.
+
+The Vite proxy preserves the original Host so its browser Origin remains an exact
+match at the root's unchanged local-session guard. Protected setup/subscription
+requests obtain the current opaque token from the existing status endpoint.
+
+The root integration owner will replace the prior8512 service with the unified
+runtime. Until the final focused browser pass, the combined UI gate remains
+blocked in web/design-qa.md; the independent visual slice has passed.

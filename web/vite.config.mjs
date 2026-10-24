@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const apiProxy = { "/api": { target: process.env.TERRA_API_TARGET || "http://127.0.0.1:8512", changeOrigin: true } };
+const apiProxy = { "/api": { target: process.env.TERRA_API_TARGET || "http://127.0.0.1:8512", changeOrigin: false } };
 
 export default defineConfig({
   build: {

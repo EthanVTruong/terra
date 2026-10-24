@@ -23,9 +23,9 @@ function TemperatureView({ packet, sourceKind, finding, comparison }) {
   </div>;
 }
 
-export function EvidencePanel({ packet, sourceKind, finding, comparison, tab, onTab, mobile, onClose, closeRef, jsonRef, open }) {
+export function EvidencePanel({ packet, record, overview, primaryLabel = "Temperature", sourceKind, finding, comparison, tab, onTab, mobile, onClose, closeRef, jsonRef, open }) {
   const [copyResult, setCopyResult] = useState(null);
-  const json = JSON.stringify(packet, null, 2);
+  const json = JSON.stringify(record || packet, null, 2);
   const copyStatus = copyResult?.json === json ? copyResult.message : "";
   useEffect(() => {
     if (!copyResult) return;
@@ -40,7 +40,7 @@ export function EvidencePanel({ packet, sourceKind, finding, comparison, tab, on
     const url = URL.createObjectURL(new Blob([json + "\n"], { type: "application/json" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `terra-${String(packet.query.location_id || "assessment").replace(/[^a-zA-Z0-9_-]/g, "-")}.json`;
+    link.download = `terra-${String(record?.message?.id || record?.orchard_id || packet?.query.location_id || "assessment").replace(/[^a-zA-Z0-9_-]/g, "-")}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -57,13 +57,14 @@ export function EvidencePanel({ packet, sourceKind, finding, comparison, tab, on
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const next = event.key === "Home" ? "temperature" : event.key === "End" ? "json" : tab === "json" ? "temperature" : "json";
+    if (next === "json" && !record && !packet) return;
     onTab(next);
     event.currentTarget.parentElement.querySelector(`[data-tab="${next}"]`)?.focus();
   }
-  return <aside className="artifact-panel" data-open={open} inert={!open ? true : undefined} role={mobile ? "dialog" : undefined} aria-modal={mobile ? true : undefined} aria-label="Assessment evidence" onKeyDown={panelKeyDown}>
-    <header className="artifact-header"><button ref={closeRef} className="icon-button" onClick={onClose} title={mobile ? "Back to field notes" : "Hide evidence"} aria-label={mobile ? "Back to field notes" : "Hide evidence"}><Icon name={mobile ? "back" : "close"} size={15} /></button><div className="artifact-tabs" role="tablist" aria-label="Evidence view">{[["temperature", "Temperature"], ["json", "JSON"]].map(([id, title]) => <button key={id} id={`tab-${id}`} data-tab={id} role="tab" aria-selected={tab === id} aria-controls={`panel-${id}`} tabIndex={tab === id ? 0 : -1} onClick={() => onTab(id)} onKeyDown={tabKeyDown}>{title}</button>)}</div><div className="artifact-actions"><button className="icon-button" onClick={copy} title={copyStatus === "Copied" ? "Copied" : "Copy JSON"} aria-label="Copy assessment JSON"><Icon name={copyStatus === "Copied" ? "check" : "copy"} size={15} /></button><button className="icon-button" onClick={download} title="Download JSON" aria-label="Download assessment JSON"><Icon name="download" size={16} /></button></div></header>
+  return <aside className={`artifact-panel${record ? " record-evidence" : ""}`} data-open={open} inert={!open ? true : undefined} role={mobile ? "dialog" : undefined} aria-modal={mobile ? true : undefined} aria-label="Assessment evidence" onKeyDown={panelKeyDown}>
+    <header className="artifact-header"><button ref={closeRef} className="icon-button" onClick={onClose} title={mobile ? "Back to field notes" : "Hide evidence"} aria-label={mobile ? "Back to field notes" : "Hide evidence"}><Icon name={mobile ? "back" : "close"} size={15} /></button><div className="artifact-tabs" role="tablist" aria-label="Evidence view">{[["temperature", primaryLabel], ["json", "JSON"]].map(([id, title]) => <button key={id} id={`tab-${id}`} data-tab={id} role="tab" disabled={id === "json" && !record && !packet} aria-selected={tab === id} aria-controls={`panel-${id}`} tabIndex={tab === id ? 0 : -1} onClick={() => onTab(id)} onKeyDown={tabKeyDown}>{title}</button>)}</div><div className="artifact-actions"><button className="icon-button" disabled={!record && !packet} onClick={copy} title={copyStatus === "Copied" ? "Copied" : "Copy JSON"} aria-label="Copy assessment JSON"><Icon name={copyStatus === "Copied" ? "check" : "copy"} size={15} /></button><button className="icon-button" disabled={!record && !packet} onClick={download} title="Download JSON" aria-label="Download assessment JSON"><Icon name="download" size={16} /></button></div></header>
     <div className="artifact-content" id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`} key={tab}>
-      {tab === "temperature" ? <TemperatureView packet={packet} sourceKind={sourceKind} finding={finding} comparison={comparison} /> : <><div className="json-caption">Exact assessment packet</div><pre ref={jsonRef} className="evidence-json" tabIndex={0} aria-label="Exact assessment packet">{json}</pre></>}
+      {tab === "temperature" ? <>{packet && <TemperatureView packet={packet} sourceKind={sourceKind} finding={finding} comparison={comparison} />}{overview}</> : <><div className="json-caption">{record ? "Exact monitoring record" : "Exact assessment packet"}</div><pre ref={jsonRef} className="evidence-json" tabIndex={0} aria-label="Exact assessment packet">{json}</pre></>}
     </div><span className={`copy-feedback${copyStatus ? " visible" : ""}`} role="status">{copyStatus}</span>
   </aside>;
 }

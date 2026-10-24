@@ -72,6 +72,8 @@
     "qc_reference_sha256": "809c78b69d80d93d73f5b4b75ca6e74b0759ddcebf1e17fa2450386b44fcd90f",
     "data_snapshot_id": "sha256:9c65748a3370b02d279942832be6f5d4b4dd74ab780618363106767300a09c71",
     "estimator_method_version": "chillwatch-idw/ba874ff7bab7",
+    "adapter_operation_gate_version": "terra-station-operation-v1",
+    "operation_day_pst": "2026-01-11",
     "publication_visibility": "snapshot_only",
     "peer_exclusion_basis": "target_held_out",
     "side_effects": "none"

@@ -16,9 +16,11 @@ import numpy as np
 import pandas as pd
 
 from chillwatch.estimate import estimate_location
+from chillwatch.qc.neighbors import active_on, haversine_km, hour_local_dates
 
 SCHEMA_VERSION = "terra-location-assessment-v1"
 DATA_MODES = {"historical_replay", "current", "injected", "synthetic"}
+OPERATION_GATE_VERSION = "terra-station-operation-v1"
 
 
 def _number(value: Any, label: str) -> float:
@@ -168,6 +170,29 @@ def _score(frame: pd.DataFrame, reference: Any) -> pd.DataFrame:
     return qc.score(frame, reference) if len(frame) else pd.DataFrame()
 
 
+def _operation_gate(cleaned: pd.DataFrame, stations: pd.DataFrame) -> pd.DataFrame:
+    """Apply caller-supplied inclusive operating dates using Nathan's PST days.
+
+    Missing dates retain the estimator's permissive behavior. Do not mutate
+    source quality or raw evidence; operation eligibility is a separate gate.
+    """
+    out = cleaned.copy(deep=True)
+    out["operation_available"] = True
+    if out.empty:
+        return out
+    days = hour_local_dates(pd.DatetimeIndex(out.timestamp))
+    for day in np.unique(days):
+        inactive = set(stations.loc[~active_on(stations, pd.Timestamp(day)), "station_id"])
+        mask = (days == day) & out.station_id.isin(inactive)
+        out.loc[mask, "operation_available"] = False
+        out.loc[mask, "available"] = False
+        out.loc[mask, "availability_reason"] = "station_not_operating"
+        for index in out.index[mask]:
+            out.at[index, "availability_reasons"] = list(dict.fromkeys(
+                ["station_not_operating", *out.at[index, "availability_reasons"]]))
+    return out
+
+
 def _findings(scored: pd.DataFrame, observations: pd.DataFrame) -> list[dict]:
     from terra_qc import qc
 
@@ -290,8 +315,11 @@ def assess_location(*, lat: float, lon: float, elevation_ft: float, valid_utc: A
                    (("lat", "latitude"), ("lon", "longitude"), ("elevation_ft", "elevation_ft"))):
             raise ValueError("Calibrated station geometry differs from the frozen reference")
     observed = _observations(observations, clock)
-    cleaned = _clean(observed, calibrated)
-    known = cleaned[cleaned.station_id.isin(calibrated)].copy()
+    cleaned = _operation_gate(_clean(observed, calibrated), st)
+    # The frozen cleaner deliberately reconstructs source eligibility from raw
+    # evidence. Keep operation-ineligible rows out of that pass rather than
+    # altering their source quality or changing frozen QC mathematics.
+    known = cleaned[cleaned.station_id.isin(calibrated) & cleaned.operation_available].copy()
     # Preserve canonical source quality for E1; availability remains explicit.
     known["quality"] = known["source_quality"]
     scored = _score(known, reference)
@@ -307,10 +335,22 @@ def assess_location(*, lat: float, lon: float, elevation_ft: float, valid_utc: A
     exclusion_rows = [{"station_id": e["station_id"], "timestamp": p["timestamp"], "reason": e["reason"],
                        "visible_at": e["visible_at"]} for e in estimation_events for p in e["evidence"]]
     exclusions = pd.DataFrame(exclusion_rows, columns=["station_id", "timestamp", "reason", "visible_at"])
-    estimate_frame = estimate_location(lat, lon, elevation_ft, [valid], clock, cleaned, st, exclusions,
+    operation_day = pd.Timestamp(hour_local_dates(pd.DatetimeIndex([valid]))[0])
+    operating = active_on(st, operation_day)
+    inactive_ids = set(st.loc[~operating, "station_id"])
+    estimate_frame = estimate_location(lat, lon, elevation_ft, [valid], clock,
+        cleaned[~cleaned.station_id.isin(inactive_ids)], st[operating], exclusions,
         location_id=location_id, geometry_source=geometry_source, exclude_station_ids=() if target is None else (target,),
         max_age_hours=max_age_hours)
     estimate = estimate_frame.iloc[0].to_dict()
+    # Filtering geometry also prevents inactive stations from entering the
+    # estimator's lapse fit. Expose nearby exclusions instead of silently
+    # dropping them from the caller's evidence.
+    from chillwatch import config
+    radius = float(config.thresholds()["neighbors"]["max_km"])
+    nearby = haversine_km(lat, lon, st.lat.to_numpy(), st.lon.to_numpy()) <= radius
+    estimate["excluded"].extend({"station_id": int(s), "reason": "station_not_operating"}
+                              for s in st.loc[~operating & nearby, "station_id"])
     relevant = set(estimate["used_station_ids"]) | set(estimate["lapse_station_ids"])
     relevant.update(x["station_id"] for x in estimate["excluded"])
     flags = [{"station_id": e["station_id"], "reason": e["reason"], "severity": e["severity"],
@@ -319,7 +359,7 @@ def assess_location(*, lat: float, lon: float, elevation_ft: float, valid_utc: A
               "visible_at_utc": e["visible_at"], "reference_id": REFERENCE_ID, "policy": e["policy"],
               "summary": e["summary"], "evidence": e["evidence"], "message": e["message"],
               "freshness": "stale" if clock - valid > pd.Timedelta(hours=max_age_hours) else "within_age_limit"}
-             for e in full_events if e["station_id"] in relevant and e["visible_at"] <= clock
+             for e in full_events if e["station_id"] in relevant and e["station_id"] not in inactive_ids and e["visible_at"] <= clock
              and any(pd.Timestamp(p["timestamp"]) == valid for p in e["evidence"])]
     health = [{"station_id": int(r.station_id), "valid_utc": valid, "reason": r.availability_reason,
                "reasons": r.availability_reasons, "source_quality": r.source_quality, "source_flag": r.source_flag}
@@ -333,10 +373,12 @@ def assess_location(*, lat: float, lon: float, elevation_ft: float, valid_utc: A
         "estimator_qc_exclusions": [{"station_id": e["station_id"], "reason": e["reason"],
             "severity": e["severity"], "detected_at_utc": e["detected_at"], "visible_at_utc": e["visible_at"],
             "basis": "target_held_out" if target in calibrated else "causal_station_qc"}
-            for e in estimation_events if e["station_id"] in relevant and e["visible_at"] <= clock
+            for e in estimation_events if e["station_id"] in relevant and e["station_id"] not in inactive_ids and e["visible_at"] <= clock
             and any(pd.Timestamp(p["timestamp"]) == valid for p in e["evidence"])],
         "provenance": {"qc_reference_id": REFERENCE_ID, "qc_reference_sha256": REFERENCE_SHA256,
                        "data_snapshot_id": snapshot_id, "estimator_method_version": estimate["method_version"],
+                       "adapter_operation_gate_version": OPERATION_GATE_VERSION,
+                       "operation_day_pst": operation_day.date().isoformat(),
                        "publication_visibility": "explicit_visible_at" if "visible_at" in observations else "snapshot_only",
                        "peer_exclusion_basis": "target_held_out" if target in calibrated else "causal_station_qc",
                        "side_effects": "none"}})

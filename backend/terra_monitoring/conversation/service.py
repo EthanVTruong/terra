@@ -399,8 +399,11 @@ class ConversationService:
             return finish(reaction=True)
         if intent in LOCAL_INTENTS:
             from .local_facts import profile_answer
+            from .factual_writer import write_factual
             answer, facts = profile_answer(intent, self.state(selected))
-            return finish(text=answer, data={"intent": intent, "local_facts": facts})
+            result = write_factual(intent, facts, answer, self.monitor.writer, mode=profile.get("mode", "current"))
+            return finish(text=result["text"], data={"intent": intent, "local_facts": facts,
+                          "generation": result["provider"], "generation_outcome": result["outcome"]})
         if not selected and setup["stage"] == "crop":
             if supplied:
                 return finish(text="Where are you growing? Share your location.",
@@ -411,8 +414,11 @@ class ConversationService:
         if not selected:
             return finish(text="Share your location to start monitoring.", data={"action": "location_choice"})
         if intent in _FACT_CONTEXTS:
+            from .factual_writer import write_factual
             answer, facts = weather_reply
-            return finish(text=answer, data={"intent": intent, "local_facts": facts})
+            result = write_factual(intent, facts, answer, self.monitor.writer, mode=profile.get("mode", "current"))
+            return finish(text=result["text"], data={"intent": intent, "local_facts": facts,
+                          "generation": result["provider"], "generation_outcome": result["outcome"]})
         if intent in {"off_topic"}:
             return finish(reaction=True)
         if intent in {"needs_context", "clarify"}:

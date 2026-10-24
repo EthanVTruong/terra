@@ -1,5 +1,35 @@
 # Terra integration coordination
 
+## Trusted conversational factual answers
+
+```json
+{
+  "kind": "task",
+  "id": "terra-trusted-factual-answers",
+  "owner": "et",
+  "status": "done",
+  "intent": "Latest direct user requirement: let the existing selected ChatGPT plan author concise supported weather/profile answers from trusted local facts. Preserve local scope, source dates, private profile fields, exact quantities and intent/idempotence; unsupported or invalid generation keeps the truthful local answer. No provider, authentication, numerical or live-runtime changes.",
+  "branch": "codex/terra-trusted-factual-answers",
+  "base": "fb57c2df939c851f4d17c2d4ac131994624690e1",
+  "domains": ["terra-qc-json", "terra-coordination"],
+  "paths": ["COORDINATION.md", "backend/terra_monitoring/conversation/service.py", "backend/terra_monitoring/conversation/factual_writer.py", "tests/test_terra_conversation_factual_writer.py"],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": null,
+    "summary": "Both existing local-answer branches now let the selected plan generator author supported saved-profile and weather prose once. A bounded adapter reuses the weather discrepancy validator and validates other entity/quantity/status roles; private saved values are inserted locally in one pass. Original local_facts, references, clocks, scope and durable request deduplication remain authoritative. Prior simulation branch79cb69a remains preserved.",
+    "evidence": [
+      "48 focused cases PASS in6.97s, including actual guarded runtime API to selected fake generator; profile/temperature/independent variables, source dates, old references, replay, missing facts, privacy, swapped roles, units, polarity, advice, malformed/refused output and one-call retry/restart are covered. No actual inference/provider/acquisition/SMS was used.",
+      "Affected run135PASS with one pre-existing runtime writer test missing its new source header; root repaired that separate fixture in6f7006f. All new adapter and legacy local_facts/weather/weather_variables cases passed. The final48-case run includes additional guarded API, replay and literal private-binding regressions.",
+      "Records/filesystem/scope validation againstfb57c2d PASS with zero errors. New test maps to exactlyterra-qc-json and is in existing conversation-context argv at unchanged120s; no new matrix group. All changed text is UTF-8/LF."
+    ],
+    "uncertainty": "Conservative supported-English validation can return local fallback for unknown wording; absent/unrepresentable facts and missing generator stay local without inference. Provider/model failure is truthful template fallback with no automatic retry. Full combined exact-head gates and integration remain with root.",
+    "next": "Integrate the frozen branch with current main and root fixture/docs updates, review the bounded source contract, then run the single combined15-group gate. Preserve selected provider/model/consent and private runtime."
+  }
+}
+```
+
 ## Default preview ChatGPT capability
 
 ```json
@@ -874,6 +904,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_farm_chill_ops*.py",
     "tests/test_terra_chatgpt*.py",
     "tests/test_terra_conversation*.py",
+    "tests/test_terra_conversation_factual_writer.py",
     "run_terra.py",
     "tests/test_terra_bootstrap.py",
     "tests/test_terra_weather*.py",
@@ -1659,6 +1690,7 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_timeline.py",
     "tests/test_terra_conversation_weather.py",
     "tests/test_terra_conversation_writer_integration.py",
+    "tests/test_terra_conversation_factual_writer.py",
     "-q"
   ],
   "timeout": 120

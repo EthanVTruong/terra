@@ -32,7 +32,7 @@
   "status": "active",
   "intent": "User explicitly requests a plan and active goal to implement Tara onboarding and actual in-app replies using the existing ChatGPT connection: brief grounded responses, attached thumbs-up acknowledgments, no reply to thanks/other no-op input, and local off-topic handling that consumes no model usage. Diagnose full behavior including relevant farm/chill/alert follow-ups, context, consent, failures and return. Implement, verify and integrate without changing scientific models or external SMS/account consent.",
   "branch": "codex/tara-conversation",
-  "base": "adced1ad91da099309172fdd8dddba6e3d215b1b",
+  "base": "a14e1483c4681c24cecc1c97da6a4ffb3c67eb57",
   "domains": [
     "terra-coordination",
     "terra-qc-json"
@@ -55,15 +55,16 @@
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": "4c188b905af86571bd579109403e539ce1a15654",
-    "summary": "Implementation and behavior verification complete. Integration owner explicitly authorized stacking the FINAL assigned-sender head9a7a397 into Tara4c188b9, preserving current setup mainadced1a. One focused coordination-record reconciliation; no application conflict or new product behavior. Root retains PR12-first/PR11-next main integration and operational cutover.",
+    "revision": "7b779c9629dbd919d2a4e45a71182511e8e7573b",
+    "summary": "ONE root-authorized bounded repair cycle completed for3 concrete P2s after the prior combined source passed CI: original per-alert evidence dates/source years and IDs; existing-farm explicit browser consent affordance with selected-farm/alive guard; preservation or local clarification of mixed known/custom crops. Application source/tests are frozen. Primary root owns PR11 merge and operational cutover; follow-on consolidation received exact repaired source.",
     "evidence": [
-      "All9 scoped groups passed before this dependency merge;98 conversation cases,117 focused compatibility cases,21 prior web checks/build, accepted actual ChatGPT reply and immutable Details, real process-exit/HTTP/Edge recovery,320px and delayed pre-consent notification regression pass.",
-      "Exact dependency head9a7a397/tree41527041d8887786e558ceb976a1739a7392724b imported. Its owner verified19 targeted sender cases,13 prior UI cases and4 packaging cases. Integration owner verified controlled API template delivery and direct user handset receipt; custom message delivery and natural autonomous alerts remain separate.",
-      "Final combined scoped checks and exact-head4-job CI are required before root integrates. This chat has not restarted or changed shared runtime, private configuration, vault, account or SMS flags. Original staged prototype and frozen scientific code preserved."
+      "141 combined conversation cases passed, including new single/mixed/chained/previous-year referenced-alert regressions and38 crop list/profile/invalid/negation/off-topic cases. Existing structural scope gate, local no-op behavior and strict fact validator remain.",
+      "Actual full App plus guarded HTTP consent proof: text alone makes0 native/model calls; denial stays off, grant applies only to selected farm; second farm and separate unfinished walnut setup preserved; switching farm during permission promise makes0 setup POSTs. Both tracked native-browser regressions and worker build/state tests passed.",
+      "Prior combineda6bae7d with exact sender9a7 passed all4 CI jobs (1120backend plus8subtests,zero skips),23 web cases/build and all9 scoped groups. Main sender mergea14 ancestry was recorded without changinga6 tree before this bounded repair; final checks validate actuala14 base.",
+      "Integration owner verified controlled API placeholder delivery and direct user handset receipt. This chat made no shared runtime/account/private flag/vault/journal writes, no new provider or SMS calls for repairs, and preserved the original staged prototype and frozen scientific code."
     ],
-    "uncertainty": "Final combined checks/CI and owner-controlled merged runtime verification remain pending. Actual current SMS settings are root-owned and must be retained; older disabled-state assumptions are superseded. Browser alerts work while Terra is open.",
-    "next": "Publish this exact combined head/tree and final CI to integration owner. Root merges sender PR12 first, then Tara PR11 after combined green checks, verifies identical final application tree, and owns retained-data cutover. No independent PR11 merge, runtime/account writes, or further feature changes."
+    "uncertainty": "Final repaired-head scoped/UI/backend gates and owner-controlled merged runtime verification remain pending. Current authorized SMS settings and all retained records must be preserved; browser alerts work while Terra is open.",
+    "next": "Publish exact repaired head/tree and final combined CI. Root01a16ac9 merges PR11 only after green gates, verifies final source tree and performs retained-data cutover. Follow-on consolidation01a16f05 preserves these fixes. No further features or independent PR/main/runtime/account writes."
   }
 }
 ```
@@ -1004,6 +1005,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_terra_conversation_local_facts.py",
     "tests/test_terra_conversation_recovery.py",
     "tests/test_terra_conversation_writer_integration.py",
+    "tests/test_terra_conversation_reference_times.py",
+    "tests/test_terra_conversation_crops.py",
     "-q"
   ]
 }

@@ -111,7 +111,8 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "scripts/terra-service/**",
     "tests/test_terra_runtime.py",
     "tests/test_farm_chill_ops.py",
-    "tests/test_farm_chill_ops_api.py"
+    "tests/test_farm_chill_ops_api.py",
+    "tests/test_farm_chill_ops*.py"
   ],
   "depends_on": [],
   "checks": [
@@ -530,5 +531,66 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "-q"
   ],
   "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "check",
+  "id": "farm-chill-ops-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "--noconftest",
+    "-o",
+    "pythonpath=backend",
+    "-p",
+    "no:cacheprovider",
+    "tests/test_farm_chill_ops.py",
+    "tests/test_farm_chill_ops_api.py",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
+
+```json
+{
+  "kind": "task",
+  "id": "farm-chill-ops",
+  "owner": "et",
+  "status": "active",
+  "intent": "User explicitly requested a goal to finish the compact LLM contract/system prompt and tidy persistent farm-chill-ops backend after the product interview. Build the scoped seasonal monitor, orchard storage, selective event lifecycle, local inbox, factual Q&A, optional LLM/fallback, CLI/HTTP and verification. No new model fitting, bulk provider backfill, GDD/forecast/SMS/hosting/auth scope. Preserve Nathan and active live-query work.",
+  "branch": "codex/farm-chill-ops",
+  "base": "7f37e2670103fc2efa83c272e1cab285e3616620",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/terra_monitoring/farm_ops/**",
+    "tests/test_farm_chill_ops*.py",
+    "docs/terra/farm-chill-ops.md",
+    "docs/terra/farm-chill-ops/**"
+  ],
+  "depends_on": [
+    "terra-main-consolidation"
+  ],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "7f37e2670103fc2efa83c272e1cab285e3616620",
+    "summary": "Isolated worktree based on committed live-query interface. Product choices locked: Nonpareil/Davis; estimated 32-45F chill from Nov1; separate FNRIC details; two completed days below20 before pace warning; one opening/escalation/recovery; recovery3valid readings; combine urgent-first; LLM message-only; important changes only, anytime; source faults quiet while orchard estimate usable.",
+    "evidence": [
+      "Goal explicitly created in figure out terra spec chat. Prior 64 estimator/adapter checks passed; live-query owner independently verifies the evolving transport."
+    ],
+    "uncertainty": "Live-query owner has uncommitted fixes that are excluded from this isolated base. No key/provider call, external delivery or deployment is authorized by this task. Real same-orchard 5-season history may be unavailable; withhold comparison.400h cultivar page does not establish matched chill definition, so default target is a configured reference only, not a biological requirement.",
+    "next": "Implement persistent monitor and compact writer contract, exercise restart/failure/causal replay paths, run scoped checks and leave a reviewable branch."
+  }
 }
 ```

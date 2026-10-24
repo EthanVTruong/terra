@@ -29,6 +29,9 @@ live journals are rejected, rather than adopted or reset.
    is present, its native conversation router attaches automatically and preserves
    supplied crops and variety. Until then, the older coordinate form works but
    cannot supply crop metadata; crop-aware calls fail explicitly.
+   If the production factory already attached its conversation service and
+   routes, the bridge reuses them. An explicit `conversation_factory` is a
+   fallback only and never replaces that native instance.
 2. The farm receives a real baseline assessment from the saved March observations.
    The observation clock remains historical. A usable replay comparison does
    **not** imply live monitoring readiness: no fresh worker heartbeat is created.

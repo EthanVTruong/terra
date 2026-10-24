@@ -201,7 +201,11 @@ def create_app(*, simulation=None, state_dir=None, web_root=None, demo_root=None
     # production factory's reserved API fallback and static mount.
     existing = list(app.router.routes)
     app.router.routes.clear()
-    if conversation_factory is None:
+    # Newer production factories already own the conversation instance/routes.
+    # Reuse that instance even when a fallback factory was explicitly supplied;
+    # a QA bridge must never replace or shadow native behavior.
+    conversation = getattr(app.state, "tara_conversation", None)
+    if conversation is None and conversation_factory is None:
         try:
             from ..conversation.service import ConversationService
         except ModuleNotFoundError as exc:
@@ -209,7 +213,7 @@ def create_app(*, simulation=None, state_dir=None, web_root=None, demo_root=None
                 raise
         else:
             conversation_factory = ConversationService
-    if conversation_factory is not None:
+    if conversation is None and conversation_factory is not None:
         from ..conversation.api import create_router
         conversation = conversation_factory(bridge, notification_capability="browser_open")
         app.include_router(create_router(conversation, mutation_guard=app.state.local_mutation_guard))

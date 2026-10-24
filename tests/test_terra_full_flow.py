@@ -6,10 +6,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
 from terra_monitoring.demo_simulation.engine import DemoSimulation, ORCHARD, START
 from terra_monitoring.demo_simulation.full_flow import ReplayBridge, create_app
+from terra_monitoring.server import create_app as native_app
 from terra_monitoring.farm_ops.service import orchard_profile
 from terra_monitoring.farm_ops.store import utc
 
@@ -180,6 +182,53 @@ class FullFlowTests(unittest.TestCase):
         run_id = app.state.full_flow_bridge.engine.session["run_id"]
         restored = create_app(state_dir=directory, web_root=self.production, demo_root=self.demo)
         self.assertEqual(restored.state.full_flow_bridge.engine.session["run_id"], run_id)
+
+    def test_existing_native_conversation_and_routes_are_reused_without_fallback(self):
+        native_conversation = object()
+
+        def with_native_conversation(**kwargs):
+            app = native_app(**kwargs)
+            router = APIRouter()
+
+            @router.get("/api/tara/conversation")
+            def state():
+                return {"owner": "native"}
+
+            @router.post("/api/tara/messages")
+            @router.post("/api/tara/setup")
+            def action():
+                return {"owner": "native"}
+
+            # Native registration occurs before its reserved API fallback.
+            existing = list(app.router.routes)
+            app.router.routes.clear()
+            app.include_router(router)
+            app.router.routes.extend(existing)
+            app.state.tara_conversation = native_conversation
+            return app
+
+        def forbidden_fallback(*args, **kwargs):
+            raise AssertionError("The bridge constructed a second conversation")
+
+        with patch("terra_monitoring.demo_simulation.full_flow.production_app", with_native_conversation):
+            app = create_app(simulation=self.engine, web_root=self.production, demo_root=self.demo,
+                             conversation_factory=forbidden_fallback)
+        self.assertIs(app.state.tara_conversation, native_conversation)
+        def leaf_routes(routes):
+            for route in routes:
+                included = getattr(route, "original_router", None)
+                if included is not None:
+                    yield from leaf_routes(included.routes)
+                else:
+                    yield route
+
+        routes = list(leaf_routes(app.router.routes))
+        for path in ("/api/tara/conversation", "/api/tara/messages", "/api/tara/setup"):
+            self.assertEqual(sum(getattr(route, "path", None) == path for route in routes), 1)
+        with TestClient(app, base_url="http://127.0.0.1:8532") as client:
+            self.assertEqual(client.get("/api/tara/conversation").json(), {"owner": "native"})
+            self.assertEqual(client.post("/api/tara/messages").json(), {"owner": "native"})
+            self.assertEqual(client.post("/api/tara/setup").json(), {"owner": "native"})
 
 
 if __name__ == "__main__":

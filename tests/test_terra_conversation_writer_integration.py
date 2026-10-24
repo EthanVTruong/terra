@@ -141,7 +141,8 @@ def test_real_runtime_routes_select_plan_writer_only_for_relevant_input(tmp_path
     assert app.state.runtime_monitor.writer.generator is provider
     with TestClient(app, base_url="http://127.0.0.1") as client:
         control = client.get("/api/sms/status").json()["control_token"]
-        headers = {"X-Terra-SMS-Control": control}
+        headers = {"X-Terra-SMS-Control": control,
+                   "X-Terra-Source-Context": client.get("/api/simulation/connection").json()["source_context"]}
         assert client.get("/api/tara/conversation").json()["setup"]["stage"] == "crop"
 
         def post(path, body):

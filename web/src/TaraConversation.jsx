@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { clockTime, dayLabel, localDay, publicationTime, timestamp } from "./presentation";
-import { createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreTaraOperation, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
+import { createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, readTaraDraft, readTaraStorage, reconcilableTaraRequests, restoreTaraOperation, taraDisplayText, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot, writeTaraStorage } from "./tara-state";
 import "./tara-conversation.css";
 import { showTaraNotification } from "./notification-return";
 
@@ -253,7 +253,7 @@ export function TaraConversation({ conversation, farm, onSelectOrchard, onDetail
         return <React.Fragment key={entry.key}>
           {showDay && <div className="day-separator"><time dateTime={localDay(published)} title={timestamp(published)}>{dayLabel(published)}</time></div>}
           {entry.type === "note" ? renderFieldNote(turn) : turn.role === "event" ? <div className={`tara-saved-event${turn.kind === "notice" ? " tara-notice-event" : ""}`}><Icon name={turn.kind === "location" ? "location" : turn.kind === "notice" ? "file" : "phone"} size={15} /><span>{turn.text}</span>{turn.kind !== "notice" ? <Icon name="check" size={14} /> : null}</div> : <article className={`tara-turn tara-${turn.role}`}>
-            <Bubble type={hasDetails ? "button" : undefined} className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"} title={hasDetails ? "View readings" : undefined} aria-label={hasDetails ? `Open answer from ${timestamp(published)}` : undefined} aria-describedby={hasDetails ? `tara-turn-text-${turn.id}` : undefined} onClick={hasDetails ? (event) => onDetails(event, { id: turn.data.message_id, orchard_id: state.orchard_id, text: turn.text, kind: "answer", created_at: turn.created_at }) : undefined}><span id={`tara-turn-text-${turn.id}`}>{turn.text}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Tara reacted with a thumbs up">👍</span> : null}</Bubble>
+            <Bubble type={hasDetails ? "button" : undefined} className={turn.role === "assistant" ? "incoming-bubble tara-bubble" : "tara-outgoing tara-bubble"} title={hasDetails ? "View readings" : undefined} aria-label={hasDetails ? `Open answer from ${timestamp(published)}` : undefined} aria-describedby={hasDetails ? `tara-turn-text-${turn.id}` : undefined} onClick={hasDetails ? (event) => onDetails(event, { id: turn.data.message_id, orchard_id: state.orchard_id, text: turn.text, kind: "answer", created_at: turn.created_at }) : undefined}><span id={`tara-turn-text-${turn.id}`}>{taraDisplayText(turn)}</span>{turn.reactions.length > 0 ? <span className="tara-reaction" role="img" aria-label="Tara reacted with a thumbs up">👍</span> : null}</Bubble>
             <div className="tara-turn-meta"><time dateTime={published} title={timestamp(published)} aria-label={timestamp(published)}>{clockTime(published)}</time>{turn.role === "user" && turn.delivery === "local_saved" ? <span>Received by Terra</span> : null}</div>
           </article>}
         </React.Fragment>;

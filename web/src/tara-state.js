@@ -7,6 +7,11 @@ const date = (value) => typeof value === "string" && Number.isFinite(Date.parse(
 const stages = new Set(["crop", "location", "notifications", "complete"]);
 const outcomes = new Set(["message", "reaction", "none"]);
 const monitoringStatuses = new Set(["not_configured", "pending", "ready", "unavailable"]);
+const previousLocationPrompts = new Set(["Where's your farm? Use your location if you're there, or enter coordinates.", "Confirm your farm location to start monitoring."]);
+
+export function taraDisplayText(turn) {
+  return turn.role === "assistant" && turn.data?.action === "location_choice" && previousLocationPrompts.has(turn.text) ? "Where are you growing? Share your location." : turn.text;
+}
 
 function validateReaction(value, target) {
   if (!object(value) || value.emoji !== "👍" || !identifier(value.target_id) || (target && value.target_id !== target)) throw new Error("A conversation reaction could not be read. Your previous messages are retained.");

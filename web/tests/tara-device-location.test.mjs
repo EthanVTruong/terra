@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const stamp = "2026-10-24T16:00:00Z";
 const turn = (id, role, text, data = {}, kind = "text") => ({ id, role, text, data, kind, created_at: stamp, reply_to: null, reactions: [], delivery: "local_saved" });
 
-async function fixture({ native = "deferred", errorCode = 1, firstResponse = "success", savedFarm = false } = {}) {
+async function fixture({ native = "deferred", errorCode = 1, firstResponse = "success", savedFarm = false, locationPrompt = "Where are you growing? Share your location." } = {}) {
   const url = new URL(browserUrl);
   assert.ok(["127.0.0.1", "localhost", "::1"].includes(url.hostname));
   const { chromium } = require(process.env.TERRA_PLAYWRIGHT_MODULE || "playwright");
@@ -25,7 +25,7 @@ async function fixture({ native = "deferred", errorCode = 1, firstResponse = "su
     } };
     Object.defineProperty(navigator, "geolocation", { configurable: true, value: mode === "unsupported" ? undefined : geo });
   }, { mode: native, code: errorCode });
-  const snapshot = { schema_version: "terra-conversation-v1", setup: { stage: "location", crops: ["almond"], crop_description: "Almonds", variety: null }, orchard_id: null, orchards: [], turns: [turn("location-question", "assistant", "Where are you growing? Share your location.", { action: "location_choice" })], initial_prompt: null, pending_requests: [], monitoring: { status: "not_configured" }, notifications: { enabled: false, permission: "default", capability: "browser_open" } };
+  const snapshot = { schema_version: "terra-conversation-v1", setup: { stage: "location", crops: ["almond"], crop_description: "Almonds", variety: null }, orchard_id: null, orchards: [], turns: [turn("location-question", "assistant", locationPrompt, { action: "location_choice" })], initial_prompt: null, pending_requests: [], monitoring: { status: "not_configured" }, notifications: { enabled: false, permission: "default", capability: "browser_open" } };
   if (savedFarm) snapshot.orchards.push({ id: "existing-farm", name: "Existing farm", crop: "peach", mode: "current" });
   const snapshotCopy = () => structuredClone(snapshot);
   await page.route("**/api/**", async (route) => {
@@ -72,6 +72,31 @@ async function fixture({ native = "deferred", errorCode = 1, firstResponse = "su
   };
   return { browser, page, snapshot, posts, errors, noForm };
 }
+
+test("resuming an old location setup shows current single-button guidance without resetting or rewriting its saved draft", { skip: !browserUrl }, async () => {
+  const locationPrompt = "Where's your farm? Use your location if you're there, or enter coordinates.";
+  const f = await fixture({ locationPrompt, native: "success" });
+  try {
+    const saved = structuredClone(f.snapshot);
+    for (let reopen = 0; reopen < 2; reopen += 1) {
+      if (reopen) await f.page.reload();
+      await f.page.getByText("Where are you growing? Share your location.", { exact: true }).waitFor();
+      assert.equal(await f.page.getByText(locationPrompt, { exact: true }).count(), 0);
+      assert.equal(await f.page.getByRole("button", { name: "Use my location", exact: true }).count(), 1);
+      await f.noForm();
+      assert.equal(f.posts.length, 0);
+      assert.equal(await f.page.evaluate(() => window.__geoCalls), 0);
+      assert.deepEqual(f.snapshot, saved);
+    }
+    await f.page.getByRole("button", { name: "Use my location", exact: true }).click();
+    await f.page.getByRole("button", { name: "Keep in chat", exact: true }).waitFor();
+    assert.equal(f.posts.length, 1);
+    assert.equal(f.snapshot.turns[0].id, saved.turns[0].id);
+    assert.equal(f.snapshot.turns[0].text, locationPrompt);
+    assert.deepEqual(f.snapshot.setup.crops, saved.setup.crops);
+    assert.deepEqual(f.errors, []);
+  } finally { await f.browser.close(); }
+});
 
 test("one location button requests fresh native position once and automatically advances without altitude or form fields", { skip: !browserUrl }, async () => {
   const f = await fixture();

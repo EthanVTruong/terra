@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, reconcilableTaraRequests, restoreTaraOperation, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
+import { createTaraOperation, deviceLocationFromPosition, mergeTaraTimeline, reconcilableTaraRequests, restoreTaraOperation, taraDisplayText, taraError, taraLocationSetupKey, taraNeedsNotificationChoice, taraNotificationEnabledAt, validateTaraResult, validateTaraSnapshot } from "../src/tara-state.js";
 
 const turn = (extra = {}) => ({ id: "turn-1", role: "user", kind: "text", text: "Thanks", created_at: "2026-10-24T16:00:00Z", reply_to: null, reactions: [], delivery: "local_saved", ...extra });
 const snapshot = (extra = {}) => ({ schema_version: "terra-conversation-v1", setup: { stage: "complete", crops: ["almond"], orchard_id: "farm-1" }, orchard_id: "farm-1", orchards: [{ id: "farm-1", name: "West Orchard" }], turns: [], monitoring: { status: "pending" }, notifications: { enabled: false, capability: "browser_open" }, pending_requests: [], ...extra });
+
+test("only exact saved app-owned location prompts receive current display guidance, preserving their stored text", () => {
+  for (const text of ["Where's your farm? Use your location if you're there, or enter coordinates.", "Confirm your farm location to start monitoring."]) {
+    const saved = Object.freeze(turn({ role: "assistant", text, data: Object.freeze({ action: "location_choice" }) }));
+    assert.equal(taraDisplayText(saved), "Where are you growing? Share your location.");
+    assert.equal(saved.text, text);
+    for (const other of [{ ...saved, role: "user" }, { ...saved, role: "event" }, { ...saved, data: {} }, { ...saved, data: { action: "answer" } }, { ...saved, text: `${text} ` }, { ...saved, text: "Weather coverage is spotty since Jan 14." }]) assert.equal(taraDisplayText(other), other.text);
+  }
+});
 
 test("unknown and malformed snapshots retain the previous conversation instead of inventing state", () => {
   for (const input of [null, {}, snapshot({ schema_version: "future" }), snapshot({ turns: [turn(), turn()] }), snapshot({ turns: [turn({ delivery: "sms_delivered" })] }), snapshot({ notifications: { enabled: "yes", capability: "browser_open" } }), snapshot({ setup: { stage: "finished", crops: [] } })]) assert.throws(() => validateTaraSnapshot(input));

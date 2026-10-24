@@ -207,7 +207,8 @@ def write_grid(df: pd.DataFrame, stations: pd.DataFrame, out_dir: Path, label: s
     gj = out_dir / f"{stem}.geojson"
     gj.write_text(json.dumps(to_geojson(df)))
     png = out_dir / f"{stem}.png"
-    end_day = (pd.Timestamp(a["end"]) - pd.Timedelta(hours=9)).strftime("%b %-d, %Y")
+    end = pd.Timestamp(a["end"]) - pd.Timedelta(hours=9)
+    end_day = f"{end:%b} {end.day}, {end:%Y}"
     render_png(df, stations, png, f"Chill hours since Nov 1 through {end_day} ({a.get('km')} km grid, model "
                f"{a.get('model')}){' - ' + label if label else ''}")
     meta = out_dir / f"{stem}.json"

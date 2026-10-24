@@ -27,7 +27,9 @@ Open **http://127.0.0.1:8512**. Use `python3` if needed. Stop with Ctrl+C.
 
 The launcher creates `.venv`, installs pinned dependencies, builds the interface, and serves the UI and API. First setup needs internet; no API key, database server, or model training is needed.
 
-**Default preview:** saved historical assessments and controlled examples, with live weather, the worker, ChatGPT, and SMS disabled. State stays in `.terra-local/preview`.
+**Default preview:** saved historical assessments and controlled examples, with live weather, the worker, and SMS disabled. Choose **Continue with ChatGPT** to sign in with your own eligible account and select an available model. Sign-in starts only when you choose it; opening Terra alone makes no model request. Preview history and its separate protected ChatGPT connection stay in `.terra-local/preview`.
+
+Use `python run_terra.py --no-chatgpt` for a diagnostic session with ChatGPT controls unavailable. This does not sign out or erase an existing connection.
 
 Enter your crops, select **Use my location**, and approve the browser request. Terra looks up ground elevation and selects nearby eligible stations. Approving device location authorizes the one-button setup; manual coordinates and elevation remain available if device location or the terrain lookup is unavailable. Choose notifications separately.
 

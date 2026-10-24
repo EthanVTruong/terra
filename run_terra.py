@@ -153,7 +153,7 @@ def runtime_command(root: Path, args, state: Path) -> list[str]:
                "--port", str(args.port), "--state-dir", str(state),
                "--web-root", str(root / "web/dist/client")]
     if not args.live:
-        command.extend(["--no-worker", "--no-chatgpt"])
+        command.append("--no-worker")
     else:
         for name in ("env_file", "sms_env_file", "chatgpt_state_dir"):
             value = getattr(args, name)
@@ -161,8 +161,8 @@ def runtime_command(root: Path, args, state: Path) -> list[str]:
                 command.extend(["--" + name.replace("_", "-"), str(value.expanduser().resolve())])
         if args.no_worker:
             command.append("--no-worker")
-        if args.no_chatgpt:
-            command.append("--no-chatgpt")
+    if args.no_chatgpt:
+        command.append("--no-chatgpt")
     return command
 
 
@@ -177,12 +177,12 @@ def main(argv=None, *, root: Path = ROOT) -> int:
     parser.add_argument("--sms-env-file", type=Path, help="Private SMS file; requires --live")
     parser.add_argument("--chatgpt-state-dir", type=Path, help="Stable protected ChatGPT directory; requires --live")
     parser.add_argument("--no-worker", action="store_true", help="Use --live for on-demand queries without polling")
-    parser.add_argument("--no-chatgpt", action="store_true", help="Disable optional ChatGPT controls in live mode")
+    parser.add_argument("--no-chatgpt", action="store_true", help="Disable ChatGPT sign-in controls for a diagnostic session")
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error("port must be between 1 and 65535")
     if not args.live and (args.env_file or args.sms_env_file or args.chatgpt_state_dir or args.no_worker):
-        parser.error("operator configuration and --no-worker require --live; preview already disables all providers")
+        parser.error("operator configuration and --no-worker require --live; preview already disables live weather and SMS")
     if args.chatgpt_state_dir and args.no_chatgpt:
         parser.error("--chatgpt-state-dir cannot be combined with --no-chatgpt")
     for path in (args.env_file, args.sms_env_file):
@@ -199,6 +199,8 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         ])
         for label, ok, advice in checks:
             print(f"{'OK' if ok else 'NEEDS SETUP'}  {label}" + ("" if ok else f": {advice}"))
+        print("ChatGPT sign-in is disabled by --no-chatgpt." if args.no_chatgpt else
+              "ChatGPT sign-in is available in Terra and starts only when you choose to connect.")
         print("Provider readiness is checked separately in Terra; this diagnostic does not validate credentials or delivery.")
         return int(any(not ok for _, ok, _ in checks))
     try:
@@ -212,7 +214,9 @@ def main(argv=None, *, root: Path = ROOT) -> int:
             print("Local setup complete. Run python run_terra.py to open the preview.")
             return 0
         mode = "Live runtime: confirm your location and provider readiness in Terra." if args.live else (
-            "Saved-example preview: current weather, ChatGPT and SMS are disabled. Use --live to connect services.")
+            "Saved-example preview: live weather, the worker and SMS are disabled. "
+            + ("ChatGPT sign-in is disabled by --no-chatgpt." if args.no_chatgpt else
+               "Choose Continue with ChatGPT in Terra to connect your own account."))
         print(f"{mode}\nOpen http://127.0.0.1:{args.port} after server startup. Stop with Ctrl+C.", flush=True)
         return subprocess.call(runtime_command(root, args, state), cwd=root,
                                env=runtime_environment(root, state, live=args.live))

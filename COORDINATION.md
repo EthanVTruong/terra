@@ -1,5 +1,46 @@
 # Terra integration coordination
 
+## Default preview ChatGPT capability
+
+```json
+{
+  "kind": "task",
+  "id": "terra-chatgpt-entry-runtime",
+  "owner": "et",
+  "status": "done",
+  "intent": "Enable the existing human-initiated ChatGPT connection in the default saved-example launcher while retaining isolated preview state, no weather worker, cleared provider/SMS credentials and an explicit no-ChatGPT diagnostic option.",
+  "branch": "codex/terra-chatgpt-entry-runtime",
+  "base": "1b32644a0e6c8f03618914f51c33fc395c019e81",
+  "domains": [
+    "terra-qc-json",
+    "terra-coordination"
+  ],
+  "paths": [
+    "run_terra.py",
+    "tests/test_terra_bootstrap.py",
+    "tests/test_terra_chatgpt_runtime.py",
+    "README.md",
+    "docs/terra/chatgpt-plan.md",
+    "COORDINATION.md"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "1b32644a0e6c8f03618914f51c33fc395c019e81",
+    "summary": "Default saved-example launcher now exposes the existing guarded ChatGPT controls, retaining no worker, cleared weather/API-key/SMS credentials and preview-local protected state. Explicit --no-chatgpt intentionally disables controls in either mode without erasing state. Live configuration semantics and runtime factory opt-in stay unchanged.",
+    "evidence": [
+      "23 bootstrap/ChatGPT-runtime tests and 2 subtests pass, including a cold process using the actual generated preview command: guarded GET /api/chatgpt/status returns 200/disconnected, no accounts/model, worker absent and SMS disabled while HTTP transports, OAuth start, model catalog and generation are forbidden.",
+      "Original credential-clearing regression passes. Diagnostic opt-out and doctor wording are covered. git diff --check passes.",
+      "Existing broader runtime group has 50 passing cases and one inherited 403-versus-405 wrong-method guard failure at tests/test_terra_runtime.py::test_guarded_farm_routes_share_validation_and_wrong_method_errors; this lane does not modify runtime routes.",
+      "Official OpenAI open-source SIWC sign-in guidance read: https://developers.openai.com/siwc/token-sharing-open-source/sign-in. No account, vault, OAuth authorization or inference request was performed."
+    ],
+    "uncertainty": "Frontend entry gate is a separate coordinated patch. Existing canonical alert/chill questions use bounded conversational generation, while weather local-facts answers and unavailable-history cases remain deterministic. Full integration checks and inherited route failure belong to the existing sole integration owner.",
+    "next": "Sole integration owner merges this local branch with the frontend gate, reconciles the inherited runtime guard regression and runs the actual-base integration gate; runtime owner alone coordinates any process restart."
+  }
+}
+```
+
 ## Receipt and location refinement
 
 ```json

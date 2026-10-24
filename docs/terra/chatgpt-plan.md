@@ -11,10 +11,16 @@ and permission screen themselves.
 
 ## Run locally
 
-Install `requirements-terra-dev.txt`, build the existing web client, and start the
-normal `python -m terra_monitoring.runtime` command with `PYTHONPATH=backend` and
-the existing private source configuration. The Windows service helper uses the
-same runtime. ChatGPT controls are enabled by the CLI; `--no-chatgpt` opts out.
+Run `python run_terra.py`. The default saved-example preview includes ChatGPT
+sign-in with its own protected state in `.terra-local/preview/chatgpt`, while
+live weather, the background worker and SMS remain disabled. Opening the app or
+reading connection status does not begin OAuth, fetch a model catalog or generate
+a response. Choose Continue with ChatGPT yourself to begin sign-in.
+
+`python run_terra.py --no-chatgpt` intentionally disables the connection controls
+for that session without erasing its saved connection. Live mode and the normal
+`python -m terra_monitoring.runtime` command also enable ChatGPT controls unless
+`--no-chatgpt` is supplied. The Windows service helper uses the same runtime.
 The embedding factory remains opt-in (`chatgpt_enabled=True`).
 
 Open Message writing from the account icon, choose Continue with ChatGPT, complete

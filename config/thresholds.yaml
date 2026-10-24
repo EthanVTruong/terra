@@ -14,8 +14,10 @@ baseline:
   min_neighbors: 2        # spec
   # physics estimate for places with no station history (map, virtual stations); fitted by
   # `chillwatch fit-physics` (leave-stations-out). 1.0 / null = the spec's IDW + full lapse.
-  unseen_lapse_shrink: 1.0
-  unseen_dz_scale_ft: null
+  # Fitted 2026-10-24 on CIMIS 2018-19..2022-23 (2.289 -> 2.237 F) and checked on the held-out
+  # 2023-24 + 2024-25 seasons: 2.190 -> 2.141 F MAE, chill median 103 -> 101 h (data/models/physics_fit.json).
+  unseen_lapse_shrink: 0.5
+  unseen_dz_scale_ft: 600
 
 normalize:
   min_coverage: 0.75      # spec, sub-hourly -> hourly

@@ -1,108 +1,60 @@
-# Terra · Always-On Monitoring Agent
+# Orchard Chill Monitor: scope and requirements
 
-The [Terra conversation contract](docs/terra/conversation-contract.md) records the
-accepted grower voice, concise alerts and follow-ups, optional reactions/silence
-and conversational setup requirements. Its integration status remains explicit.
+ENG 3 design project, UC Davis. Team: Nathan Ward, Carlo Repetto, Ken Nakao.
 
-## Current product
+## Problem
 
-The consolidated application is a local, single-user orchard monitor with conversational crop/location setup, guarded live CIMIS queries, persistent notes and evidence, supported farm/weather follow-ups, optional browser notifications, optional ChatGPT writing and optional Twilio delivery. It uses the frozen temperature QC reference and Nathan's location estimator. Relative humidity, hourly average wind and solar have separate provisional station-peer rules; their findings do not change temperature QC or invent orchard measurements.
+Fruit and nut trees need enough winter chill to break dormancy evenly. Growers track chill from the
+nearest CIMIS station, which can sit kilometres away on irrigated grass and miss the orchard's own
+microclimate (cold-air pooling, canopy shade). A cheap logger in the tree measures chill where it
+matters, but cheap sensors fail quietly: they drift, freeze, get sun on them, lose power or drop
+readings. A chill total is only useful if you know how much of it was actually measured.
 
-Start with [the README](README.md) and [local setup](docs/terra/setup-and-hosting.md). The default `python run_terra.py` launches a saved-example preview with providers and worker disabled. `--live` enables the five-minute monitor with the operator's own CIMIS configuration. Monitoring continues with the browser closed while the process and computer remain running. Browser notifications require an open Terra page. SMS requires a configured eligible sender/recipient and explicit orchard opt-in; ChatGPT is optional and has a factual fallback.
+## What the system does
 
-The [farm-chill rules](docs/terra/farm-chill-ops.md) are authoritative for the implemented orchard product: estimated 32–45°F hours over November–March, incomplete hours withheld from complete-data conclusions, and historical pace requiring at least five comparable, 95%-complete reference seasons. No such archive is automatically populated on a new install. Separately reported FNRIC station totals retain their own convention and cannot replace orchard history. The configured cultivar reference is not a validated biological threshold.
+1. **Measure**: Arduino Uno + DHT22 in a decorative "monkey" radiation shield, hung from a branch
+   with a hook. One reading a minute. Temperature, humidity and a running chill-hour count on a
+   16x2 I2C LCD; a buzzer for sensor errors and for reaching the chill target.
+2. **Transfer**: every reading is a checksummed text line on USB serial (wire v1). A laptop or
+   Raspberry Pi stamps it with UTC time and appends it to a capture file.
+3. **Validate** (interoperability layer): decode, reject corrupt lines, flag duplicates, reboots,
+   lost samples, clock problems, out-of-range, jumping and frozen values; build hourly values with
+   coverage; cross-check each hour against nearby CIMIS stations using a physics estimate and an ML
+   estimate weighted by their uncertainty; flag departures; estimate the hours that are missing or
+   rejected.
+4. **Report chill**: chill hours (0-7.2 C; the prototype) and Dynamic Model Chill Portions (the final
+   version) for the season, each as measured-only, with-estimates and a p10-p90 range, with the share
+   of hours measured and a list of every gap, as JSON and as a one-page HTML report.
 
-The [Tara workflow](docs/terra/tara-conversation.md), [weather contract](docs/terra/weather-contract.md), [runtime](docs/terra/local-runtime.md), [phone setup](docs/terra/twilio-sms.md) and [readiness record](docs/terra/readiness.md) describe the current boundaries. Saved-example, station-lab and production-interface replay are labelled historical/controlled data, with separate state and simulated phone cards. Live query, retrieval, first-seen visibility and observation clocks remain distinct; missing/stale/source-warning evidence withholds unsupported conclusions.
+## Requirements and how they are checked
 
-The sections below preserve the original product target and first-integration decisions. They are historical requirements, not a claim that email, arbitrary subscriptions, hosted operation or the original reported-chill policy are implemented. Current behavior is defined by the linked executable contracts and runbooks. The frozen reference and its verification are recorded in [the checkpoint](docs/terra/checkpoint.md).
+| Requirement | Check |
+| --- | --- |
+| Logger reads within +-0.3 C of a reference thermometer over 0-10 C | `chillwatch logger calibrate` (pass rule: \|bias\| <= 0.3 C and >= 95 % of paired readings within 0.3 C); a fixed bias may be corrected with `calibration_offset_c` |
+| A new user can find the chill total and any data gaps | the HTML report leads with the totals and the gap table (usability test with someone outside the team) |
+| Every reading the backend uses is traceable and validated | sample rules and hourly coverage, `tests/test_interop_rules.py` |
+| Faults are caught, not silently counted | demo with injected outage, warm fault, frozen sensor, failed read, corrupt line, reboot: all caught (`tests/test_interop_pipeline.py`) |
+| Physics and ML references are combined by their uncertainty | minimum-variance fusion, `tests/test_interop_fusion.py`, ML path with a trained model |
+| Chill models are standard | chill-hour band 0-7.2 C; Dynamic Model equal to chillR's (`tests/test_chill_models.py`) |
+| Firmware and backend agree on the record | the sketch is compiled on the host and its output decoded (`tests/test_interop_tools.py`) |
+| Totals are honest about missing data | complete only at >= 95 % measured hours; a target counts as reached only if the p10 reaches it |
 
-## Original purpose
+## Design decisions
 
-Give growers and crop consultants useful, proactive warnings about meaningful
-chill trends and unreliable station data. A grower should understand the
-situation and suggested check from the message without opening a dashboard.
-Texts are the primary intended channel; recipients explicitly choose SMS,
-email or another supported channel.
+* **No clock on the logger.** The Uno sends sequence number and uptime; the host adds UTC time.
+  Sequence and uptime let the backend detect reboots, lost samples and host clock jumps.
+* **Hour-ending UTC hours**, the CIMIS convention, so logger and reference hours line up.
+* **Reference = ChillWatch.** The existing ChillWatch layer (CIMIS ingest, station QC, Theil-Sen
+  lapse + IDW physics core, LightGBM ML core, held-out uncertainty bins) predicts the logger's
+  temperature from the stations around it. The logger is never one of its inputs.
+* **Learned orchard offset.** The orchard differs from grass-sited stations; that steady difference
+  (night and day separately) is learned from trailing data, and only departures from it are flagged.
+* **Estimates are labeled.** Gap-filled hours carry `is_estimated` and an uncertainty, which drives
+  the p10-p90 range of the totals.
 
-## First integration milestone (historical)
+## Out of scope
 
-ET selected these two meanings on October 23, 2026:
-
-- At a coordinate without a sensor, return estimated local temperature and
-  relevant station flags, contributing/excluded stations, time and availability.
-  Do not invent an observed local value or a local sensor fault.
-- Where an independent reading exists, show a measured comparison. The frozen
-  five-station detector supplies calibrated decisions only for its supported
-  stations. A new sensor can show a numeric departure, with classification
-  explicitly withheld until its policy is validated.
-
-Reuse `chillwatch.estimate.estimate_location` and the actual frozen e1 QC. Keep
-Nathan's ingestion, model, detection and repair unchanged. A coordinate may be
-queried anywhere; usable estimates require supported peers and validated months.
-The first message is a JSON data packet. The UI renders that packet without
-recomputing thresholds or adding a language-model explanation.
-
-## Original target monitoring behavior (historical)
-
-- Run independently of browsers and dashboard sessions. Persist progress and
-  pending notifications, resume after restart, prevent overlapping checks and
-  expose worker health, last successful check and actual data-through time.
-- Check weather at a cadence matched to verified provider publication; evaluate
-  seasonal chill from completed days. Polling cadence and maximum alert latency
-  remain deployment decisions, not properties established by the local demo.
-- Use two alert categories: **chill trends** and **data anomalies / station
-  health**. Keep severity and opening/escalation/recovery transitions separate
-  from category.
-- Preserve the selected statistical temperature reference and its evidence.
-  A suspected anomaly requires one extreme eligible reading or five consecutive
-  moderate eligible readings. Missing/unavailable hours reset persistence.
-  Insufficient usable peers withhold the comparison.
-- For chill, compare accumulated reported hours at the same seasonal cutoff with
-  usable prior seasons. Preserve below-20th, above-80th and recovery transitions,
-  at least five of ten reference seasons and 95% reported coverage. Withhold
-  conclusions on incomplete data; retain totals and reliability warnings.
-- Flag station absence, missing observations, stale data and provider failure
-  distinctly. Distinguish one lagging station, whole-source stagnation and a
-  stopped monitoring worker. Unavailable data must not imply healthy conditions.
-- Send an episode opening, meaningful severity escalation and recovery once per
-  subscribed recipient/channel. Continuing observations update the evidence.
-  Persist delivery attempts, retry recoverable failures and reconcile uncertain
-  outcomes. A saved finding or provider acceptance is not proof of delivery.
-- Respect verified contact details, station/category subscriptions and channel
-  opt-in. Unsubscribe suppresses pending and future messages for that channel.
-  Another channel is used only when separately opted in.
-- State station, observation time, measured value/unit, comparison and practical
-  checking action. Say “suspected”; do not assert sensor failure or crop damage.
-  Percentiles describe comparisons, not probabilities of failure.
-- Keep current alerts separate from historical replay and catch-up. Expire or
-  summarize old incidents; recheck relevance immediately before delivery.
-
-## Current scope and integration
-
-ET owns ingestion, observed-station QC, chill evaluation and alert delivery.
-Nathan owns interpolation. The integrated contracts retain station IDs, units, timestamps, source QC, availability, provenance and model versions. Keep interpolated values distinct from measured peer evidence.
-
-Temperature and chill retain their existing delivery path. Independent CIMIS
-relative humidity, hourly average wind and solar radiation now use explicit
-units, per-variable source quality and provisional peer-comparison rules. Their
-findings and data-health states remain separate from temperature QC and orchard
-estimation. Zero calm wind and nighttime solar alone are not faults. Wind gusts,
-crop-risk thresholds and field sensor-fault accuracy have not been established.
-See [the weather contract](docs/terra/weather-contract.md) and
-[simulation handoff](docs/terra/weather-simulation-handoff.md). Additional severity
-percentiles, reminders and quiet-hour routing need an explicit policy; this
-checkpoint does not retune the frozen temperature detector.
-
-## Original demonstration acceptance (historical)
-
-The service continues checking with every dashboard closed. An opted-in test
-recipient receives a temperature alert; repeat checks and restart do not create
-duplicate openings. Demonstrate missing/stale data, recovery, chill transitions,
-send failure/retry, unsubscribe and withheld stale historical events.
-
-Label delivery as real SMS, another real opted-in channel or simulation. A new
-Twilio trial cannot be assumed to support custom Terra texts: current Twilio
-docs restrict trials to verified recipients and predefined bodies. Verify the
-actual account before promising phone delivery. A simulated demo does not
-satisfy real SMS acceptance. Hosted multi-user operation remains deferred. Sender/account readiness and genuine phone delivery remain installation-specific acceptance; the numerical integration and local worker are implemented.
-
+Forecasts, bloom prediction and orchard management advice; texting the grower (a LoRa/Meshtastic
+add-on was costed separately and is not part of this code); multi-user hosting. The Terra web app,
+chat, SMS and PostgreSQL storage that this repository used to contain are outside this project's
+scope and remain in Git history (`87ee26b`).

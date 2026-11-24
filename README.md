@@ -1,90 +1,98 @@
-# Terra
+# Orchard Chill Monitor
 
-*Made with <3*
+**ENG 3, UC Davis - Nathan Ward, Carlo Repetto, Ken Nakao**
 
-**A local-first assistant for orchard weather, winter chill, and the data behind them.**
+A low-cost logger that hangs in an orchard tree and measures winter chill where the tree actually
+is, instead of at the nearest weather station. An Arduino Uno reads a DHT22 inside a decorative
+"monkey" radiation shield, shows temperature and chill on an LCD, and beeps when something is wrong.
+This repository holds the firmware, the data-validation layer that checks every reading, and the
+chill calculations (chill hours for the prototype, Dynamic Model Chill Portions for the final
+version).
 
-Tell Terra what you grow and where. It checks nearby weather stations, estimates temperature at your orchard, and keeps a quiet inbox of meaningful updates. Ask follow-up questions, inspect the evidence, or receive selected notes by SMS.
+## How it works
 
-## What it does
-
-- **Checks station data:** compares temperatures with nearby peers and excludes suspect readings from the orchard estimate. Humidity, wind and solar checks keep numerical discrepancies separate from missing or source-warned data. [Weather rules](docs/terra/weather-contract.md).
-- **Tracks winter chill:** separates estimated orchard chill from provider-reported totals. Missing hours stay unknown; historical comparisons need sufficient comparable data.
-- **Explains meaningful changes:** saves monitoring and recovery notes with their original evidence. A station flag does not automatically become an orchard alert.
-- **Answers in plain language:** uses saved farm and weather facts, with optional ChatGPT writing and factual local fallback.
-
-**CIMIS observations → station QC → location estimate → chill and coverage monitoring → saved notes → optional notifications.** Python computes the facts; the language model explains them.
-
-## Run locally
-
-Requires **Python 3.12**, **Node.js 24 LTS**, and **pnpm 11.25.0** (`npm install --global pnpm@11.25.0`).
-
-```sh
-git clone https://github.com/EthanVTruong/terra.git
-cd terra
-python run_terra.py
+```
+DHT22 in monkey shield -> Arduino Uno (LCD + buzzer) -> USB serial -> laptop / Pi bridge (UTC stamp)
+   -> validation (rules + coverage) -> cross-check against nearby CIMIS stations
+      (physics estimate + ML estimate, weighted by their uncertainty) -> chill totals + report
 ```
 
-Open **http://127.0.0.1:8512**. Use `python3` if needed. Stop with Ctrl+C.
+* **On the tree**: one reading a minute. The LCD shows temperature, humidity and a running
+  chill-hour count saved in EEPROM. Three short beeps every minute while the sensor fails to read,
+  and one long beep when the chill target is reached.
+* **On the computer**: every line is checksummed, time-stamped and checked (duplicates, reboots,
+  lost samples, frozen or jumping values, out-of-range readings). Hours with too few good readings
+  are marked. Each hour is compared with what the reference stations predict for the logger's spot,
+  so a sensor that drifts or gets sun on it is caught. Missing or rejected hours are filled with that
+  prediction, clearly labeled as estimates.
+* **Result**: chill hours and Chill Portions with a p10-p90 range, the share of hours actually
+  measured, and a list of every data gap, on one HTML page. Details: [docs/INTEROP.md](docs/INTEROP.md).
 
-The launcher creates `.venv`, installs pinned dependencies, builds the interface, and serves the UI and API. First setup needs internet; no API key, database server, or model training is needed.
+## Hardware
 
-**Default preview:** saved historical assessments and controlled examples, with live weather, the worker, and SMS disabled. The opening screen offers **Sign in with ChatGPT**. Use your eligible account and explicitly select a returned model if one is not already saved. Sign-in starts only when you choose it; opening Terra alone makes no model request. Preview history and its separate protected ChatGPT connection stay in `.terra-local/preview`.
-
-Use `python run_terra.py --no-chatgpt` for a diagnostic session with ChatGPT controls unavailable. This does not sign out or erase an existing connection.
-
-Enter your crops, select **Use my location**, and approve the browser request. Terra looks up ground elevation and selects nearby eligible stations. Approving device location authorizes the one-button setup. If permission or the terrain lookup fails, the saved draft is retained and you can retry the same location request. Choose notifications separately.
-
-Troubleshoot with `python run_terra.py --doctor`; choose another port with `--port 8520`.
-
-## Connect live weather
-
-Put `CIMIS_APP_KEY=<your key>` in a private environment file outside the repository:
-
-```sh
-python run_terra.py --live --env-file /absolute/path/to/cimis.env
-```
-
-Windows paths such as `C:/private/cimis.env` also work. Set up your crops and farm location in the app. Live monitoring checks every five minutes. Preserve `.terra-local/runtime` across restarts and keep the process and computer running.
-
-- **ChatGPT:** the opening screen uses your own eligible plan and explicit model selection. The account control retains usage, reconnection and sign-out settings. [Connection guide](docs/terra/chatgpt-plan.md).
-- **Notifications:** browser alerts work while Terra is open. SMS requires Twilio setup and orchard opt-in; add `--sms-env-file /absolute/path/to/twilio.env`. Trial-template mode sends a generic placeholder. [Phone setup](docs/terra/twilio-sms.md).
-- **Operations:** [state, background operation, and shutdown](docs/terra/local-runtime.md). Add `--no-worker` in live mode for on-demand queries only.
-
-## Demo
-
-The [station lab and grower demo](docs/terra/demo-simulation.md) replay real **March 2026 CIMIS observations**, after the detector's 2025 fitting and calibration periods. Controls change copies of readings; the actual detector, estimator, and monitor calculate the outcome.
-
-Try **normal readings → station spike → loss of station support → recovery after three subsequent usable hours**. The [production-interface replay](docs/terra/full-flow-verification/replay.md) includes actual onboarding, chat, and retained Details. Both demos use isolated state and simulated phone notifications.
-
-## Developers and agents
-
-Read [AGENTS.md](AGENTS.md), run `python terra.py brief`, and record your owner/scope in [COORDINATION.md](COORDINATION.md) before editing on an isolated task branch. [CLAUDE.md](CLAUDE.md) imports the same rules.
-
-Activate the launcher's `.venv`, then:
-
-```sh
-python -m pip install -r requirements-terra-dev.txt
-python terra.py check --base origin/main --task <task-id>
-pnpm --dir web test:ui
-pnpm --dir web test:sites
-```
-
-| Area | Entry point |
+| Part | Uno pin |
 | --- | --- |
-| Interface | `web/` · [frontend development](web/README.md) |
-| Chat, monitoring, storage, delivery | `backend/terra_monitoring/` · [grower workflow](docs/terra/tara-conversation.md) · [chill rules](docs/terra/farm-chill-ops.md) |
-| Frozen station QC | `backend/terra_qc/`, `config/terra/` · [reference provenance](docs/terra/checkpoint.md) |
-| Ingestion, estimation, scientific tools | `backend/chillwatch/` · [ChillWatch guide](docs/DATA_ML_LAYER.md) |
+| DHT22 data (10 kOhm pull-up from data to 5V) | D2 |
+| DHT22 VCC / GND | 5V / GND |
+| Buzzer + (other leg to GND) | D8 |
+| I2C LCD 16x2 backpack: SDA / SCL / VCC / GND | A4 / A5 / 5V / GND |
 
-The frozen statistical reference, station geometry and saved examples are included in the clone. No private training artifact is needed for the product preview or its temperature estimator. The separate native training/repair tools need additional dependencies and their own data/model setup. [CI](.github/workflows/terra.yml) covers the full backend, PostgreSQL, portable product checks, and web builds.
+Firmware: [firmware/chill_logger](firmware/chill_logger/README.md). Install the "DHT sensor
+library" (Adafruit), "Adafruit Unified Sensor" and "LiquidCrystal I2C" libraries, set `NODE_ID`,
+and upload.
 
-## Scope and license
+## Quick start
 
-Historical orchard pace comparisons need at least five sufficiently complete, matching reference seasons. A new install does not automatically fetch or construct that archive: recent weather alone cannot supply it. Until an archive is explicitly imported, Terra withholds historical pace conclusions. See [history requirements](docs/terra/farm-chill-ops.md#history-and-data-readiness).
+Requires Python 3.12.
 
-Humidity, hourly average wind and solar checks are provisional station-to-peer discrepancy rules. They do not estimate those variables at the orchard, measure gusts or diagnose crop danger. Forecasts, GDD, bloom predictions and treatment recommendations are outside the supported conversation.
+```sh
+python -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e ".[dev,serial]"
+chillwatch logger demo            # synthetic run, no hardware or API key: data/logger-demo/report.html
+```
 
-Terra is [MIT licensed](LICENSE). It uses system fonts; historical design screenshots retain the typography used during their original verification.
+With the logger plugged in:
 
-Terra is currently local and single-user. Orchard temperatures are estimates; statistical flags are not confirmed sensor failures or crop-risk diagnoses. Controlled demos do not establish natural-fault accuracy.
+```sh
+cp config/nodes.example.yaml config/nodes.yaml    # set the tree's lat/lon/elevation
+chillwatch logger bridge --port /dev/ttyACM0 --out data/orchard-1.jsonl     # COM3 on Windows
+chillwatch logger validate data/orchard-1.jsonl --node orchard-1 --html-out report.html
+chillwatch logger chill data/orchard-1.jsonl --node orchard-1 --season 2026-27
+chillwatch logger calibrate data/orchard-1.jsonl reference.csv --node orchard-1   # +-0.3 C test
+```
+
+The cross-check needs the reference stations: put a free CIMIS AppKey in `.env`
+(`CIMIS_APP_KEY=...`), then run `chillwatch stations sync` and
+`chillwatch backfill --from 2026-11-01 --to 2027-03-31` (`chillwatch ingest` keeps it current). Data
+is kept as a Parquet snapshot in `data/parquet`; see [docs/DATA_ML_LAYER.md](docs/DATA_ML_LAYER.md). `--no-reference` validates and totals without it.
+
+## Layout
+
+| Path | What |
+| --- | --- |
+| `firmware/chill_logger/` | Uno sketch and a host-side test harness |
+| `backend/chillwatch/interop/` | record contract, bridge, readers, validation rules, hourly coverage, physics/ML fusion, report, `logger` CLI |
+| `backend/chillwatch/chill/` | chill hours, Dynamic Model, season summary with uncertainty |
+| `backend/chillwatch/` (rest) | ChillWatch reference layer: CIMIS ingest, station QC, physics core, LightGBM ML core, uncertainty, repair |
+| `config/` | thresholds, region, logger registry |
+| `tests/` | `pytest`; `tests/test_interop_*.py` and `tests/test_chill_models.py` cover this project |
+
+## Development
+
+```sh
+ruff check backend tests
+pytest                                             # ~4 min; the firmware test needs g++
+python terra.py check --base origin/main --task <task-id>
+```
+
+Read [AGENTS.md](AGENTS.md) and record work in [COORDINATION.md](COORDINATION.md) on a task branch.
+
+## History and license
+
+This repository began as **Terra** (Ethan Truong and Nathan Ward): a local orchard-weather assistant
+with station QC, chat and SMS. The ENG 3 refactor keeps Terra's ChillWatch data and model layer as
+the reference network and removes the web app, chat, SMS and PostgreSQL pieces. All of it is
+preserved in Git history at `87ee26b`.
+
+MIT licensed ([LICENSE](LICENSE)). Readings and estimates are measurements and models, not crop
+advice.

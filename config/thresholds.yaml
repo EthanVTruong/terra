@@ -131,6 +131,8 @@ chill:
   max_f: 45.0             # spec
   start_mmdd: "11-01"     # spec
   end_mmdd: "03-31"       # the window the spec's Oct-Mar seasons covered (data is now year-round)
+                          # The logger's chill hours and Chill Portions use this same Nov 1 - Mar 31
+                          # window (FNRIC's published portions start Sep 1; change here to match).
 
 model:
   objective: huber        # spec
@@ -159,3 +161,34 @@ uncertainty:
   dz_bins_ft: [300, 1000]         # spec: <300, 300-1000, >1000
   min_bin_count: 200              # TODO source: below this, fall back to pooled night/day bin
   block_hours: 24                 # spec (bootstrap block length)
+
+# ---------------------------------------------------------------------------------------------
+# ENG 3 orchard chill monitor: logger interoperability, validation and chill (docs/INTEROP.md).
+logger:
+  range_c: [-20.0, 50.0]      # plausible orchard air temperature; DHT22 itself reads -40..80 C
+  rh_range_pct: [0.0, 100.0]
+  max_step_c: 5.0             # a jump larger than this between samples <= step_window_min apart
+  step_window_min: 10
+  stuck_hours: 3              # identical readings (within stuck_resolution_c) for this long
+  stuck_resolution_c: 0.05    # DHT22 resolution is 0.1 C
+  clock_tolerance_s: 30       # host time vs device uptime between consecutive samples
+  clock_tolerance_frac: 0.05
+  dup_window_s: 600           # an identical line again within this window is a duplicate
+  min_hour_coverage: 0.75     # same as normalize.min_coverage
+
+fusion:
+  rho: 0.0                    # error correlation of the physics and ML cores; 0 = inverse-variance
+                              # weighting. Measure with interop.fusion.estimate_rho on paired LOSO residuals.
+  min_sd_f: 0.5               # floor on either core's 1-sigma so neither gets near-infinite weight
+  disagree_z: 3.0             # cores differ by more than this many combined sigma -> withhold scoring
+  z_moderate: 2.5
+  z_extreme: 4.0
+  persist_hours: 5            # Terra's rule: one extreme reading or five consecutive moderate ones
+  offset_window_hours: 168    # trailing window for the orchard's own learned difference
+  offset_lag_hours: 24        # window ends this far back so a new fault is not absorbed at once
+  offset_min_hours: 24        # ok hours needed (per night/day) before an offset is used
+
+chill_summary:                # season totals for the logger (window = chill.start_mmdd .. chill.end_mmdd)
+  complete_coverage: 0.95     # validated share needed for complete-data conclusions (farm-chill rule)
+  estimate_draws: 200         # Monte Carlo draws of estimated hours for the p10-p90 range
+  seed: 7

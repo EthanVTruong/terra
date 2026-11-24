@@ -155,4 +155,6 @@ def export_parquet(store: Store, region_name: str | None = None, out_dir: Path |
     rp, sp = out_dir / f"readings_{region_name}.parquet", out_dir / f"stations_{region_name}.parquet"
     store.readings().to_parquet(rp, index=False)
     store.stations().to_parquet(sp, index=False)
+    if hasattr(store, "offsets_to_parquet") and len(store.offsets()):
+        store.offsets_to_parquet(out_dir / f"offsets_{region_name}.parquet")
     return rp, sp

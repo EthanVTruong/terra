@@ -16,10 +16,13 @@ data_asos/
 data/grid/
 data/experiments/
 
+# Logger registry (real tree locations) and local captures/reports.
+config/nodes.yaml
+data/logger-demo/
+data/*.jsonl
+
 # Terra local build, test and private runtime files.
 .terra-local/
-node_modules/
-web/.vite/
 dist/
 .env.*
 !.env.example

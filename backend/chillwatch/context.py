@@ -7,7 +7,6 @@ replay build their own ``Context`` and pass it explicitly or install it with ``s
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from typing import Any
 
@@ -17,7 +16,7 @@ import pandas as pd
 from . import config
 from .qc.model import ModelBundle, active_model_path, apply_offsets, idw_only_bundle, predict_station_frame
 from .qc.neighbors import Field, active_on, build_field, haversine_km
-from .store import MemoryStore, SqlStore, Store
+from .store import MemoryStore, Store
 from .timeutil import utc
 
 
@@ -223,14 +222,11 @@ _CTX: Context | None = None
 
 
 def default_context() -> Context:
-    url = os.environ.get("CHILLWATCH_DB_URL")
-    if url:
-        return Context(SqlStore(url))
     pq = config.data_dir() / "parquet"
     reg = config.region().get("name", "region")
     rp, sp = pq / f"readings_{reg}.parquet", pq / f"stations_{reg}.parquet"
     if rp.exists() and sp.exists():
-        return Context(MemoryStore.from_parquet(rp, sp))
+        return Context(MemoryStore.from_parquet(rp, sp, pq / f"offsets_{reg}.parquet"))
     return Context(MemoryStore())
 
 

@@ -2,20 +2,21 @@
 
 Python package `chillwatch` under `backend/`. It ingests station data, checks it, repairs it and
 estimates temperatures where no station exists. It never sends messages and never changes issue
-states: it returns `Detection` objects and writes reading-level status and estimates.
+states: it returns `Detection` objects and writes reading-level status and estimates. For the ENG 3
+chill monitor it is the reference network the orchard logger is checked against; the logger side
+(record contract, validation, physics/ML fusion, chill) is in [INTEROP.md](INTEROP.md).
 
 ## Setup
 
 ```bash
 uv venv -p 3.12 .venv && . .venv/bin/activate
 uv pip install -e ".[dev]"            # add ".[prism]" for PRISM features (rasterio)
-export CHILLWATCH_DB_URL=postgresql+psycopg://chillwatch:chillwatch@localhost:5432/chillwatch
-alembic upgrade head                  # stations, readings, station_offsets, model_registry
-export CIMIS_APP_KEY=...              # free key from et.water.ca.gov
+export CIMIS_APP_KEY=...              # free key from et.water.ca.gov (or put it in .env)
 ```
 
-Without `CHILLWATCH_DB_URL` the package uses an in-memory store loaded from
-`data/parquet/{readings,stations}_{region}.parquet`.
+Storage is an in-memory store loaded from `data/parquet/{readings,stations,offsets}_{region}.parquet`;
+every command that changes it (sync, backfill, ingest, fill, daily, offsets) writes the snapshot back.
+The PostgreSQL store was removed in the ENG 3 refactor (it is in Git history at `87ee26b`).
 
 ## Pipeline (P0 order)
 
@@ -68,7 +69,7 @@ Use `used_temp_f` for chill/GDD; NaN means no observation and no estimate (mark 
 backend/chillwatch/
   sources/{base,cimis,diy,prism}.py   adapters -> canonical schemas
   normalize.py                        PST hour-ending -> UTC, units, sub-hourly, dedupe, explicit gaps
-  store.py, db.py, ingest.py          Postgres / in-memory stores, Alembic models, backfill / daily ingest
+  store.py, ingest.py                 in-memory store + Parquet snapshot, backfill / daily ingest
   qc/neighbors.py                     neighbor graph, hourly Theil-Sen lapse rate, IDW + lapse baseline
   qc/features.py, qc/model.py         LightGBM neighbor model, LOSO validation, offsets, inference
   qc/rules.py, qc/detect.py           rules + residual tests -> Detection

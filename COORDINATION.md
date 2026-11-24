@@ -65,7 +65,7 @@ Nathan's ENG 3 project scope: logger firmware, the interoperability layer for lo
   "contracts": [],
   "artifacts": [],
   "handoff": {
-    "revision": null,
+    "revision": "c6985fb23fa8c318e732c642e9e1aefa402c1332",
     "summary": "Wire-v1 logger record ($CM1, NMEA XOR checksum, seq + uptime, host-stamped UTC) with bridge, readers, sample rules (checksum, duplicate, reboot, lost samples, clock jump, range, step, stuck), hour-ending UTC coverage, minimum-variance fusion of the physics core (IDW + Theil-Sen lapse) and the LightGBM core by their held-out sd with optional correlation, Terra's 4 sigma / five-hour 2.5 sigma rule on the residual after a learned night/day orchard offset, labeled gap estimates, chill hours and Dynamic Model Chill Portions (equal to chillR's chilling()) with observed / with-estimates / p10-p90 and 95% completeness, a JSON packet and one-page HTML report, the calibration test, a per-node calibration offset, and the Uno sketch with a host-compiled test. Storage is the Parquet snapshot; mutating CLI commands now save it. Spec, README and docs/INTEROP.md describe the ENG 3 scope.",
     "evidence": [
       "Full pytest suite passes locally (~4 min), ruff clean except three pre-existing findings in tests/test_terra_harness.py.",

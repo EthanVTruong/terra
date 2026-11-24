@@ -12,9 +12,13 @@ import typer
 
 from . import config
 
-app = typer.Typer(no_args_is_help=True, add_completion=False, help="ChillWatch data / QC / ML layer")
+app = typer.Typer(no_args_is_help=True, add_completion=False, help="ChillWatch: orchard chill monitor data, validation and QC/ML layer")
 stations_app = typer.Typer(no_args_is_help=True, help="Station metadata")
 app.add_typer(stations_app, name="stations")
+
+from .interop.cli import logger_app  # noqa: E402
+
+app.add_typer(logger_app, name="logger")
 log = logging.getLogger("chillwatch")
 
 
@@ -27,6 +31,13 @@ def _ctx():
     from .context import get_context
 
     return get_context()
+
+
+def _save() -> None:
+    """Persist the store: the Parquet snapshot in data/parquet is ChillWatch's database."""
+    from .ingest import export_parquet
+
+    export_parquet(_ctx().store)
 
 
 def _source(name: str):
@@ -60,6 +71,7 @@ def stations_sync(region: Path = typer.Option(None, help="default: $CHILLWATCH_R
     from .ingest import sync_stations
 
     st = sync_stations(_source(source), _ctx().store, region)
+    _save()
     typer.echo(f"{len(st)} region stations")
     typer.echo(st[["station_id", "name", "county", "elevation_ft", "is_active", "disconnect_date"]].to_string(index=False))
 
@@ -92,6 +104,7 @@ def ingest(days: int = 3, stations: str = typer.Option(None), source: str = type
     from .ingest import ingest_recent
 
     _report(ingest_recent(_source(source), _ctx().store, days, station_ids=_ids(stations)))
+    _save()
 
 
 @app.command("ingest-diy")
@@ -109,6 +122,7 @@ def ingest_diy(registry: Path, uploads: Path, start: str, end: str, verbose: boo
     _report(run_per_station(st, lambda r: ingest_station(src, ctx.store, r, date.fromisoformat(start),
                                                          date.fromisoformat(end))))
     typer.echo(f"rejected rows: {src.rejected}")
+    _save()
 
 
 @app.command("export-parquet")
@@ -122,12 +136,11 @@ def export_parquet_cmd() -> None:
 @app.command()
 def activate(version: str) -> None:
     """Make a trained model (data/models/VERSION) the one estimates and detection use."""
-    from .qc.model import ModelBundle, _register
+    from .qc.model import ModelBundle
 
     path = config.data_dir() / "models" / version
-    bundle = ModelBundle.load(path)  # fails loudly if the version does not exist
+    ModelBundle.load(path)  # fails loudly if the version does not exist
     (path.parent / "ACTIVE").write_text(version)
-    _register(bundle, _ctx().store, True)
     typer.echo(f"active model: {version}")
 
 
@@ -176,6 +189,7 @@ def fill(start: str, end: str, verbose: bool = False) -> None:
     gaps = fill_store(pd.Timestamp(start, tz="UTC"), pd.Timestamp(end, tz="UTC"), ctx=_ctx())
     typer.echo(f"{len(gaps)} gaps; {sum(g['estimated_hours'] for g in gaps)} hours estimated; "
                f"{sum(g['long_gap'] for g in gaps)} long gaps")
+    _save()
 
 
 @app.command()
@@ -186,6 +200,7 @@ def daily(as_of: str = typer.Option(None), verbose: bool = False) -> None:
 
     dets = daily_job(pd.Timestamp(as_of, tz="UTC") if as_of else None, ctx=_ctx())
     typer.echo(f"{len(dets)} detections")
+    _save()
 
 
 @app.command("set-offset")
@@ -195,6 +210,7 @@ def set_offset(station: int, start: str, end: str) -> None:
 
     r = set_offset_from_window(station, pd.Timestamp(start, tz="UTC"), pd.Timestamp(end, tz="UTC"), ctx=_ctx())
     typer.echo(json.dumps(r, default=str, indent=2))
+    _save()
 
 
 @app.command("learn-offsets")
@@ -204,6 +220,7 @@ def learn_offsets(as_of: str = typer.Option(None)) -> None:
 
     a = pd.Timestamp(as_of, tz="UTC") if as_of else pd.Timestamp.now(tz="UTC").floor("h")
     typer.echo(f"{update_learned_offsets(a, ctx=_ctx())} station offsets updated")
+    _save()
 
 
 @app.command()

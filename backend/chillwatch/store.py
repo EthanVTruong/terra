@@ -1,11 +1,12 @@
-"""Reading/station storage: an in-memory (Parquet-backed) store and a PostgreSQL store.
+"""Reading/station storage: an in-memory store persisted as Parquet.
 
-Both expose the same small API so the daily job, the bench replay and tests share code.
+The daily job, the bench replay, the logger pipeline and the tests share this small API.
+(The PostgreSQL store was removed in the ENG 3 chill-monitor refactor; Parquet snapshots
+cover a single orchard's logger plus its reference stations.)
 """
 
 from __future__ import annotations
 
-import io
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
@@ -136,9 +137,23 @@ class Store(Protocol):
     def add_offset(self, row: dict[str, Any]) -> None: ...
 
 
+def _coerce_offsets(df: pd.DataFrame) -> pd.DataFrame:
+    """Offset rows with fixed dtypes so they survive a Parquet round trip."""
+    df = df.copy()
+    df["station_id"] = df["station_id"].astype("int64")
+    df["kind"] = df["kind"].astype(str)
+    for c in ("night_f", "day_f"):
+        df[c] = pd.to_numeric(df[c], errors="coerce").astype("float64")
+    df["hourly_f"] = df["hourly_f"].map(lambda v: v if isinstance(v, str) else None).astype(object)
+    for c in ("window_start", "window_end", "created_at"):
+        df[c] = pd.to_datetime(df[c], utc=True)
+    return df.reset_index(drop=True)
+
+
 # ============================================================================ memory
 class MemoryStore:
-    """Per-station DataFrames indexed by ts. Used by tests, the demo replay and the bench."""
+    """Per-station DataFrames indexed by ts. The CLI loads it from and saves it to the Parquet
+    snapshot in ``data/parquet`` (see ``ingest.export_parquet``); tests and replays use it directly."""
 
     def __init__(self, stations: pd.DataFrame | None = None, readings: pd.DataFrame | None = None) -> None:
         self._stations = pd.DataFrame(columns=STATION_TABLE_COLUMNS)
@@ -254,8 +269,15 @@ class MemoryStore:
             self.stations().to_parquet(stations_path, index=False)
 
     @classmethod
-    def from_parquet(cls, readings_path: str | Path, stations_path: str | Path) -> MemoryStore:
-        return cls(stations=pd.read_parquet(stations_path), readings=pd.read_parquet(readings_path))
+    def from_parquet(cls, readings_path: str | Path, stations_path: str | Path,
+                     offsets_path: str | Path | None = None) -> MemoryStore:
+        store = cls(stations=pd.read_parquet(stations_path), readings=pd.read_parquet(readings_path))
+        if offsets_path is not None and Path(offsets_path).exists():
+            store._offsets = _coerce_offsets(pd.read_parquet(offsets_path))
+        return store
+
+    def offsets_to_parquet(self, path: str | Path) -> None:
+        _coerce_offsets(self._offsets).to_parquet(path, index=False)
 
     def copy(self) -> MemoryStore:
         new = MemoryStore()
@@ -263,131 +285,3 @@ class MemoryStore:
         new._data = {k: v.copy() for k, v in self._data.items()}
         new._offsets = self._offsets.copy()
         return new
-
-
-# ============================================================================ postgres
-class SqlStore:
-    """PostgreSQL store (tables from the Alembic migration)."""
-
-    def __init__(self, url: str) -> None:
-        from sqlalchemy import create_engine
-
-        self.engine = create_engine(url, future=True)
-
-    def stations(self) -> pd.DataFrame:
-        df = pd.read_sql("select * from stations order by station_id", self.engine)
-        for c in ("connect_date", "disconnect_date"):
-            df[c] = pd.to_datetime(df[c])
-        return df[STATION_TABLE_COLUMNS]
-
-    def upsert_stations(self, df: pd.DataFrame) -> None:
-        from sqlalchemy import text
-
-        df = df.copy()
-        for c in STATION_TABLE_COLUMNS:
-            if c not in df.columns:
-                df[c] = True if c == "in_region" else None
-        cols = STATION_TABLE_COLUMNS
-        sets = ", ".join(f"{c} = excluded.{c}" for c in cols if c != "station_id")
-        sql = text(
-            f"insert into stations ({', '.join(cols)}) values ({', '.join(':' + c for c in cols)}) "
-            f"on conflict (station_id) do update set {sets}"
-        )
-        recs = []
-        for r in df[cols].to_dict("records"):
-            for c in ("connect_date", "disconnect_date"):
-                r[c] = None if pd.isna(r[c]) else pd.Timestamp(r[c]).date()
-            for k, v in list(r.items()):
-                if isinstance(v, float) and np.isnan(v):
-                    r[k] = None
-                elif isinstance(v, np.generic):
-                    r[k] = v.item()
-            recs.append(r)
-        with self.engine.begin() as conn:
-            conn.execute(sql, recs)
-
-    def readings(
-        self,
-        start: datetime | None = None,
-        end: datetime | None = None,
-        station_ids: Iterable[int] | None = None,
-    ) -> pd.DataFrame:
-        from sqlalchemy import text
-
-        where: list[str] = []
-        params: dict[str, Any] = {}
-        if start is not None:
-            where.append("ts >= :start")
-            params["start"] = utc(start).to_pydatetime()
-        if end is not None:
-            where.append("ts <= :end")
-            params["end"] = utc(end).to_pydatetime()
-        if station_ids is not None:
-            where.append("station_id = any(:ids)")
-            params["ids"] = [int(s) for s in station_ids]
-        sql = f"select {', '.join(READING_COLUMNS)} from readings"
-        if where:
-            sql += " where " + " and ".join(where)
-        sql += " order by station_id, ts"
-        with self.engine.connect() as conn:
-            df = pd.read_sql(text(sql), conn, params=params)
-        return coerce_readings(df)
-
-    def _copy_into_temp(self, conn: Any, df: pd.DataFrame, cols: list[str], name: str) -> None:
-        raw = conn.connection.driver_connection
-        with raw.cursor() as cur:
-            cur.execute(f"create temp table {name} on commit drop as select {', '.join(cols)} from readings with no data")
-            buf = io.StringIO()
-            out = df[cols].copy()
-            for c in cols:
-                if out[c].dtype == bool:
-                    out[c] = out[c].map({True: "t", False: "f"})
-            out.to_csv(buf, index=False, header=False, na_rep="\\N")
-            buf.seek(0)
-            with cur.copy(f"copy {name} ({', '.join(cols)}) from stdin with (format csv, null '\\N')") as cp:
-                cp.write(buf.read())
-
-    def upsert_readings(self, df: pd.DataFrame) -> int:
-        if df.empty:
-            return 0
-        df = _reset_estimates(coerce_readings(df))
-        df = df.sort_values("ingested_at", kind="stable").drop_duplicates(["station_id", "ts"], keep="last")
-        cols = READING_COLUMNS
-        sets = ", ".join(f"{c} = excluded.{c}" for c in cols if c not in ("station_id", "ts"))
-        with self.engine.begin() as conn:
-            self._copy_into_temp(conn, df, cols, "_rd_up")
-            conn.exec_driver_sql(
-                f"insert into readings ({', '.join(cols)}) select {', '.join(cols)} from _rd_up "
-                f"on conflict (station_id, ts) do update set {sets}"
-            )
-        return len(df)
-
-    def update_readings(self, df: pd.DataFrame, columns: list[str]) -> int:
-        if df.empty:
-            return 0
-        full = coerce_readings(df.assign(**{c: df[c] for c in columns}))
-        cols = ["station_id", "ts", *columns]
-        sets = ", ".join(f"{c} = u.{c}" for c in columns)
-        with self.engine.begin() as conn:
-            self._copy_into_temp(conn, full, cols, "_rd_upd")
-            conn.exec_driver_sql(
-                f"update readings r set {sets} from _rd_upd u where r.station_id = u.station_id and r.ts = u.ts"
-            )
-        return len(df)
-
-    def last_observed(self, before: datetime) -> pd.Series:
-        from sqlalchemy import text
-
-        sql = text(
-            "select station_id, max(ts) as ts from readings where temp_f is not null and ts <= :b "
-            "group by station_id"
-        )
-        with self.engine.connect() as conn:
-            df = pd.read_sql(sql, conn, params={"b": utc(before).to_pydatetime()})
-        return pd.Series(pd.to_datetime(df["ts"], utc=True).array, index=df["station_id"].astype(int).to_numpy())
-
-    def offsets(self) -> pd.DataFrame:
-        return pd.read_sql("select * from station_offsets order by id", self.engine)
-
-    def add_offset(self, row: dict[str, Any]) -> None:
-        pd.DataFrame([row]).to_sql("station_offsets", self.engine, if_exists="append", index=False)

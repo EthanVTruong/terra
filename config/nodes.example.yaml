@@ -1,0 +1,15 @@
+# Logger registry. Copy to config/nodes.yaml (gitignored) and fill in your own loggers.
+# Location drives the physics/ML expected value, so measure it (phone GPS is fine) and give the
+# ground elevation in feet. node_id must match NODE_ID in firmware/chill_logger/chill_logger.ino.
+nodes:
+  - node_id: orchard-1
+    name: Monkey shield, test tree
+    lat: 38.5382          # placeholder: UC Davis campus
+    lon: -121.7617
+    elevation_ft: 52
+    tz: America/Los_Angeles
+    sensor: DHT22
+    sensor_sd_f: 0.45     # 1-sigma sensor error, degrees F (DHT22 +-0.5 C taken as ~2 sigma)
+    sample_interval_s: 60 # must match SAMPLE_MS in the sketch
+    shield: monkey
+    calibration_offset_c: 0.0   # from `chillwatch logger calibrate` (suggested_calibration_offset_c)

@@ -447,7 +447,6 @@ def train(
     bundle.save(path)
     if activate:
         (path.parent / "ACTIVE").write_text(version)
-    _register(bundle, store, activate)
     return bundle
 
 
@@ -503,24 +502,6 @@ def _holdout_known_stations(store: Any, stations: pd.DataFrame, booster: lgb.Boo
         "idw_lapse": error_report(hc, "idw"),
         "idw_lapse_plus_offset": error_report(hc, "idw_off"),
     }
-
-
-def _register(bundle: ModelBundle, store: Any, active: bool) -> None:
-    """Record the model in ``model_registry`` when the store is PostgreSQL."""
-    engine = getattr(store, "engine", None)
-    if engine is None:
-        return
-    from sqlalchemy import text
-
-    with engine.begin() as conn:
-        if active:
-            conn.execute(text("update model_registry set is_active = false"))
-        conn.execute(
-            text("insert into model_registry (version, created_at, path, metrics, is_active) "
-                 "values (:v, now(), :p, cast(:m as json), :a) on conflict (version) do update set "
-                 "path = excluded.path, metrics = excluded.metrics, is_active = excluded.is_active"),
-            {"v": bundle.version, "p": str(bundle.path), "m": json.dumps(bundle.metrics, default=str), "a": active},
-        )
 
 
 def active_model_path() -> Path | None:

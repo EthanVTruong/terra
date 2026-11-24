@@ -1,5 +1,111 @@
 # Terra integration coordination
 
+## ENG 3 orchard chill monitor (proposal)
+
+Nathan's ENG 3 project scope: logger firmware, the interoperability layer for logger data validation with physics and ML references weighted by their uncertainty, and chill monitoring. Removes the Terra product code from main pending ET's review; everything removed is preserved at the base revision.
+
+```json
+{
+  "kind": "task",
+  "id": "eng3-chill-monitor",
+  "owner": "nathan",
+  "status": "active",
+  "intent": "Nathan-requested refactor of the repository to the ENG 3 orchard chill monitor scope (Arduino Uno + DHT22 in the monkey shield, LCD, buzzer): keep the ChillWatch data/model layer as the reference network, add an interoperability layer that validates logger records and cross-checks them against physics and ML estimates weighted by their uncertainty, add chill hours and Dynamic Model Chill Portions with coverage and uncertainty, and add the Uno firmware. Remove the Terra web app, chat, SMS, monitoring, frozen QC package and PostgreSQL storage from main. This is a proposal for ET's review: it changes ET-owned domains and must not merge without ET's agreement.",
+  "branch": "nathan/eng3-chill-monitor",
+  "base": "87ee26bce0cb9bb75ffd91944eb711fe15673dac",
+  "domains": [
+    "chillwatch-core",
+    "terra-qc-json",
+    "terra-portability",
+    "terra-coordination"
+  ],
+  "paths": [
+    "COORDINATION.md",
+    "backend/chillwatch/chill/**",
+    "backend/chillwatch/interop/**",
+    "backend/chillwatch/demo/logger.py",
+    "backend/chillwatch/cli.py",
+    "backend/chillwatch/context.py",
+    "backend/chillwatch/store.py",
+    "backend/chillwatch/ingest.py",
+    "backend/chillwatch/qc/model.py",
+    "backend/chillwatch/db.py",
+    "config/thresholds.yaml",
+    "config/nodes.example.yaml",
+    "firmware/**",
+    "docs/INTEROP.md",
+    "docs/DATA_ML_LAYER.md",
+    "tests/test_chill_models.py",
+    "tests/test_interop_*.py",
+    "tests/test_store_sql.py",
+    "tests/test_integration_sql.py",
+    "migrations/**",
+    "alembic.ini",
+    "pyproject.toml",
+    "README.md",
+    "spec.md",
+    ".gitignore",
+    ".env.example",
+    ".github/workflows/terra.yml",
+    "backend/terra_qc/**",
+    "backend/terra_monitoring/**",
+    "config/terra/**",
+    "docs/terra/**",
+    "web/**",
+    "design-qa.md",
+    "requirements-terra.txt",
+    "requirements-terra-dev.txt",
+    "run_terra.py",
+    "scripts/terra-service/**",
+    "tests/test_terra_*.py",
+    "tests/test_farm_chill_ops*.py",
+    "tests/fixtures/terra/**"
+  ],
+  "depends_on": [],
+  "contracts": [],
+  "artifacts": [],
+  "handoff": {
+    "revision": "c6985fb23fa8c318e732c642e9e1aefa402c1332",
+    "summary": "Wire-v1 logger record ($CM1, NMEA XOR checksum, seq + uptime, host-stamped UTC) with bridge, readers, sample rules (checksum, duplicate, reboot, lost samples, clock jump, range, step, stuck), hour-ending UTC coverage, minimum-variance fusion of the physics core (IDW + Theil-Sen lapse) and the LightGBM core by their held-out sd with optional correlation, Terra's 4 sigma / five-hour 2.5 sigma rule on the residual after a learned night/day orchard offset, labeled gap estimates, chill hours and Dynamic Model Chill Portions (equal to chillR's chilling()) with observed / with-estimates / p10-p90 and 95% completeness, a JSON packet and one-page HTML report, the calibration test, a per-node calibration offset, and the Uno sketch with a host-compiled test. Storage is the Parquet snapshot; mutating CLI commands now save it. Spec, README and docs/INTEROP.md describe the ENG 3 scope.",
+    "evidence": [
+      "Full pytest suite passes locally (~4 min), ruff clean except three pre-existing findings in tests/test_terra_harness.py.",
+      "Synthetic demo with a 10 h outage, +6 C warm fault, 5 h stuck sensor, failed read, corrupt line and reboot: every fault caught, no residual flags outside the injected windows, chill hours within 2% and Chill Portions within 5% of truth (tests/test_interop_pipeline.py).",
+      "With a trained synthetic ML core the mean physics weight is between 0.1 and 0.9 and varies by hour; fused sd never exceeds the smaller core sd.",
+      "chillR chilling() Dynamic Model port agrees to 1e-9 (chillR takes hour 1 as its starting state)."
+    ],
+    "uncertainty": "Not yet run on real logger data or a real CIMIS season; DHT22 accuracy (+-0.5 C) may need the calibration offset to meet the +-0.3 C test. The ML core's frost-night behavior depends on training on full winters. Unreferenced Terra check records remain in this file for ET to prune. terra-station-lab-sensors (active, main) edits files this proposal removes.",
+    "next": "ET reviews the proposal PR; if accepted, integrate as one revertible merge and mark this task done. Then run the logger next to a reference thermometer for the calibration test and backfill the 2026-27 season for the reference cross-check."
+  }
+}
+```
+
+```json
+{
+  "kind": "check",
+  "id": "chill-monitor-tests",
+  "argv": [
+    "{python}",
+    "-B",
+    "-m",
+    "pytest",
+    "-o",
+    "pythonpath=backend",
+    "-p",
+    "no:cacheprovider",
+    "tests/test_chill_models.py",
+    "tests/test_interop_wire.py",
+    "tests/test_interop_rules.py",
+    "tests/test_interop_fusion.py",
+    "tests/test_interop_tools.py",
+    "tests/test_interop_pipeline.py",
+    "-k",
+    "not ml_core",
+    "-q"
+  ],
+  "timeout": 120
+}
+```
+
 ## Custom sensor alerts in connected grower chat
 
 ```json
@@ -999,64 +1105,17 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "domain",
   "id": "terra-qc-json",
   "owner": "et",
-  "purpose": "Imported frozen statistical QC and additive location-assessment JSON; existing ChillWatch implementation remains authoritative",
+  "purpose": "Terra QC/JSON, monitoring, web, chat and SMS product. The eng3-chill-monitor proposal removes that code from main (recoverable at 87ee26b); until ET accepts or replaces the proposal, this domain keeps the shared top-level README, spec, ignore rules, env template and CI workflow.",
   "paths": [
-    "backend/terra_qc/**",
-    "backend/terra_monitoring/**",
-    "config/terra/**",
-    "docs/terra/**",
-    "design-qa.md",
-    "tests/test_terra_json.py",
-    "tests/test_terra_demo_simulation.py",
-    "tests/test_terra_full_flow.py",
-    "tests/test_terra_qc_*.py",
-    "tests/fixtures/terra/**",
-    "requirements-terra.txt",
-    "requirements-terra-dev.txt",
     "README.md",
-    ".gitignore",
-    "web/**",
-    ".github/workflows/terra.yml",
     "spec.md",
-    "tests/test_terra_live.py",
-    "tests/test_terra_server.py",
-    "tests/test_terra_sms.py",
-    "tests/test_terra_sms_server.py",
-    "tests/fixtures/terra_live/**",
+    ".gitignore",
     ".env.example",
-    "tests/test_terra_pipeline.py",
-    "scripts/terra-service/**",
-    "tests/test_terra_runtime.py",
-    "tests/test_farm_chill_ops.py",
-    "tests/test_farm_chill_ops_api.py",
-    "tests/test_farm_chill_ops*.py",
-    "tests/test_terra_chatgpt*.py",
-    "tests/test_terra_conversation*.py",
-    "tests/test_terra_conversation_factual_writer.py",
-    "tests/test_terra_engine*.py",
-    "tests/test_terra_insight_writer.py",
-    "run_terra.py",
-    "tests/test_terra_bootstrap.py",
-    "tests/test_terra_weather*.py",
-    "tests/test_terra_simulation_connection.py"
+    ".github/workflows/terra.yml"
   ],
   "depends_on": [],
   "checks": [
-    "terra-json-tests",
-    "terra-demo-tests",
-    "terra-full-flow-tests",
-    "terra-sms-tests",
-    "terra-farm-tests",
-    "terra-runtime-tests",
-    "terra-pipeline-tests",
-    "terra-chatgpt-tests",
-    "terra-conversation-tests",
-    "terra-conversation-crops-tests",
-    "terra-conversation-context-tests",
-    "terra-conversational-engine-tests",
-    "terra-setup-tests",
-    "terra-weather-tests",
-    "terra-full-flow-recovery-tests"
+    "terra-harness"
   ]
 }
 ```
@@ -2021,13 +2080,12 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
   "kind": "domain",
   "id": "chillwatch-core",
   "owner": "nathan",
-  "purpose": "Existing ChillWatch estimation and data/model layer: ingestion and sources, QC detection and model, physics/uncertainty/repair, benchmark and experiments, its configuration, migrations, design docs and tests. ET's narrow-repair domains keep the individual files they list (estimate, normalize, CIMIS decoding, grid label, demo scenario and their tests).",
+  "purpose": "ChillWatch estimation and data/model layer (ingestion and sources, QC detection and model, physics/uncertainty/repair, benchmark and experiments) and, from eng3-chill-monitor, the ENG 3 orchard logger: Arduino firmware, the interoperability layer (record contract, validation, physics/ML fusion, report) and the chill models, with their configuration, design docs and tests. Storage is the Parquet snapshot; PostgreSQL was removed. ET's narrow-repair domains keep the individual files they list (estimate, normalize, CIMIS decoding, grid label, demo scenario and their tests).",
   "paths": [
     "backend/chillwatch/__init__.py",
     "backend/chillwatch/cli.py",
     "backend/chillwatch/config.py",
     "backend/chillwatch/context.py",
-    "backend/chillwatch/db.py",
     "backend/chillwatch/ingest.py",
     "backend/chillwatch/pipeline.py",
     "backend/chillwatch/store.py",
@@ -2056,8 +2114,6 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "docs/DATA_ML_LAYER.md",
     "docs/DECISIONS.md",
     "docs/TERRA_COMPATIBILITY.md",
-    "migrations/**",
-    "alembic.ini",
     "tests/test_asos.py",
     "tests/test_cimis.py",
     "tests/test_detect.py",
@@ -2065,16 +2121,22 @@ Git record, not a live lock. Original prototype cleanup is coordinated separatel
     "tests/test_faults.py",
     "tests/test_fill.py",
     "tests/test_grid.py",
-    "tests/test_integration_sql.py",
     "tests/test_model.py",
     "tests/test_neighbors.py",
     "tests/test_repair_extra.py",
-    "tests/test_store_sql.py",
-    "tests/fixtures/cimis_*.json"
+    "tests/fixtures/cimis_*.json",
+    "backend/chillwatch/chill/**",
+    "backend/chillwatch/interop/**",
+    "backend/chillwatch/demo/logger.py",
+    "firmware/**",
+    "docs/INTEROP.md",
+    "tests/test_chill_models.py",
+    "tests/test_interop_*.py"
   ],
   "depends_on": [],
   "checks": [
-    "chillwatch-core-tests"
+    "chillwatch-core-tests",
+    "chill-monitor-tests"
   ]
 }
 ```
